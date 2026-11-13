@@ -165,7 +165,7 @@ The overlay is drawn into the trails, so it smears with the chosen motion, and t
 
 These are the same as the ones made in the app's Journey setup panel. The easiest way to write one is to make it in the app and press **Save mine as a pack file**.
 
-A template has one entry for each of `world`, `palette`, `mirrors`, `motion`, `filter` and `overlay`. Each entry may have `mode` (`"keep"`, `"random"` or, except for worlds and palettes, `"off"`), `every` (seconds, 4 to 600) and `set` (the names allowed; leave it out to allow all). Worlds are named by id (`"julia"`), mirrors by number (`"6"`), everything else by the name shown in the app. A template can name palettes and motions from the same pack.
+A template has one entry for each of `world`, `palette`, `mirrors`, `motion`, `filter`, `overlay` and `land`. Each entry may have `mode` (`"keep"`, `"random"` or, except for worlds and palettes, `"off"`), `every` (seconds, 4 to 600) and `set` (the names allowed; leave it out to allow all). Worlds are named by id (`"julia"`), mirrors by number (`"6"`), the land by `"none"` or a landscape (`alps`, `canyon`, `planet`, `ball`, `city`) followed by ` alone` or ` over` (`"canyon over"`), everything else by the name shown in the app. A template can name palettes and motions from the same pack.
 
 ## What the app does with a pack
 

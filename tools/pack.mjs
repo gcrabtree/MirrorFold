@@ -21,7 +21,7 @@ const { cleanName, cleanPalette, cleanMotion, cleanFilter, cleanOverlay } = new 
 
 const LIB_MAX = 16, MAX_BYTES = 200000;
 const KEYS = ["mirrorfold", "name", "author", "palettes", "motions", "filters", "overlays", "templates", "sets"];
-const CATS = ["world", "palette", "mirrors", "motion", "filter", "overlay"];
+const CATS = ["world", "palette", "mirrors", "motion", "filter", "overlay", "land"];
 let bad = 0;
 function fail(file, msg) { console.log("FAIL " + file + ": " + msg); bad++; }
 

@@ -50,7 +50,7 @@ The whole app is one file, `index.html`. There is no build step and no JavaScrip
 - **13 colour palettes.** Seven are available from the start. Six are unlocked by finding orbs.
 - **6 feedback motions, 17 filters, 7 overlays and 8 transitions**, in the style of the MilkDrop music visualiser.
 - **Music reactivity** from a built-in track, your own audio file, another browser tab such as Spotify or YouTube, the microphone, or a tapped tempo.
-- **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter and overlay over time. You control what it may change with templates.
+- **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter, overlay and land over time. You control what it may change with templates.
 - **Share spot** links that take someone to the exact place you are looking at.
 - **VR viewer** mode for a phone in a Cardboard-style holder: a picture for each eye, and you look around by turning your head.
 
@@ -133,7 +133,7 @@ The controls at the top of the screen fade after five seconds without input and 
 | Journey | Turns the autopilot on or off. |
 | Mirrors | Steps through off, 3, 4, 6, 8 and 12 segments. |
 | Land | Steps through **Land off**, **Land alone** and **Land over world**. See [The land](#the-land). |
-| Land is | Shown while the land is on. Steps through the landscapes: **the Alps**, **canyon country** and **a strange planet**. |
+| Land is | Shown while the land is on. Steps through the landscapes: **the Alps**, **canyon country**, **a strange planet**, **a steel ball** and **a city**. |
 | Land colours | Shown while the land is on. **Land colours natural**, **Palette on sky and light**, or **Palette on everything**. |
 | Effects on | Shown for **Land over world**. Whether motions, filters and overlays act on **everything**, **the sky** (the world behind) or **the land**. |
 | FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
@@ -153,6 +153,8 @@ The land is an endless landscape you fly over. **Land is** chooses which one:
 - **The Alps**: snow peaks, glaciers, waterfalls and streams, lakes, meadows and conifer forest. From far off a forest is a dark patch. Close up it becomes separate trees, and meadows gain bushes and boulders.
 - **Canyon country**: a plateau of banded red rock cut by stepped gorges with a river at the bottom, with mesas and buttes standing on the plain, and rock arches and balanced rocks. You can fly under the arches.
 - **A strange planet**: sharp peaks over rippled plains, veins of light in the ground, glowing pools, glowing horns and bulbs, and crystals, rings and slabs that float and turn slowly in the air. Land alone gives it a dark sky with stars and a ringed planet.
+- **A steel ball**: one huge polished ball that mirrors the sky. The horizon curves away on every side, more so the higher you fly. Over a world it mirrors the world.
+- **A city**: square blocks of buildings with roads, pavements, parks and parked cars. Glass buildings mirror the sky, or the world. You fly along the streets or above the roofs, and are pushed round a building if you fly into one. This and the steel ball are much lighter to draw than the other three.
 
 Each landscape can be shown two ways:
 
@@ -163,7 +165,9 @@ You fly over the land the same way as through a world: the stick, **W A S D**, *
 
 **Land colours** decides what the palette does: nothing, tint the sky, sun and haze, or recolour the land and water as well. Mirrors apply to the land. **Effects on** decides what the motion, filter and overlay act on when the land is over a world.
 
-The land is the heaviest thing Mirrorfold draws. With **Detail auto** it may lower the sharpness further than a world does. It is switched off in the VR viewer, and Journey templates do not yet turn it on or off.
+The land is the heaviest thing Mirrorfold draws. With **Detail auto** it may lower the sharpness further than a world does. It is switched off in the VR viewer.
+
+Journey templates have a **Land** entry: leave the land as you set it, keep it off, or change it at random among the landscapes you tick, each alone or over the world. The built-in template **Landscapes** does this.
 
 ## On a TV
 
@@ -240,7 +244,7 @@ With Journey on, a **Movement** button appears beside the template list:
 
 In both settings you can take over at any moment. While you turn the view, by dragging, with the arrow keys, or by turning your head in the VR viewer, the autopilot stops steering and the automatic forward motion nearly stops. About a second after you stop turning, it carries on from where you are looking. The choice of travel or drift is remembered in your browser.
 
-A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter and overlay you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes instead of on a clock.
+A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter, overlay and land you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes instead of on a clock.
 
 A **set** plays several templates in turn, each for a number of minutes.
 
