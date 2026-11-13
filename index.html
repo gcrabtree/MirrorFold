@@ -237,7 +237,7 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
     <div class="advRow"><button id="advUseS" type="button" class="advGo">Use this set</button></div>
 
     <h3 id="advLibHead">Library</h3>
-    <p class="advNote">A pack is a small file of palettes, motions, filters, overlays, journey templates and sets. Nothing in a pack can reach the page or your data. Filters and overlays may hold a short picture program, which is checked before use. What you add is saved in this browser only.</p>
+    <p class="advNote">A pack is a small file of worlds, palettes, motions, filters, overlays, journey templates and sets. Nothing in a pack can reach the page or your data. Worlds, filters and overlays may hold a short picture program, which is checked before use. What you add is saved in this browser only.</p>
     <div class="advRow" id="advSiteRow" hidden><select id="advSite" aria-label="Packs published with Mirrorfold"></select><button id="advSiteAdd" type="button">Add this pack</button></div>
     <div class="advRow"><button id="advFile" type="button">Load a pack file</button><button id="advSave" type="button">Save mine as a pack file</button><input id="packIn" type="file" accept=".json,application/json" hidden></div>
     <div class="advRow"><button id="advNewP" type="button">New palette</button><button id="advNewM" type="button">New motion</button><button id="advNewF" type="button">New filter</button></div>
@@ -841,6 +841,28 @@ function cleanOverlay(src){
   out.code=cleanCode(src.code);
   return out.code?out:null;
 }
+/* A world from a pack is the body of a distance function: shader code that returns how far point p is from the nearest
+   surface. It gets p, already folded into one repeat of the world, and m, the morph (about -1.2 to 1.2). It has no clock
+   and no sound, so the shape holds still, and it may set "orb" to colour the surface. Its loops may run 16 times in all,
+   because the code runs at every step of every ray. JavaScript never sees the shape: flight asks the chip (the probe). */
+function cleanWorld(src){
+  if(!src||typeof src!=="object")return null;
+  var lim={hue:[0,1],fog:[0.02,0.5],maxd:[4,30],speed:[0.2,1.5]},def={hue:0,fog:0.15,maxd:18,speed:0.7};
+  var name=cleanName(src.name),out={name:name},k,v,m,cost=1,re=/<\s*(\d{1,3})\s*;/g;
+  if(!name||!/[A-Za-z]/.test(name))return null;
+  for(k in lim){
+    v=src[k];if(v===undefined||v===null)v=def[k];
+    if(typeof v!=="number"||!isFinite(v))return null;
+    out[k]=Math.max(lim[k][0],Math.min(lim[k][1],v));
+  }
+  if(!Array.isArray(src.period)||src.period.length!==3)return null;
+  out.period=[];
+  for(k=0;k<3;k++){v=src.period[k];if(typeof v!=="number"||!isFinite(v))return null;out.period.push(Math.max(0.5,Math.min(16,v)));}
+  out.code=cleanCode(src.code);
+  if(!out.code||!/\breturn\b/.test(out.code)||/\b(scene|sound|time|beat|col)\b/.test(out.code))return null;
+  while((m=re.exec(out.code)))cost*=Math.max(1,+m[1]);
+  return cost>16?null:out;
+}
 function cleanMotion(src){
   if(!src||typeof src!=="object")return null;
   var lim={decay:[0,0.98],zoom:[0.95,1.05],rot:[-0.025,0.025],swirl:[-0.08,0.08],wob:[0,0.006],rip:[0,0.03],dx:[-0.012,0.012],dy:[-0.012,0.012],kick:[-1,1]};
@@ -1188,6 +1210,47 @@ function probe(w,m,n){ /* the distances at the first n points in probePts go int
   gl.readPixels(0,0,16,1,gl.RGBA,gl.UNSIGNED_BYTE,probePx);
   for(i=0;i<n;i++)probeOut[i]=(probePx[4*i]/255+probePx[4*i+1]/65025+probePx[4*i+2]/16581375)*16-8;
   return true;
+}
+/* ---------- worlds from packs ----------
+   A pack world has shader code for its distance but no JavaScript, so everything that needs a distance goes through the
+   probe. deMany() is the one way to ask for many points; packFrame() asks once a frame for the five points flight uses. */
+var NWORLD=WORLDS.length;
+function packId(name){return "pack"+name.toLowerCase().replace(/[^a-z]/g,"");}
+function packWorld(c){ /* c has been through cleanWorld */
+  var per=c.period,f=function(v){return v.toFixed(4)};
+  return {id:packId(c.name),name:c.name,hue:c.hue,fog:c.fog,maxd:c.maxd,speed:c.speed,pack:true,src:c,
+    period:function(){return per},
+    glsl:[
+"float wmap(vec3 p,float m){",c.code,"}",
+"float map(vec3 p){",
+"  vec3 per=vec3("+f(per[0])+","+f(per[1])+","+f(per[2])+");p=mod(p+0.5*per,per)-0.5*per;", /* folded here, so the world repeats exactly whatever the code does */
+"  orb=vec4(1000.0);float d=clamp(wmap(p,uM),-8.0,8.0);",
+"  if(orb.w>999.0)orb=vec4(abs(sin(p*3.0)),0.5+0.5*sin(d*20.0));", /* code that sets no colour still gets some */
+"  return d;",
+"}"],
+    de:function(x,y,z,m){probePts[0]=x;probePts[1]=y;probePts[2]=z;return probe(this,m,1)?probeOut[0]:0.1;}};
+}
+function deMany(w,pts,n,m){ /* distances at n points (x,y,z in pts), by script for a built-in world, by the probe, 16 at a time, for a pack world */
+  var out=new Float32Array(n),i,k,c;
+  if(!w.pack){for(i=0;i<n;i++)out[i]=w.de(pts[3*i],pts[3*i+1],pts[3*i+2],m);return out;}
+  for(i=0;i<n;i+=16){
+    c=Math.min(16,n-i);for(k=0;k<3*c;k++)probePts[k]=pts[3*i+k];
+    if(probe(w,m,c))for(k=0;k<c;k++)out[i+k]=probeOut[k];else for(k=0;k<c;k++)out[i+k]=0.1;
+  }
+  return out;
+}
+/* Once a frame for a pack world: the distance at the camera and at the four points the autopilot steers by, in one
+   question. If the chip takes long to answer (over 4 ms on average), it is asked every third frame and the last answer reused. */
+var packD=[0.1,0.1,0.1,0.1,0.1],packMs=0,packWait=0;
+function packFrame(w,m,pr){
+  if(packMs>4&&packWait>0){packWait--;return;}
+  var t0=performance.now(),k,j,d,sx=[0,1,-1,0,0],sy=[0,0,0,1,-1];
+  for(k=0;k<5;k++){
+    d=k?norm([F[0]+0.7*(R[0]*sx[k]+Up[0]*sy[k]),F[1]+0.7*(R[1]*sx[k]+Up[1]*sy[k]),F[2]+0.7*(R[2]*sx[k]+Up[2]*sy[k])]):[0,0,0];
+    for(j=0;j<3;j++)probePts[3*k+j]=pos[j]+d[j]*pr;
+  }
+  if(probe(w,m,5))for(k=0;k<5;k++)packD[k]=Math.abs(probeOut[k]);
+  packMs+=(performance.now()-t0-packMs)*0.1;packWait=2;
 }
 var pTrail,pDown,pBlur,pFinal,pCopy;
 try{
@@ -2240,8 +2303,20 @@ function libAdd(list,nBuilt,item){ /* 1 if taken. A built-in name is refused; a 
 /* from: "stored" for what this browser saved earlier, "site" for a pack published with the page, nothing for a file or pasted text.
    Filter code from the site's own packs has been reviewed. Any other filter code is shown smoothed over time, so it cannot flash. */
 function addToLibrary(raw,from){
-  var n={p:0,m:0,f:0,o:0};
+  var n={p:0,m:0,f:0,o:0,w:0};
   if(!raw||typeof raw!=="object")return n;
+  (Array.isArray(raw.worlds)?raw.worlds:[]).forEach(function(x){
+    var c=cleanWorld(x),w,i;
+    if(!c)return;
+    w=packWorld(c);
+    if(from==="site"||(from==="stored"&&x.reviewed===true))w.reviewed=true;
+    for(i=0;i<NWORLD;i++)if(WORLDS[i].id===w.id||WORLDS[i].name===w.name)return; /* a built-in world's name or id is refused */
+    for(i=NWORLD;i<WORLDS.length;i++)if(WORLDS[i].id===w.id&&WORLDS[i].name!==w.name)return; /* so is a name that differs from another only in spaces or digits */
+    if(from!=="stored"){try{build(w);if(!probeBuild(w))throw 0;}catch(e){if(w.prog)gl.deleteProgram(w.prog);return;}} /* does not compile here: leave it out */
+    for(i=NWORLD;i<WORLDS.length;i++)if(WORLDS[i].name===w.name){worldDrop(i);break;} /* the same name again replaces the earlier one */
+    if(WORLDS.length-NWORLD>=LIB_MAX)return;
+    WORLDS.push(w);n.w++;
+  });
   (Array.isArray(raw.overlays)?raw.overlays:[]).forEach(function(x){
     var o=cleanOverlay(x);
     if(o&&(from==="site"||(from==="stored"&&x.reviewed===true)))o.reviewed=true;
@@ -2258,9 +2333,16 @@ function addToLibrary(raw,from){
   (Array.isArray(raw.motions)?raw.motions:[]).forEach(function(x){n.m+=libAdd(MOTIONS,NMOT,cleanMotion(x))});
   return n;
 }
+function worldDrop(i){ /* take an added world out; if it is showing, go to the first world */
+  var w=WORLDS[i],was=world===w||(hyb&&WORLDS[hyb.b]===w);
+  if(w.prog)gl.deleteProgram(w.prog);if(w.probe)gl.deleteProgram(w.probe.prog);
+  WORLDS.splice(i,1);
+  if(was){hyb=null;setWorldNow(0);}
+}
+function myWorlds(keepReviewed){return WORLDS.slice(NWORLD).map(function(w){var o=cleanWorld(w.src);if(keepReviewed&&w.reviewed)o.reviewed=true;return o})}
 function myFilters(keepReviewed){return LOOKS.slice(NLOOK).map(function(f){var o=cleanFilter(f);if(keepReviewed&&f.reviewed)o.reviewed=true;return o})}
 function myOverlays(keepReviewed){return OVERLAYS.slice(NOV).map(function(f){var o=cleanOverlay(f);if(keepReviewed&&f.reviewed)o.reviewed=true;return o})}
-function saveLibrary(){try{localStorage.setItem("mirrorfold-library",JSON.stringify({palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(true),overlays:myOverlays(true)}))}catch(_){}}
+function saveLibrary(){try{localStorage.setItem("mirrorfold-library",JSON.stringify({palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(true),overlays:myOverlays(true),worlds:myWorlds(true)}))}catch(_){}}
 try{addToLibrary(JSON.parse(localStorage.getItem("mirrorfold-library")||"{}"),"stored")}catch(_){}
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */
 var J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22},land:{base:80}};
@@ -2336,7 +2418,8 @@ function setMotion(i){moi=i;selMotion.value=String(i);}
 function setLook(i){lki=i;selLook.value=String(i);}
 selMotion.addEventListener("change",function(){setMotion(+this.value);wakeHud()});
 selLook.addEventListener("change",function(){setLook(+this.value);wakeHud()});
-WORLDS.forEach(function(w,i){var o=document.createElement("option");o.value=String(i);o.textContent=w.name;selWorld.appendChild(o);});
+function fillWorlds(){selWorld.textContent="";WORLDS.forEach(function(w,i){var o=document.createElement("option");o.value=String(i);o.textContent=w.name;selWorld.appendChild(o);});if(world)selWorld.value=String(WORLDS.indexOf(world));}
+fillWorlds();
 function fillPalettes(){
   selPal.textContent="";
   PALETTES.forEach(function(p,i){var o=document.createElement("option");o.value=String(i);selPal.appendChild(o);});
@@ -2350,9 +2433,12 @@ function labelPalettes(){
 fillPalettes();
 function spawnOrb(){
   var w=world,m=morphValue(),per=w.period(m),sc=Math.min(per[0],per[1],per[2])/2,best=-1,bp=null,bd=0;
-  for(var k=0;k<260;k++){
-    var c=[(Math.random()-.5)*per[0],(Math.random()-.5)*per[1],(Math.random()-.5)*per[2]];
-    var d=Math.abs(w.de(c[0],c[1],c[2],m)),far=0;
+  var nc=w.pack?96:260,cand=new Float32Array(3*nc),k;
+  for(k=0;k<3*nc;k++)cand[k]=(Math.random()-.5)*per[k%3];
+  var cd=deMany(w,cand,nc,m);
+  for(k=0;k<nc;k++){
+    var c=[cand[3*k],cand[3*k+1],cand[3*k+2]];
+    var d=Math.abs(cd[k]),far=0;
     for(var i=0;i<3;i++){var q=c[i]-pos[i];q-=per[i]*Math.floor(q/per[i]+.5);far+=q*q;}
     var sc2=Math.min(d,0.25*sc)*(Math.sqrt(far)>0.45*sc?1:0.1)*(0.7+0.3*Math.random());
     if(sc2>best){best=sc2;bp=c;bd=d;}
@@ -2377,7 +2463,7 @@ function collectOrb(){
 }
 function startHybrid(b,mode){
   var a=WORLDS.indexOf(world);
-  if(a===b||world.volume||WORLDS[b].volume){toast("That pair cannot blend.");return false;}
+  if(a===b||world.volume||WORLDS[b].volume||world.pack||WORLDS[b].pack){toast("That pair cannot blend.");return false;}
   var o;try{build(WORLDS[b]);o=hybProg(a,b)}catch(e){toast("That blend did not compile on this device.");return false;}
   hyb={b:b,prog:o.prog,U:o.U,t:(hyb&&hyb.b===b)?hyb.t:0,mode:mode,exit:false,off:(hyb&&hyb.b===b)?hyb.off:[0,0,0]};
   return true;
@@ -2397,11 +2483,10 @@ function setWorldNow(i,quiet){
   pos=w.start?w.start.slice():[0,0,0];vel=[0,0,0];
   var m=morphValue();
   if(!w.start||w.de(pos[0],pos[1],pos[2],m)<0.02){ /* no fixed start, or it is inside something at this morph: find open space */
-    var per=w.period(m),best=-1;
-    for(var k=0;k<300;k++){
-      var c=[(Math.random()-.5)*per[0],(Math.random()-.5)*per[1],(Math.random()-.5)*per[2]];
-      var dd=w.de(c[0],c[1],c[2],m);if(dd>best){best=dd;pos=c;}
-    }
+    var per=w.period(m),best=-1,ns=w.pack?96:300,sc=new Float32Array(3*ns),k;
+    for(k=0;k<3*ns;k++)sc[k]=(Math.random()-.5)*per[k%3];
+    var sd=deMany(w,sc,ns,m);
+    for(k=0;k<ns;k++)if(sd[k]>best){best=sd[k];pos=[sc[3*k],sc[3*k+1],sc[3*k+2]];}
   }
   selWorld.value=String(i);hyb=null;
   spawnOrb();
@@ -2843,6 +2928,7 @@ $("advUseT").addEventListener("click",function(){useJourney("t:"+advT.name,advT.
 $("advUseS").addEventListener("click",function(){useJourney("s:"+advS.name,advS.name)});
 /* ---------- packs: saving, loading and the library list ---------- */
 function refreshLists(){ /* after palettes or motions are added or removed */
+  catOf("world").opts=WORLDS.map(function(w){return [w.id,w.name]});fillWorlds();
   catOf("palette").opts=PALETTES.map(function(q){return [q.name,q.name]});
   catOf("motion").opts=MOTIONS.map(function(o){return [o.name,o.name]});
   catOf("filter").opts=LOOKS.map(function(o){return [o.name,o.name]});
@@ -2852,10 +2938,10 @@ function refreshLists(){ /* after palettes or motions are added or removed */
 function count(n,word){return n+" "+word+(n===1?"":"s")}
 function packNow(){ /* everything of the user's own, as a pack */
   var strip=function(list){return JSON.parse(JSON.stringify(list)).map(function(x){delete x.builtin;return x})};
-  return {mirrorfold:1,name:"My Mirrorfold pack",author:"",palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(false),overlays:myOverlays(false),templates:strip(store.tpls),sets:strip(store.sets)};
+  return {mirrorfold:1,name:"My Mirrorfold pack",author:"",palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(false),overlays:myOverlays(false),worlds:myWorlds(false),templates:strip(store.tpls),sets:strip(store.sets)};
 }
 function packSummary(k){ /* "2 palettes, 1 filter and 3 templates": only what is there */
-  var parts=[["palettes","palette"],["motions","motion"],["filters","filter"],["overlays","overlay"],["templates","template"],["sets","set"]]
+  var parts=[["worlds","world"],["palettes","palette"],["motions","motion"],["filters","filter"],["overlays","overlay"],["templates","template"],["sets","set"]]
     .filter(function(x){return k[x[0]].length>0}).map(function(x){return count(k[x[0]].length,x[1])});
   if(!parts.length)return "nothing";
   var last=parts.pop();
@@ -2867,20 +2953,21 @@ function loadPack(txt,from){
   if(!raw||typeof raw!=="object"||Array.isArray(raw)){toast("That is not a Mirrorfold pack.");return false;}
   if(+raw.mirrorfold>1){toast("That pack was made for a newer Mirrorfold.");return false;}
   var n=addToLibrary(raw,from==="site"?"site":undefined);
-  if(n.p||n.m||n.f||n.o){saveLibrary();refreshLists();} /* before the templates, so they can name what was just added */
+  if(n.p||n.m||n.f||n.o||n.w){saveLibrary();refreshLists();} /* before the templates, so they can name what was just added */
   var got=adopt(raw);
-  if(!n.p&&!n.m&&!n.f&&!n.o&&!got.tpls.length&&!got.sets.length){toast("Nothing in that pack could be used.");return false;}
+  if(!n.p&&!n.m&&!n.f&&!n.o&&!n.w&&!got.tpls.length&&!got.sets.length){toast("Nothing in that pack could be used.");return false;}
   var tn=got.tpls.map(function(q){return q.name}),sn=got.sets.map(function(q){return q.name});
   store.tpls=store.tpls.filter(function(q){return tn.indexOf(q.name)<0}).concat(got.tpls);
   store.sets=store.sets.filter(function(q){return sn.indexOf(q.name)<0}).concat(got.sets);
   advT=findT(advT.name)||BUILTIN_T[0];advS=findS(advS.name)||BUILTIN_S[0];
   if(journey)selectJourney(store.sel);
   saveStore();fillJT();advFill();
-  toast("Loaded "+packSummary({palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},overlays:{length:n.o},templates:got.tpls,sets:got.sets})+".");
+  toast("Loaded "+packSummary({worlds:{length:n.w},palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},overlays:{length:n.o},templates:got.tpls,sets:got.sets})+".");
   return true;
 }
 function libRemove(kind,i){
-  if(kind==="p"){PALETTES.splice(i,1);if(pi===i)pi=0;else if(pi>i)pi--;}
+  if(kind==="w")worldDrop(i);
+  else if(kind==="p"){PALETTES.splice(i,1);if(pi===i)pi=0;else if(pi>i)pi--;}
   else if(kind==="m"){MOTIONS.splice(i,1);if(moi===i)moi=0;else if(moi>i)moi--;}
   else if(kind==="f"){if(LOOKS[i].prog)gl.deleteProgram(LOOKS[i].prog.prog);LOOKS.splice(i,1);if(lki===i)lki=0;else if(lki>i)lki--;}
   else{if(OVERLAYS[i].prog)gl.deleteProgram(OVERLAYS[i].prog.prog);OVERLAYS.splice(i,1);if(ovi===i)ovi=0;else if(ovi>i)ovi--;}
@@ -2895,6 +2982,7 @@ function advRenderLib(){ /* the palettes and motions that came from packs, each 
     kids.push(rm);
     box.appendChild(mk("div",{"class":"advRow"},kids));
   };
+  WORLDS.forEach(function(w,i){if(i>=NWORLD)row("w","World: "+w.name+(w.reviewed?"":" (not reviewed, so shown smoothed)"),i)});
   PALETTES.forEach(function(q,i){if(i>=NPAL)row("p","Palette: "+q.name,i)});
   MOTIONS.forEach(function(o,i){if(i>=NMOT)row("m","Motion: "+o.name,i)});
   LOOKS.forEach(function(o,i){if(i>=NLOOK)row("f","Filter: "+o.name+(o.code&&!o.reviewed?" (not reviewed, so shown smoothed)":""),i)});
@@ -3189,7 +3277,7 @@ function statsShow(){
     "script "+(ST.js/ST.n).toFixed(1)+" ms a picture",
     "sharpness "+Math.round(q*100)+"%, "+tA.w+" x "+tA.h+" points",
     "drawn by: "+gpuName.slice(0,70)];
-  if(ST.pn)lines.push("distance probe, waiting for the chip "+(ST.pr/ST.pn).toFixed(2)+" ms: chip "+ST.gd.toFixed(4)+", script "+ST.jd.toFixed(4));
+  if(ST.pn)lines.push("distance probe, waiting for the chip "+(ST.pr/ST.pn).toFixed(2)+" ms: chip "+ST.gd.toFixed(4)+(ST.jd===ST.jd?", script "+ST.jd.toFixed(4):", no script for this world"));
   else lines.push("distance probe: not for this world");
   $("stats").textContent=lines.join("\n");
   ST.n=0;ST.t=0;ST.worst=0;ST.js=0;ST.pr=0;ST.pn=0;
@@ -3651,7 +3739,7 @@ function frame(now){
   var rawDt=(now-last)/1000,dt=Math.min(0.05,rawDt),sT0=statsOn?performance.now():0,sPr=0;last=now;
   if(statsOn&&!hyb){ /* try the probe at the camera, and time it, before anything else is drawn */
     probePts[0]=pos[0];probePts[1]=pos[1];probePts[2]=pos[2];
-    if(probe(world,morphValue(),1)){sPr=performance.now()-sT0;ST.pr+=sPr;ST.pn++;ST.gd=probeOut[0];ST.jd=world.de(pos[0],pos[1],pos[2],morphValue());}
+    if(probe(world,morphValue(),1)){sPr=performance.now()-sT0;ST.pr+=sPr;ST.pn++;ST.gd=probeOut[0];ST.jd=world.pack?NaN:world.de(pos[0],pos[1],pos[2],morphValue());}
   }
 
   acc+=dt;frames++;
@@ -3689,7 +3777,9 @@ function frame(now){
   }
   var w=world,wB=hyb?WORLDS[hyb.b]:null;
   var wSpeed=hyb?(w.speed+(wB.speed-w.speed)*hyb.t):w.speed;
-  var dist=Math.abs(deAt(pos[0],pos[1],pos[2],m));
+  var pk=w.pack&&!hyb; /* a pack world: one question to the chip gives all five distances, using the reach worked out last frame */
+  if(pk)packFrame(w,m,Math.min(1,Math.max(0.06,packD[0]*5)));
+  var dist=pk?packD[0]:Math.abs(deAt(pos[0],pos[1],pos[2],m));
   boost*=Math.exp(-dt*1.2);if(boost<0.01)boost=0;
   if(musicMode==="file"&&player.mode&&!scrubbing&&pDur()>0)showScrub(pPos()/pDur());
 
@@ -3709,7 +3799,7 @@ function frame(now){
         var d=norm([F[0]+0.7*(R[0]*sx+Up[0]*sy),F[1]+0.7*(R[1]*sx+Up[1]*sy),F[2]+0.7*(R[2]*sx+Up[2]*sy)]);
         return Math.abs(deAt(pos[0]+d[0]*pr,pos[1]+d[1]*pr,pos[2]+d[2]*pr,m));
       };
-      var dR=pd(1,0),dL=pd(-1,0),dU=pd(0,1),dD=pd(0,-1);
+      var dR=pk?packD[1]:pd(1,0),dL=pk?packD[2]:pd(-1,0),dU=pk?packD[3]:pd(0,1),dD=pk?packD[4]:pd(0,-1);
       lookX+=((dR-dL)/(dR+dL+1e-6)*1.1+0.22*Math.sin(time*0.13)+0.12*Math.sin(time*0.37+1.3))*dt*hands;
       lookY+=((dD-dU)/(dD+dU+1e-6)*1.1+0.16*Math.sin(time*0.11+2.0)+0.10*Math.sin(time*0.29))*dt*hands;
     }
@@ -3890,7 +3980,7 @@ function frame(now){
      a change takes about a quarter of a second to come through. */
   var lp=lk.code?filterProg(lk):null;
   if(lk.code&&!lp&&!lk.told){lk.told=1;toast("Filter "+lk.name+" does not work on this device.");}
-  var slow=(!!lp&&!lk.reviewed)||(!!op&&!ov.reviewed),PF=lp||pFinal,FU=PF.U;
+  var slow=(!!lp&&!lk.reviewed)||(!!op&&!ov.reviewed)||(world.pack&&!world.reviewed&&(!landOn||landOver)),PF=lp||pFinal,FU=PF.U;
   if(slow&&!tF[0]){tF[0]=target(canvas.width,canvas.height);tF[1]=target(canvas.width,canvas.height);}
   passTo(slow?tF[fcur]:null,PF);bindTex(0,tc.t);bindTex(1,tB[0].t);
   bindTex(3,slow?tF[1-fcur].t:tc.t);gl.uniform1i(FU.uPrev,3);gl.uniform1f(FU.uKeep,slow?Math.exp(-dt/0.25):0);

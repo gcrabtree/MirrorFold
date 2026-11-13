@@ -56,6 +56,14 @@ setTimeout(function(){
   /* pack filters: every published pack loads whole, its filter code compiles, and bad code is refused */
   var nl=LOOKS.length,sp=SITE_PACKS.map(function(t){var k=JSON.parse(t),b=LOOKS.length+OVERLAYS.length;var ok=loadPack(t,"site");return k.name+":"+ok+":"+(LOOKS.length+OVERLAYS.length-b)+"/"+((k.filters||[]).length+(k.overlays||[]).length)}).join(",");
   log("site packs="+sp);
+  /* pack worlds: the starter pack's worlds are added, one can be flown (the probe gives its distances), bad ones are refused, and removal works */
+  var wi=-1;for(var wk=NWORLD;wk<WORLDS.length;wk++)if(WORLDS[wk].id==="packbeadcurtain")wi=wk;
+  var wok=wi>=0&&setWorldNow(wi),wd=wok?world.de(pos[0],pos[1],pos[2],0):-1;
+  packFrame(world,0,0.2);
+  log("pack worlds="+(WORLDS.length-NWORLD)+" options="+selWorld.options.length+"/"+catOf("world").opts.length+" showing="+world.id+" reviewed="+!!world.reviewed+" open space="+(wd>0.02)+" five="+packD.map(function(v){return v.toFixed(2)}).join(","));
+  var nw0=WORLDS.length;loadPack(JSON.stringify({mirrorfold:1,name:"W",worlds:[{name:"Lattice",period:[2,2,2],code:"return 1.0;"},{name:"Broken",period:[2,2,2],code:"return nothing;"},{name:"Loose",period:[2,2,2],code:"return length(p)-0.3;"}]}));
+  var lw=WORLDS[WORLDS.length-1];log("refused="+(WORLDS.length-nw0===1)+" added="+lw.name+" reviewed="+!!lw.reviewed+" blend="+startHybrid(0,0));
+  libRemove("w",WORLDS.indexOf(world));log("after removal="+world.id+" worlds="+(WORLDS.length-NWORLD));
   loadPack(JSON.stringify({mirrorfold:1,filters:[{name:"Test code",code:"col=col.gbr;"},{name:"Bad clock",code:"col*=uTime;"},{name:"Bad glsl",code:"col=nothing(col);"},{name:"Test mix",edge:.5,post:5}],
     overlays:[{name:"Test ring",code:"ln=1.0-smoothstep(0.0,0.02,abs(length(p)-0.2-0.1*beat));"},{name:"Bad overlay",code:"ln=uOvBeat;"}]}));
   log("overlays+"+(OVERLAYS.length-NOV)+" "+OVERLAYS.slice(NOV).map(function(f){return f.name+(f.reviewed?"":"*")}).join("|"));

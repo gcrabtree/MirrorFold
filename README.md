@@ -255,7 +255,7 @@ Turn Journey on and press **Edit journeys** to make your own. Built-in templates
 
 ## Library and packs
 
-A **pack** is a small file of palettes, motions, filters, overlays, Journey templates and sets. Almost all of it is names and numbers, which Mirrorfold checks and pulls back into range. A filter or overlay may also hold a short picture program for the graphics chip. Such a program cannot reach the page, your files or the network, and Mirrorfold refuses it unless it keeps to a strict set of rules. Nothing in a pack is ever run as JavaScript.
+A **pack** is a small file of worlds, palettes, motions, filters, overlays, Journey templates and sets. Almost all of it is names and numbers, which Mirrorfold checks and pulls back into range. A world, filter or overlay also holds a short picture program for the graphics chip. The starter pack has two worlds, Column hall and Bead curtain. Such a program cannot reach the page, your files or the network, and Mirrorfold refuses it unless it keeps to a strict set of rules. Nothing in a pack is ever run as JavaScript.
 
 Programs in packs published with Mirrorfold have been reviewed. A program you load from a file or paste as text has not, so while it is in use Mirrorfold shows the picture smoothed over time, which makes it impossible for it to flash the screen. The Library list marks those items.
 

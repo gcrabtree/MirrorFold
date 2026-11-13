@@ -16,11 +16,11 @@ function grab(name) {
   if (!m) throw new Error("could not find function " + name + " in index.html");
   return m[0];
 }
-const NAMES = ["cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter", "cleanOverlay"];
-const { cleanName, cleanPalette, cleanMotion, cleanFilter, cleanOverlay } = new Function(NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
+const NAMES = ["cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter", "cleanOverlay", "cleanWorld"];
+const { cleanName, cleanPalette, cleanMotion, cleanFilter, cleanOverlay, cleanWorld } = new Function(NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
 
 const LIB_MAX = 16, MAX_BYTES = 200000;
-const KEYS = ["mirrorfold", "name", "author", "palettes", "motions", "filters", "overlays", "templates", "sets"];
+const KEYS = ["mirrorfold", "name", "author", "palettes", "motions", "filters", "overlays", "worlds", "templates", "sets"];
 const CATS = ["world", "palette", "mirrors", "motion", "filter", "overlay", "land"];
 let bad = 0;
 function fail(file, msg) { console.log("FAIL " + file + ": " + msg); bad++; }
@@ -55,6 +55,7 @@ function checkPack(path) {
   const mots = checkList(file, "motion", p.motions, cleanMotion);
   const flts = checkList(file, "filter", p.filters, cleanFilter);
   const ovs = checkList(file, "overlay", p.overlays, cleanOverlay);
+  const wls = checkList(file, "world", p.worlds, cleanWorld);
   const tpls = [];
   for (const t of Array.isArray(p.templates) ? p.templates : []) {
     if (!t || typeof t !== "object" || cleanName(t.name) !== t.name || !t.name) { fail(file, "a template has no plain name"); continue; }
@@ -69,7 +70,7 @@ function checkPack(path) {
     if (!s || typeof s !== "object" || cleanName(s.name) !== s.name || !s.name) { fail(file, "a set has no plain name"); continue; }
     if (!Array.isArray(s.items)) fail(file, 'set "' + s.name + '" has no items');
   }
-  if (bad === before) console.log("ok   " + file + ": " + pals.length + " palettes, " + mots.length + " motions, " + flts.length + " filters, " + ovs.length + " overlays, " + tpls.length + " templates, " + (p.sets || []).length + " sets");
+  if (bad === before) console.log("ok   " + file + ": " + wls.length + " worlds, " + pals.length + " palettes, " + mots.length + " motions, " + flts.length + " filters, " + ovs.length + " overlays, " + tpls.length + " templates, " + (p.sets || []).length + " sets");
 }
 
 const args = process.argv.slice(2);
