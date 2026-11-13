@@ -1,7 +1,8 @@
 /* Site packs, opening the setup panel, the sound wave picture, Stats, and the remaining buttons. */
 import { analyser, fbins } from "./audio.js";
+import { cam } from "./camera.js";
 import { encodeSpot, scene } from "./choose.js";
-import { clock } from "./clock.js";
+import { clock, morphValue } from "./clock.js";
 import { $, gl } from "./dom.js";
 import { edClose } from "./editor.js";
 import { toast, waveBuf } from "./flight.js";
@@ -13,6 +14,7 @@ import { LK } from "./landscapes.js";
 import { beat, liveAudio } from "./listen.js";
 import { loadPack } from "./pack-io.js";
 import { cleanName } from "./packs.js";
+import { probe, probeOut, probePts } from "./probe.js";
 import { FX, OVERLAYS, sel } from "./state.js";
 import { DETAIL, di, q, resize, setDetail, tA } from "./targets.js";
 export let orbsOn=true,morph=true,drift=true; /* the Orbs, Morph and Drift switches */
@@ -71,6 +73,23 @@ export function statsShow(){
   else lines.push("distance probe: not for this world");
   $("stats").textContent=lines.join("\n");
   ST.n=0;ST.t=0;ST.worst=0;ST.js=0;ST.pr=0;ST.pn=0;
+}
+
+let sT0=0,sPr=0;
+/* Stats, start of a frame: try the probe at the camera, and time it, before anything else is drawn. */
+export function statsBegin(){
+  if(!statsOn)return;
+  sT0=performance.now();sPr=0;
+  if(!scene.hyb){
+    probePts[0]=cam.pos[0];probePts[1]=cam.pos[1];probePts[2]=cam.pos[2];
+    if(probe(scene.world,morphValue(),1)){sPr=performance.now()-sT0;ST.pr+=sPr;ST.pn++;ST.gd=probeOut[0];ST.jd=scene.world.pack?NaN:scene.world.de(cam.pos[0],cam.pos[1],cam.pos[2],morphValue());}
+  }
+}
+
+/* Stats, end of a frame: count it, and show the readout twice a second. */
+export function statsEnd(rawDt){
+  if(!statsOn)return;
+  ST.n++;ST.t+=rawDt;ST.worst=Math.max(ST.worst,rawDt);ST.js+=performance.now()-sT0-sPr;if(ST.t>=0.5)statsShow();
 }
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
@@ -134,4 +153,5 @@ $("bFull").addEventListener("click",function(){
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
 export const __dbg={get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get waveTex(){return waveTex},set waveTex(v){waveTex=v}, get tbins(){return tbins},set tbins(v){tbins=v}, get statsOn(){return statsOn},set statsOn(v){statsOn=v},
   get sitePacks(){return sitePacks},set sitePacks(v){sitePacks=v}, get gpuName(){return gpuName},set gpuName(v){gpuName=v}, get de0(){return de0},set de0(v){de0=v}, get fetchText(){return fetchText}, get loadSitePacks(){return loadSitePacks}, get openAdv(){return openAdv},
-  get updateWave(){return updateWave}, get ST(){return ST}, get statsShow(){return statsShow}};
+  get updateWave(){return updateWave}, get ST(){return ST}, get statsShow(){return statsShow}, get sT0(){return sT0},set sT0(v){sT0=v}, get sPr(){return sPr},set sPr(v){sPr=v}, get statsBegin(){return statsBegin},
+  get statsEnd(){return statsEnd}};

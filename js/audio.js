@@ -1,3 +1,4 @@
+import { clock } from "./clock.js";
 import { $, errBox } from "./dom.js";
 import { toast } from "./flight.js";
 import { wakeHud } from "./input.js";
@@ -187,6 +188,18 @@ function decodeFile(f,tk,dur){
 }
 function showScrubIdle(){scrubFill.style.width="0%";scrubThumb.style.left="0%";}
 
+/* While a file plays, keep the scrubber at the playing position. */
+export function scrubFollow(){
+  if(musicMode==="file"&&player.mode&&!scrubbing&&pDur()>0)showScrub(pPos()/pDur());
+}
+
+/* The built-in music opens up as you fly faster. */
+export function musicFollowsSpeed(spN){
+  if(ac&&musicMode==="built"&&ac.state==="running"){
+    try{filt.frequency.setTargetAtTime(380+spN*1300+180*Math.sin(clock.time*0.13),ac.currentTime,0.6);}catch(_){}
+  }
+}
+
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
  /* the browser drops the wake lock when the page is hidden */
@@ -268,4 +281,4 @@ export const __dbg={get ac(){return ac},set ac(v){ac=v}, get master(){return mas
   get player(){return player}, get mmss(){return mmss}, get pDur(){return pDur}, get pPos(){return pPos}, get pIsPlaying(){return pIsPlaying}, get pPlay(){return pPlay},
   get pPause(){return pPause}, get pSeek(){return pSeek}, get syncPlayBtn(){return syncPlayBtn}, get showScrub(){return showScrub}, get scrubAt(){return scrubAt}, get scrubEnd(){return scrubEnd},
   get fileReady(){return fileReady}, get prepElement(){return prepElement}, get showElError(){return showElError}, get useElement(){return useElement}, get DECODE_MAX_SEC(){return DECODE_MAX_SEC}, get DECODE_MAX_BYTES(){return DECODE_MAX_BYTES},
-  get decodeFile(){return decodeFile}, get showScrubIdle(){return showScrubIdle}};
+  get decodeFile(){return decodeFile}, get showScrubIdle(){return showScrubIdle}, get scrubFollow(){return scrubFollow}, get musicFollowsSpeed(){return musicFollowsSpeed}};

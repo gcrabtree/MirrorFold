@@ -3,10 +3,10 @@ import { cam } from "./camera.js";
 import { clock } from "./clock.js";
 import { $, gl } from "./dom.js";
 import { toast } from "./flight.js";
-import { LAND_PRE_MAIN, LFREQ } from "./land-shader.js";
+import { LAND_PRE_MAIN, LFREQ, LPERIOD } from "./land-shader.js";
 import { LK, landSrc } from "./landscapes.js";
-import { camArr } from "./loop.js";
 import { bindTex, link, passTo } from "./programs.js";
+import { camArr } from "./render.js";
 import { palCur } from "./shaders.js";
 import { mirrors, sel } from "./state.js";
 import { freeT, tA, target } from "./targets.js";
@@ -120,6 +120,30 @@ export function setLandKind(k){ /* each landscape's shader is compiled the first
 export function setLandTint(k){landTint=k;$("bLandTint").textContent=["Land colours natural","Palette on sky and light","Palette on everything"][k];}
 export function setLandFx(k){landFx=k;$("bLandFx").textContent=["Effects on everything","Effects on the sky","Effects on the land"][k];}
 
+/* The land has its own position: it goes the way the camera faces, level, and keeps clear of the ground here and ahead. */
+export function moveLand(fr){
+  var dt=fr.dt,mx=fr.mx,my=fr.my,mz=fr.mz,vf=fr.vf;
+  var fh=Math.hypot(cam.F[0],cam.F[2]);if(fh>0.05){lhead[0]=cam.F[0]/fh;lhead[1]=cam.F[2]/fh;}
+  var lsp=0.4*cam.baseSpeed*(1+3*cam.boost),lwant,lk,ld;
+  lvel[0]+=((lhead[1]*mx+lhead[0]*mz)*lsp-lvel[0])*vf;lvel[1]+=((-lhead[0]*mx+lhead[1]*mz)*lsp-lvel[1])*vf;
+  lpos[0]+=lvel[0]*dt;lpos[2]+=lvel[1]*dt;
+  lpos[0]-=LPERIOD*Math.floor(lpos[0]/LPERIOD);lpos[2]-=LPERIOD*Math.floor(lpos[2]/LPERIOD);
+  landClimb(my*dt*0.25);
+  lwant=landFloor(lpos[0],lpos[2]);
+  for(lk=1;lk<=4;lk++){ld=0.22*lk;lwant=Math.max(lwant,landFloor(lpos[0]+lhead[0]*ld,lpos[2]+lhead[1]*ld)-0.10*lk);}
+  lwant+=landClear;
+  lpos[1]+=(lwant-lpos[1])*Math.min(1,dt*(lwant>lpos[1]?3:0.5));
+  lpos[1]=Math.max(lpos[1],landFloor(lpos[0],lpos[2])+0.035);
+  var xf=LK[landKind].extra; /* keep out of arches and other free-standing shapes: step back along the way out */
+  if(xf){
+    var xd=xf(lpos[0],lpos[1],lpos[2]);
+    if(xd<0.035){
+      var xgx=xf(lpos[0]+0.01,lpos[1],lpos[2])-xd,xgy=xf(lpos[0],lpos[1]+0.01,lpos[2])-xd,xgz=xf(lpos[0],lpos[1],lpos[2]+0.01)-xd,xgl=Math.hypot(xgx,xgy,xgz)||1;
+      lpos[0]+=xgx/xgl*(0.035-xd);lpos[1]+=xgy/xgl*(0.035-xd);lpos[2]+=xgz/xgl*(0.035-xd);
+    }
+  }
+}
+
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 (function(){var sd=20261113,i;for(i=0;i<65536;i++){sd=(Math.imul(sd,1664525)+1013904223)>>>0;LTAB[i]=sd>>>24;}})(); /* the grids things are scattered on: trees, trees, bushes, boulders, rocks, scree */
@@ -137,4 +161,4 @@ export const __dbg={get tL(){return tL},set tL(v){tL=v}, get tC(){return tC},set
   get LTAB(){return LTAB}, get landHash(){return landHash}, get landH(){return landH}, get landFloor(){return landFloor}, get LAYERS(){return LAYERS}, get pLandK(){return pLandK},
   get lpos(){return lpos}, get lvel(){return lvel}, get lhead(){return lhead}, get landXTab(){return landXTab}, get landBuild(){return landBuild}, get LP_CI(){return LP_CI},
   get LP_CF(){return LP_CF}, get LP_LI(){return LP_LI}, get LP_LF(){return LP_LF}, get landPass(){return landPass}, get setLand(){return setLand}, get setLandKind(){return setLandKind},
-  get setLandTint(){return setLandTint}, get setLandFx(){return setLandFx}};
+  get setLandTint(){return setLandTint}, get setLandFx(){return setLandFx}, get moveLand(){return moveLand}};

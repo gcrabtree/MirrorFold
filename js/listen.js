@@ -1,6 +1,6 @@
 import { ac, analyser, cap, ensureAudio, fbins, master, pPause, pPlay, player, startBuilt, stopBuilt } from "./audio.js";
 import { selMusic } from "./choose.js";
-import { $, errBox, isTouch } from "./dom.js";
+import { $, calm, errBox, isTouch } from "./dom.js";
 import { toast } from "./flight.js";
 import { wakeHud } from "./input.js";
 export let musicMode="off",beat=0,level=0; /* where the sound comes from, and the two numbers the picture reads: a pulse that decays, and how loud the low end is */
@@ -112,6 +112,14 @@ export function readMusic(dt){
   beat=bands.b.p;level=bands.b.lv;
 }
 
+/* Read the sound for this frame into fr: the beat pulse and low-end level, the mids' pulse and level, the treble's pulse and level. Turned down when reduced motion is asked for. */
+export function soundFrame(fr){
+  readMusic(fr.dt);
+  var react=calm?0.25:1;
+  fr.bt=beat*react;fr.lv=level*react;
+  fr.mp=bands.m.p*react;fr.mv=bands.m.lv*react;fr.hp=bands.t.p*react;fr.hv=bands.t.lv*react;
+}
+
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 /* ---------- listening: another tab's sound, or the microphone ----------
@@ -136,4 +144,4 @@ soundChanged=false,detectChange=makeChangeDetector();
 export const __dbg={get musicMode(){return musicMode},set musicMode(v){musicMode=v}, get beat(){return beat},set beat(v){beat=v}, get level(){return level},set level(v){level=v}, get taps(){return taps},set taps(v){taps=v}, get tapInt(){return tapInt},set tapInt(v){tapInt=v}, get tapAt(){return tapAt},set tapAt(v){tapAt=v},
   get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get stopListening(){return stopListening}, get startListening(){return startListening},
   get listening(){return listening}, get setMusic(){return setMusic}, get tap(){return tap}, get bands(){return bands}, get bandStep(){return bandStep}, get bandAvg(){return bandAvg},
-  get liveAudio(){return liveAudio}, get makeChangeDetector(){return makeChangeDetector}, get readMusic(){return readMusic}};
+  get liveAudio(){return liveAudio}, get makeChangeDetector(){return makeChangeDetector}, get readMusic(){return readMusic}, get soundFrame(){return soundFrame}};

@@ -46,7 +46,7 @@ def make_page(inject="", hide_ui=False, quality=None):
     head = '<head><base href="file://' + ROOT + '/">' + \
            '<script>window.onerror=function(m,u,l){document.title="ERR "+m+" @"+String(u).split("/").pop()+":"+l};</script>'
     if hide_ui:
-        head += "<style>#hud,#start{display:none}</style>"
+        head += "<style>#hud,#start{display:none !important}</style>"
     src = src.replace("<head>", head, 1)
     src = src.replace(MAIN, '<script>window.addEventListener("mf-ready",function(){with(window.MF){' + first + "\n" + inject + "\n}});</script>" + MAIN, 1)
     fd, path = tempfile.mkstemp(suffix=".html", prefix="mirrorfold-test-")

@@ -3,7 +3,6 @@ import { canvas, errBox, gl } from "./dom.js";
 import { landFreeTargets, landMode } from "./land.js";
 import { FINAL_U, FS_COPY, link } from "./programs.js";
 import { FS_BLUR, FS_DOWN, FS_FINAL, FS_TRAIL, TRAIL_U } from "./shaders.js";
-export const flip={cur:0,fcur:0}; /* which of each pair of pictures is being drawn into this frame: the trails, and the smoothed final picture */
 export let di=0,q=0.85; /* the detail setting (a position in DETAIL) and the sharpness it currently gives, 0.35 to 1 */
 let acc=0,frames=0,qHold=0;
 export function setDetail(i){di=i;q=DETAIL[di]==="fast"?0.5:(DETAIL[di]==="sharp"?1:0.85);resize();}
@@ -66,7 +65,7 @@ window.addEventListener("resize",resize);resize();
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get flip(){return flip}, get di(){return di},set di(v){di=v}, get q(){return q},set q(v){q=v}, get acc(){return acc},set acc(v){acc=v}, get frames(){return frames},set frames(v){frames=v}, get qHold(){return qHold},set qHold(v){qHold=v},
-  get setDetail(){return setDetail}, get autoDetail(){return autoDetail}, get pTrail(){return pTrail},set pTrail(v){pTrail=v}, get pDown(){return pDown},set pDown(v){pDown=v}, get pBlur(){return pBlur},set pBlur(v){pBlur=v}, get pFinal(){return pFinal},set pFinal(v){pFinal=v},
-  get pCopy(){return pCopy},set pCopy(v){pCopy=v}, get tA(){return tA},set tA(v){tA=v}, get tF(){return tF},set tF(v){tF=v}, get target(){return target}, get freeT(){return freeT}, get tT(){return tT},
-  get tB(){return tB}, get DETAIL(){return DETAIL}, get resize(){return resize}};
+export const __dbg={get di(){return di},set di(v){di=v}, get q(){return q},set q(v){q=v}, get acc(){return acc},set acc(v){acc=v}, get frames(){return frames},set frames(v){frames=v}, get qHold(){return qHold},set qHold(v){qHold=v}, get setDetail(){return setDetail},
+  get autoDetail(){return autoDetail}, get pTrail(){return pTrail},set pTrail(v){pTrail=v}, get pDown(){return pDown},set pDown(v){pDown=v}, get pBlur(){return pBlur},set pBlur(v){pBlur=v}, get pFinal(){return pFinal},set pFinal(v){pFinal=v}, get pCopy(){return pCopy},set pCopy(v){pCopy=v},
+  get tA(){return tA},set tA(v){tA=v}, get tF(){return tF},set tF(v){tF=v}, get target(){return target}, get freeT(){return freeT}, get tT(){return tT}, get tB(){return tB},
+  get DETAIL(){return DETAIL}, get resize(){return resize}};

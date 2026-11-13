@@ -1,9 +1,13 @@
+import { cam, norm } from "./camera.js";
 import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay, setPalette, warpThen } from "./choose.js";
+import { clock } from "./clock.js";
 import { $ } from "./dom.js";
-import { J, jReset, toast } from "./flight.js";
+import { J, deAt, jReset, toast } from "./flight.js";
 import { press, wakeHud } from "./input.js";
-import { landKind, landMode, setLand, setLandKind } from "./land.js";
+import { landH, landKind, landMode, lhead, lpos, setLand, setLandKind } from "./land.js";
 import { LK } from "./landscapes.js";
+import { liveAudio, soundChanged } from "./listen.js";
+import { packD } from "./probe.js";
 import { LOOKS, MOTIONS, OVERLAYS, mirrors, sel } from "./state.js";
 import { keepAwake } from "./vr.js";
 import { tr } from "./warp.js";
@@ -124,6 +128,42 @@ export function setJourney(on){
   keepAwake();
 }
 
+/* Travel: steer toward open space. Over land that means toward whichever side is lower, keeping to the valleys with the view a little below level; in a world it means comparing the distance to the right, left, up and down. */
+export function autopilot(fr){
+  var dt=fr.dt,hands=fr.hands,dist=fr.dist,pk=fr.pk,m=fr.m;
+  if(landMode){ /* over land the autopilot turns toward whichever side is lower, so it keeps to the valleys, and holds the view a little below level */
+    var lrx=lhead[1],lrz=-lhead[0],lc=Math.cos(0.55)*1.3,ls=Math.sin(0.55)*1.3;
+    var hL=landH(lpos[0]+lhead[0]*lc-lrx*ls,lpos[2]+lhead[1]*lc-lrz*ls,4),hR=landH(lpos[0]+lhead[0]*lc+lrx*ls,lpos[2]+lhead[1]*lc+lrz*ls,4);
+    cam.lookX+=(Math.max(-0.5,Math.min(0.5,(hL-hR)*1.6))+0.08*Math.sin(clock.time*0.13))*dt*hands;
+    cam.lookY+=(cam.F[1]+0.10)*0.6*dt*hands;
+  }else{
+    var pr=Math.min(1,Math.max(0.06,dist*5));
+    var pd=function(sx,sy){
+      var d=norm([cam.F[0]+0.7*(cam.R[0]*sx+cam.Up[0]*sy),cam.F[1]+0.7*(cam.R[1]*sx+cam.Up[1]*sy),cam.F[2]+0.7*(cam.R[2]*sx+cam.Up[2]*sy)]);
+      return Math.abs(deAt(cam.pos[0]+d[0]*pr,cam.pos[1]+d[1]*pr,cam.pos[2]+d[2]*pr,m));
+    };
+    var dR=pk?packD[1]:pd(1,0),dL=pk?packD[2]:pd(-1,0),dU=pk?packD[3]:pd(0,1),dD=pk?packD[4]:pd(0,-1);
+    cam.lookX+=((dR-dL)/(dR+dL+1e-6)*1.1+0.22*Math.sin(clock.time*0.13)+0.12*Math.sin(clock.time*0.37+1.3))*dt*hands;
+    cam.lookY+=((dD-dU)/(dD+dU+1e-6)*1.1+0.16*Math.sin(clock.time*0.11+2.0)+0.10*Math.sin(clock.time*0.29))*dt*hands;
+  }
+}
+
+/* Run Journey's clocks: move on through a set, and change whatever the template says is due. */
+export function stepJourney(dt){
+  for(var jk in J)J[jk].t+=dt;
+  if(jset){jset.t+=dt;if(jset.t>jset.len)advanceSet();}
+  for(var ci=0;ci<CATS.length;ci++){
+    var ck=CATS[ci].k,cf=jt[ck];
+    if(cf.mode==="off"){if(jCur(ck)!==jNone(ck))jApply(ck,jNone(ck));continue;}
+    if(cf.mode!=="random")continue;
+    var due=J[ck].t>J[ck].next;
+    if(ck==="world"&&cf.trigger==="sound"&&liveAudio()){ /* wait for the music to shift, but never forever */
+      due=(soundChanged&&J.world.t>Math.max(10,cf.every*0.25))||J.world.t>cf.every*2.5;
+    }
+    if(due&&jApply(ck,jPick(ck,cf,jCur(ck),jPool(ck,cf))))jReset(ck);
+  }
+}
+
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 /* ---------- journey templates ----------
@@ -173,4 +213,4 @@ export const __dbg={get jt(){return jt},set jt(v){jt=v}, get journey(){return jo
   get store(){return store}, get adopt(){return adopt}, get saveStore(){return saveStore}, get allT(){return allT}, get allS(){return allS}, get findT(){return findT},
   get findS(){return findS}, get jCur(){return jCur}, get jNone(){return jNone}, get jIndex(){return jIndex}, get jApply(){return jApply}, get jPool(){return jPool},
   get jPick(){return jPick}, get applyTemplate(){return applyTemplate}, get advanceSet(){return advanceSet}, get selectJourney(){return selectJourney}, get fillJT(){return fillJT}, get setJMove(){return setJMove},
-  get setJourney(){return setJourney}};
+  get setJourney(){return setJourney}, get autopilot(){return autopilot}, get stepJourney(){return stepJourney}};
