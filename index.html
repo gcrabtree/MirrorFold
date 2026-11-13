@@ -2411,11 +2411,11 @@ function fillOverlays(){
   selOv.value=String(ovi);
 }
 fillOverlays();
-function setOverlay(i){ovi=i;selOv.value=String(i);}
+function setOverlay(i){if(!OVERLAYS[i])i=0;ovi=i;selOv.value=String(i);}
 selOv.addEventListener("change",function(){setOverlay(+this.value);wakeHud()});
 $("bOvS").addEventListener("click",function(){ovsi=(ovsi+1)%OVS.length;this.textContent="Overlay "+Math.round(OVS[ovsi]*100)+"%";wakeHud()});
-function setMotion(i){moi=i;selMotion.value=String(i);}
-function setLook(i){lki=i;selLook.value=String(i);}
+function setMotion(i){if(!MOTIONS[i])i=0;moi=i;selMotion.value=String(i);}
+function setLook(i){if(!LOOKS[i])i=0;lki=i;selLook.value=String(i);}
 selMotion.addEventListener("change",function(){setMotion(+this.value);wakeHud()});
 selLook.addEventListener("change",function(){setLook(+this.value);wakeHud()});
 function fillWorlds(){selWorld.textContent="";WORLDS.forEach(function(w,i){var o=document.createElement("option");o.value=String(i);o.textContent=w.name;selWorld.appendChild(o);});if(world)selWorld.value=String(WORLDS.indexOf(world));}
@@ -3741,9 +3741,12 @@ function frame(now){
      browser may queue several pictures ahead of the chip and then stall while it catches up, which shows as stutter
      even though the average rate is high. (Found by accident: with Stats on, whose probe does the same wait, a PC with a
      144 Hz screen ran smoothly, and with it off it stuttered.) A pack world's own probe, later in the frame, does the same job. */
-  if(!(statsOn&&!hyb&&!world.volume)&&!world.pack){
-    if(!probeT)probeT=target(16,1);
-    gl.bindFramebuffer(gl.FRAMEBUFFER,probeT.f);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,probePx);
+  if(!(statsOn&&!hyb&&!world.volume)&&!world.pack){ /* done the way Stats does it: draw into the small picture, then read from it */
+    if(world.volume||hyb||!probe(world,morphValue(),1)){
+      if(!probeT)probeT=target(16,1);
+      passTo(probeT,pCopy);bindTex(0,tA.t);gl.uniform1i(pCopy.U.uT,0);gl.drawArrays(gl.TRIANGLES,0,3);
+      gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,probePx);
+    }
   }
   if(statsOn&&!hyb){ /* try the probe at the camera, and time it, before anything else is drawn */
     probePts[0]=pos[0];probePts[1]=pos[1];probePts[2]=pos[2];
