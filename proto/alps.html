@@ -22,6 +22,8 @@ button[aria-pressed="true"]{border-color:#7fe;color:#7fe}
   <button id="bAuto" type="button" aria-pressed="true">Autopilot on</button>
   <button id="bSlow" type="button">Speed 2 of 3</button>
   <button id="bSun" type="button">Sun: afternoon</button>
+  <button id="bPal" type="button">Palette: natural</button>
+  <button id="bTint" type="button">Tint: sky and light</button>
   <button id="bRes" type="button">Detail auto</button>
 </div>
 <div id="note">Prototype of an Alps world. Drag to look and steer. The autopilot follows the valleys.</div>
@@ -40,37 +42,47 @@ if(!gl){$("err").textContent="This browser has no WebGL.";return;}
 var FREQ=0.35,PERIOD=289/FREQ,WATER=0.085,TREE=0.72,SNOW=1.05,HMAX=2.6;
 var FS=[
 "precision highp float;",
-"uniform vec2 uRes;uniform float uTime;uniform vec3 uPos,uSun,uSunCol;uniform mat3 uCam;",
+"uniform vec2 uRes;uniform float uTime,uHue,uTint;uniform vec3 uPos,uSun,uSunCol,uPa,uPb,uPc,uPd;uniform mat3 uCam;",
+"uniform vec2 uCi[13],uCf[13];uniform vec4 uDa,uDb;", /* where the camera sits in each noise layer, worked out exactly in JavaScript */
 "const float PER=289.0,FREQ="+FREQ.toFixed(4)+",WATER="+WATER.toFixed(4)+",TREE="+TREE.toFixed(4)+",SNOW="+SNOW.toFixed(4)+",HMAX="+HMAX.toFixed(4)+";",
+"vec3 gTop,gLow,gSun,gHaze,gAmb;", /* sky, sun and haze colours, set once in main: natural, or taken from the palette */
+"vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "float perm(float x){float h=mod((x*34.0+1.0)*x,289.0);return h*step(h,288.5);}",
 "float hash(vec2 i){i=mod(i,PER);i*=step(i,vec2(288.5));return perm(perm(i.x)+i.y)/289.0;}",
-/* value noise and its slope */
-"vec3 noised(vec2 x){vec2 i=floor(x),f=x-i,u=f*f*(3.0-2.0*f),du=6.0*f*(1.0-f);",
+/* value noise and its slope. "base" is a whole-number corner and x a small offset from it, which keeps the fine layers exact */
+"vec3 noised(vec2 base,vec2 x){vec2 i=floor(x),f=x-i,u=f*f*f*(f*(f*6.0-15.0)+10.0),du=30.0*f*f*(f*(f-2.0)+1.0);i+=base;",
 "  float a=hash(i),b=hash(i+vec2(1.0,0.0)),c=hash(i+vec2(0.0,1.0)),d=hash(i+vec2(1.0,1.0)),k=a-b-c+d;",
 "  return vec3(a+(b-a)*u.x+(c-a)*u.y+k*u.x*u.y,du*(vec2(b-a,c-a)+k*u.yx));}",
-"float noise(vec2 x){return noised(x).x;}",
+"float noise(vec2 x){return noised(vec2(0.0),x).x;}",
 /* broad flat valley floors, steep high peaks */
 "float shape(float a){return 1.5*pow(max(a-0.22,0.0),1.35);}",
-/* each layer is weakened where the layers before it are steep, which carves ridges and gullies */
-"#define TERR(name,N) float name(vec2 x){vec2 p=x*FREQ,d=vec2(0.0);float a=0.0,b=1.0;for(int i=0;i<N;i++){vec3 n=noised(p);d+=n.yz;a+=b*(i<3?n.x:n.x-0.5)/(1.0+dot(d,d));b*=0.5;p=mod(mat2(2.0,1.0,-1.0,2.0)*p,PER);}return shape(a);}",
+/* The land's height at q, measured from the camera. Each layer is weakened where the layers before it are steep,
+   which carves ridges and gullies. */
+"#define TERR(name,N) float name(vec2 q){vec2 p=q*FREQ,d=vec2(0.0);float a=0.0,b=1.0;for(int i=0;i<N;i++){vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;a+=b*(i<3?n.x:n.x-0.5)/(1.0+dot(d,d));b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;}return shape(a);}",
 "TERR(terrL,4)",
 "TERR(terrM,6)",
-"TERR(terrH,9)",
+/* the full detail: nine layers everywhere, and four finer ones that fade in as "det" rises close to the camera */
+"float terrD(vec2 q,float det){vec2 p=q*FREQ,d=vec2(0.0);float a=0.0,b=1.0;",
+"  for(int i=0;i<13;i++){",
+"    if(i>8&&det<=0.0)break;",
+"    vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;a+=b*(i>8?det*0.8:1.0)*(i<3?n.x:n.x-0.5)/(1.0+dot(d,d));b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;",
+"  }",
+"  return shape(a);}",
 "float fbm(vec2 p){float a=0.0,b=0.5;for(int i=0;i<4;i++){a+=b*noise(p);b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;}return a;}",
 
 "vec3 sky(vec3 rd){",
 "  float y=max(rd.y,0.0),s=max(dot(rd,uSun),0.0);",
-"  vec3 c=mix(vec3(0.66,0.79,0.94),vec3(0.14,0.36,0.80),pow(y,0.5));",
-"  c=mix(c,uSunCol,0.35*pow(s,6.0)*(1.0-y));",
+"  vec3 c=mix(gLow,gTop,pow(y,0.5));",
+"  c=mix(c,gSun,0.35*pow(s,6.0)*(1.0-y));",
 "  if(rd.y>0.015){",
 "    vec2 q=rd.xz/(rd.y+0.08)*0.9+uTime*vec2(0.006,0.002);",
 "    float cl=smoothstep(0.50,0.78,fbm(q))*smoothstep(0.015,0.2,rd.y);",
-"    c=mix(c,mix(vec3(0.80,0.84,0.92),vec3(1.0,0.97,0.93),0.5+0.5*s),cl*0.9);",
+"    c=mix(c,mix(0.55*gLow+0.4,0.4*gSun+0.6,0.5+0.5*s),cl*0.9);",
 "  }",
-"  return c+uSunCol*(0.9*pow(s,900.0)+0.25*pow(s,40.0));",
+"  return c+gSun*(0.9*pow(s,900.0)+0.25*pow(s,40.0));",
 "}",
 "vec3 haze(vec3 col,float t,vec3 rd){",
-"  vec3 fc=mix(vec3(0.60,0.73,0.92),uSunCol,0.45*pow(max(dot(rd,uSun),0.0),5.0));",
+"  vec3 fc=mix(gHaze,gSun,0.45*pow(max(dot(rd,uSun),0.0),5.0));",
 "  return mix(col,fc,1.0-exp(-0.022*t));",
 "}",
 /* walk the ray until it meets the ground; -1 means it reached the sky */
@@ -96,39 +108,44 @@ var FS=[
 "}",
 /* the colour of the ground at p: rock, meadow, forest, glacier, snow, streams and waterfalls, then sunlight */
 "vec3 ground(vec3 p,float t,vec3 rd){",
-"  float e=max(0.0012,0.0011*t),h0=terrH(p.xz);",
-"  vec3 n=normalize(vec3(h0-terrH(p.xz+vec2(e,0.0)),e,h0-terrH(p.xz+vec2(0.0,e))));",
+"  float det=smoothstep(1.6,0.25,t),det2=smoothstep(0.45,0.07,t);", /* how much close-up detail to draw: none far off, all of it near */
+"  float e=max(0.00025,0.0011*t),h0=terrD(p.xz,det);",
+"  vec3 n=normalize(vec3(h0-terrD(p.xz+vec2(e,0.0),det),e,h0-terrD(p.xz+vec2(0.0,e),det)));",
 "  float l0=terrL(p.xz);",
 "  vec3 nL=normalize(vec3(l0-terrL(p.xz+vec2(0.08,0.0)),0.08,l0-terrL(p.xz+vec2(0.0,0.08))));", /* the broad lie of the land */
-"  float n1=noise(p.xz*1.7+3.0),n2=noise(p.xz*6.0),n3=noise(p.xz*37.0),near=exp(-0.25*t);",
+"  vec2 W=p.xz+uPos.xz;", /* the place in the world, for patterns that must stay put as the camera moves */
+"  vec3 dA=det>0.0?noised(uDa.xy,uDa.zw+p.xz*FREQ*429.0):vec3(0.5,0.0,0.0),dB=det2>0.0?noised(uDb.xy,uDb.zw+p.xz*FREQ*2571.0):vec3(0.5,0.0,0.0);", /* grain a hand wide and a finger wide */
+"  float n1=noise(W*1.7+3.0),n2=noise(W*6.0),n3=noise(W*37.0),near=exp(-0.25*t);",
 "  float y=p.y+0.22*(n1-0.5)+0.16*(n2-0.5);",
-"  float fine=fbm(p.xz*23.0),cav=clamp(0.55+30.0*(h0-terrM(p.xz)),0.0,1.0);", /* hollows are darker than bumps */
+"  float fine=fbm(W*23.0),cav=clamp(0.55+30.0*(h0-terrM(p.xz)),0.0,1.0);", /* hollows are darker than bumps */
 "  y+=0.10*(fine-0.5)-0.12*(n.x*uSun.x+n.z*uSun.z);", /* snow and trees reach lower on the side away from the sun */
-"  vec3 rock=mix(vec3(0.27,0.25,0.24),vec3(0.52,0.49,0.45),fine)*(0.93+0.07*near*sin(dot(p,vec3(11.0,120.0,7.0))+9.0*n2+5.0*fine));",
+"  float grain=1.0+det*0.45*(dA.x-0.5)+det2*0.4*(dB.x-0.5);",
+"  vec3 rock=mix(vec3(0.27,0.25,0.24),vec3(0.52,0.49,0.45),fine)*(0.93+0.07*near*sin(dot(vec3(W.x,p.y,W.y),vec3(11.0,120.0,7.0))+9.0*n2+5.0*fine));",
 "  rock=mix(rock,vec3(0.42,0.36,0.28),0.35*n1);",
 "  vec3 grass=mix(vec3(0.09,0.27,0.05),vec3(0.26,0.42,0.09),0.5*n1+fine*0.7);",
 "  grass=mix(grass,vec3(0.50,0.47,0.20),smoothstep(TREE-0.1,SNOW,y));", /* thinner and yellower with height */
-"  grass+=near*near*smoothstep(0.80,0.95,noise(p.xz*700.0))*vec3(0.55,0.50,0.30);", /* flowers, only close up */
-"  float veg=smoothstep(0.52,0.72,n.y)*smoothstep(SNOW+0.05,TREE,y);",
-"  vec3 col=mix(rock,grass,veg);",
-"  float fm=smoothstep(0.34,0.50,noise(p.xz*2.6+11.0)+0.25*(nL.y-0.8))*smoothstep(TREE,TREE-0.15,y)*smoothstep(0.50,0.68,n.y)*smoothstep(WATER+0.004,WATER+0.03,p.y);",
-"  col=mix(col,vec3(0.035,0.11,0.045)*(0.55+0.9*mix(0.5,n3,near)+0.5*n2),fm);", /* dark conifer forest */
+"  grass+=det2*smoothstep(0.86,0.97,dB.x)*vec3(0.55,0.50,0.30);", /* flowers, only close up */
+"  float veg=smoothstep(0.52,0.72,n.y+det*0.16*(dA.x-0.5)+0.10*(fine-0.5))*smoothstep(SNOW+0.05,TREE,y);",
+"  vec3 col=mix(rock,grass,veg)*grain;",
+"  float fm=smoothstep(0.34,0.50,noise(W*2.6+11.0)+0.25*(nL.y-0.8))*smoothstep(TREE,TREE-0.15,y)*smoothstep(0.50,0.68,n.y)*smoothstep(WATER+0.004,WATER+0.03,p.y);",
+"  col=mix(col,vec3(0.035,0.11,0.045)*(0.55+0.9*mix(0.5,n3,near)+0.5*n2)*grain,fm);", /* dark conifer forest */
 "  col=mix(col,vec3(0.55,0.52,0.42),smoothstep(WATER+0.006,WATER,p.y)*0.8);", /* gravel at the shore */
 /* glaciers lie where the high ground is broad and gentle; they crack across the way they flow */
 "  vec2 fl=normalize(nL.xz+vec2(0.0001));",
 "  float gl=smoothstep(0.78,0.90,nL.y)*smoothstep(SNOW-0.42,SNOW-0.22,y)*smoothstep(0.45,0.7,n.y);",
-"  float cr=smoothstep(0.55,0.95,sin(dot(p.xz,fl)*46.0+7.0*n2)*0.5+0.5)*(0.4+0.6*n1);",
+"  float cr=smoothstep(0.55,0.95,sin(dot(W,fl)*46.0+7.0*n2)*0.5+0.5)*(0.4+0.6*n1);",
 "  col=mix(col,mix(vec3(0.72,0.86,0.95),vec3(0.20,0.50,0.72),cr),gl);",
 "  float sn=smoothstep(-0.04,0.2,y-SNOW)*smoothstep(0.30,0.55,n.y+0.25*smoothstep(0.0,0.5,y-SNOW));",
 "  sn=max(sn*(1.0-0.55*gl),0.35*gl*(1.0-cr));",
-"  col=mix(col,vec3(0.93,0.95,1.0),sn*(1.0-0.7*cr*gl));",
+"  col=mix(col,vec3(0.93,0.95,1.0)*(1.0+0.12*det*(dA.x-0.5)),sn*(1.0-0.7*cr*gl));",
+"  n=normalize(n+vec3(dA.y,0.0,dA.z)*0.10*det*(1.0-0.6*sn)+vec3(dB.y,0.0,dB.z)*0.06*det2*(1.0-sn));", /* small bumps catch the light */
 /* one stream to each square of a coarse grid. It runs straight downhill from a point in the square:
    white and falling where the ground is steep, a blue thread where it is gentle. */
 "  float wet=0.0,foam=0.0;",
 "  {",
-"    const float G=1.3;vec2 ci=floor(p.xz/G);",
+"    const float G=1.3;vec2 ci=floor(W/G);",
 "    float hs=hash(ci+vec2(17.0,5.0));",
-"    vec2 c=(ci+0.5+0.24*(vec2(hash(ci),hash(ci+vec2(41.0,3.0)))-0.5))*G;",
+"    vec2 c=(ci+0.5+0.24*(vec2(hash(ci),hash(ci+vec2(41.0,3.0)))-0.5))*G-uPos.xz;",
 "    float c0=terrL(c);vec2 gd=vec2(c0-terrL(c+vec2(0.06,0.0)),c0-terrL(c+vec2(0.0,0.06)));",
 "    float gm=length(gd);",
 "    if(hs>0.3&&gm>0.004){",
@@ -142,10 +159,11 @@ var FS=[
 "    }",
 "  }",
 "  col=mix(col,vec3(0.10,0.30,0.42),wet);col=mix(col,vec3(0.95,0.97,1.0),foam);",
+"  if(uTint>1.5){float lu=dot(col,vec3(0.3,0.59,0.11));col=mix(col,pal(uHue+0.25+1.1*lu+0.25*p.y)*(0.22+1.4*lu),0.9);}", /* tint everything: the land takes its colours from the palette too */
 "  float dif=clamp(dot(n,uSun),0.0,1.0),sh=dif>0.001?shadow(p+n*0.004+vec3(0.0,0.002,0.0)):0.0;",
-"  vec3 lin=dif*sh*uSunCol*1.4+(0.45+0.55*n.y)*vec3(0.19,0.27,0.42)*0.75+clamp(dot(n,normalize(vec3(-uSun.x,0.0,-uSun.z))),0.0,1.0)*vec3(0.20,0.17,0.12)*0.35;",
+"  vec3 lin=dif*sh*gSun*1.4+(0.45+0.55*n.y)*gAmb*0.75+clamp(dot(n,normalize(vec3(-uSun.x,0.0,-uSun.z))),0.0,1.0)*vec3(0.20,0.17,0.12)*0.35;",
 "  col*=lin*(0.45+0.55*cav);",
-"  col+=uSunCol*sh*pow(max(dot(reflect(rd,n),uSun),0.0),24.0)*(0.25*sn+0.5*gl*cr+0.5*wet);",
+"  col+=gSun*sh*pow(max(dot(reflect(rd,n),uSun),0.0),24.0)*(0.25*sn+0.5*gl*cr+0.5*wet);",
 "  return haze(col,t,rd);",
 "}",
 "vec3 view(vec3 ro,vec3 rd){",
@@ -154,19 +172,25 @@ var FS=[
 "}",
 "void main(){",
 "  vec2 uv=(gl_FragCoord.xy*2.0-uRes)/uRes.y;",
-"  vec3 ro=uPos,rd=uCam*normalize(vec3(uv,1.5));",
+"  vec3 ro=vec3(0.0,uPos.y,0.0),rd=uCam*normalize(vec3(uv,1.5));", /* everything is measured from the camera */
+"  gTop=vec3(0.14,0.36,0.80);gLow=vec3(0.66,0.79,0.94);gSun=uSunCol;gHaze=vec3(0.60,0.73,0.92);gAmb=vec3(0.19,0.27,0.42);",
+"  if(uTint>0.5){", /* a palette colours the sky, the sun and the haze */
+"    vec3 pa=pal(uHue+0.55),pb=pal(uHue+0.2),pc=pal(uHue);",
+"    gTop=mix(gTop,pa*0.75,0.85);gLow=mix(gLow,0.45+0.55*pb,0.85);gSun=mix(uSunCol,0.45+0.55*pc,0.75);gHaze=mix(gHaze,0.35+0.6*pb,0.85);gAmb=mix(gAmb,0.10+0.35*pa,0.85);",
+"  }",
 "  float t=march(ro,rd,70.0),tw=rd.y<0.0?(WATER-ro.y)/rd.y:-1.0;",
 "  vec3 col;",
 "  if(tw>0.0&&(t<0.0||tw<t)){", /* a lake: its bed seen through the water, and the mountains mirrored on it */
 "    vec3 p=ro+rd*tw;",
-"    vec2 g=noised(p.xz*42.0+uTime*vec2(0.5,0.3)).yz+0.6*noised(p.xz*97.0-uTime*vec2(0.4,0.7)).yz;",
+"    vec2 W=p.xz+uPos.xz,g=noised(vec2(0.0),W*42.0+uTime*vec2(0.5,0.3)).yz+0.6*noised(vec2(0.0),W*97.0-uTime*vec2(0.4,0.7)).yz;",
 "    vec3 n=normalize(vec3(g.x*0.035,1.0,g.y*0.035));",
 "    float depth=WATER-terrM(p.xz),fr=0.06+0.94*pow(1.0-max(dot(-rd,n),0.0),5.0);",
 "    float sh=shadow(p+vec3(0.0,0.003,0.0));",
-"    vec3 body=mix(vec3(0.10,0.42,0.40),vec3(0.015,0.11,0.18),smoothstep(0.0,0.06,depth))*(0.25+0.75*sh*clamp(uSun.y*1.6,0.0,1.0))*(0.6+0.4*uSunCol);",
+"    vec3 body=mix(vec3(0.10,0.42,0.40),vec3(0.015,0.11,0.18),smoothstep(0.0,0.06,depth))*(0.25+0.75*sh*clamp(uSun.y*1.6,0.0,1.0))*(0.6+0.4*gSun);",
+"    if(uTint>1.5)body=mix(body,pal(uHue+0.8)*dot(body,vec3(1.0)),0.8);",
 "    vec3 rr=reflect(rd,n);rr.y=abs(rr.y)+0.001;",
 "    vec3 ref=view(p+vec3(0.0,0.002,0.0),rr);",
-"    col=mix(body,ref,fr)+uSunCol*sh*pow(max(dot(rr,uSun),0.0),300.0)*1.5;",
+"    col=mix(body,ref,fr)+gSun*sh*pow(max(dot(rr,uSun),0.0),300.0)*1.5;",
 "    col=mix(col,vec3(0.85,0.90,0.92),0.6*smoothstep(0.004,0.0,depth));",
 "    col=haze(col,tw,rd);",
 "  }else if(t>0.0)col=ground(ro+rd*t,t,rd);",
@@ -194,7 +218,7 @@ gl.useProgram(prog);
 gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());
 gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
-var U={};["uRes","uTime","uPos","uCam","uSun","uSunCol"].forEach(function(k){U[k]=gl.getUniformLocation(prog,k)});
+var U={};["uRes","uTime","uPos","uCam","uSun","uSunCol","uCi","uCf","uDa","uDb","uPa","uPb","uPc","uPd","uHue","uTint"].forEach(function(k){U[k]=gl.getUniformLocation(prog,k)});
 
 /* ---------- the same land in JavaScript ---------- */
 function perm(x){return ((x*34+1)*x)%289;}
@@ -202,10 +226,10 @@ function hash(ix,iy){ix=((ix%289)+289)%289;iy=((iy%289)+289)%289;return perm(per
 function terr(x,z,N){
   var px=x*FREQ,pz=z*FREQ,a=0,b=1,dx=0,dz=0,i,t;
   for(i=0;i<N;i++){
-    var ix=Math.floor(px),iz=Math.floor(pz),fx=px-ix,fz=pz-iz,ux=fx*fx*(3-2*fx),uz=fz*fz*(3-2*fz);
+    var ix=Math.floor(px),iz=Math.floor(pz),fx=px-ix,fz=pz-iz,ux=fx*fx*fx*(fx*(fx*6-15)+10),uz=fz*fz*fz*(fz*(fz*6-15)+10);
     var A=hash(ix,iz),B=hash(ix+1,iz),C=hash(ix,iz+1),D=hash(ix+1,iz+1),k=A-B-C+D;
     var v=A+(B-A)*ux+(C-A)*uz+k*ux*uz;
-    dx+=6*fx*(1-fx)*(B-A+k*uz);dz+=6*fz*(1-fz)*(C-A+k*ux);
+    dx+=30*fx*fx*(fx*(fx-2)+1)*(B-A+k*uz);dz+=30*fz*fz*(fz*(fz-2)+1)*(C-A+k*ux);
     a+=b*(i<3?v:v-0.5)/(1+dx*dx+dz*dz);b*=0.5;
     t=2*px-pz;pz=px+2*pz;px=t;px-=289*Math.floor(px/289);pz-=289*Math.floor(pz/289);
   }
@@ -217,6 +241,13 @@ function floorAt(x,z){return Math.max(terr(x,z,6),WATER);}
 var SUNS=[["afternoon",0.62,0.46,0.55,[1.0,0.93,0.80]],["evening",0.80,0.16,0.42,[1.0,0.66,0.38]],["midday",0.25,0.90,0.30,[1.0,0.98,0.94]]];
 var S={x:412,z:300,y:1.2,head:0.6,pitch:-0.10,roll:0,auto:true,speed:1,sun:0,time:0,hold:0,scale:0,fixed:0};
 S.y=floorAt(S.x,S.z)+0.3;
+/* a few of Mirrorfold's palettes, to try the two ways of tinting */
+var PALS=[{name:"natural",a:[.5,.5,.5],b:[.5,.5,.5],c:[1,1,1],d:[0,.33,.67]},
+ {name:"Spectrum",a:[.5,.5,.5],b:[.5,.5,.5],c:[1,1,1],d:[0,.33,.67]},
+ {name:"Ember",a:[.5,.22,.08],b:[.5,.25,.1],c:[1,1,1],d:[0,.07,.15]},
+ {name:"Abyss",a:[.1,.4,.5],b:[.12,.4,.5],c:[1,1,1],d:[.55,.15,0]},
+ {name:"Sunset",a:[.5,.5,.5],b:[.5,.5,.5],c:[1,.7,.4],d:[0,.15,.2]}];
+S.pal=0;S.tint=1;
 var SPEEDS=[0.10,0.22,0.45];
 function step(dt){
   var v=SPEEDS[S.speed],fx=Math.sin(S.head),fz=Math.cos(S.head),turn=0;
@@ -260,6 +291,15 @@ function draw(){
   var sn=SUNS[S.sun],l=Math.sqrt(sn[1]*sn[1]+sn[2]*sn[2]+sn[3]*sn[3]);
   gl.uniform2f(U.uRes,cv.width,cv.height);gl.uniform1f(U.uTime,S.time);
   gl.uniform3f(U.uPos,S.x,S.y,S.z);gl.uniformMatrix3fv(U.uCam,false,camera());
+  /* the camera's place in each noise layer, split into a whole number and a remainder so the shader loses nothing */
+  var ci=new Float32Array(26),cf=new Float32Array(26),px=S.x*FREQ,pz=S.z*FREQ,k,tt,wrap=function(v){return v-289*Math.floor(v/289)};
+  for(k=0;k<13;k++){px=wrap(px);pz=wrap(pz);ci[2*k]=Math.floor(px);ci[2*k+1]=Math.floor(pz);cf[2*k]=px-Math.floor(px);cf[2*k+1]=pz-Math.floor(pz);tt=2*px-pz;pz=px+2*pz;px=tt;}
+  gl.uniform2fv(U.uCi,ci);gl.uniform2fv(U.uCf,cf);
+  var da=[wrap(S.x*FREQ*429),wrap(S.z*FREQ*429)],db=[wrap(S.x*FREQ*2571),wrap(S.z*FREQ*2571)];
+  gl.uniform4f(U.uDa,Math.floor(da[0]),Math.floor(da[1]),da[0]%1,da[1]%1);gl.uniform4f(U.uDb,Math.floor(db[0]),Math.floor(db[1]),db[0]%1,db[1]%1);
+  var q=PALS[S.pal];
+  gl.uniform3fv(U.uPa,q.a);gl.uniform3fv(U.uPb,q.b);gl.uniform3fv(U.uPc,q.c);gl.uniform3fv(U.uPd,q.d);
+  gl.uniform1f(U.uHue,S.time*0.008);gl.uniform1f(U.uTint,S.pal===0?0:S.tint);
   gl.uniform3f(U.uSun,sn[1]/l,sn[2]/l,sn[3]/l);gl.uniform3fv(U.uSunCol,sn[4]);
   gl.drawArrays(gl.TRIANGLES,0,3);
 }
@@ -292,6 +332,8 @@ window.addEventListener("pointermove",function(e){if(e.pointerType==="mouse")wak
 $("bAuto").addEventListener("click",function(){S.auto=!S.auto;this.setAttribute("aria-pressed",String(S.auto));this.textContent="Autopilot "+(S.auto?"on":"off");wake();});
 $("bSlow").addEventListener("click",function(){S.speed=(S.speed+1)%3;this.textContent="Speed "+(S.speed+1)+" of 3";wake();});
 $("bSun").addEventListener("click",function(){S.sun=(S.sun+1)%SUNS.length;this.textContent="Sun: "+SUNS[S.sun][0];wake();});
+$("bPal").addEventListener("click",function(){S.pal=(S.pal+1)%PALS.length;this.textContent="Palette: "+PALS[S.pal].name;wake();});
+$("bTint").addEventListener("click",function(){S.tint=S.tint===1?2:1;this.textContent="Tint: "+(S.tint===1?"sky and light":"everything");wake();});
 var RES=[["auto",0],["sharp",1],["medium",0.6],["fast",0.35]],ri=0;
 $("bRes").addEventListener("click",function(){ri=(ri+1)%RES.length;S.fixed=RES[ri][1];this.textContent="Detail "+RES[ri][0];wake();});
 wake();
