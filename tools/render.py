@@ -7,13 +7,13 @@ Examples:
   python3 tools/render.py --all -o sheet.jpg            # contact sheet of every world
   python3 tools/render.py --world halls --js "setMotion(3);setOverlay(1);journey=true" --fast --budget 6000 -o trails.png
 
---js runs inside the page's closure, so it can call any internal function:
+--js runs with every internal name in reach, so it can call any internal function:
   setPalette(i) setMirrors(i) setMotion(i) setLook(i) setOverlay(i)
   trType=n;warp=0.6   (freeze a transition part way through)
 """
 import argparse, os, re, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from harness import INDEX, screenshot
+from harness import WORLDS_JS, screenshot
 
 ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 ap.add_argument("--world", default="lattice", help="world id, e.g. lattice, julia, gates")
@@ -35,7 +35,7 @@ if not a.all:
     print("wrote", a.out)
 else:
     from PIL import Image
-    ids = re.findall(r'\{id:"([a-z]+)",name:', open(INDEX, encoding="utf-8").read())
+    ids = re.findall(r'\{id:"([a-z]+)",name:', open(WORLDS_JS, encoding="utf-8").read())
     tw, th, cols = 300, 500, 6
     rows = (len(ids) + cols - 1) // cols
     sheet = Image.new("RGB", (tw * cols, th * rows))

@@ -1,8 +1,9 @@
 """Shared helpers for testing Mirrorfold in headless Chrome.
 
-The page is one self-contained index.html whose script is a single closure, so tests work by
-writing a temporary copy with extra JavaScript appended inside that closure (it can see every
-internal variable and function) and loading it in headless Chrome with software WebGL.
+The page is index.html plus the modules in js/. Tests work by writing a temporary copy of index.html with one
+extra script that runs once the app has started. That script runs inside `with(window.MF)`, and MF holds every
+internal name of every module (readable, and settable where the app itself can change it), so test code can
+name internal variables and functions directly, as it could when the app was one closure.
 
 Requires: google-chrome (or chromium) on PATH. Pillow is only needed for contact sheets.
 """
@@ -10,9 +11,9 @@ import os, re, shutil, subprocess, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INDEX = os.path.join(ROOT, "index.html")
-# The last two lines of the page's script. Injected test code goes between them.
-TAIL = "requestAnimationFrame(frame);\n})();"
-HEAD = "<script>\n(function(){"
+WORLDS_JS = os.path.join(ROOT, "js", "worlds.js")
+# The tag that loads the app. Test code is added just before it.
+MAIN = '<script type="module" src="js/main.js"></script>'
 
 
 def chrome():
@@ -27,27 +28,27 @@ FLAGS = [
     "--headless=new", "--no-sandbox", "--disable-gpu-sandbox", "--use-gl=angle",
     "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist",
     "--hide-scrollbars", "--autoplay-policy=no-user-gesture-required",
+    "--allow-file-access-from-files",  # the modules are loaded from file://
 ]
 
 
 def make_page(inject="", hide_ui=False, quality=None):
     """Write a test copy of index.html and return its path.
 
-    inject   JavaScript run inside the page's closure after the frame loop starts.
+    inject   JavaScript run once the app has started, with every internal name in reach.
     hide_ui  hide the start card and the controls (for clean screenshots).
     quality  "sharp", "fast" or None (auto). Software rendering is slow: use "fast" for motion tests.
     """
     src = open(INDEX, encoding="utf-8").read()
-    assert src.count(TAIL) == 1 and src.count(HEAD) == 1, "index.html no longer ends the way the harness expects"
-    # Any uncaught error lands in the page title, where dump() reads it.
-    src = src.replace(HEAD, '<script>\nwindow.onerror=function(m,u,l){document.title="ERR "+m+" @"+l};\n(function(){', 1)
-    src = src.replace(TAIL, "requestAnimationFrame(frame);\n" + inject + "\n})();", 1)
+    assert src.count(MAIN) == 1 and src.count("<head>") == 1, "index.html no longer loads the app the way the harness expects"
+    first = {"sharp": "di=1;q=1;resize();", "fast": "di=2;q=0.5;resize();"}.get(quality, "")
+    # Relative addresses resolve against the repository, and any uncaught error lands in the page title, where dump() reads it.
+    head = '<head><base href="file://' + ROOT + '/">' + \
+           '<script>window.onerror=function(m,u,l){document.title="ERR "+m+" @"+String(u).split("/").pop()+":"+l};</script>'
     if hide_ui:
-        src = src.replace("</style>", "#hud,#start{display:none}</style>", 1)
-    if quality == "sharp":
-        src = src.replace("di=0,q=0.85", "di=1,q=1", 1)
-    elif quality == "fast":
-        src = src.replace("di=0,q=0.85", "di=2,q=0.5", 1)
+        head += "<style>#hud,#start{display:none}</style>"
+    src = src.replace("<head>", head, 1)
+    src = src.replace(MAIN, '<script>window.addEventListener("mf-ready",function(){with(window.MF){' + first + "\n" + inject + "\n}});</script>" + MAIN, 1)
     fd, path = tempfile.mkstemp(suffix=".html", prefix="mirrorfold-test-")
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(src)

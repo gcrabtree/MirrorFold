@@ -1,0 +1,60 @@
+import { calm } from "./dom.js";
+import { G } from "./shared.js";
+
+export const stick={id:null,ox:0,oy:0,x:0,y:0};
+export const look={id:null,x:0,y:0};
+export const mirrors=[0,3,4,6,8,12];
+export const FX=[{name:"glow",decay:.78,bloom:.55,ca:.004},{name:"trails",decay:.93,bloom:.75,ca:.008},{name:"clean",decay:0,bloom:0,ca:0}];
+/* MilkDrop-style layers. A motion warps the previous frame before the new one is laid over it (per frame at 60 fps).
+   A filter recolours or reshapes the finished picture. Wave draws the sound's waveform into the feedback so it smears. */
+export const MOTIONS=[
+ {name:"none"},
+ {name:"Melt",decay:.965,zoom:.999,wob:.0015,dy:.004},
+ {name:"Vortex",decay:.96,zoom:.992,rot:.012,swirl:.03,kick:1},
+ {name:"Tunnel",decay:.955,zoom:.965,kick:1},
+ {name:"Implode",decay:.95,zoom:1.03,rot:.004,kick:-1},
+ {name:"Ripple",decay:.955,zoom:.996,rip:.012},
+ {name:"Drift",decay:.96,zoom:.999,wob:.001,dx:.004}
+];
+export const LOOKS=[
+ {name:"none"},
+ {name:"Echo",echo:1},
+ {name:"Neon",edge:1},
+ {name:"Solar",solar:1},
+ {name:"Negative",inv:1},
+ {name:"Poster",post:4,edge:.35},
+ {name:"Mosaic",mos:70},
+ {name:"Liquid",liq:.012},
+ {name:"Prism",hue:1,ca:.02},
+ {name:"Quad",fx:1},
+ {name:"Tiles",fx:2},
+ {name:"Bulge",fx:3},
+ {name:"Twirl",fx:4},
+ {name:"Thermal",fx:5},
+ {name:"CRT",fx:6},
+ {name:"Halftone",fx:7},
+ {name:"Contour",fx:8},
+ {name:"Noir",fx:9}
+];
+export const OVS=[.15,.3,.5,.75,1];
+export const OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"}];
+export const TRANSITIONS=8;
+
+/* What this file does when the app starts. main.js calls each file's init in turn. */
+export function init(){
+/* ---------- state ---------- */
+G.pos=[0,0,0], G.R=[1,0,0], G.Up=[0,1,0], G.F=[0,0,1];
+G.vel=[0,0,0], G.lookX=0, G.lookY=0, G.rollIn=0;
+G.keys={};
+G.mi=0;
+G.fi=calm?2:0;
+G.moi=0;
+G.lki=0;
+G.ovsi=2;
+G.ovi=0;
+G.trType=0;
+}
+
+/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
+export const __dbg={get stick(){return stick}, get look(){return look}, get mirrors(){return mirrors}, get FX(){return FX}, get MOTIONS(){return MOTIONS}, get LOOKS(){return LOOKS},
+  get OVS(){return OVS}, get OVERLAYS(){return OVERLAYS}, get TRANSITIONS(){return TRANSITIONS}};
