@@ -120,10 +120,11 @@ The controls at the top of the screen fade after five seconds without input and 
 | FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
 | Detail | Steps through auto, sharp and fast. See [Performance](#performance). |
 | Morph | Turns the slow change of each world's shape on or off. |
-| Drift | Turns the slow forward drift on or off when you are not steering. |
+| Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
 | Orbs | Shows or hides the orbs. |
 | Share spot | Makes a link to where you are. |
 | Fullscreen | Fills the screen. |
+| Help and source | Opens this page on GitHub in a new tab. |
 | VR viewer | Phones and tablets only. Draws a picture for each eye, for a phone in a viewer. See [VR viewer](#vr-viewer). |
 
 ## On a TV
@@ -141,7 +142,7 @@ This mode is for a phone in a Cardboard-style viewer: a holder with two lenses t
 3. Press **VR viewer**. On iPhone, allow motion access when asked.
 4. Turn the phone sideways and put it in the viewer.
 
-Turning your head turns the view. With **Drift** on you fly toward wherever you look. With **Journey** on the autopilot also steers and changes worlds. Touch still works: tap the screen to bring the controls back, and press **VR viewer** again to leave. The screen is kept awake while the mode is on, where the browser allows it.
+Turning your head turns the view. With **Drift** on you glide toward wherever you look, and the glide nearly stops while your head is turning. With **Journey** on and **Movement travel**, the autopilot also steers, and it stops steering while your head is turning. With **Movement drift**, Journey changes the worlds and leaves all the turning to you. Touch still works: tap the screen to bring the controls back, and press **VR viewer** again to leave. The screen is kept awake while the mode is on, where the browser allows it.
 
 While the mode is on:
 
@@ -153,7 +154,7 @@ While the mode is on:
 
 The picture is shaped for the lenses of a Google Cardboard viewer (lenses 64 mm apart, 39 mm from the screen). A browser cannot find out how big the screen is, so the size is estimated. If the two pictures do not merge into one, or the world looks stretched, please open an issue and say which phone and viewer you used.
 
-If moving through the world makes you feel unwell, stop. Turning Journey off and flying with Drift alone is gentler, because then the view only turns when your head does.
+If moving through the world makes you feel unwell, stop. **Movement drift** is gentler than travel, because then the view only turns when your head does.
 
 ## Music
 
@@ -191,6 +192,15 @@ For music Mirrorfold cannot hear at all, use Tap tempo.
 ## Journey
 
 Journey flies for you. It steers toward open space and changes things on separate clocks, so no two minutes are the same. While Journey is on, the screen is kept awake, where the browser allows it.
+
+With Journey on, a **Movement** button appears beside the template list:
+
+| Setting | What it does |
+|---|---|
+| Movement travel | Journey flies and steers for you. This is the default. |
+| Movement drift | Journey only changes the scenery: world, palette, mirrors, motion, filter and overlay. It does not move or turn you. You fly yourself, and the **Drift** button decides whether you glide slowly forward when you are not steering. |
+
+In both settings you can take over at any moment. While you turn the view, by dragging, with the arrow keys, or by turning your head in the VR viewer, the autopilot stops steering and the automatic forward motion nearly stops. About a second after you stop turning, it carries on from where you are looking. The choice of travel or drift is remembered in your browser.
 
 A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter and overlay you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes instead of on a clock.
 
@@ -251,7 +261,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 17 worlds |
-| `tools/unit.mjs` | Tests for the change detector, the weighted picker and the head-turn math |
+| `tools/unit.mjs` | Tests for the change detector, the weighted picker, the head-turn math and the steering handoff |
 | `tools/check.py` | Headless smoke test |
 | `tools/render.py` | Headless screenshots |
 | `tools/harness.py` | Shared code for the two Python tools |

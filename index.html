@@ -46,6 +46,7 @@ select{-webkit-appearance:none;appearance:none;padding-right:30px;border-color:v
 select option{color:#111;background:#fff}
 button:focus-visible,select:focus-visible,.btn:focus-within{outline:2px solid var(--cool);outline-offset:2px}
 button[aria-pressed="true"]{border-color:var(--cool);color:var(--cool)}
+a.btn{text-decoration:none;display:inline-block}
 #bTap{padding:14px 26px;border-color:var(--cool)}
 .btn input[type=file]{position:absolute;width:1px;height:1px;opacity:0}
 #scrubWrap{display:inline-flex;align-items:center;gap:10px;padding:6px 14px;font-variant-numeric:tabular-nums}
@@ -147,9 +148,11 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
     <button id="bShare" type="button">Share spot</button>
     <button id="bFull" type="button">Fullscreen</button>
     <button id="bVr" type="button" aria-pressed="false">VR viewer</button>
+    <a id="aHelp" class="btn" href="https://github.com/gcrabtree/MirrorFold#readme" target="_blank" rel="noopener">Help and source</a>
   </div>
   <div class="row" id="rowJourney" hidden>
     <select id="selJT" aria-label="Journey template or set"></select>
+    <button id="bJMove" type="button">Movement travel</button>
     <button id="bAdv" type="button">Edit journeys</button>
   </div>
   <div class="row" id="rowTap" hidden>
@@ -1073,6 +1076,17 @@ var warp=0, warpDir=0, warpFn=null, pendingWorld=-1;
 var world=null, hyb=null, orb=null, orbT=0, boost=0, gRoll=0, lastHash="";
 var gest={id:null,x:0,y:0,d0:1,a:0,s0:1}, lastTap={t:0,x:0,y:0};
 var stereo=false, vrEye=0.004, gyroPrev=null, wakeLock=null;
+/* journey movement: "travel" flies and steers for you, "drift" leaves the flying to you and only changes the scenery */
+var jMove="travel", userTurn=0, lookAct=0;
+try{if(localStorage.getItem("mirrorfold-move")==="drift")jMove="drift"}catch(_){}
+/* looking around by hand or by head: turn the view and note how much, so the autopilot can stand back */
+function userLook(dx,dy){lookX+=dx;lookY+=dy;userTurn+=Math.hypot(dx,dy);}
+/* how much the user is steering, 0 to 1, from how fast they are turning the view (radians a second).
+   It rises at once and fades over about a second, so small tremors do not count and control comes back gently. */
+function userActive(act,rate,dt){
+  var want=Math.min(1,Math.max(0,(rate-0.08)/0.42));
+  return act+(want-act)*(1-Math.exp(-dt*(want>act?12:1.4)));
+}
 var toastEl=$("toast"),toastTimer=0;
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add("on");clearTimeout(toastTimer);toastTimer=setTimeout(function(){toastEl.classList.remove("on")},2600);}
 function doBoost(){boost=1;}
@@ -1265,8 +1279,8 @@ canvas.addEventListener("pointerdown",function(e){
 canvas.addEventListener("dblclick",function(){if(started)doBoost()});
 canvas.addEventListener("pointermove",function(e){
   if(e.pointerType==="mouse"){
-    if(document.pointerLockElement===canvas){lookX+=e.movementX*0.0022;lookY+=e.movementY*0.0022;}
-    else if(look.id===e.pointerId&&e.buttons){lookX+=(e.clientX-look.x)*0.004;lookY+=(e.clientY-look.y)*0.004;look.x=e.clientX;look.y=e.clientY;}
+    if(document.pointerLockElement===canvas){userLook(e.movementX*0.0022,e.movementY*0.0022);}
+    else if(look.id===e.pointerId&&e.buttons){userLook((e.clientX-look.x)*0.004,(e.clientY-look.y)*0.004);look.x=e.clientX;look.y=e.clientY;}
     return;
   }
   if(e.pointerId===stick.id){
@@ -1281,7 +1295,7 @@ canvas.addEventListener("pointermove",function(e){
     var ns=Math.min(4,Math.max(.2,gest.s0*gd/gest.d0));
     if(Math.abs(ns-baseSpeed)>0.02){baseSpeed=ns;toast("Speed "+ns.toFixed(1)+"x");}
   }else if(e.pointerId===look.id){
-    lookX+=(e.clientX-look.x)*0.0055;lookY+=(e.clientY-look.y)*0.0055;look.x=e.clientX;look.y=e.clientY;
+    userLook((e.clientX-look.x)*0.0055,(e.clientY-look.y)*0.0055);look.x=e.clientX;look.y=e.clientY;
   }
 });
 function release(e){
@@ -1447,6 +1461,15 @@ function fillJT(){
 }
 fillJT();
 selJT.addEventListener("change",function(){selectJourney(this.value);wakeHud()});
+function setJMove(mv){
+  jMove=mv==="drift"?"drift":"travel";$("bJMove").textContent="Movement "+jMove;
+  try{localStorage.setItem("mirrorfold-move",jMove)}catch(_){}
+}
+$("bJMove").textContent="Movement "+jMove;
+$("bJMove").addEventListener("click",function(){
+  setJMove(jMove==="travel"?"drift":"travel");
+  toast(jMove==="travel"?"Journey flies for you":"Journey leaves the flying to you");wakeHud();
+});
 function setJourney(on){
   journey=on;press($("bJourney"),on);$("rowJourney").hidden=!on;
   if(on)selectJourney(store.sel);
@@ -1684,7 +1707,7 @@ function onGyro(e){
   if(an<1e-6||an>0.6)return; /* a jump this large is the screen turning over, not a head */
   /* the camera's forward axis points into the screen, so turns about right and up change sign */
   var ax=[(-w[0]*R[0]-w[1]*Up[0]+w[2]*F[0])/an,(-w[0]*R[1]-w[1]*Up[1]+w[2]*F[1])/an,(-w[0]*R[2]-w[1]*Up[2]+w[2]*F[2])/an];
-  F=rot(F,ax,an);Up=rot(Up,ax,an);
+  F=rot(F,ax,an);Up=rot(Up,ax,an);userTurn+=an;
   F=norm(F);R=norm(cross(Up,F));Up=cross(F,R);
 }
 var gyroBound=false;
@@ -1713,6 +1736,11 @@ function setStereo(on){
   if(stereo){gyroStart();toast(window.innerWidth<window.innerHeight?"VR viewer on. Turn the phone sideways.":"VR viewer on");}
   else toast("VR viewer off");
 }
+/* on a copy hosted at someone.github.io/name, the help link points at that copy's own repository */
+(function(){
+  var h=/^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname),seg=location.pathname.split("/")[1];
+  if(h&&seg)$("aHelp").href="https://github.com/"+h[1]+"/"+seg+"#readme";
+})();
 if(!isTouch)$("bVr").style.display="none";
 $("bVr").addEventListener("click",function(){setStereo(!stereo);wakeHud()});
 window.addEventListener("orientationchange",function(){gyroPrev=null});
@@ -2133,15 +2161,20 @@ function frame(now){
   if(musicMode==="file"&&player.mode&&!scrubbing&&pDur()>0)showScrub(pPos()/pDur());
 
   /* journey: autopilot that wanders, steers toward open space, and changes world and palette on its own */
+  /* while the user turns the view themselves, by hand or by head, the autopilot's steering pauses and automatic forward motion nearly stops */
+  lookAct=userActive(lookAct,userTurn/Math.max(dt,0.004),dt);userTurn=0;
+  var travel=journey&&jMove==="travel",hands=1-lookAct,ease=1-0.85*lookAct;
   if(journey&&started){
-    var pr=Math.min(1,Math.max(0.06,dist*5));
-    var pd=function(sx,sy){
-      var d=norm([F[0]+0.7*(R[0]*sx+Up[0]*sy),F[1]+0.7*(R[1]*sx+Up[1]*sy),F[2]+0.7*(R[2]*sx+Up[2]*sy)]);
-      return Math.abs(deAt(pos[0]+d[0]*pr,pos[1]+d[1]*pr,pos[2]+d[2]*pr,m));
-    };
-    var dR=pd(1,0),dL=pd(-1,0),dU=pd(0,1),dD=pd(0,-1);
-    lookX+=((dR-dL)/(dR+dL+1e-6)*1.1+0.22*Math.sin(time*0.13)+0.12*Math.sin(time*0.37+1.3))*dt;
-    lookY+=((dD-dU)/(dD+dU+1e-6)*1.1+0.16*Math.sin(time*0.11+2.0)+0.10*Math.sin(time*0.29))*dt;
+    if(travel){
+      var pr=Math.min(1,Math.max(0.06,dist*5));
+      var pd=function(sx,sy){
+        var d=norm([F[0]+0.7*(R[0]*sx+Up[0]*sy),F[1]+0.7*(R[1]*sx+Up[1]*sy),F[2]+0.7*(R[2]*sx+Up[2]*sy)]);
+        return Math.abs(deAt(pos[0]+d[0]*pr,pos[1]+d[1]*pr,pos[2]+d[2]*pr,m));
+      };
+      var dR=pd(1,0),dL=pd(-1,0),dU=pd(0,1),dD=pd(0,-1);
+      lookX+=((dR-dL)/(dR+dL+1e-6)*1.1+0.22*Math.sin(time*0.13)+0.12*Math.sin(time*0.37+1.3))*dt*hands;
+      lookY+=((dD-dU)/(dD+dU+1e-6)*1.1+0.16*Math.sin(time*0.11+2.0)+0.10*Math.sin(time*0.29))*dt*hands;
+    }
     for(var jk in J)J[jk].t+=dt;
     if(jset){jset.t+=dt;if(jset.t>jset.len)advanceSet();}
     for(var ci=0;ci<CATS.length;ci++){
@@ -2160,12 +2193,12 @@ function frame(now){
 
   /* look */
   var kx=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0),ky=(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);
-  lookX+=kx*dt*1.2;lookY+=ky*dt*1.2;
+  userLook(kx*dt*1.2,ky*dt*1.2);
   var f=1-Math.exp(-dt*14),ax=lookX*f,ay=lookY*f;lookX-=ax;lookY-=ay;
   F=rot(F,Up,ax);F=rot(F,R,ay);Up=rot(Up,R,ay);
   var rollT=((keys.KeyE?1:0)-(keys.KeyQ?1:0))*1.2;
   var idle=stick.id===null&&!keys.KeyW&&!keys.KeyS&&!keys.KeyA&&!keys.KeyD;
-  if((drift||journey)&&idle&&!calm&&!stereo)rollT+=0.035; /* no automatic roll in the VR viewer */
+  if((drift||travel)&&idle&&!calm&&!stereo)rollT+=0.035*hands; /* no automatic roll in the VR viewer */
   rollIn+=(rollT-rollIn)*(1-Math.exp(-dt*4));
   Up=rot(Up,F,-rollIn*dt);
   if(gRoll!==0){Up=rot(Up,F,gRoll);gRoll=0;}
@@ -2175,7 +2208,7 @@ function frame(now){
   var mx=(keys.KeyD?1:0)-(keys.KeyA?1:0)+stick.x;
   var mz=(keys.KeyW?1:0)-(keys.KeyS?1:0)-stick.y;
   var my=(keys.Space?1:0)-((keys.ShiftLeft||keys.ShiftRight)?1:0);
-  if(started&&idle&&my===0){if(journey)mz+=0.5;else if(drift)mz+=0.3;}
+  if(started&&idle&&my===0){if(travel)mz+=0.5*ease;else if(drift)mz+=0.3*ease;}
   if(!started){mz=0.18;mx=0;my=0;}
   var sp=Math.min(wSpeed,Math.max(0.012,dist*2.6))*baseSpeed*(1+0.25*lv)*(1+3*boost);
   var tv=[(R[0]*mx+Up[0]*my+F[0]*mz)*sp,(R[1]*mx+Up[1]*my+F[1]*mz)*sp,(R[2]*mx+Up[2]*my+F[2]*mz)*sp];
