@@ -172,6 +172,9 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
   <div class="row">
     <button id="bJourney" type="button" aria-pressed="false">Journey</button>
     <button id="bMirror" type="button">Mirrors off</button>
+    <button id="bLand" type="button">Land off</button>
+    <button id="bLandTint" type="button" hidden>Land colours natural</button>
+    <button id="bLandFx" type="button" hidden>Effects on everything</button>
     <button id="bFx" type="button">FX glow</button>
     <button id="bDetail" type="button">Detail auto</button>
     <button id="bMorph" type="button" aria-pressed="true">Morph</button>
@@ -859,11 +862,12 @@ function fragSource(w){
 "#define FOG "+w.fog.toFixed(3),
 (w.volume?"#define VOLUME":"#define SURFACE"),
 "#define VSTEPS "+(isTouch?44:56),
-"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi,uMix;uniform vec3 uOff;uniform vec4 uOrb,uVr;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;",
+"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi,uMix;uniform vec3 uOff;uniform vec4 uOrb,uVr;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;",
 "vec4 orb;"
   ].concat(w.glsl,[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "void main(){",
+"  if(uLandOn>0.5&&texture2D(uLandT,gl_FragCoord.xy/uRes).a>0.995){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* the land covers this pixel: nothing to draw */
 "  vec2 uv=(2.0*gl_FragCoord.xy-uRes)/sqrt(uRes.x*uRes.y);",
 "  vec2 eo=vec2(0.0);float fov=uFov;",
 "  if(uVr.x>0.5){", /* VR viewer: one picture per eye, side by side. uVr = on, lens centre offset in pixels, tangent per pixel, half the eye spacing */
@@ -1023,7 +1027,7 @@ var FS_BLUR=[
 var FS_FINAL=[
 "precision highp float;varying vec2 v;uniform sampler2D uT,uB;uniform float uWarp,uCA,uBloom,uTime,uAsp;uniform vec3 uTint;uniform vec2 uPx;",
 "uniform float uLiq,uMos,uEcho,uEdge,uPost,uSolar,uInv,uHueRot,uTr,uFx,uHue,uVr;uniform vec3 uPa,uPb,uPc,uPd;",
-"uniform sampler2D uPrev;uniform float uKeep;", /* the last finished picture and how much of it to keep: the flash limiter for unreviewed pack code */
+"uniform sampler2D uPrev,uLandT,uSkyT;uniform float uKeep,uLandMix;", /* the last finished picture and how much of it to keep: the flash limiter for unreviewed pack code */
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "const vec3 LW=vec3(0.299,0.587,0.114);",
 "void main(){",
@@ -1091,6 +1095,7 @@ var FS_FINAL=[
 "  }",
 "  col+=texture2D(uB,0.5+cw).rgb*uBloom;",
 "  col=mix(col,uTint,max(tintAmt,diss))*mask;",
+"  if(uLandMix>0.5){vec4 L=texture2D(uLandT,v);col=uLandMix<1.5?mix(col,L.rgb,L.a):mix(texture2D(uSkyT,v).rgb,col,L.a);}", /* effects on the sky only: the land goes on top untouched. On the land only: the world shows untouched behind it. */
 "  if(uKeep>0.0)col=mix(col,texture2D(uPrev,v).rgb,uKeep);",
 "  gl_FragColor=vec4(col,1.0);",
 "}"].join("\n");
@@ -1113,7 +1118,7 @@ function overlayProg(ov){ /* null if this overlay's code does not compile on thi
   return ov.prog;
 }
 var FS_COPY="precision mediump float;varying vec2 v;uniform sampler2D uT;void main(){gl_FragColor=texture2D(uT,v);}";
-var FINAL_U=["uPrev","uKeep","uT","uB","uWarp","uCA","uBloom","uTint","uTime","uAsp","uPx","uLiq","uMos","uEcho","uEdge","uPost","uSolar","uInv","uHueRot","uTr","uFx","uHue","uVr","uPa","uPb","uPc","uPd"];
+var FINAL_U=["uLandT","uSkyT","uLandMix","uPrev","uKeep","uT","uB","uWarp","uCA","uBloom","uTint","uTime","uAsp","uPx","uLiq","uMos","uEcho","uEdge","uPost","uSolar","uInv","uHueRot","uTr","uFx","uHue","uVr","uPa","uPb","uPc","uPd"];
 function filterProg(lk){ /* null if this filter's code does not compile on this device */
   if(lk.prog===undefined){try{lk.prog=link(finalSource(lk.code),FINAL_U)}catch(e){lk.prog=null;}}
   return lk.prog;
@@ -1136,7 +1141,7 @@ function link(fs,names){
 }
 function build(w){
   if(w.prog)return;
-  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr"]);
+  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr","uLandT","uLandOn"]);
   w.prog=o.prog;w.U=o.U;
 }
 /* a hybrid is two worlds' distance fields mixed; the second is sampled at an offset so both can keep wrapping */
@@ -1147,7 +1152,7 @@ function hybProg(a,b){
   var g=A.glsl.map(function(l){return l.replace("float map(vec3 p)","float mapA(vec3 p)")}).concat(["#undef P"],
         B.glsl.map(function(l){return l.replace("float map(vec3 p)","float mapB(vec3 p)")}),["#undef P",
     "float map(vec3 p){float a=mapA(p);vec4 oa=orb;float b=mapB(p+uOff);orb=mix(oa,orb,uMix);return mix(a,b,uMix);}"]);
-  var o=link(fragSource({glsl:g,fog:(A.fog+B.fog)/2,maxd:Math.max(A.maxd,B.maxd)}),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr"]);
+  var o=link(fragSource({glsl:g,fog:(A.fog+B.fog)/2,maxd:Math.max(A.maxd,B.maxd)}),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr","uLandT","uLandOn"]);
   hybCache[k]=o;return o;
 }
 var pTrail,pDown,pBlur,pFinal,pCopy;
@@ -1184,13 +1189,408 @@ function resize(){
   var w=Math.max(2,Math.floor(canvas.clientWidth*dpr)),h=Math.max(2,Math.floor(canvas.clientHeight*dpr));
   if(canvas.width!==w||canvas.height!==h||!tA){
     canvas.width=w;canvas.height=h;
-    freeT(tA);freeT(tT[0]);freeT(tT[1]);freeT(tB[0]);freeT(tB[1]);freeT(tF[0]);freeT(tF[1]);tF=[null,null];
+    freeT(tA);freeT(tT[0]);freeT(tT[1]);freeT(tB[0]);freeT(tB[1]);freeT(tF[0]);freeT(tF[1]);tF=[null,null];freeT(tL);freeT(tC);freeT(tLP);tL=tC=tLP=null;
     tA=target(w,h);tT[0]=target(w,h);tT[1]=target(w,h);
     var bw=Math.max(2,w>>2),bh=Math.max(2,h>>2);
     tB[0]=target(bw,bh);tB[1]=target(bw,bh);
   }
 }
 window.addEventListener("resize",resize);resize();
+
+/* ---------- the land: an endless mountain range, drawn alone or laid over a world ----------
+   A height field, not a distance field, so it has its own shaders and its own camera position (lpos); it shares the
+   camera's direction with the worlds. Height is a sum of noise layers. Each layer is the last one turned and shrunk by the
+   whole-number matrix [2 -1; 1 2], and the noise repeats every 256 squares, so the land repeats exactly every 256/LFREQ
+   units and lpos can be wrapped. The noise is a table of whole numbers, so the GLSL here and landH() in JavaScript agree.
+   Far off, forest is a dark patch and stony ground is grey; within about two units of the camera they become things:
+   trees, bushes, boulders, rocks and scree, each a small bump added to the height. */
+var LFREQ=0.35,LPERIOD=256/LFREQ,LWATER=0.085,LTREE=0.72,LSNOW=1.05,LHMAX=2.6;
+var LAND_FS=[
+"precision highp float;",
+"uniform vec2 uRes;uniform float uTime,uHue,uTint,uFov,uSeg,uSpin,uSky;uniform vec3 uPos,uSun,uSunCol,uPa,uPb,uPc,uPd;uniform mat3 uCam;uniform sampler2D uSkyT;",
+"uniform vec2 uCi[13],uCf[13],uLi[6],uLf[6],uPreRes;uniform vec4 uDa,uDb;uniform sampler2D uN,uPre;uniform float uK;", /* where the camera sits in each noise layer, worked out exactly in JavaScript */
+"const float FREQ="+LFREQ.toFixed(4)+",WATER="+LWATER.toFixed(4)+",TREE="+LTREE.toFixed(4)+",SNOW="+LSNOW.toFixed(4)+",HMAX="+LHMAX.toFixed(4)+";",
+"vec3 gTop,gLow,gSun,gHaze,gAmb;", /* sky, sun and haze colours, set once in main: natural, or taken from the palette */
+"vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
+/* the direction a pixel looks in: the same lens and the same mirrors as the worlds use, so the two line up */
+"vec3 ray(vec2 fc){",
+"  vec2 uv=(2.0*fc-uRes)/sqrt(uRes.x*uRes.y);",
+"  if(uSeg>0.5){float r=length(uv),seg=6.2831853/uSeg,a0=atan(uv.y,uv.x)+uSpin,a=abs(a0-floor(a0/seg)*seg-0.5*seg);uv=r*vec2(cos(a),sin(a));}",
+"  return normalize(uCam*vec3(uv,uFov));",
+"}",
+/* Random numbers come from a 256 by 256 table held in a texture. Each texel also carries its three neighbours,
+   so one read gives all four corners that a noise value is blended from. JavaScript reads the same table. */
+"float hash(vec2 i){return texture2D(uN,(i+0.5)/256.0).r;}",
+/* value noise and its slope. "base" is a whole-number corner and x a small offset from it, which keeps the fine layers exact */
+"vec3 noised(vec2 base,vec2 x){vec2 i=floor(x),f=x-i,u=f*f*f*(f*(f*6.0-15.0)+10.0),du=30.0*f*f*(f*(f-2.0)+1.0);",
+"  vec4 q=texture2D(uN,(base+i+0.5)/256.0);float a=q.r,b=q.g,c=q.b,d=q.a,k=a-b-c+d;",
+"  return vec3(a+(b-a)*u.x+(c-a)*u.y+k*u.x*u.y,du*(vec2(b-a,c-a)+k*u.yx));}",
+"float noise(vec2 x){return noised(vec2(0.0),x).x;}",
+/* broad flat valley floors, steep high peaks */
+"float shape(float a){return 1.5*pow(max(a-0.22,0.0),1.35);}",
+/* The land's height at q, measured from the camera. Each layer is weakened where the layers before it are steep,
+   which carves ridges and gullies. */
+"#define TERR(name,N) float name(vec2 q){vec2 p=q*FREQ,d=vec2(0.0);float a=0.0,b=1.0;for(int i=0;i<N;i++){vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;a+=b*(i<3?n.x:n.x-0.5)/(1.0+dot(d,d));b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;}return shape(a);}",
+"TERR(terrL,4)",
+"TERR(terrM,6)",
+/* the same six layers, also giving a close guess at the slope (xy of the result) for the cost of the height alone */
+"vec3 terrG(vec2 q){vec2 p=q*FREQ,d=vec2(0.0),g=vec2(0.0);float a=0.0,b=1.0;mat2 T=mat2(1.0,0.0,0.0,1.0);",
+"  for(int i=0;i<6;i++){vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;float w=b/(1.0+dot(d,d));a+=w*(i<3?n.x:n.x-0.5);g+=w*(T*n.yz);b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;T=T*mat2(2.0,-1.0,1.0,2.0);}",
+"  return vec3(g*FREQ*2.025*pow(max(a-0.22,0.0001),0.35),shape(a));}",
+/* the full detail: nine layers everywhere, and four finer ones that fade in as "det" rises close to the camera */
+"float terrD(vec2 q,float det){vec2 p=q*FREQ,d=vec2(0.0);float a=0.0,b=1.0;",
+"  for(int i=0;i<13;i++){",
+"    if(i>8&&det<=0.0)break;",
+"    vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;a+=b*(i>8?det*0.8:1.0)*(i<3?n.x:n.x-0.5)/(1.0+dot(d,d));b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;",
+"  }",
+"  return shape(a);}",
+"float fbm(vec2 p){float a=0.0,b=0.5;for(int i=0;i<4;i++){a+=b*noise(p);b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;}return a;}",
+
+"vec3 sky(vec3 rd){",
+"  float y=max(rd.y,0.0),s=max(dot(rd,uSun),0.0);",
+"  vec3 c=mix(gLow,gTop,pow(y,0.5));",
+"  c=mix(c,gSun,0.35*pow(s,6.0)*(1.0-y));",
+"  if(rd.y>0.015){",
+"    vec2 q=rd.xz/(rd.y+0.08)*0.9+uTime*vec2(0.006,0.002);",
+"    float cl=smoothstep(0.50,0.78,fbm(q))*smoothstep(0.015,0.2,rd.y);",
+"    c=mix(c,mix(0.55*gLow+0.4,0.4*gSun+0.6,0.5+0.5*s),cl*0.9);",
+"  }",
+"  return c+gSun*(0.9*pow(s,900.0)+0.25*pow(s,40.0));",
+"}",
+"vec3 haze(vec3 col,float t,vec3 rd){",
+"  vec3 fc=mix(gHaze,gSun,0.45*pow(max(dot(rd,uSun),0.0),5.0));",
+"  return mix(col,fc,1.0-exp(-0.022*t));",
+"}",
+/* ---------- what stands on the ground, close up ----------
+   From far off a forest is a dark patch and a stony slope is grey. Within a couple of units of the camera they become
+   things: conifers, bushes, boulders, rocks and scree, each a small bump added to the height of the land.
+   zone() says what kind of ground a place is; things() scatters one thing to each square of several grids. */
+"vec3 zone(vec2 q,vec3 G,out float yv){", /* x forest, y meadow, z stony; G must be terrG(q) */
+"  vec2 W=q+uPos.xz,g=G.xy;float hgt=G.z;",
+"  float ny=inversesqrt(1.0+dot(g,g)),n1=noise(W*1.7+3.0),n2=noise(W*6.0);",
+"  yv=hgt+0.22*(n1-0.5)+0.16*(n2-0.5);",
+"  float dry=smoothstep(WATER+0.003,WATER+0.02,hgt);",
+"  float forest=smoothstep(0.44,0.60,0.7*noise(W*2.6+11.0)+0.3*n2+0.25*(ny-0.8))*smoothstep(TREE,TREE-0.15,yv)*smoothstep(0.55,0.72,ny)*dry;",
+"  float meadow=smoothstep(0.62,0.82,ny)*smoothstep(SNOW,TREE,yv)*(1.0-forest)*dry;",
+"  float stony=(1.0-smoothstep(0.50,0.78,ny)+0.5*smoothstep(TREE,SNOW,yv))*(1.0-0.8*smoothstep(SNOW-0.25,SNOW,yv))*dry;",
+"  return vec3(forest,meadow,clamp(stony,0.0,1.0));",
+"}",
+/* one grid square: xy is the offset from the middle of the thing in it, z and w are two random numbers for it,
+   and gR holds four more. r is the thing's reach as a part of the square; its middle is kept far enough in that it never crosses the edge. */
+"vec4 gR;",
+"vec4 cell(vec2 base,vec2 x,float r){",
+"  vec2 i=floor(x),b=base+i;vec4 A=texture2D(uN,(b+0.5)/256.0);gR=texture2D(uN,(b+vec2(57.5,113.5))/256.0);",
+"  return vec4(x-i-(vec2(r)+(1.0-2.0*r)*A.rb),gR.r,A.g);",
+"}",
+/* a tree seen as a height: v is the offset in units of its reach. Conifers are spires with boughs sticking out;
+   broadleaf trees are lumpy domes. */
+"float treeh(vec2 v,vec4 R,float broad){",
+"  float d=length(v),a=atan(v.y,v.x);",
+"  d*=1.0+0.17*sin(a*7.0+R.g*31.0)+0.09*sin(a*12.0+R.b*77.0);",
+"  return broad>0.5?0.5*sqrt(max(1.0-d*d,0.0))*(1.0+0.25*sin(v.x*9.0+R.g*20.0)*sin(v.y*8.0+R.b*20.0)):max(1.0-d,0.0)*(0.8+0.2*smoothstep(0.0,0.6,1.0-d));",
+"}",
+"float bushh(vec2 v,vec4 R){",
+"  float a=atan(v.y,v.x),d=length(v)/(0.62+0.25*sin(a*3.0+R.g*20.0)+0.13*sin(a*5.0+R.b*50.0));",
+"  return sqrt(max(1.0-d*d,0.0))*(0.75+0.3*sin(v.x*11.0+R.a*9.0)*sin(v.y*13.0+R.g*9.0));",
+"}",
+/* a boulder: a tilted top cut by five flat sides of uneven steepness, so it has edges and faces */
+"float rockh(vec2 v,vec4 R){",
+"  float a=R.g*6.2832,h=0.55+0.35*R.b+0.4*dot(v,vec2(cos(a*2.0),sin(a*2.0)));",
+"  for(int k=0;k<5;k++){",
+"    float b=a+1.2566*float(k)+0.2*sin(R.a*40.0+float(k)*2.3);",
+"    h=min(h,(1.0-dot(v,vec2(cos(b),sin(b)))*(0.95+0.4*fract(R.b*(3.0+float(k)))))*(1.5+2.5*fract(R.a*(5.0+float(k)))));",
+"  }",
+"  return max(min(h,3.0*(1.0-0.8*length(v))),0.0);",
+"}",
+/* x height above the land, y kind (1 conifer, 1.4 broadleaf tree, 2 bush, 3 stone), z how far up or in (0 at the edge, 1 at the middle), w a random number */
+"vec4 things(vec2 q,vec3 Z,float t){",
+"  vec4 best=vec4(0.0),c;float h,k,rr,br;",
+"  float fT=smoothstep(2.2,1.3,t),fM=smoothstep(0.9,0.45,t),fS=smoothstep(0.30,0.12,t);",
+"  if(fT<=0.0)return best;",
+"  vec2 x=q*FREQ,xm=mat2(2.0,1.0,-1.0,2.0)*x;",
+"  if(Z.x+Z.y>0.001){", /* trees: two scatterings, so the forest is dense and uneven. A few stand alone in the meadows. */
+"    c=cell(uLi[0],uLf[0]+x*240.0,0.36);k=smoothstep(0.0,0.2,Z.x+0.04*Z.y-c.z);",
+"    if(k>0.0){br=step(0.82,gR.a);rr=0.36*(0.55+0.45*gR.g);h=fT*k*(0.010+0.024*c.w*c.w)*treeh(c.xy/rr,gR,br);if(h>best.x)best=vec4(h,1.0+0.4*br,h/(fT*k*0.034),c.w);}",
+"    c=cell(uLi[1],uLf[1]+xm*100.0,0.34);k=smoothstep(0.0,0.2,0.9*Z.x+0.03*Z.y-c.z);",
+"    if(k>0.0){br=step(0.75,gR.a);rr=0.34*(0.5+0.5*gR.g);h=fT*k*(0.009+0.020*c.w)*treeh(c.xy/rr,gR,br);if(h>best.x)best=vec4(h,1.0+0.4*br,h/(fT*k*0.029),gR.b);}",
+"  }",
+"  if(Z.y>0.001&&fM>0.0){", /* bushes in the meadows */
+"    c=cell(uLi[2],uLf[2]+xm*160.0,0.33);k=smoothstep(0.0,0.1,0.26*Z.y-c.z);",
+"    if(k>0.0){rr=0.33*(0.45+0.55*gR.b);h=fM*k*(0.0012+0.0024*c.w)*bushh(c.xy/rr,gR);if(h>best.x)best=vec4(h,2.0,h/(fM*k*0.0036),c.w);}",
+"  }",
+"  if(Z.z+Z.y>0.001){", /* boulders, then rocks, then scree: each smaller and nearer */
+"    c=cell(uLi[3],uLf[3]+xm*30.0,0.34);k=smoothstep(0.0,0.1,0.30*Z.z+0.03*Z.y-c.z);",
+"    if(k>0.0){h=fT*k*(0.004+0.008*c.w)*rockh(c.xy/0.27,gR);if(h>best.x)best=vec4(h,3.0,0.5,c.w);}",
+"    if(fM>0.0){",
+"      c=cell(uLi[4],uLf[4]+x*230.0,0.34);k=smoothstep(0.0,0.1,0.65*Z.z+0.05*Z.y-c.z);",
+"      if(k>0.0){h=fM*k*(0.0010+0.0020*c.w)*rockh(c.xy/0.27,gR);if(h>best.x)best=vec4(h,3.0,0.5,c.w);}",
+"    }",
+"    if(fS>0.0){",
+"      c=cell(uLi[5],uLf[5]+xm*320.0,0.34);k=smoothstep(0.0,0.1,0.9*Z.z-c.z);",
+"      if(k>0.0){h=fS*k*(0.0004+0.0006*c.w)*rockh(c.xy/0.27,gR);if(h>best.x)best=vec4(h,3.0,0.5,c.w);}",
+"    }",
+"  }",
+"  return best;",
+"}",
+/* where the coarse first pass says this pixel's ray can safely begin: the nearest of the four coarse rays around it */
+"float pre(){",
+"  vec2 g=floor(gl_FragCoord.xy/uK-0.5);float m=1e3;",
+"  for(int j=0;j<4;j++){vec2 o=vec2(mod(float(j),2.0),floor(float(j)/2.0));m=min(m,dot(texture2D(uPre,(g+o+0.5)/uPreRes).rgb,vec3(1.0,1.0/255.0,1.0/65025.0))*80.0);}",
+"  return max(0.02,m*0.97-0.006);",
+"}",
+/* walk the ray until it meets the ground or something standing on it; -1 means it reached the sky.
+   Things are added only within "reach" of the start, so a mirrored ray can leave them out. */
+"float march(vec3 ro,vec3 rd,float far,float reach,float t,float rough){",
+"  float h=1.0,tp=t;",
+"  for(int i=0;i<200;i++){",
+"    vec3 p=ro+rd*t;float lim=1e3;",
+"    if(i<5&&t>0.03&&p.y<terrM(p.xz)){t*=0.6;h=1.0;continue;}", /* began inside the land: back toward the camera and try again */
+"    if(h>0.5){h=p.y-terrL(p.xz)-0.14;if(h<0.3)h=p.y-terrM(p.xz);}", /* high up, a rough height with a safe margin costs less */
+"    else if(t<reach&&h<0.08){", /* low enough to meet a tree or a rock: add them, and take short steps so none is stepped over */
+"      vec3 G=terrG(p.xz);float yv;h=p.y-G.z;",
+"      if(h<0.036){",
+"        vec3 Z=zone(p.xz,G,yv);bool tall=Z.x+0.04*Z.y>0.02;",
+"        if(tall||h<0.016){h-=things(p.xz,Z,t).x;lim=tall?0.0025+0.006*t:0.006+0.012*t;}",
+"        if(h<0.0006*t+0.00005)return t;",
+"      }",
+"    }else h=p.y-terrM(p.xz);",
+"    if(h<0.0012*t*rough){", /* met the land. If the step went in deep, as it can through a cliff, search back for where it went in. */
+"      if(h<-0.002*t)for(int j=0;j<7;j++){float tm=0.5*(tp+t);p=ro+rd*tm;if(p.y>terrM(p.xz))tp=tm;else t=tm;}",
+"      else for(int j=0;j<3;j++){p=ro+rd*t;t+=0.6*(p.y-terrM(p.xz));}",
+"      return t;",
+"    }",
+"    if(t>far||(p.y>HMAX&&rd.y>0.0))return -1.0;",
+"    tp=t;t+=min(0.42*h+0.0006*t*rough,lim);",
+"  }",
+"  return h<0.03?t:-1.0;", /* out of steps while skimming the ground: call it a hit, so no holes open in the land */
+"}",
+"float shadow(vec3 ro){",
+"  float res=1.0,t=0.05;ro.y=max(ro.y,terrM(ro.xz)+0.006);",
+"  for(int i=0;i<36;i++){",
+"    vec3 p=ro+uSun*t;float h=p.y-(p.y>terrL(p.xz)+0.45?terrL(p.xz)+0.14:terrM(p.xz));",
+"    res=min(res,10.0*h/t+0.05);",
+"    if(res<0.01||p.y>HMAX)break;",
+"    t+=clamp(h,0.02,0.6);",
+"  }",
+"  return clamp(res,0.0,1.0);",
+"}",
+/* the colour of the ground at p: rock, meadow, forest, glacier, snow, streams and waterfalls, the things standing on it, then sunlight */
+"vec3 ground(vec3 p,float tr,vec3 rd,float mir){",
+"  float t=tr+100.0*mir;", /* a mirrored view (mir 1) is drawn as if far away: no close-up detail, no stream, no cast shadow */
+"  float det=smoothstep(1.6,0.25,t),det2=smoothstep(0.22,0.05,t);", /* how much close-up detail to draw: none far off, all of it near */
+"  float e=max(0.00025,0.0011*tr),yv;vec3 G=terrG(p.xz);float gM=G.z;",
+"  vec3 Z=zone(p.xz,G,yv);",
+"  float h0=terrD(p.xz,det),hx=terrD(p.xz+vec2(e,0.0),det),hz=terrD(p.xz+vec2(0.0,e),det);",
+"  vec3 nT=normalize(vec3(h0-hx,e,h0-hz));", /* the slope of the bare land, which decides what grows or lies there */
+"  vec4 th=things(p.xz,Z,t);",
+"  vec3 n=nT;",
+"  if(t<2.2)n=normalize(vec3(h0+th.x-hx-things(p.xz+vec2(e,0.0),Z,t).x,e,h0+th.x-hz-things(p.xz+vec2(0.0,e),Z,t).x));", /* the slope with the things on it, for the light */
+"  float l0=terrL(p.xz);",
+"  vec3 nL=normalize(vec3(l0-terrL(p.xz+vec2(0.08,0.0)),0.08,l0-terrL(p.xz+vec2(0.0,0.08))));", /* the broad lie of the land */
+"  vec2 W=p.xz+uPos.xz;", /* the place in the world, for patterns that must stay put as the camera moves */
+"  vec3 dA=det>0.0?noised(uDa.xy,uDa.zw+p.xz*FREQ*429.0):vec3(0.5,0.0,0.0),dB=det2>0.0?noised(uDb.xy,uDb.zw+p.xz*FREQ*2571.0):vec3(0.5,0.0,0.0);", /* grain a hand wide and a finger wide */
+"  float n1=noise(W*1.7+3.0),n2=noise(W*6.0),n3=noise(W*37.0),near=exp(-0.25*t);",
+"  float fine=fbm(W*23.0),cav=clamp(0.55+30.0*(h0-gM),0.0,1.0);", /* hollows are darker than bumps */
+"  float y=yv+0.10*(fine-0.5)-0.12*(nT.x*uSun.x+nT.z*uSun.z);", /* snow and trees reach lower on the side away from the sun */
+"  float grain=1.0+det*0.45*(dA.x-0.5)+det2*0.4*(dB.x-0.5);",
+"  vec3 rock=mix(vec3(0.27,0.25,0.24),vec3(0.52,0.49,0.45),fine)*(0.96+0.04*near*sin(dot(vec3(W.x,p.y,W.y),vec3(31.0,90.0,17.0))+14.0*n2+9.0*fine));",
+"  rock=mix(rock,vec3(0.42,0.36,0.28),0.35*n1);",
+"  if(det>0.0){", /* close up, bare rock is cracked: wandering lines at two sizes, and slabs of slightly different shade */
+"    vec2 fw=normalize(nT.xz+vec2(0.0001)),u=mix(W*38.0,vec2(dot(W,vec2(-fw.y,fw.x))*26.0,p.y*55.0+dot(W,fw)*9.0),smoothstep(0.75,0.5,nT.y));",
+"    float crack=smoothstep(0.030,0.0,abs(noise(u)-0.5))+0.6*smoothstep(0.035,0.0,abs(noise(u*2.7+7.0)-0.5));",
+"    rock*=mix(1.0,(0.80+0.40*noise(u*0.6+3.0))*(1.0-0.5*min(crack,1.0)),det);",
+"  }",
+"  vec3 grass=mix(vec3(0.09,0.27,0.05),vec3(0.26,0.42,0.09),0.5*n1+fine*0.7);",
+"  grass=mix(grass,vec3(0.50,0.47,0.20),smoothstep(TREE-0.1,SNOW,y));", /* thinner and yellower with height */
+"  grass*=1.0+det2*0.5*(noise(vec2(dot(W,vec2(900.0,300.0)),dot(W,vec2(-90.0,270.0))))-0.5);", /* blades, close up */
+"  grass+=det2*smoothstep(0.86,0.97,dB.x)*vec3(0.55,0.50,0.30);", /* flowers, only close up */
+"  float veg=smoothstep(0.50,0.70,nT.y+det*0.16*(dA.x-0.5)+0.10*(fine-0.5))*smoothstep(SNOW+0.05,TREE,y);",
+"  vec3 col=mix(rock,grass,veg)*grain;",
+"  col=mix(col,vec3(0.035,0.11,0.045)*(0.55+0.9*mix(0.5,n3,near)+0.5*n2)*grain,Z.x*smoothstep(0.45,0.62,nT.y)*(1.0-0.5*smoothstep(2.2,1.3,t)));", /* forest: dark from afar, forest floor between the trees up close */
+"  col=mix(col,vec3(0.55,0.52,0.42),smoothstep(WATER+0.006,WATER,p.y-th.x)*0.8);", /* gravel at the shore */
+/* glaciers lie where the high ground is broad and gentle; they crack across the way they flow */
+"  vec2 fl=normalize(nL.xz+vec2(0.0001));",
+"  float gl=smoothstep(0.78,0.90,nL.y)*smoothstep(SNOW-0.42,SNOW-0.22,y)*smoothstep(0.45,0.7,nT.y);",
+"  float cr=smoothstep(0.55,0.95,sin(dot(W,fl)*46.0+7.0*n2)*0.5+0.5)*(0.4+0.6*n1);",
+"  col=mix(col,mix(vec3(0.72,0.86,0.95),vec3(0.20,0.50,0.72),cr),gl);",
+"  float sn=smoothstep(-0.04,0.2,y-SNOW)*smoothstep(0.30,0.55,nT.y+0.25*smoothstep(0.0,0.5,y-SNOW));",
+"  sn=max(sn*(1.0-0.55*gl),0.35*gl*(1.0-cr));",
+"  vec3 snowc=vec3(0.93,0.95,1.0)*(1.0+0.12*det*(dA.x-0.5));",
+"  col=mix(col,snowc,sn*(1.0-0.7*cr*gl));",
+"  float thing=smoothstep(0.0,0.0004,th.x);",
+"  if(thing>0.0){",
+"    vec3 oc;",
+"    float v1=fract(th.w*7.3),v2=fract(th.w*13.7),mot=0.75+0.5*mix(0.5,dA.x,det);",
+"    if(th.y<1.2)oc=mix(mix(vec3(0.022,0.075,0.040),vec3(0.075,0.17,0.055),v2),vec3(0.17,0.21,0.06),step(0.88,v1))*(0.5+0.8*th.z)*mot;", /* conifer: darker low down, a few yellow-green ones */
+"    else if(th.y<1.7)oc=mix(vec3(0.07,0.20,0.04),vec3(0.20,0.32,0.07),v2)*(0.6+0.6*th.z)*mot;", /* broadleaf tree */
+"    else if(th.y<2.5){oc=mix(vec3(0.07,0.17,0.05),vec3(0.22,0.27,0.08),v2)*(0.6+0.6*th.z)*mot;",
+"      oc=mix(oc,vec3(0.70,0.22,0.36),step(0.8,v1)*smoothstep(0.55,0.8,dA.x)*det);", /* some bushes are in flower */
+"      oc=mix(vec3(0.45,0.43,0.40)*grain,oc,smoothstep(0.3,0.6,veg));}",
+"    else oc=mix(mix(vec3(0.33,0.31,0.30),vec3(0.60,0.57,0.52),v2),vec3(0.36,0.40,0.22),0.35*smoothstep(0.5,0.8,n1))*grain;", /* stone, some with lichen */
+"    oc=mix(oc,snowc,sn*smoothstep(0.35,0.8,n.y));",
+"    col=mix(col,oc,thing);",
+"  }else col*=1.0-0.35*Z.x*smoothstep(2.2,1.3,t);", /* the forest floor is in the trees' shade */
+"  n=normalize(n+(vec3(dA.y,0.0,dA.z)*0.08*det*(1.0-0.6*sn)+vec3(dB.y,0.0,dB.z)*0.03*det2*(1.0-sn))*(th.y>0.5&&th.y<2.5?0.0:1.0));", /* small bumps catch the light */
+/* one stream to each square of a coarse grid. It runs straight downhill from a point in the square:
+   white and falling where the ground is steep, a blue thread where it is gentle. */
+"  float wet=0.0,foam=0.0;",
+"  if(mir<0.5){",
+"    const float G=1.3;vec2 ci=floor(W/G);",
+"    float hs=hash(ci+vec2(17.0,5.0));",
+"    vec2 c=(ci+0.5+0.24*(vec2(hash(ci),hash(ci+vec2(41.0,3.0)))-0.5))*G-uPos.xz;",
+"    float c0=terrL(c);vec2 gd=vec2(c0-terrL(c+vec2(0.06,0.0)),c0-terrL(c+vec2(0.0,0.06)));",
+"    float gm=length(gd);",
+"    if(hs>0.3&&gm>0.004){",
+"      vec2 d=gd/gm,q=p.xz-c;",
+"      float s=dot(q,vec2(-d.y,d.x))+(0.012+0.03*smoothstep(0.93,0.99,nL.y))*(sin(dot(q,d)*23.0+hs*40.0)+0.6*sin(dot(q,d)*9.0+hs*17.0)),al=dot(q,d);",
+"      float w=0.006+0.0016*t+0.004*smoothstep(-0.3,0.4,al);",
+"      float m=smoothstep(w,0.35*w,abs(s))*smoothstep(0.46*G,0.36*G,length(q))*smoothstep(0.0,0.5,dot(fl,d))*(1.0-smoothstep(0.0,0.1,y-SNOW))*(1.0-gl)*(1.0-thing);",
+"      float steep=smoothstep(0.72,0.5,nT.y);",
+"      float run=noise(vec2(s*420.0,al*22.0-uTime*(1.2+2.2*steep)));",
+"      run=mix(run,0.5*run+0.5*noise(vec2(s*2600.0,al*140.0-uTime*(6.0+10.0*steep))),det);", /* finer froth, close up */
+"      wet=m;foam=m*mix(0.25+0.35*run,0.75+0.25*run,steep);",
+"      if(m>0.0)n=normalize(mix(n,nT,m));",
+"    }",
+"  }",
+"  col=mix(col,vec3(0.10,0.30,0.42),wet);col=mix(col,vec3(0.95,0.97,1.0),foam);",
+"  if(uTint>1.5){float lu=dot(col,vec3(0.3,0.59,0.11));col=mix(col,pal(uHue+0.25+1.1*lu+0.25*p.y)*(0.22+1.4*lu),0.9);}", /* tint everything: the land takes its colours from the palette too */
+"  float dif=clamp(dot(n,uSun),0.0,1.0),sh=dif<=0.001?0.0:mir>0.5?1.0:shadow(p+nT*0.004+vec3(0.0,0.002,0.0));",
+"  vec3 lin=dif*sh*gSun*1.4+(0.45+0.55*n.y)*gAmb*0.75+clamp(dot(n,normalize(vec3(-uSun.x,0.0,-uSun.z))),0.0,1.0)*vec3(0.20,0.17,0.12)*0.35;",
+"  col*=lin*(0.45+0.55*cav);",
+"  col+=gSun*sh*pow(max(dot(reflect(rd,n),uSun),0.0),24.0)*(0.25*sn+0.5*gl*cr+0.5*wet);",
+"  return haze(col,tr,rd);",
+"}",
+"void main(){",
+"  vec3 ro=vec3(0.0,uPos.y,0.0),rd=ray(gl_FragCoord.xy);float alpha=1.0;", /* everything is measured from the camera */
+"  gTop=vec3(0.14,0.36,0.80);gLow=vec3(0.66,0.79,0.94);gSun=uSunCol;gHaze=vec3(0.60,0.73,0.92);gAmb=vec3(0.19,0.27,0.42);",
+"  if(uTint>0.5){", /* a palette colours the sky, the sun and the haze */
+"    vec3 pa=pal(uHue+0.55),pb=pal(uHue+0.2),pc=pal(uHue);",
+"    gTop=mix(gTop,pa*0.75,0.85);gLow=mix(gLow,0.45+0.55*pb,0.85);gSun=mix(uSunCol,0.45+0.55*pc,0.5);gHaze=mix(gHaze,0.35+0.6*pb,0.85);gAmb=mix(gAmb,0.12+0.35*pa,0.55);",
+"  }",
+/* Two passes through one loop: the view itself, and, if it lands on a lake, the mirrored view from the water.
+   One loop means the marching and the land colouring are each built into the program once. */
+"  vec3 col=vec3(0.0),wgt=vec3(1.0);",
+"  for(int b=0;b<2;b++){",
+"    float t=march(ro,rd,b==0?70.0:35.0,b==0?2.2:0.0,b==0?pre():0.02,b==0?1.0:4.0),tw=(b==0&&rd.y<0.0)?(WATER-ro.y)/rd.y:-1.0;",
+"    if(tw>0.0&&(t<0.0||tw<t)){", /* a lake: its bed seen through the water, and the mountains mirrored on it */
+"      vec3 p=ro+rd*tw;",
+"      vec2 W=p.xz+uPos.xz,g=noised(vec2(0.0),W*42.0+uTime*vec2(0.5,0.3)).yz+0.6*noised(vec2(0.0),W*97.0-uTime*vec2(0.4,0.7)).yz;",
+"      vec3 n=normalize(vec3(g.x*0.035,1.0,g.y*0.035));",
+"      float depth=WATER-terrM(p.xz),fr=0.06+0.94*pow(1.0-max(dot(-rd,n),0.0),5.0);",
+"      float sh=shadow(p+vec3(0.0,0.003,0.0));",
+"      vec3 body=mix(vec3(0.10,0.42,0.40),vec3(0.015,0.11,0.18),smoothstep(0.0,0.06,depth))*(0.25+0.75*sh*clamp(uSun.y*1.6,0.0,1.0))*(0.6+0.4*gSun);",
+"      if(uTint>1.5)body=mix(body,pal(uHue+0.8)*dot(body,vec3(1.0)),0.8);",
+"      vec3 rr=reflect(rd,n);rr.y=abs(rr.y)+0.001;",
+"      float fo=0.6*smoothstep(0.004,0.0,depth),k=exp(-0.022*tw);", /* foam at the shore, and how much haze lies in front */
+"      vec3 fc=mix(gHaze,gSun,0.45*pow(max(dot(rd,uSun),0.0),5.0));",
+"      col=k*((body*(1.0-fr)+gSun*sh*pow(max(dot(rr,uSun),0.0),300.0)*1.5)*(1.0-fo)+vec3(0.85,0.90,0.92)*fo)+(1.0-k)*fc;",
+"      wgt=vec3(k*fr*(1.0-fo));",
+"      ro=p+vec3(0.0,0.002,0.0);rd=rr;alpha=mix(1.0,exp(-0.03*tw),0.8*uSky);",
+"    }else{",
+"      if(t>0.0){col+=wgt*ground(ro+rd*t,t,rd,float(b));if(b==0)alpha=mix(1.0,exp(-0.03*t),0.8*uSky);}", /* over a world, far land thins into it */
+"      else if(uSky<0.5)col+=wgt*haze(sky(rd),90.0*(1.0-smoothstep(0.0,0.12,rd.y)),rd);",
+"      else if(b==0)alpha=0.0;", /* over a world, the sky is left clear for the world to show through */
+"      else{vec3 cs=rd*uCam;vec2 st=(cs.xy/max(cs.z,0.05)*uFov*sqrt(uRes.x*uRes.y)+uRes)/(2.0*uRes);col+=wgt*pow(texture2D(uSkyT,clamp(st,0.0,1.0)).rgb,vec3(2.2));}", /* a lake mirrors the world: the last frame of it, looked up where the mirrored ray would land on screen */
+"      break;",
+"    }",
+"  }",
+"  col=col*(2.51*col+0.03)/(col*(2.43*col+0.59)+0.14);", /* film-like roll-off of the bright end */
+"  col=pow(clamp(col,0.0,1.0),vec3(0.4545));",
+"  col=mix(vec3(dot(col,vec3(0.3,0.59,0.11))),col,1.12);",
+"  gl_FragColor=vec4(col*step(0.001,alpha),alpha);",
+"}"].join("\n");
+/* A first pass at an eighth of the size. Each of its rays is a cone wide enough to cover the pixels around it;
+   it walks until the cone first touches the land and records how far that was. The full picture then starts
+   each ray from there, so the empty air is crossed once per 64 pixels, not once per pixel. */
+var LAND_PRE=LAND_FS.slice(0,LAND_FS.indexOf("vec3 sky(vec3 rd){"))+[
+"void main(){",
+"  vec3 ro=vec3(0.0,uPos.y,0.0),rd=ray(gl_FragCoord.xy*uK);",
+"  float r=uK*1.9/(sqrt(uRes.x*uRes.y)*uFov),t=0.02,tp=0.02,h=1.0;", /* the cone's half-width for each unit of distance */
+"  for(int i=0;i<90;i++){",
+"    vec3 p=ro+rd*t;",
+"    float ny=0.45;", /* how much of the height above the land counts as clear distance: less where the land is steep */
+"    if(h>0.5){h=p.y-terrL(p.xz)-0.14;if(h<0.3)h=p.y-terrM(p.xz);}",
+"    else{vec3 G=terrG(p.xz);h=p.y-G.z;ny=0.6*inversesqrt(1.0+dot(G.xy,G.xy));}",
+"    float s=min(ny,0.42)*(h-(t<2.4?0.036:0.0))-r*t;", /* near the camera the land is treated as higher, to clear the trees */
+"    if(s<=0.0){if(h<0.0)t=tp;break;}", /* a step that landed inside a cliff does not count */
+"    if(t>70.0||(p.y>HMAX&&rd.y>0.0)){t=79.0;break;}",
+"    tp=t;t+=s;",
+"  }",
+"  vec3 e=fract(clamp(t/80.0,0.0,0.99999)*vec3(1.0,255.0,65025.0));e.xy-=e.yz/255.0;", /* the distance, spread over three colour channels */
+"  gl_FragColor=vec4(e,1.0);",
+"}"].join("\n");
+var FS_MIX="precision highp float;varying vec2 v;uniform sampler2D uT,uL;void main(){vec4 L=texture2D(uL,v);gl_FragColor=vec4(mix(texture2D(uT,v).rgb,L.rgb,L.a),1.0);}"; /* the land laid over the world */
+var LAND_U=["uRes","uTime","uPos","uCam","uFov","uSeg","uSpin","uSky","uSkyT","uSun","uSunCol","uCi","uCf","uLi","uLf","uDa","uDb","uPa","uPb","uPc","uPd","uHue","uTint","uN","uPre","uPreRes","uK"];
+/* the table of random numbers, made the same way every time */
+var LTAB=new Uint8Array(65536);
+(function(){var sd=20261113,i;for(i=0;i<65536;i++){sd=(Math.imul(sd,1664525)+1013904223)>>>0;LTAB[i]=sd>>>24;}})();
+function landHash(ix,iy){return LTAB[(ix&255)+256*(iy&255)]/255;}
+/* the land's height in JavaScript: the same sum as terrL (N=4) and terrM (N=6) in the shader */
+function landH(x,z,N){
+  var px=x*LFREQ,pz=z*LFREQ,a=0,b=1,dx=0,dz=0,i,t;
+  for(i=0;i<N;i++){
+    var ix=Math.floor(px),iz=Math.floor(pz),fx=px-ix,fz=pz-iz,ux=fx*fx*fx*(fx*(fx*6-15)+10),uz=fz*fz*fz*(fz*(fz*6-15)+10);
+    var A=landHash(ix,iz),B=landHash(ix+1,iz),C=landHash(ix,iz+1),D=landHash(ix+1,iz+1),k=A-B-C+D;
+    var v=A+(B-A)*ux+(C-A)*uz+k*ux*uz;
+    dx+=30*fx*fx*(fx*(fx-2)+1)*(B-A+k*uz);dz+=30*fz*fz*(fz*(fz-2)+1)*(C-A+k*ux);
+    a+=b*(i<3?v:v-0.5)/(1+dx*dx+dz*dz);b*=0.5;
+    t=2*px-pz;pz=px+2*pz;px=t;px-=256*Math.floor(px/256);pz-=256*Math.floor(pz/256);
+  }
+  return 1.5*Math.pow(Math.max(a-0.22,0),1.35);
+}
+function landFloor(x,z){return Math.max(landH(x,z,6),LWATER);}
+var LAYERS=[[240,0],[100,1],[160,1],[30,1],[230,0],[320,1]]; /* the grids things are scattered on: trees, trees, bushes, boulders, rocks, scree */
+var landMode=0,landTint=0,landFx=0; /* 0 off, 1 alone, 2 over the world; palette on nothing, sky and light, everything; effects on everything, sky, land */
+var pLand=null,pLandPre=null,pMix=null,landTex=null,tL=null,tC=null,tLP=null;
+var lpos=[412,1,300],lvel=[0,0],lhead=[0.56,0.83],landClear=0.11;
+function landBuild(){ /* compiled the first time the land is turned on; false if this device cannot */
+  if(pLand)return true;
+  try{pLand=link(LAND_FS,LAND_U);pLandPre=link(LAND_PRE,LAND_U);pMix=link(FS_MIX,["uT","uL"]);}catch(e){pLand=null;return false;}
+  /* each texel holds its own number and those of the three neighbours to its right, above, and above right */
+  var px=new Uint8Array(262144),x,y,o;
+  for(y=0;y<256;y++)for(x=0;x<256;x++){o=4*(x+256*y);px[o]=LTAB[x+256*y];px[o+1]=LTAB[((x+1)&255)+256*y];px[o+2]=LTAB[x+256*((y+1)&255)];px[o+3]=LTAB[((x+1)&255)+256*((y+1)&255)];}
+  landTex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,landTex);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,256,0,gl.RGBA,gl.UNSIGNED_BYTE,px);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  return true;
+}
+/* draw the land into dst. "over" leaves the sky clear (alpha 0) and lets lakes mirror the world in tA. */
+function landPass(dst,over,fov,hue){
+  var pw=Math.ceil(tA.w/8),ph=Math.ceil(tA.h/8),k,tt,wrap=function(v){return v-256*Math.floor(v/256)};
+  if(!tLP||tLP.w!==pw||tLP.h!==ph){freeT(tLP);tLP=target(pw,ph);}
+  /* the camera's place in each noise layer and each grid of things, split into a whole number and a remainder so the shader loses nothing */
+  var ci=new Float32Array(26),cf=new Float32Array(26),li=new Float32Array(12),lf=new Float32Array(12),px=lpos[0]*LFREQ,pz=lpos[2]*LFREQ;
+  for(k=0;k<13;k++){px=wrap(px);pz=wrap(pz);ci[2*k]=Math.floor(px);ci[2*k+1]=Math.floor(pz);cf[2*k]=px-Math.floor(px);cf[2*k+1]=pz-Math.floor(pz);tt=2*px-pz;pz=px+2*pz;px=tt;}
+  LAYERS.forEach(function(L,j){var ax=lpos[0]*LFREQ*L[0],az=lpos[2]*LFREQ*L[0],bx=wrap(L[1]?2*ax-az:ax),bz=wrap(L[1]?ax+2*az:az);
+    li[2*j]=Math.floor(bx);li[2*j+1]=Math.floor(bz);lf[2*j]=bx-Math.floor(bx);lf[2*j+1]=bz-Math.floor(bz);});
+  var da=[wrap(lpos[0]*LFREQ*429),wrap(lpos[2]*LFREQ*429)],db=[wrap(lpos[0]*LFREQ*2571),wrap(lpos[2]*LFREQ*2571)];
+  var set=function(U){
+    gl.uniform2f(U.uRes,tA.w,tA.h);gl.uniform1f(U.uTime,time);
+    gl.uniform3f(U.uPos,lpos[0],lpos[1],lpos[2]);gl.uniformMatrix3fv(U.uCam,false,camArr);
+    gl.uniform1f(U.uFov,fov);gl.uniform1f(U.uSeg,mirrors[mi]);gl.uniform1f(U.uSpin,spin);gl.uniform1f(U.uSky,over?1:0);
+    gl.uniform2fv(U.uCi,ci);gl.uniform2fv(U.uCf,cf);gl.uniform2fv(U.uLi,li);gl.uniform2fv(U.uLf,lf);
+    gl.uniform4f(U.uDa,Math.floor(da[0]),Math.floor(da[1]),da[0]%1,da[1]%1);gl.uniform4f(U.uDb,Math.floor(db[0]),Math.floor(db[1]),db[0]%1,db[1]%1);
+    gl.uniform3fv(U.uPa,palCur.a);gl.uniform3fv(U.uPb,palCur.b);gl.uniform3fv(U.uPc,palCur.c);gl.uniform3fv(U.uPd,palCur.d);
+    gl.uniform1f(U.uHue,hue);gl.uniform1f(U.uTint,landTint);
+    gl.uniform3f(U.uSun,0.654,0.485,0.580);gl.uniform3f(U.uSunCol,1.0,0.93,0.80);
+    gl.uniform1i(U.uN,4);gl.uniform1i(U.uPre,5);gl.uniform1i(U.uSkyT,6);gl.uniform2f(U.uPreRes,pw,ph);gl.uniform1f(U.uK,8);
+  };
+  camArr[0]=R[0];camArr[1]=R[1];camArr[2]=R[2];camArr[3]=Up[0];camArr[4]=Up[1];camArr[5]=Up[2];camArr[6]=F[0];camArr[7]=F[1];camArr[8]=F[2];
+  bindTex(5,landTex);bindTex(6,landTex);bindTex(4,landTex);
+  passTo(tLP,pLandPre);set(pLandPre.U);gl.drawArrays(gl.TRIANGLES,0,3);
+  bindTex(5,tLP.t);bindTex(6,over?tA.t:landTex);
+  passTo(dst,pLand);set(pLand.U);gl.drawArrays(gl.TRIANGLES,0,3);
+}
+function setLand(mode){
+  if(mode&&!landBuild()){toast("The land does not work on this device.");mode=0;}
+  landMode=mode;
+  if(mode)lpos[1]=Math.max(lpos[1],landFloor(lpos[0],lpos[2])+landClear);
+  $("bLand").textContent=["Land off","Land alone","Land over world"][mode];
+  $("bLandTint").hidden=!mode;$("bLandFx").hidden=mode!==2;
+}
+function setLandTint(k){landTint=k;$("bLandTint").textContent=["Land colours natural","Palette on sky and light","Palette on everything"][k];}
+function setLandFx(k){landFx=k;$("bLandFx").textContent=["Effects on everything","Effects on the sky","Effects on the land"][k];}
 
 /* ---------- state ---------- */
 var pos=[0,0,0], R=[1,0,0], Up=[0,1,0], F=[0,0,1];
@@ -2165,6 +2565,9 @@ $("bShare").addEventListener("click",function(){
 });
 $("bJourney").addEventListener("click",function(){setJourney(!journey);wakeHud()});
 $("bMirror").addEventListener("click",function(){cycleMirrors();wakeHud()});
+$("bLand").addEventListener("click",function(){setLand((landMode+1)%3);wakeHud()});
+$("bLandTint").addEventListener("click",function(){setLandTint((landTint+1)%3);wakeHud()});
+$("bLandFx").addEventListener("click",function(){setLandFx((landFx+1)%3);wakeHud()});
 $("bFx").addEventListener("click",function(){fi=(fi+1)%FX.length;this.textContent="FX "+FX[fi].name;wakeHud()});
 $("bFx").textContent="FX "+FX[fi].name;
 $("bDetail").addEventListener("click",function(){
@@ -2631,7 +3034,7 @@ function frame(now){
   if(frames>=30){
     var avg=acc/frames;acc=0;frames=0;
     if(DETAIL[di]==="auto"){ /* hold sharpness, give up frame rate first: only step down below about 28 fps */
-      if(avg>0.036&&q>0.6){q=Math.max(0.6,q*0.9);resize();}
+      if(avg>0.036&&q>(landMode?0.35:0.6)){q=Math.max(landMode?0.35:0.6,q*0.9);resize();} /* the land costs more, so it may give up more sharpness */
       else if(avg<0.022&&q<1){q=Math.min(1,q*1.06);resize();}
     }
   }
@@ -2671,7 +3074,12 @@ function frame(now){
   lookAct=userActive(lookAct,userTurn/Math.max(dt,0.004),dt);userTurn=0;
   var travel=journey&&jMove==="travel",hands=1-lookAct,ease=1-0.85*lookAct;
   if(journey&&started){
-    if(travel){
+    if(travel&&landMode){ /* over land the autopilot turns toward whichever side is lower, so it keeps to the valleys, and holds the view a little below level */
+      var lrx=lhead[1],lrz=-lhead[0],lc=Math.cos(0.55)*1.3,ls=Math.sin(0.55)*1.3;
+      var hL=landH(lpos[0]+lhead[0]*lc-lrx*ls,lpos[2]+lhead[1]*lc-lrz*ls,4),hR=landH(lpos[0]+lhead[0]*lc+lrx*ls,lpos[2]+lhead[1]*lc+lrz*ls,4);
+      lookX+=(Math.max(-0.5,Math.min(0.5,(hL-hR)*1.6))+0.08*Math.sin(time*0.13))*dt*hands;
+      lookY+=(F[1]+0.10)*0.6*dt*hands;
+    }else if(travel){
       var pr=Math.min(1,Math.max(0.06,dist*5));
       var pd=function(sx,sy){
         var d=norm([F[0]+0.7*(R[0]*sx+Up[0]*sy),F[1]+0.7*(R[1]*sx+Up[1]*sy),F[2]+0.7*(R[2]*sx+Up[2]*sy)]);
@@ -2704,11 +3112,15 @@ function frame(now){
   F=rot(F,Up,ax);F=rot(F,R,ay);Up=rot(Up,R,ay);
   var rollT=((keys.KeyE?1:0)-(keys.KeyQ?1:0))*1.2;
   var idle=stick.id===null&&!keys.KeyW&&!keys.KeyS&&!keys.KeyA&&!keys.KeyD;
-  if((drift||travel)&&idle&&!calm&&!stereo)rollT+=0.035*hands; /* no automatic roll in the VR viewer */
+  if((drift||travel)&&idle&&!calm&&!stereo&&!landMode)rollT+=0.035*hands; /* no automatic roll in the VR viewer */
   rollIn+=(rollT-rollIn)*(1-Math.exp(-dt*4));
   Up=rot(Up,F,-rollIn*dt);
   if(gRoll!==0){Up=rot(Up,F,gRoll);gRoll=0;}
   F=norm(F);R=norm(cross(Up,F));Up=cross(F,R);
+  if(landMode&&!stereo&&Math.abs(F[1])<0.97){ /* over land the horizon is eased level */
+    var lt=norm([-F[0]*F[1],1-F[1]*F[1],-F[2]*F[1]]),le=1-Math.exp(-dt*3);
+    Up=norm([Up[0]+(lt[0]-Up[0])*le,Up[1]+(lt[1]-Up[1])*le,Up[2]+(lt[2]-Up[2])*le]);R=norm(cross(Up,F));Up=cross(F,R);
+  }
 
   /* move: speed scales with distance to the nearest surface */
   var mx=(keys.KeyD?1:0)-(keys.KeyA?1:0)+stick.x;
@@ -2727,6 +3139,20 @@ function frame(now){
     if(hyb&&dl!==0){hyb.off[i]+=dl;hyb.off[i]-=perB[i]*Math.floor(hyb.off[i]/perB[i]+.5);}
   }
   curSpeed=Math.hypot(vel[0],vel[1],vel[2]);
+  /* the land has its own position: it goes the way the camera faces, level, and keeps clear of the ground here and ahead */
+  if(landMode){
+    var fh=Math.hypot(F[0],F[2]);if(fh>0.05){lhead[0]=F[0]/fh;lhead[1]=F[2]/fh;}
+    var lsp=0.4*baseSpeed*(1+3*boost),lwant,lk,ld;
+    lvel[0]+=((lhead[1]*mx+lhead[0]*mz)*lsp-lvel[0])*vf;lvel[1]+=((-lhead[0]*mx+lhead[1]*mz)*lsp-lvel[1])*vf;
+    lpos[0]+=lvel[0]*dt;lpos[2]+=lvel[1]*dt;
+    lpos[0]-=LPERIOD*Math.floor(lpos[0]/LPERIOD);lpos[2]-=LPERIOD*Math.floor(lpos[2]/LPERIOD);
+    landClear=Math.max(0.035,Math.min(1.5,landClear+my*dt*0.25));
+    lwant=landFloor(lpos[0],lpos[2]);
+    for(lk=1;lk<=4;lk++){ld=0.22*lk;lwant=Math.max(lwant,landFloor(lpos[0]+lhead[0]*ld,lpos[2]+lhead[1]*ld)-0.10*lk);}
+    lwant+=landClear;
+    lpos[1]+=(lwant-lpos[1])*Math.min(1,dt*(lwant>lpos[1]?3:0.5));
+    lpos[1]=Math.max(lpos[1],landFloor(lpos[0],lpos[2])+0.035);
+  }
   var spN=Math.min(1,curSpeed/(wSpeed*baseSpeed+1e-6));
 
   /* the orb: drawn at its nearest copy, collected when you reach it, moved if the morph swallows it */
@@ -2752,6 +3178,13 @@ function frame(now){
 
   /* 1. the fractal */
   var fx=FX[fi],sc=hyb?hyb:w,U=sc.U,wHue=hyb?(w.hue+(wB.hue-w.hue)*hyb.t):w.hue;
+  var fovNow=calm?1.15:(1.15-0.13*spN-0.05*bt-0.25*boost+0.025*Math.sin(time*0.4));
+  /* 0. the land, if it is on. Alone, it is the whole scene. Over a world, it is drawn first into its own picture with a
+     clear sky, so the world need only be drawn where the land leaves it showing. Not in the VR viewer. */
+  var landOn=landMode>0&&!stereo&&!!pLand,landOver=landOn&&landMode===2,src=tA;
+  if(landOver){if(!tL)tL=target(tA.w,tA.h);landPass(tL,true,fovNow,hueT+wHue);}
+  else if(landOn)landPass(tA,false,fovNow,hueT+wHue);
+  if(!landOn||landOver){
   gl.bindFramebuffer(gl.FRAMEBUFFER,tA.f);gl.viewport(0,0,tA.w,tA.h);gl.useProgram(sc.prog);
   gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],orbU[3]);
   if(hyb){gl.uniform1f(U.uMix,hyb.t);gl.uniform3f(U.uOff,hyb.off[0],hyb.off[1],hyb.off[2]);}
@@ -2769,13 +3202,18 @@ function frame(now){
   vrEye+=(Math.max(0.00002,dist*0.021)-vrEye)*(1-Math.exp(-dt*1.5));
   gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrTan,vrEye);
   gl.uniform1f(U.uPix,stereo?vrTan:2/(Math.sqrt(tA.w*tA.h)*1.15));
-  gl.uniform1f(U.uFov,calm?1.15:(1.15-0.13*spN-0.05*bt-0.25*boost+0.025*Math.sin(time*0.4)));
+  gl.uniform1f(U.uFov,fovNow);
+  gl.uniform1f(U.uLandOn,landOver?1:0);if(landOver){bindTex(6,tL.t);gl.uniform1i(U.uLandT,6);}
   gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
   gl.uniform3fv(U.uPa,palCur.a);gl.uniform3fv(U.uPb,palCur.b);gl.uniform3fv(U.uPc,palCur.c);gl.uniform3fv(U.uPd,palCur.d);
   gl.uniform3f(U.uPos,pos[0],pos[1],pos[2]);
   camArr[0]=R[0];camArr[1]=R[1];camArr[2]=R[2];camArr[3]=Up[0];camArr[4]=Up[1];camArr[5]=Up[2];camArr[6]=F[0];camArr[7]=F[1];camArr[8]=F[2];
   gl.uniformMatrix3fv(U.uCam,false,camArr);
   gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+  /* which picture the effects work on: the land laid over the world, the world alone, or the land alone */
+  if(landOver&&landFx===0){if(!tC)tC=target(tA.w,tA.h);passTo(tC,pMix);bindTex(0,tA.t);bindTex(1,tL.t);gl.uniform1i(pMix.U.uT,0);gl.uniform1i(pMix.U.uL,1);gl.drawArrays(gl.TRIANGLES,0,3);src=tC;}
+  else if(landOver&&landFx===2)src=tL;
 
   /* 2. feedback: the last frame, warped by the chosen motion and fading, with this frame laid over it */
   var mo=MOTIONS[moi],lk=LOOKS[lki],k60=dt*60,TU=pTrail.U;
@@ -2789,7 +3227,7 @@ function frame(now){
   if(ov.code&&!op&&!stereo&&!ov.told){ov.told=1;toast("Overlay "+ov.name+" does not work on this device.");}
   if(op)TU=op.U;
   if(ovi>0)updateWave();
-  passTo(tc,op||pTrail);bindTex(2,ovi>0?waveTex:tA.t);bindTex(1,tp.t);bindTex(0,tA.t);
+  passTo(tc,op||pTrail);bindTex(2,ovi>0?waveTex:src.t);bindTex(1,tp.t);bindTex(0,src.t);
   gl.uniform1i(TU.uA,0);gl.uniform1i(TU.uB,1);gl.uniform1i(TU.uWv,2);
   gl.uniform1f(TU.uDecay,stereo?0:Math.pow(Math.max(fx.decay,mo.decay||0,warp>0?0.9:0),k60)); /* no trails in the VR viewer: they are warped about the middle of the screen */
   gl.uniform1f(TU.uZoom,Math.pow(mo.zoom||0.994,k60)-0.02*warp-0.012*bt*(mo.kick||0));
@@ -2806,7 +3244,8 @@ function frame(now){
   gl.drawArrays(gl.TRIANGLES,0,3);
 
   /* 3. bloom: bright parts, shrunk and blurred */
-  var bloom=fx.bloom*(1+0.7*bt)+0.5*warp;
+  var landLit=landOn&&!(landOver&&landFx===1)?0.3:1; /* glow and colour fringing are made for dark worlds; on a daylit land they wash the sky out, so they are turned down */
+  var bloom=fx.bloom*(1+0.7*bt)*landLit+0.5*warp;
   if(bloom>0){
     passTo(tB[0],pDown);bindTex(0,tc.t);gl.uniform1i(pDown.U.uT,0);gl.uniform2f(pDown.U.uPx,1/tc.w,1/tc.h);gl.drawArrays(gl.TRIANGLES,0,3);
     passTo(tB[1],pBlur);bindTex(0,tB[0].t);gl.uniform1i(pBlur.U.uT,0);gl.uniform2f(pBlur.U.uDir,1/tB[0].w,0);gl.drawArrays(gl.TRIANGLES,0,3);
@@ -2824,8 +3263,9 @@ function frame(now){
   passTo(slow?tF[fcur]:null,PF);bindTex(0,tc.t);bindTex(1,tB[0].t);
   bindTex(3,slow?tF[1-fcur].t:tc.t);gl.uniform1i(FU.uPrev,3);gl.uniform1f(FU.uKeep,slow?Math.exp(-dt/0.25):0);
   gl.uniform1i(FU.uT,0);gl.uniform1i(FU.uB,1);
+  gl.uniform1f(FU.uLandMix,landOver?landFx:0);if(landOver&&landFx>0){bindTex(6,tL.t);bindTex(7,tA.t);gl.uniform1i(FU.uLandT,6);gl.uniform1i(FU.uSkyT,7);}
   gl.uniform1f(FU.uWarp,warp);gl.uniform1f(FU.uTr,stereo?5:trType);gl.uniform1f(FU.uVr,stereo?1:0); /* VR viewer always uses the blink transition */
-  gl.uniform1f(FU.uCA,stereo?0:fx.ca*(1+1.5*spN)+0.012*boost+(lk.ca||0)+(fi===2?0:0.006*hp));
+  gl.uniform1f(FU.uCA,stereo?0:(fx.ca*(1+1.5*spN)+(fi===2?0:0.006*hp))*landLit+0.012*boost+(lk.ca||0));
   gl.uniform1f(FU.uBloom,bloom);
   gl.uniform1f(FU.uTime,time);gl.uniform1f(FU.uAsp,tc.w/tc.h);gl.uniform2f(FU.uPx,1/tc.w,1/tc.h);
   gl.uniform1f(FU.uLiq,(lk.liq||0)*(1+2*mv));gl.uniform1f(FU.uMos,lk.mos||0);gl.uniform1f(FU.uEcho,lk.echo||0);

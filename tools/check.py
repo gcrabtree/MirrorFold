@@ -24,6 +24,9 @@ setTimeout(function(){
   for(i=0;i<OVERLAYS.length;i++)setOverlay(i);
   for(i=0;i<mirrors.length;i++)setMirrors(i);
   setMotion(2);setLook(5);setOverlay(3);
+  /* the land: its shaders compile, each mode and effect target can be chosen, and the JavaScript height is sane */
+  setLand(1);setLand(2);setLandTint(1);setLandFx(1);
+  log("land="+landMode+" built="+!!pLand+" height="+landH(412,300,6).toFixed(3)+" buttons="+$("bLand").textContent+"|"+$("bLandFx").textContent);
   $("bJourney").click();pick("selJT","t:Everything");
   $("bJMove").click();log("movement="+jMove);$("bJMove").click();log("movement="+jMove+" help="+$("aHelp").getAttribute("href"));
   log("journey="+journey+" template="+jt.name);
