@@ -106,6 +106,7 @@ export function cleanMotion(src){
   }
   return out;
 }
+
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
 export const __dbg={get cleanName(){return cleanName}, get cleanPalette(){return cleanPalette}, get cleanCode(){return cleanCode}, get cleanFilter(){return cleanFilter}, get cleanOverlay(){return cleanOverlay}, get cleanWorld(){return cleanWorld},
   get cleanMotion(){return cleanMotion}};

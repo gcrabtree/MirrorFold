@@ -41,7 +41,7 @@ def make_page(inject="", hide_ui=False, quality=None):
     """
     src = open(INDEX, encoding="utf-8").read()
     assert src.count(MAIN) == 1 and src.count("<head>") == 1, "index.html no longer loads the app the way the harness expects"
-    first = {"sharp": "di=1;q=1;resize();", "fast": "di=2;q=0.5;resize();"}.get(quality, "")
+    first = {"sharp": "setDetail(1);", "fast": "setDetail(2);"}.get(quality, "")
     # Relative addresses resolve against the repository, and any uncaught error lands in the page title, where dump() reads it.
     head = '<head><base href="file://' + ROOT + '/">' + \
            '<script>window.onerror=function(m,u,l){document.title="ERR "+m+" @"+String(u).split("/").pop()+":"+l};</script>'

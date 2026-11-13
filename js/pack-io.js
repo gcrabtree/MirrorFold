@@ -1,14 +1,13 @@
-import { BUILTIN_S, BUILTIN_T, adopt, catOf, fillJT, findS, findT, saveStore, selectJourney, store } from "./journey.js";
-import { NPAL, PALETTES, WORLDS } from "./worlds.js";
 import { fillLooks, fillMotions, fillOverlays, fillPalettes, fillWorlds } from "./choose.js";
-import { LOOKS, MOTIONS, OVERLAYS } from "./state.js";
-import { NLOOK, NMOT, NOV, addToLibrary, myFilters, myOverlays, myWorlds, saveLibrary, worldDrop } from "./library.js";
-import { toast } from "./flight.js";
-import { advFill, mk } from "./journey-panel.js";
 import { $, gl } from "./dom.js";
 import { ED, edOpen } from "./editor.js";
+import { toast } from "./flight.js";
+import { advFill, advPick, advS, advT, mk } from "./journey-panel.js";
+import { BUILTIN_S, BUILTIN_T, adopt, catOf, fillJT, findS, findT, journey, saveStore, selectJourney, store } from "./journey.js";
+import { NLOOK, NMOT, NOV, addToLibrary, myFilters, myOverlays, myWorlds, saveLibrary, worldDrop } from "./library.js";
 import { NWORLD } from "./probe.js";
-import { G } from "./shared.js";
+import { LOOKS, MOTIONS, OVERLAYS, sel } from "./state.js";
+import { NPAL, PALETTES, WORLDS } from "./worlds.js";
 
 /* ---------- packs: saving, loading and the library list ---------- */
 export function refreshLists(){ /* after palettes or motions are added or removed */
@@ -43,18 +42,18 @@ export function loadPack(txt,from){
   var tn=got.tpls.map(function(q){return q.name}),sn=got.sets.map(function(q){return q.name});
   store.tpls=store.tpls.filter(function(q){return tn.indexOf(q.name)<0}).concat(got.tpls);
   store.sets=store.sets.filter(function(q){return sn.indexOf(q.name)<0}).concat(got.sets);
-  G.advT=findT(G.advT.name)||BUILTIN_T[0];G.advS=findS(G.advS.name)||BUILTIN_S[0];
-  if(G.journey)selectJourney(store.sel);
+  advPick(findT(advT.name)||BUILTIN_T[0],findS(advS.name)||BUILTIN_S[0]);
+  if(journey)selectJourney(store.sel);
   saveStore();fillJT();advFill();
   toast("Loaded "+packSummary({worlds:{length:n.w},palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},overlays:{length:n.o},templates:got.tpls,sets:got.sets})+".");
   return true;
 }
 function libRemove(kind,i){
   if(kind==="w")worldDrop(i);
-  else if(kind==="p"){PALETTES.splice(i,1);if(G.pi===i)G.pi=0;else if(G.pi>i)G.pi--;}
-  else if(kind==="m"){MOTIONS.splice(i,1);if(G.moi===i)G.moi=0;else if(G.moi>i)G.moi--;}
-  else if(kind==="f"){if(LOOKS[i].prog)gl.deleteProgram(LOOKS[i].prog.prog);LOOKS.splice(i,1);if(G.lki===i)G.lki=0;else if(G.lki>i)G.lki--;}
-  else{if(OVERLAYS[i].prog)gl.deleteProgram(OVERLAYS[i].prog.prog);OVERLAYS.splice(i,1);if(G.ovi===i)G.ovi=0;else if(G.ovi>i)G.ovi--;}
+  else if(kind==="p"){PALETTES.splice(i,1);if(sel.pi===i)sel.pi=0;else if(sel.pi>i)sel.pi--;}
+  else if(kind==="m"){MOTIONS.splice(i,1);if(sel.moi===i)sel.moi=0;else if(sel.moi>i)sel.moi--;}
+  else if(kind==="f"){if(LOOKS[i].prog)gl.deleteProgram(LOOKS[i].prog.prog);LOOKS.splice(i,1);if(sel.lki===i)sel.lki=0;else if(sel.lki>i)sel.lki--;}
+  else{if(OVERLAYS[i].prog)gl.deleteProgram(OVERLAYS[i].prog.prog);OVERLAYS.splice(i,1);if(sel.ovi===i)sel.ovi=0;else if(sel.ovi>i)sel.ovi--;}
   saveLibrary();refreshLists();advFill();
 }
 export function advRenderLib(){ /* the palettes and motions that came from packs, each with a Remove button */
@@ -73,6 +72,7 @@ export function advRenderLib(){ /* the palettes and motions that came from packs
   OVERLAYS.forEach(function(o,i){if(i>=NOV)row("o","Overlay: "+o.name+(o.reviewed?"":" (not reviewed, so shown smoothed)"),i)});
   if(!box.firstChild)box.appendChild(mk("p",{"class":"advNote",text:"Nothing added yet."}));
 }
+
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
 export const __dbg={get refreshLists(){return refreshLists}, get count(){return count}, get packNow(){return packNow}, get packSummary(){return packSummary}, get loadPack(){return loadPack}, get libRemove(){return libRemove},
   get advRenderLib(){return advRenderLib}};

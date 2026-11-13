@@ -1,12 +1,11 @@
 /* What packs have added: the lists and their storage. */
-import { LOOKS, MOTIONS, OVERLAYS } from "./state.js";
+import { scene, setWorldNow } from "./choose.js";
 import { gl } from "./dom.js";
 import { cleanFilter, cleanMotion, cleanOverlay, cleanPalette, cleanWorld } from "./packs.js";
 import { NWORLD, packWorld, probeBuild } from "./probe.js";
-import { NPAL, PALETTES, WORLDS } from "./worlds.js";
 import { build, filterProg, overlayProg } from "./programs.js";
-import { setWorldNow } from "./choose.js";
-import { G } from "./shared.js";
+import { LOOKS, MOTIONS, OVERLAYS } from "./state.js";
+import { NPAL, PALETTES, WORLDS } from "./worlds.js";
 export let NMOT, NLOOK, NOV;
 
 export const LIB_MAX=16;
@@ -54,10 +53,10 @@ export function addToLibrary(raw,from){
   return n;
 }
 export function worldDrop(i){ /* take an added world out; if it is showing, go to the first world */
-  var w=WORLDS[i],was=G.world===w||(G.hyb&&WORLDS[G.hyb.b]===w);
+  var w=WORLDS[i],was=scene.world===w||(scene.hyb&&WORLDS[scene.hyb.b]===w);
   if(w.prog)gl.deleteProgram(w.prog);if(w.probe)gl.deleteProgram(w.probe.prog);
   WORLDS.splice(i,1);
-  if(was){G.hyb=null;setWorldNow(0);}
+  if(was){scene.hyb=null;setWorldNow(0);}
 }
 export function myWorlds(keepReviewed){return WORLDS.slice(NWORLD).map(function(w){var o=cleanWorld(w.src);if(keepReviewed&&w.reviewed)o.reviewed=true;return o})}
 export function myFilters(keepReviewed){return LOOKS.slice(NLOOK).map(function(f){var o=cleanFilter(f);if(keepReviewed&&f.reviewed)o.reviewed=true;return o})}

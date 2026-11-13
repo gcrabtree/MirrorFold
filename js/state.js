@@ -1,5 +1,6 @@
+/* what is chosen in each list, as a position in it */
 import { calm } from "./dom.js";
-import { G } from "./shared.js";
+export const sel={pi:0,mi:0,fi:0,moi:0,lki:0,ovsi:2,ovi:0}; /* palette, mirrors, FX, motion, filter, overlay strength, overlay */
 
 export const stick={id:null,ox:0,oy:0,x:0,y:0};
 export const look={id:null,x:0,y:0};
@@ -43,18 +44,9 @@ export const TRANSITIONS=8;
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 /* ---------- state ---------- */
-G.pos=[0,0,0], G.R=[1,0,0], G.Up=[0,1,0], G.F=[0,0,1];
-G.vel=[0,0,0], G.lookX=0, G.lookY=0, G.rollIn=0;
-G.keys={};
-G.mi=0;
-G.fi=calm?2:0;
-G.moi=0;
-G.lki=0;
-G.ovsi=2;
-G.ovi=0;
-G.trType=0;
+sel.fi=calm?2:0; /* with reduced motion asked for, start with the clean look */
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get stick(){return stick}, get look(){return look}, get mirrors(){return mirrors}, get FX(){return FX}, get MOTIONS(){return MOTIONS}, get LOOKS(){return LOOKS},
-  get OVS(){return OVS}, get OVERLAYS(){return OVERLAYS}, get TRANSITIONS(){return TRANSITIONS}};
+export const __dbg={get sel(){return sel}, get stick(){return stick}, get look(){return look}, get mirrors(){return mirrors}, get FX(){return FX}, get MOTIONS(){return MOTIONS},
+  get LOOKS(){return LOOKS}, get OVS(){return OVS}, get OVERLAYS(){return OVERLAYS}, get TRANSITIONS(){return TRANSITIONS}};

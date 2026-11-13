@@ -1,5 +1,5 @@
 import { fr, md, tile } from "./dom.js";
-import { G } from "./shared.js";
+export let unlocked=0,orbsFound=0; /* palettes unlocked by orbs, and orbs found; kept in this browser */
 
 /* ---------- the worlds ----------
    Each has a GLSL distance estimator (map), the same estimator in JS (de) for the
@@ -477,15 +477,16 @@ export const PALETTES=[
 export const BASE_PALS=7;
 export const NPAL=PALETTES.length;
 /* a built-in palette is open once its orb is found; palettes from a pack are always open */
-export function palOpen(i){return i<BASE_PALS+G.unlocked||i>=NPAL;}
+export function palOpen(i){return i<BASE_PALS+unlocked||i>=NPAL;}
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
+/* an orb was collected: count it, and unlock the next palette if any are left. True if one was unlocked. */
+export function orbCounted(){orbsFound++;if(unlocked<NPAL-BASE_PALS){unlocked++;return true;}return false;}
+
 export function init(){
-G.pi=0;
-G.unlocked=0;
-G.orbsFound=0; /* built-in palettes; any after these came from a pack */
-try{var sv=JSON.parse(localStorage.getItem("mirrorfold")||"{}");G.unlocked=Math.max(0,Math.min(NPAL-BASE_PALS,sv.u|0));G.orbsFound=sv.n|0;}catch(_){}
+try{var sv=JSON.parse(localStorage.getItem("mirrorfold")||"{}");unlocked=Math.max(0,Math.min(NPAL-BASE_PALS,sv.u|0));orbsFound=sv.n|0;}catch(_){}
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get WORLDS(){return WORLDS}, get PALETTES(){return PALETTES}, get BASE_PALS(){return BASE_PALS}, get NPAL(){return NPAL}, get palOpen(){return palOpen}};
+export const __dbg={get unlocked(){return unlocked},set unlocked(v){unlocked=v}, get orbsFound(){return orbsFound},set orbsFound(v){orbsFound=v}, get WORLDS(){return WORLDS}, get PALETTES(){return PALETTES}, get BASE_PALS(){return BASE_PALS}, get NPAL(){return NPAL},
+  get palOpen(){return palOpen}, get orbCounted(){return orbCounted}};

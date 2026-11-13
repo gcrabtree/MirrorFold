@@ -1,6 +1,6 @@
 /* Compiling and linking shader programs. */
+import { canvas, gl } from "./dom.js";
 import { TRAIL_U, VS, finalSource, fragSource, trailSource } from "./shaders.js";
-import { gl } from "./dom.js";
 import { WORLDS } from "./worlds.js";
 let vsObj;
 
@@ -46,11 +46,14 @@ export function hybProg(a,b){
   hybCache[k]=o;return o;
 }
 
+export function bindTex(unit,t){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t);}
+export function passTo(o,p){gl.bindFramebuffer(gl.FRAMEBUFFER,o?o.f:null);gl.viewport(0,0,o?o.w:canvas.width,o?o.h:canvas.height);gl.useProgram(p.prog);}
+
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 vsObj=null;
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get overlayProg(){return overlayProg}, get FS_COPY(){return FS_COPY}, get FINAL_U(){return FINAL_U}, get filterProg(){return filterProg}, get sh(){return sh}, get vsObj(){return vsObj},set vsObj(v){vsObj=v},
-  get link(){return link}, get build(){return build}, get hybCache(){return hybCache}, get hybProg(){return hybProg}};
+export const __dbg={get vsObj(){return vsObj},set vsObj(v){vsObj=v}, get overlayProg(){return overlayProg}, get FS_COPY(){return FS_COPY}, get FINAL_U(){return FINAL_U}, get filterProg(){return filterProg}, get sh(){return sh},
+  get link(){return link}, get build(){return build}, get hybCache(){return hybCache}, get hybProg(){return hybProg}, get bindTex(){return bindTex}, get passTo(){return passTo}};

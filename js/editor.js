@@ -1,15 +1,16 @@
-import { NPAL, PALETTES } from "./worlds.js";
-import { cleanFilter, cleanMotion, cleanName, cleanPalette } from "./packs.js";
-import { LOOKS, MOTIONS } from "./state.js";
-import { LIB_MAX, NLOOK, NMOT, saveLibrary } from "./library.js";
-import { $ } from "./dom.js";
-import { adv, advFill, mk, uniqueName } from "./journey-panel.js";
 import { setLook, setMotion, setPalette } from "./choose.js";
+import { $ } from "./dom.js";
 import { toast } from "./flight.js";
-import { loadPack, packNow, packSummary, refreshLists } from "./pack-io.js";
-import { saveStore, store } from "./journey.js";
 import { wakeHud } from "./input.js";
-import { G } from "./shared.js";
+import { adv, advFill, mk, uniqueName } from "./journey-panel.js";
+import { saveStore, store } from "./journey.js";
+import { LIB_MAX, NLOOK, NMOT, saveLibrary } from "./library.js";
+import { loadPack, packNow, packSummary, refreshLists } from "./pack-io.js";
+import { cleanFilter, cleanMotion, cleanName, cleanPalette } from "./packs.js";
+import { LOOKS, MOTIONS, sel } from "./state.js";
+import { NPAL, PALETTES } from "./worlds.js";
+let ed=null; /* what the editor has open: {kind,item}, or null */
+export function edClose(){ed=null;$("ed").hidden=true;}
 export let ED;
 
 /* the palette editor's plain controls, which build a whole palette from two colours */
@@ -52,31 +53,31 @@ function edShow(v,row){return row[0]==="fx"?FX_NAMES[v|0]:String(+(+v).toFixed(r
 function edHex(c){return "#"+c.map(function(x){return ("0"+Math.round(255*x).toString(16)).slice(-2)}).join("");}
 function edRgb(h){return [1,3,5].map(function(i){return parseInt(h.substr(i,2),16)/255});}
 function edSwatch(){ /* the palette from one end to the other */
-  var cv=$("edSwatch");cv.hidden=G.ed.kind!=="p";if(cv.hidden)return;
-  var x2=cv.getContext("2d"),q=G.ed.item,im=x2.createImageData(256,1),i,j;
+  var cv=$("edSwatch");cv.hidden=ed.kind!=="p";if(cv.hidden)return;
+  var x2=cv.getContext("2d"),q=ed.item,im=x2.createImageData(256,1),i,j;
   for(i=0;i<256;i++){for(j=0;j<3;j++)im.data[i*4+j]=255*Math.min(1,Math.max(0,q.a[j]+q.b[j]*Math.cos(6.28318*(q.c[j]*i/255+q.d[j]))));im.data[i*4+3]=255;}
   x2.putImageData(im,0,0);
 }
 function edRead(){ /* sliders to the item, by way of the cleaner */
-  var E=ED[G.ed.kind],src={name:G.ed.item.name},k;
-  if(G.ed.item.code)src.code=G.ed.item.code;
+  var E=ED[ed.kind],src={name:ed.item.name},k;
+  if(ed.item.code)src.code=ed.item.code;
   E.rows.forEach(function(r){
     if(E.rgb)src[r[0]]=[0,1,2].map(function(j){return +$("ed_"+r[0]+j).value});
     else src[r[0]]=+$("ed_"+r[0]).value;
   });
   var out=E.clean(src);if(!out)return;
   for(k in out)if(out[k]===0)delete out[k]; /* a control at nothing is left out, as in a hand-written pack */
-  E.rows.forEach(function(r){delete G.ed.item[r[0]]});
-  for(k in out)G.ed.item[k]=out[k];
+  E.rows.forEach(function(r){delete ed.item[r[0]]});
+  for(k in out)ed.item[k]=out[k];
   E.rows.forEach(function(r){ /* show what was kept, which can differ from where the slider sits */
-    var v=G.ed.item[r[0]];
+    var v=ed.item[r[0]];
     if(E.rgb)[0,1,2].forEach(function(j){$("ev_"+r[0]+j).textContent=edShow(v[j],r)});
     else $("ev_"+r[0]).textContent=edShow(v||0,r);
   });
   edSwatch();saveLibrary();
 }
 function edSimpleShow(){ /* set the plain palette controls to match the palette, without changing it */
-  var s=palToSimple(G.ed.item);
+  var s=palToSimple(ed.item);
   $("es_one").value=edHex(s.one);$("es_two").value=edHex(s.two);
   ED_SIMPLE.forEach(function(r){$("es_"+r[0]).value=String(s[r[0]]);$("esv_"+r[0]).textContent=edShow($("es_"+r[0]).value,r)});
   $("edNote").hidden=s.exact;
@@ -94,21 +95,21 @@ function edSlider(r,id,val,label,onIn){ /* one slider: its name and its value ab
   return mk("div",{"class":"edRow"},[mk("label",{"for":"ed_"+id,text:label}),mk("span",{"class":"edVal",id:"ev_"+id}),sl]);
 }
 function edHelpFill(){ /* what each control does, in the order they appear */
-  var E=ED[G.ed.kind],box=$("edHelp"),line=function(name,text){box.appendChild(mk("p",{},[mk("b",{text:name+". "}),document.createTextNode(text)]))};
+  var E=ED[ed.kind],box=$("edHelp"),line=function(name,text){box.appendChild(mk("p",{},[mk("b",{text:name+". "}),document.createTextNode(text)]))};
   box.textContent="";box.appendChild(mk("p",{text:E.help}));
-  if(G.ed.kind==="p"){
+  if(ed.kind==="p"){
     line("First colour, Second colour","The two colours the palette runs between. Tap one to choose it.");
     ED_SIMPLE.forEach(function(r){line(r[1],r[5])});
     line("Fine tuning","Opens twelve more sliders, for people who want them. A palette is made of three waves, one each for red, green and blue, and these set each wave by itself. Moving one of the controls above sets all twelve again.");
   }
   E.rows.forEach(function(r){line(r[1],r[5])});
-  if(G.ed.item.code)line("Program","This filter also has a program from its pack. The sliders are added to what the program does and do not change it.");
+  if(ed.item.code)line("Program","This filter also has a program from its pack. The sliders are added to what the program does and do not change it.");
   box.appendChild(mk("p",{text:"Every change is saved as you make it. Sliders stop at the limits a pack is held to. Done closes the editor."}));
 }
 export function edOpen(kind,i){
   var E=ED[kind],item=E.list[i],box=$("edRows"),fine;
   if(!item||i<E.built)return;
-  G.ed={kind:kind,item:item};
+  ed={kind:kind,item:item};
   if(kind==="p")setPalette(i);else if(kind==="m")setMotion(i);else setLook(i);
   $("edKind").textContent=E.word.charAt(0).toUpperCase()+E.word.slice(1);$("edName").value=item.name;
   box.textContent="";$("edFineRows").textContent="";
@@ -127,10 +128,10 @@ export function edOpen(kind,i){
   if(kind==="p")edSimpleShow();
 }
 function edNew(kind){
-  var E=ED[kind],cur=kind==="p"?PALETTES[G.pi]:kind==="m"?MOTIONS[G.moi]:LOOKS[G.lki],src=JSON.parse(JSON.stringify(cur,function(k,v){return k==="prog"?undefined:v}));
+  var E=ED[kind],cur=kind==="p"?PALETTES[sel.pi]:kind==="m"?MOTIONS[sel.moi]:LOOKS[sel.lki],src=JSON.parse(JSON.stringify(cur,function(k,v){return k==="prog"?undefined:v}));
   if(E.list.length-E.built>=LIB_MAX){toast("You have "+LIB_MAX+" added "+E.word+"s. Remove one first.");return;}
   delete src.code; /* a copy takes the slider settings, not the program */
-  if(kind==="m"&&G.moi===0)src={decay:0.96,zoom:0.998};
+  if(kind==="m"&&sel.moi===0)src={decay:0.96,zoom:0.998};
   if(kind==="f"){src.name="x";var mix=cleanFilter(src);src=mix&&Object.keys(mix).length>1?mix:{edge:0.5};}
   src.name=uniqueName("My "+E.word,E.list.map(function(q){return q.name}));
   var item=E.clean(src);if(!item)return;
@@ -174,15 +175,14 @@ ED={
           ["ca","Colour fringing",0,0.04,0.001,"Pulls red and blue apart toward the edges of the screen."],
           ["fx","Built-in effect",0,9,1,"Adds one of the nine ready-made effects."]]}
 };
-G.ed=null;
 $("edName").addEventListener("change",function(){
-  var E=ED[G.ed.kind],old=G.ed.item.name,nn=uniqueName(cleanName(this.value)||"My "+E.word,E.list.filter(function(q){return q!==G.ed.item}).map(function(q){return q.name}));
-  G.ed.item.name=nn;this.value=nn;
+  var E=ED[ed.kind],old=ed.item.name,nn=uniqueName(cleanName(this.value)||"My "+E.word,E.list.filter(function(q){return q!==ed.item}).map(function(q){return q.name}));
+  ed.item.name=nn;this.value=nn;
   store.tpls.forEach(function(t){var st=t[E.cat].set;if(st){var ix=st.indexOf(old);if(ix>=0)st[ix]=nn;}}); /* templates keep pointing at it */
   saveLibrary();saveStore();refreshLists();
 });
 $("edDone").addEventListener("click",function(){
-  var nm=G.ed.item.name;G.ed=null;$("ed").hidden=true;advFill();toast("Saved "+nm+".");wakeHud();
+  var nm=ed.item.name;ed=null;$("ed").hidden=true;advFill();toast("Saved "+nm+".");wakeHud();
 });
 $("edHelpBtn").addEventListener("click",function(){
   var h=$("edHelp");h.hidden=!h.hidden;this.setAttribute("aria-expanded",String(!h.hidden));if(!h.hidden)$("ed").scrollTop=0;
@@ -219,6 +219,6 @@ $("packIn").addEventListener("change",function(){
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get ED(){return ED},set ED(v){ED=v}, get ED_SIMPLE(){return ED_SIMPLE}, get FX_NAMES(){return FX_NAMES}, get palFromSimple(){return palFromSimple}, get palToSimple(){return palToSimple}, get edShow(){return edShow},
-  get edHex(){return edHex}, get edRgb(){return edRgb}, get edSwatch(){return edSwatch}, get edRead(){return edRead}, get edSimpleShow(){return edSimpleShow}, get edSimpleRead(){return edSimpleRead},
-  get edSlider(){return edSlider}, get edHelpFill(){return edHelpFill}, get edOpen(){return edOpen}, get edNew(){return edNew}};
+export const __dbg={get ed(){return ed},set ed(v){ed=v}, get edClose(){return edClose}, get ED(){return ED},set ED(v){ED=v}, get ED_SIMPLE(){return ED_SIMPLE}, get FX_NAMES(){return FX_NAMES}, get palFromSimple(){return palFromSimple},
+  get palToSimple(){return palToSimple}, get edShow(){return edShow}, get edHex(){return edHex}, get edRgb(){return edRgb}, get edSwatch(){return edSwatch}, get edRead(){return edRead},
+  get edSimpleShow(){return edSimpleShow}, get edSimpleRead(){return edSimpleRead}, get edSlider(){return edSlider}, get edHelpFill(){return edHelpFill}, get edOpen(){return edOpen}, get edNew(){return edNew}};

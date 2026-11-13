@@ -1,11 +1,12 @@
-import { fragSource } from "./shaders.js";
-import { link } from "./programs.js";
-import { target } from "./targets.js";
-import { passTo } from "./loop.js";
+import { cam, norm } from "./camera.js";
+import { scene } from "./choose.js";
+import { clock, morphValue } from "./clock.js";
 import { gl } from "./dom.js";
+import { bindTex, link, passTo } from "./programs.js";
+import { fragSource } from "./shaders.js";
+import { pCopy, tA, target } from "./targets.js";
 import { WORLDS } from "./worlds.js";
-import { norm } from "./flight.js";
-import { G } from "./shared.js";
+let probeT=null; /* the 16 by 1 picture the answers are read from */
 export let NWORLD;
 let packMs, packWait;
 
@@ -29,8 +30,8 @@ export function probeBuild(w){
 export function probe(w,m,n){ /* the distances at the first n points in probePts go into probeOut; false if this world cannot be probed */
   if(w.volume)return false;
   var P=probeBuild(w),i;if(!P)return false;
-  if(!G.probeT)G.probeT=target(16,1);
-  passTo(G.probeT,P);gl.uniform3fv(P.U.uPts,probePts);gl.uniform1f(P.U.uM,m);gl.uniform1f(P.U.uTime,G.time);
+  if(!probeT)probeT=target(16,1);
+  passTo(probeT,P);gl.uniform3fv(P.U.uPts,probePts);gl.uniform1f(P.U.uM,m);gl.uniform1f(P.U.uTime,clock.time);
   gl.drawArrays(gl.TRIANGLES,0,3);
   gl.readPixels(0,0,16,1,gl.RGBA,gl.UNSIGNED_BYTE,probePx);
   for(i=0;i<n;i++)probeOut[i]=(probePx[4*i]/255+probePx[4*i+1]/65025+probePx[4*i+2]/16581375)*16-8;
@@ -67,11 +68,23 @@ export function packFrame(w,m,pr){
   if(packMs>4&&packWait>0){packWait--;return;}
   var t0=performance.now(),k,j,d,sx=[0,1,-1,0,0],sy=[0,0,0,1,-1];
   for(k=0;k<5;k++){
-    d=k?norm([G.F[0]+0.7*(G.R[0]*sx[k]+G.Up[0]*sy[k]),G.F[1]+0.7*(G.R[1]*sx[k]+G.Up[1]*sy[k]),G.F[2]+0.7*(G.R[2]*sx[k]+G.Up[2]*sy[k])]):[0,0,0];
-    for(j=0;j<3;j++)probePts[3*k+j]=G.pos[j]+d[j]*pr;
+    d=k?norm([cam.F[0]+0.7*(cam.R[0]*sx[k]+cam.Up[0]*sy[k]),cam.F[1]+0.7*(cam.R[1]*sx[k]+cam.Up[1]*sy[k]),cam.F[2]+0.7*(cam.R[2]*sx[k]+cam.Up[2]*sy[k])]):[0,0,0];
+    for(j=0;j<3;j++)probePts[3*k+j]=cam.pos[j]+d[j]*pr;
   }
   if(probe(w,m,5))for(k=0;k<5;k++)packD[k]=Math.abs(probeOut[k]);
   packMs+=(performance.now()-t0-packMs)*0.1;packWait=2;
+}
+
+/* Wait for the graphics chip before starting a new picture, by reading one point back from it. Without this the
+   browser may queue several pictures ahead of the chip and then stall while it catches up, which shows as stutter
+   even though the average rate is high. (Found by accident: with Stats on, whose probe does the same wait, a PC with a
+   144 Hz screen ran smoothly, and with it off it stuttered.) A pack world's own probe, later in the frame, does the same job. */
+export function chipWait(){
+  if(scene.world.volume||scene.hyb||!probe(scene.world,morphValue(),1)){ /* done the way Stats does it: draw into the small picture, then read from it */
+    if(!probeT)probeT=target(16,1);
+    passTo(probeT,pCopy);bindTex(0,tA.t);gl.uniform1i(pCopy.U.uT,0);gl.drawArrays(gl.TRIANGLES,0,3);
+    gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,probePx);
+  }
 }
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
@@ -81,7 +94,7 @@ export function init(){
    Each point is one pixel of a 16 by 1 picture; the distance, kept between -8 and 8, is spread over three colour bytes
    and read back. This is how a world that has no JavaScript distance function (one from a pack) could still be flown
    through. Reading a picture back makes the page wait for the chip, so it is timed (see Stats). */
-G.probeT=null;
+
 /* ---------- worlds from packs ----------
    A pack world has shader code for its distance but no JavaScript, so everything that needs a distance goes through the
    probe. deMany() is the one way to ask for many points; packFrame() asks once a frame for the five points flight uses. */
@@ -91,6 +104,6 @@ packWait=0;
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get probePts(){return probePts}, get probePx(){return probePx}, get probeOut(){return probeOut}, get probeBuild(){return probeBuild}, get probe(){return probe}, get NWORLD(){return NWORLD},set NWORLD(v){NWORLD=v},
-  get packId(){return packId}, get packWorld(){return packWorld}, get deMany(){return deMany}, get packD(){return packD}, get packMs(){return packMs},set packMs(v){packMs=v}, get packWait(){return packWait},set packWait(v){packWait=v},
-  get packFrame(){return packFrame}};
+export const __dbg={get probeT(){return probeT},set probeT(v){probeT=v}, get NWORLD(){return NWORLD},set NWORLD(v){NWORLD=v}, get packMs(){return packMs},set packMs(v){packMs=v}, get packWait(){return packWait},set packWait(v){packWait=v}, get probePts(){return probePts}, get probePx(){return probePx},
+  get probeOut(){return probeOut}, get probeBuild(){return probeBuild}, get probe(){return probe}, get packId(){return packId}, get packWorld(){return packWorld}, get deMany(){return deMany},
+  get packD(){return packD}, get packFrame(){return packFrame}, get chipWait(){return chipWait}};

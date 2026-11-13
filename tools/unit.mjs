@@ -11,10 +11,10 @@
 import { __dbg as listen } from "../js/listen.js";
 import { __dbg as journey } from "../js/journey.js";
 import { __dbg as vr } from "../js/vr.js";
-import { __dbg as flight } from "../js/flight.js";
+import { __dbg as camera } from "../js/camera.js";
 import { __dbg as packs } from "../js/packs.js";
 import { __dbg as editor } from "../js/editor.js";
-const { makeChangeDetector } = listen, { jPick } = journey, { devMat, gyroTurn } = vr, { userActive } = flight;
+const { makeChangeDetector } = listen, { jPick } = journey, { devMat, gyroTurn } = vr, { userActive } = camera;
 const { cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter, cleanOverlay, cleanWorld } = packs, { palFromSimple, palToSimple } = editor;
 
 let failed = 0;

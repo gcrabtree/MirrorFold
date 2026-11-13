@@ -1,6 +1,6 @@
-import { landH, landHash } from "./land.js";
+import { clock } from "./clock.js";
 import { ALPS_COLS, ALPS_GROUND, ALPS_SHAPE, ALPS_SHAPES, ALPS_SKY, ALPS_ZONE, LAND_T, LFREQ } from "./land-shader.js";
-import { G } from "./shared.js";
+import { landH, landHash } from "./land.js";
 export let LK;
 let CITY_S;
 
@@ -50,9 +50,9 @@ function planetExtra(x,y,z){ /* the same in JavaScript, so the camera can be kep
   var Ar=landHash(ix+91,iz+37),Ag=landHash(ix+92,iz+37),Ab=landHash(ix+91,iz+38),Aa=landHash(ix+92,iz+38);
   var far=Math.min(fx,1-fx,fz,1-fz)/LFREQ+0.5,base=LK[2].xh[(ix&255)+256*(iz&255)];
   if(base!==base)return far;
-  var qx=(fx-(0.35+0.3*Ag))/LFREQ,qz=(fz-(0.35+0.3*Ab))/LFREQ,yy=y-base-0.30-0.5*Aa-0.03*Math.sin(G.time*0.5+Aa*40),dl=Math.max(Math.hypot(qx,qz)-0.5,Math.abs(yy)-0.36);
+  var qx=(fx-(0.35+0.3*Ag))/LFREQ,qz=(fz-(0.35+0.3*Ab))/LFREQ,yy=y-base-0.30-0.5*Aa-0.03*Math.sin(clock.time*0.5+Aa*40),dl=Math.max(Math.hypot(qx,qz)-0.5,Math.abs(yy)-0.36);
   if(dl>0.04)return Math.min(dl,far);
-  var an=6.2832*Aa+G.time*0.2*(Ag-0.5),k=fr(Ar*29),s=0.07+0.10*fr(Ar*7),u=qx*Math.cos(an)+qz*Math.sin(an),w=-qx*Math.sin(an)+qz*Math.cos(an);
+  var an=6.2832*Aa+clock.time*0.2*(Ag-0.5),k=fr(Ar*29),s=0.07+0.10*fr(Ar*7),u=qx*Math.cos(an)+qz*Math.sin(an),w=-qx*Math.sin(an)+qz*Math.cos(an);
   if(k<0.4)return (Math.abs(u)+Math.abs(w)+0.5*Math.abs(yy)-s)*0.6;
   if(k<0.7){var R=0.16+0.16*fr(Ar*13);return Math.hypot(Math.hypot(u,yy)-R,w)-0.012-0.05*R;}
   var bx=Math.abs(u)-0.045*(0.6+4*s),by=Math.abs(yy)-0.20*(0.6+4*s),bz=Math.abs(w)-0.012*(0.6+4*s);
@@ -505,6 +505,6 @@ LK=[
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get stepShape(){return stepShape}, get canyonCell(){return canyonCell}, get canyonExtra(){return canyonExtra}, get planetShape(){return planetShape}, get planetCell(){return planetCell}, get planetExtra(){return planetExtra},
-  get landOwn(){return landOwn}, get EARTH_COLS(){return EARTH_COLS}, get BALL_R(){return BALL_R}, get ballSrc(){return ballSrc}, get CITY_S(){return CITY_S},set CITY_S(v){CITY_S=v}, get CITY_RW(){return CITY_RW},
-  get citySrc(){return citySrc}, get cityBlock(){return cityBlock}, get cityH(){return cityH}, get cityExtra(){return cityExtra}, get LK(){return LK},set LK(v){LK=v}, get landSrc(){return landSrc}};
+export const __dbg={get LK(){return LK},set LK(v){LK=v}, get CITY_S(){return CITY_S},set CITY_S(v){CITY_S=v}, get stepShape(){return stepShape}, get canyonCell(){return canyonCell}, get canyonExtra(){return canyonExtra}, get planetShape(){return planetShape},
+  get planetCell(){return planetCell}, get planetExtra(){return planetExtra}, get landOwn(){return landOwn}, get EARTH_COLS(){return EARTH_COLS}, get BALL_R(){return BALL_R}, get ballSrc(){return ballSrc},
+  get CITY_RW(){return CITY_RW}, get citySrc(){return citySrc}, get cityBlock(){return cityBlock}, get cityH(){return cityH}, get cityExtra(){return cityExtra}, get landSrc(){return landSrc}};
