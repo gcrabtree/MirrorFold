@@ -40,10 +40,21 @@ setTimeout(function(){
   setPalette(np);setMotion(nm);log("using="+PALETTES[pi].name+"/"+MOTIONS[moi].name+" options="+selPal.options.length+"/"+selMotion.options.length);
   log("badpack="+loadPack("{not json")+","+loadPack("[1]")+","+loadPack(JSON.stringify({mirrorfold:2,palettes:[]})));
   $("bLib").click();log("library rows="+$("advMine").children.length);$("advClose").click();
+  /* pack filters: every published pack loads whole, its filter code compiles, and bad code is refused */
+  var nl=LOOKS.length,sp=SITE_PACKS.map(function(t){var k=JSON.parse(t),b=LOOKS.length;var ok=loadPack(t,"site");return k.name+":"+ok+":"+(LOOKS.length-b)+"/"+(k.filters||[]).length}).join(",");
+  log("site packs="+sp);
+  loadPack(JSON.stringify({mirrorfold:1,filters:[{name:"Test code",code:"col=col.gbr;"},{name:"Bad clock",code:"col*=uTime;"},{name:"Bad glsl",code:"col=nothing(col);"},{name:"Test mix",edge:.5,post:5}]}));
+  var tc2=LOOKS.filter(function(f){return f.name==="Test code"})[0];
+  log("filters+"+(LOOKS.length-nl)+" unreviewed="+(tc2&&!tc2.reviewed)+" names="+LOOKS.slice(nl).map(function(f){return f.name}).join("|"));
+  window.__nl=nl;
   libRemove("p",np);libRemove("m",nm);store.tpls=[];saveStore();fillJT();
   log("after remove="+PALETTES.length+"/"+MOTIONS.length+" pi="+pi+" moi="+moi);
   setMotion(2);
 },500);
+setTimeout(function(){setJourney(false);for(var i=window.__nl;i<LOOKS.length;i++)(function(i){setTimeout(function(){setLook(i)},(i-window.__nl)*80)})(i);},700);
+setTimeout(function(){log("code filters drawn="+LOOKS.slice(window.__nl).filter(function(f){return f.code&&f.prog}).length);
+  while(LOOKS.length>window.__nl)libRemove("f",LOOKS.length-1);while(PALETTES.length>NPAL)libRemove("p",NPAL);while(MOTIONS.length>NMOT)libRemove("m",NMOT);
+  store.tpls=[];saveStore();fillJT();setLook(5);setJourney(true);},1150);
 setTimeout(function(){for(var k in J)J[k].t=999;},1200);
 setTimeout(function(){setMusic("tap");tap();},1600);
 setTimeout(tap,2100);
@@ -53,12 +64,19 @@ setTimeout(function(){stepWorld(1);},2900);
 setTimeout(function(){setStereo(false);setMirrors(0);},3500);
 setTimeout(function(){log("world="+world.id+" music="+musicMode+" audio="+(ac?ac.state:"none")+" glerr="+gl.getError()+" DONE")},3800);
 '''
+# every pack published in packs/, as text, so the page can load them the way the site would
+import glob, json
+PACKS = [open(f, encoding="utf-8").read() for f in sorted(glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "packs", "*.json"))) if not f.endswith("index.json")]
+INJECT = "var SITE_PACKS=" + json.dumps(PACKS) + ";\n" + INJECT
 title, err, log = dump(INJECT, budget_ms=4500)
 print("title :", title)
 print("errbox:", repr(err))
 for line in log.split(" ; "):
     if line.strip():
         print("  ", line)
-ok = title == "Mirrorfold" and not err and "FAILED" not in log and "glerr=0" in log and "DONE" in log
+packs_ok = all(json.loads(t)["name"] + ":true:%d/%d" % ((len(json.loads(t).get("filters", [])),) * 2) in log for t in PACKS)
+if not packs_ok:
+    print("   a published pack did not load whole, or one of its filters did not compile")
+ok = title == "Mirrorfold" and not err and "FAILED" not in log and "glerr=0" in log and "DONE" in log and packs_ok
 print("PASS" if ok else "FAIL")
 sys.exit(0 if ok else 1)

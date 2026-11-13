@@ -2,7 +2,7 @@
 
 This document is written for an engineer (or a Claude Code session) picking the project up cold. It describes what the app does, how the code is laid out, the math behind each part, how to test it, and what is known to be weak.
 
-Everything lives in one file, `index.html` (about 2,480 lines, 126 KB): markup, CSS, GLSL and JavaScript. There is no build step and there are no dependencies apart from two Google Fonts.
+Everything lives in one file, `index.html` (about 2,560 lines, 132 KB): markup, CSS, GLSL and JavaScript. There is no build step and there are no dependencies apart from two Google Fonts.
 
 ## 1. What it is
 
@@ -401,15 +401,20 @@ Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, C
 
 ### Packs
 
-A pack is JSON: `{ mirrorfold: 1, name, author, palettes, motions, templates, sets }`. The format and ranges are documented for authors in `packs/README.md`. It is data only; nothing in a pack is evaluated.
+A pack is JSON: `{ mirrorfold: 1, name, author, palettes, motions, filters, templates, sets }`. The format and ranges are documented for authors in `packs/README.md`. Nothing in a pack is evaluated as JavaScript. The only code a pack can carry is the GLSL body of a filter (below).
 
-- **Cleaners.** `cleanName`, `cleanPalette` and `cleanMotion` are pure functions. They refuse a wrong shape (returning `null`), copy only known fields into a new object, and clamp every number. The motion ranges are what keeps a pack from breaking the no-strobe rule, so widen them only after looking at the result.
-- **Library.** Added palettes and motions are appended to `PALETTES` and `MOTIONS` after the built-ins (`NPAL` and `NMOT` are the built-in counts) and stored in `localStorage["mirrorfold-library"]`. They are loaded before the selects and `CATS` are built. `libAdd` refuses built-in names, replaces an earlier added item of the same name, and stops at `LIB_MAX` (16) per kind.
+- **Cleaners.** `cleanName`, `cleanPalette`, `cleanMotion`, `cleanFilter` and `cleanCode` are pure functions. They refuse a wrong shape (returning `null`), copy only known fields into a new object, and clamp every number. The motion ranges are what keeps a pack from breaking the no-strobe rule, so widen them only after looking at the result.
+- **Library.** Added palettes, motions and filters are appended to `PALETTES`, `MOTIONS` and `LOOKS` after the built-ins (`NPAL`, `NMOT` and `NLOOK` are the built-in counts) and stored in `localStorage["mirrorfold-library"]`. They are loaded before the selects and `CATS` are built. `libAdd` refuses built-in names, replaces an earlier added item of the same name, and stops at `LIB_MAX` (16) per kind.
 - **Loading.** `loadPack(text)` is the one entry point for a file, pasted text and a published pack. It adds palettes and motions first, calls `refreshLists()` (which rebuilds the two selects and the palette and motion options in `CATS`), then adopts templates and sets, so a template can name items from its own pack.
 - **Published packs.** `loadSitePacks()` fetches `packs/index.json` from the same folder as the page, once, when the panel opens. File names must match `^[a-z0-9][a-z0-9_-]*\.json$`. Under `file:` it does nothing and the row stays hidden.
 - **Palette locks.** `palOpen(i)` says whether a palette may be used: built-ins up to the orb count, and every added palette. Use it instead of comparing against `BASE_PALS + unlocked`.
 - **Share links** store the palette by index in one base-36 digit. 13 built-ins plus 16 added fit. A link that names an added palette the receiver does not have keeps the receiver's current palette.
-- **`tools/pack.mjs`** extracts the cleaners by name and fails on any pack in `packs/` that would be refused or changed. It is meant to run on pull requests.
+- **Filters.** A pack filter is a `LOOKS` entry: the same control fields the built-ins use (`edge`, `post`, `fx` and so on, clamped by `cleanFilter`) and optionally `code`.
+- **Filter code.** `code` is the body of `void look(vec2 uv, inout vec3 col)`. `finalSource(code)` splices it into a copy of `FS_FINAL` with the helpers `scene`, `luma`, `aspect` and `pixel`, calls it after the built-in filter steps and before bloom, and clamps the result. `filterProg(lk)` compiles that copy on first use and caches it on the entry (`lk.prog`, `null` if it failed). Loading a pack compiles at once, so code that does not compile is left out; code restored from storage compiles when first selected.
+- **What `cleanCode` enforces, and why.** No `#`, comments or backslashes, so the checker and the compiler see the same tokens. Balanced braces that never go negative, so the body cannot close `look` and define more functions (call chains of functions can multiply cost without any loop). No identifier matching `u[A-Z0-9_]…` or `gl_…` except `gl_FragCoord`, so the code cannot name the app's uniforms: it has no clock, no audio and no direct texture access. At most counted `for(int i=0;i<N;i++)` loops, with the product of the counts times the number of `scene` mentions at most 64, which bounds texture reads per pixel. No `discard`, which would leave pixels undefined.
+- **Flash limiter.** Having no clock is not enough: code can amplify tiny changes in the picture into a full-screen flip. So code that is not marked `reviewed` is drawn into `tF[fcur]` and blended with the previous finished frame (`uKeep = exp(-dt/0.25)`, sampler `uPrev`), then copied to the screen with `pCopy`. In a real-time test a filter written to flash swung more than 10% of full brightness 6 times a second with the limiter off and never with it on. `reviewed` is set only for packs fetched from the page's own `packs/` folder (`loadPack(text, "site")`) and is kept in `localStorage`; a file or pasted text can never set it. `tF` is allocated on first need and freed on resize.
+- **VR.** Filters with code are treated as "none" while `stereo` is on, like the built-in filters that move pixels.
+- **`tools/pack.mjs`** extracts the cleaners by name and fails on any pack in `packs/` that would be refused or changed. It runs on every push and pull request (`.github/workflows/check.yml`), together with `tools/unit.mjs`. `tools/check.py` loads every pack in `packs/` and fails if one does not load whole or a filter does not compile; it needs a browser and is run by hand.
 
 ### Setup panel
 

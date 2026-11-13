@@ -3,7 +3,7 @@
 //   node tools/pack.mjs                  checks every pack in packs/ and packs/index.json
 //   node tools/pack.mjs my-pack.json     checks one file
 //
-// A pack passes when every palette and motion is accepted unchanged. Anything the app would
+// A pack passes when every palette, motion and filter is accepted unchanged. Anything the app would
 // refuse or pull back into range is reported, and the exit code is 1.
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -16,11 +16,11 @@ function grab(name) {
   if (!m) throw new Error("could not find function " + name + " in index.html");
   return m[0];
 }
-const { cleanName, cleanPalette, cleanMotion } = new Function(
-  grab("cleanName") + "\n" + grab("cleanPalette") + "\n" + grab("cleanMotion") + "\nreturn {cleanName,cleanPalette,cleanMotion};")();
+const NAMES = ["cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter"];
+const { cleanName, cleanPalette, cleanMotion, cleanFilter } = new Function(NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
 
 const LIB_MAX = 16, MAX_BYTES = 200000;
-const KEYS = ["mirrorfold", "name", "author", "palettes", "motions", "templates", "sets"];
+const KEYS = ["mirrorfold", "name", "author", "palettes", "motions", "filters", "templates", "sets"];
 const CATS = ["world", "palette", "mirrors", "motion", "filter", "overlay"];
 let bad = 0;
 function fail(file, msg) { console.log("FAIL " + file + ": " + msg); bad++; }
@@ -32,7 +32,7 @@ function checkList(file, kind, list, clean) {
   const names = [];
   list.forEach((item, i) => {
     const out = clean(item), label = kind + " " + (i + 1) + (item && item.name ? ' "' + item.name + '"' : "");
-    if (!out) return fail(file, label + " would be refused (wrong shape, or a value that is not a number)");
+    if (!out) return fail(file, label + " would be refused (wrong shape, a value that is not a number, or filter code that breaks the rules)");
     for (const k of Object.keys(item)) if (!(k in out)) fail(file, label + " has an unknown field " + JSON.stringify(k));
     for (const k of Object.keys(out)) if (JSON.stringify(out[k]) !== JSON.stringify(item[k])) fail(file, label + ": " + k + " " + JSON.stringify(item[k]) + " would become " + JSON.stringify(out[k]));
     if (names.includes(out.name)) fail(file, label + " repeats a name");
@@ -53,6 +53,7 @@ function checkPack(path) {
   for (const k of ["name", "author"]) if (typeof p[k] !== "string" || cleanName(p[k]) !== p[k] || !p[k]) fail(file, JSON.stringify(k) + " must be 1 to 28 plain characters");
   const pals = checkList(file, "palette", p.palettes, cleanPalette);
   const mots = checkList(file, "motion", p.motions, cleanMotion);
+  const flts = checkList(file, "filter", p.filters, cleanFilter);
   const tpls = [];
   for (const t of Array.isArray(p.templates) ? p.templates : []) {
     if (!t || typeof t !== "object" || cleanName(t.name) !== t.name || !t.name) { fail(file, "a template has no plain name"); continue; }
@@ -67,7 +68,7 @@ function checkPack(path) {
     if (!s || typeof s !== "object" || cleanName(s.name) !== s.name || !s.name) { fail(file, "a set has no plain name"); continue; }
     if (!Array.isArray(s.items)) fail(file, 'set "' + s.name + '" has no items');
   }
-  if (bad === before) console.log("ok   " + file + ": " + pals.length + " palettes, " + mots.length + " motions, " + tpls.length + " templates, " + (p.sets || []).length + " sets");
+  if (bad === before) console.log("ok   " + file + ": " + pals.length + " palettes, " + mots.length + " motions, " + flts.length + " filters, " + tpls.length + " templates, " + (p.sets || []).length + " sets");
 }
 
 const args = process.argv.slice(2);

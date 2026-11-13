@@ -3,7 +3,7 @@
 //   jPick               picks a journey's next option, including the weighted mirror choice
 //   devMat, gyroTurn    turn the phone's orientation angles into a head turn for the VR viewer
 //   userActive          decides how much the user is steering, so the autopilot can stand back
-//   cleanName, cleanPalette, cleanMotion   check and limit everything read from a pack
+//   cleanName, cleanPalette, cleanMotion, cleanFilter, cleanCode   check and limit everything read from a pack
 //
 //   node tools/unit.mjs
 import { readFileSync } from "node:fs";
@@ -16,8 +16,8 @@ function grab(name) {
   if (!m) throw new Error("could not find function " + name + " in index.html");
   return m[0];
 }
-const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion"];
-const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion } = new Function(
+const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter"];
+const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter } = new Function(
   NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
 
 let failed = 0;
@@ -114,6 +114,39 @@ c = cleanMotion({ name: "Wild", decay: 1, zoom: 3, rot: 9, swirl: -9, wob: 1, ri
 expect("motion numbers are pulled into range", JSON.stringify(c) === JSON.stringify({ name: "Wild", decay: 0.98, zoom: 1.05, rot: 0.025, swirl: -0.08, wob: 0.006, rip: 0.03, dx: 0.012, dy: -0.012, kick: 1 }), JSON.stringify(c));
 expect("trails from a motion always fade", cleanMotion({ name: "x", decay: 1 }).decay < 1);
 expect("a motion with text for a number is refused", cleanMotion({ name: "x", zoom: "1" }) === null);
+
+// ---- pack filters: control mixes are limited, and shader code is refused unless it keeps to the rules
+c = cleanFilter({ name: "Inked", edge: 0.6, post: 6 });
+expect("a good filter mix passes unchanged", JSON.stringify(c) === JSON.stringify({ name: "Inked", edge: 0.6, post: 6 }));
+c = cleanFilter({ name: "x", post: 1, mos: 2, edge: 9, fx: 4.4, liq: 1, reviewed: true, prog: {} });
+expect("filter numbers are pulled into range and other fields dropped", JSON.stringify(c) === JSON.stringify({ name: "x", edge: 1, post: 3, mos: 8, liq: 0.03, fx: 4 }), JSON.stringify(c));
+const good = "float l=luma(col);col=mix(pal(0.15),pal(0.65),l);";
+expect("plain filter code passes", cleanCode(good) === good);
+expect("a counted loop with a few picture reads passes", cleanCode("vec3 s=vec3(0.0);for(int i=0;i<8;i++){s+=scene(uv+pixel*float(i));}col=s/8.0;") !== null);
+expect("gl_FragCoord is allowed", cleanCode("col*=0.8+0.2*cos(gl_FragCoord.y);") !== null);
+const refused = {
+  "the clock": "col*=step(0.5,fract(uTime*10.0));",
+  "the slow hue clock": "col=pal(uHue);",
+  "the picture texture by name": "col=texture2D(uT,uv).rgb;",
+  "other gl_ names": "col=gl_FragColor.rgb;",
+  "a preprocessor line": "#define X uTime\ncol*=X;",
+  "a line comment": "col*=0.5; // hi",
+  "a block comment": "/* { */ col*=0.5;",
+  "a backslash": "col*=0.5;\\\n",
+  "closing the function to start another": "} void f(){ col*=0.5;",
+  "unbalanced braces": "if(col.r>0.5){col*=0.5;",
+  "a while loop": "float i=0.0;while(i<9.0){i+=1.0;}",
+  "a loop without a plain count": "for(float t=0.0;t<1.0;t+=0.001){col*=0.999;}",
+  "a loop that counts too far": "for(int i=0;i<200;i++){col*=0.999;}",
+  "too many picture reads in loops": "for(int i=0;i<8;i++){for(int j=0;j<8;j++){col+=scene(uv)+scene(uv);}}",
+  "discard": "if(col.r>0.5)discard;",
+  "its own main": "col*=0.5;} void main(){",
+  "characters outside plain text": "col*=0.5;\u00e9",
+  "more than 2000 characters": "col*=1.0;".repeat(300),
+  "something that is not text": 7,
+};
+for (const [what, code] of Object.entries(refused)) expect("filter code is refused for: " + what, cleanCode(code) === null);
+expect("a filter with refused code is refused whole", cleanFilter({ name: "x", edge: 0.5, code: "col*=uTime;" }) === null);
 
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

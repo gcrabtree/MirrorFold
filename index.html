@@ -201,7 +201,7 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
     <div class="advRow"><button id="advUseS" type="button" class="advGo">Use this set</button></div>
 
     <h3 id="advLibHead">Library</h3>
-    <p class="advNote">A pack is a small file of palettes, motions, journey templates and sets. It holds names and numbers only, never program code. What you add is saved in this browser only.</p>
+    <p class="advNote">A pack is a small file of palettes, motions, filters, journey templates and sets. Nothing in a pack can reach the page or your data. A filter may hold a short picture program, which is checked before use. What you add is saved in this browser only.</p>
     <div class="advRow" id="advSiteRow" hidden><select id="advSite" aria-label="Packs published with Mirrorfold"></select><button id="advSiteAdd" type="button">Add this pack</button></div>
     <div class="advRow"><button id="advFile" type="button">Load a pack file</button><button id="advSave" type="button">Save mine as a pack file</button><input id="packIn" type="file" accept=".json,application/json" hidden></div>
     <div id="advMine"></div>
@@ -733,6 +733,44 @@ function cleanPalette(src){
   }
   return out;
 }
+/* A filter from a pack is a mix of the built-in filter controls and, optionally, a short piece of shader code.
+   The code is the inside of one function. It is refused unless it is short, has no comments, no preprocessor lines,
+   no functions of its own, no names that reach the app's own inputs (so it has no clock), and only small counted loops. */
+function cleanCode(src){
+  if(typeof src!=="string"||!src.length||src.length>2000)return null;
+  if(/[^\x20-\x7e\n\t]/.test(src)||/[#\\"'`$@]|\/\/|\/\*/.test(src))return null;
+  var depth=0,i,ch,ids=src.match(/[A-Za-z_][A-Za-z0-9_]*/g)||[],loops=0,scenes=0,cost=1,m;
+  for(i=0;i<src.length;i++){
+    ch=src.charAt(i);
+    if(ch==="{")depth++;else if(ch==="}"){depth--;if(depth<0)return null;}
+  }
+  if(depth!==0)return null;
+  for(i=0;i<ids.length;i++){
+    if(ids[i]==="gl_FragCoord")continue;
+    if(/^(u[A-Z0-9_].*|gl_.*|.*__.*|v|while|do|discard|main|look|texture2D.*|textureCube.*)$/.test(ids[i]))return null;
+    if(ids[i]==="for")loops++;
+    if(ids[i]==="scene")scenes++;
+  }
+  var re=/\bfor\s*\(\s*int\s+[A-Za-z_]\w*\s*=\s*0\s*;\s*[A-Za-z_]\w*\s*<\s*(\d{1,3})\s*;\s*[A-Za-z_]\w*\s*\+\+\s*\)/g;
+  while((m=re.exec(src))){loops--;cost*=Math.max(1,+m[1]);}
+  if(loops!==0||cost*Math.max(1,scenes)>64)return null;
+  return src;
+}
+function cleanFilter(src){
+  if(!src||typeof src!=="object")return null;
+  var lim={echo:[0,1],edge:[0,1],solar:[0,1],inv:[0,1],post:[3,16],mos:[8,400],liq:[0,0.03],hue:[0,1],ca:[0,0.04],fx:[0,9]};
+  var name=cleanName(src.name),out={name:name},k,v;
+  if(!name)return null;
+  for(k in lim){
+    v=src[k];if(v===undefined||v===null||v===0)continue;
+    if(typeof v!=="number"||!isFinite(v))return null;
+    out[k]=Math.max(lim[k][0],Math.min(lim[k][1],k==="fx"?Math.round(v):v));
+  }
+  if(src.code!==undefined&&src.code!==null){
+    out.code=cleanCode(src.code);if(!out.code)return null;
+  }
+  return out;
+}
 function cleanMotion(src){
   if(!src||typeof src!=="object")return null;
   var lim={decay:[0,0.98],zoom:[0.95,1.05],rot:[-0.025,0.025],swirl:[-0.08,0.08],wob:[0,0.006],rip:[0,0.03],dx:[-0.012,0.012],dy:[-0.012,0.012],kick:[-1,1]};
@@ -992,6 +1030,19 @@ var FS_FINAL=[
 "  gl_FragColor=vec4(col,1.0);",
 "}"].join("\n");
 
+/* the final pass with a pack filter's code in it. The code sees the picture and the palette, and nothing that changes with time. */
+function finalSource(code){
+  return FS_FINAL
+   .replace("void main(){","uniform sampler2D uPrev;uniform float uKeep;float aspect;vec2 pixel;\nvec3 scene(vec2 uv){return texture2D(uT,uv).rgb;}\nfloat luma(vec3 c){return dot(c,LW);}\nvoid look(vec2 uv,inout vec3 col){\n"+code+"\n}\nvoid main(){")
+   .replace("  col+=texture2D(uB,0.5+cw).rgb*uBloom;","  aspect=uAsp;pixel=uPx;look(0.5+cw,col);col=clamp(col,0.0,1.0);\n  col+=texture2D(uB,0.5+cw).rgb*uBloom;")
+   .replace("  gl_FragColor=vec4(col,1.0);","  if(uKeep>0.0)col=mix(col,texture2D(uPrev,v).rgb,uKeep);\n  gl_FragColor=vec4(col,1.0);");
+}
+var FS_COPY="precision mediump float;varying vec2 v;uniform sampler2D uT;void main(){gl_FragColor=texture2D(uT,v);}";
+var FINAL_U=["uT","uB","uWarp","uCA","uBloom","uTint","uTime","uAsp","uPx","uLiq","uMos","uEcho","uEdge","uPost","uSolar","uInv","uHueRot","uTr","uFx","uHue","uVr","uPa","uPb","uPc","uPd"];
+function filterProg(lk){ /* null if this filter's code does not compile on this device */
+  if(lk.prog===undefined){try{lk.prog=link(finalSource(lk.code),FINAL_U.concat(["uPrev","uKeep"]))}catch(e){lk.prog=null;}}
+  return lk.prog;
+}
 function sh(type,src){
   var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);
   if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){throw new Error(gl.getShaderInfoLog(s)||"shader failed");}
@@ -1024,12 +1075,12 @@ function hybProg(a,b){
   var o=link(fragSource({glsl:g,fog:(A.fog+B.fog)/2,maxd:Math.max(A.maxd,B.maxd)}),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr"]);
   hybCache[k]=o;return o;
 }
-var pTrail,pDown,pBlur,pFinal;
+var pTrail,pDown,pBlur,pFinal,pCopy;
 try{
   pTrail=link(FS_TRAIL,["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uPa","uPb","uPc","uPd"]);
   pDown=link(FS_DOWN,["uT","uPx"]);
   pBlur=link(FS_BLUR,["uT","uDir"]);
-  pFinal=link(FS_FINAL,["uT","uB","uWarp","uCA","uBloom","uTint","uTime","uAsp","uPx","uLiq","uMos","uEcho","uEdge","uPost","uSolar","uInv","uHueRot","uTr","uFx","uHue","uVr","uPa","uPb","uPc","uPd"]);
+  pFinal=link(FS_FINAL,FINAL_U);pCopy=link(FS_COPY,["uT"]);
 }catch(e){errBox.textContent="The effects shaders did not compile on this device.\n"+e.message;return;}
 
 var buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
@@ -1049,6 +1100,7 @@ function target(w,h){
 }
 function freeT(o){if(o){gl.deleteTexture(o.t);gl.deleteFramebuffer(o.f);}}
 var tA=null,tT=[null,null],tB=[null,null],cur=0;
+var tF=[null,null],fcur=0; /* the last two finished pictures, kept only while an unreviewed pack filter is being smoothed */
 
 /* ---------- resolution, adapts to frame time ---------- */
 var DETAIL=["auto","sharp","fast"],di=0,q=0.85;
@@ -1057,7 +1109,7 @@ function resize(){
   var w=Math.max(2,Math.floor(canvas.clientWidth*dpr)),h=Math.max(2,Math.floor(canvas.clientHeight*dpr));
   if(canvas.width!==w||canvas.height!==h||!tA){
     canvas.width=w;canvas.height=h;
-    freeT(tA);freeT(tT[0]);freeT(tT[1]);freeT(tB[0]);freeT(tB[1]);
+    freeT(tA);freeT(tT[0]);freeT(tT[1]);freeT(tB[0]);freeT(tB[1]);freeT(tF[0]);freeT(tF[1]);tF=[null,null];
     tA=target(w,h);tT[0]=target(w,h);tT[1]=target(w,h);
     var bw=Math.max(2,w>>2),bh=Math.max(2,h>>2);
     tB[0]=target(bw,bh);tB[1]=target(bw,bh);
@@ -1105,22 +1157,35 @@ var LOOKS=[
 var OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"}],ovi=0;
 var TRANSITIONS=8,trType=0;
 /* palettes and motions added from packs sit after the built-in ones and are saved in this browser */
-var NMOT=MOTIONS.length,LIB_MAX=16;
+var NMOT=MOTIONS.length,NLOOK=LOOKS.length,LIB_MAX=16;
 function libAdd(list,nBuilt,item){ /* 1 if taken. A built-in name is refused; a name already added is replaced. */
   if(!item)return 0;
-  for(var i=0;i<list.length;i++)if(list[i].name===item.name){if(i<nBuilt)return 0;list[i]=item;return 1;}
+  for(var i=0;i<list.length;i++)if(list[i].name===item.name){
+    if(i<nBuilt)return 0;
+    if(list[i].prog)gl.deleteProgram(list[i].prog.prog);
+    list[i]=item;return 1;
+  }
   if(list.length-nBuilt>=LIB_MAX)return 0;
   list.push(item);return 1;
 }
-function addToLibrary(raw){
-  var n={p:0,m:0};
+/* from: "stored" for what this browser saved earlier, "site" for a pack published with the page, nothing for a file or pasted text.
+   Filter code from the site's own packs has been reviewed. Any other filter code is shown smoothed over time, so it cannot flash. */
+function addToLibrary(raw,from){
+  var n={p:0,m:0,f:0};
   if(!raw||typeof raw!=="object")return n;
+  (Array.isArray(raw.filters)?raw.filters:[]).forEach(function(x){
+    var f=cleanFilter(x);
+    if(f&&(from==="site"||(from==="stored"&&x.reviewed===true)))f.reviewed=true;
+    if(f&&f.code&&from!=="stored"&&!filterProg(f))f=null; /* does not compile here: leave it out */
+    n.f+=libAdd(LOOKS,NLOOK,f);
+  });
   (Array.isArray(raw.palettes)?raw.palettes:[]).forEach(function(x){n.p+=libAdd(PALETTES,NPAL,cleanPalette(x))});
   (Array.isArray(raw.motions)?raw.motions:[]).forEach(function(x){n.m+=libAdd(MOTIONS,NMOT,cleanMotion(x))});
   return n;
 }
-function saveLibrary(){try{localStorage.setItem("mirrorfold-library",JSON.stringify({palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT)}))}catch(_){}}
-try{addToLibrary(JSON.parse(localStorage.getItem("mirrorfold-library")||"{}"))}catch(_){}
+function myFilters(keepReviewed){return LOOKS.slice(NLOOK).map(function(f){var o=cleanFilter(f);if(keepReviewed&&f.reviewed)o.reviewed=true;return o})}
+function saveLibrary(){try{localStorage.setItem("mirrorfold-library",JSON.stringify({palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(true)}))}catch(_){}}
+try{addToLibrary(JSON.parse(localStorage.getItem("mirrorfold-library")||"{}"),"stored")}catch(_){}
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */
 var J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22}};
 function jReset(k){J[k].t=0;J[k].next=J[k].base*(0.8+0.4*Math.random());}
@@ -1176,7 +1241,12 @@ function fillMotions(){
   selMotion.value=String(moi);
 }
 fillMotions();
-LOOKS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Filter: "+o2.name;selLook.appendChild(o);});
+function fillLooks(){
+  selLook.textContent="";
+  LOOKS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Filter: "+o2.name;selLook.appendChild(o);});
+  selLook.value=String(lki);
+}
+fillLooks();
 OVERLAYS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Overlay: "+o2.name;selOv.appendChild(o);});
 function setOverlay(i){ovi=i;selOv.value=String(i);}
 selOv.addEventListener("change",function(){setOverlay(+this.value);wakeHud()});
@@ -1687,35 +1757,37 @@ $("advUseS").addEventListener("click",function(){useJourney("s:"+advS.name,advS.
 function refreshLists(){ /* after palettes or motions are added or removed */
   catOf("palette").opts=PALETTES.map(function(q){return [q.name,q.name]});
   catOf("motion").opts=MOTIONS.map(function(o){return [o.name,o.name]});
-  fillPalettes();fillMotions();
+  catOf("filter").opts=LOOKS.map(function(o){return [o.name,o.name]});
+  fillPalettes();fillMotions();fillLooks();
 }
 function count(n,word){return n+" "+word+(n===1?"":"s")}
 function packNow(){ /* everything of the user's own, as a pack */
   var strip=function(list){return JSON.parse(JSON.stringify(list)).map(function(x){delete x.builtin;return x})};
-  return {mirrorfold:1,name:"My Mirrorfold pack",author:"",palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),templates:strip(store.tpls),sets:strip(store.sets)};
+  return {mirrorfold:1,name:"My Mirrorfold pack",author:"",palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(false),templates:strip(store.tpls),sets:strip(store.sets)};
 }
-function packSummary(k){return count(k.palettes.length,"palette")+", "+count(k.motions.length,"motion")+", "+count(k.templates.length,"template")+" and "+count(k.sets.length,"set")}
-function loadPack(txt){
+function packSummary(k){return count(k.palettes.length,"palette")+", "+count(k.motions.length,"motion")+", "+count(k.filters.length,"filter")+", "+count(k.templates.length,"template")+" and "+count(k.sets.length,"set")}
+function loadPack(txt,from){
   var raw=null;
   if(typeof txt==="string"&&txt.length<=200000){try{raw=JSON.parse(txt)}catch(e){}}
   if(!raw||typeof raw!=="object"||Array.isArray(raw)){toast("That is not a Mirrorfold pack.");return false;}
   if(+raw.mirrorfold>1){toast("That pack was made for a newer Mirrorfold.");return false;}
-  var n=addToLibrary(raw);
-  if(n.p||n.m){saveLibrary();refreshLists();} /* before the templates, so they can name the new palettes and motions */
+  var n=addToLibrary(raw,from==="site"?"site":undefined);
+  if(n.p||n.m||n.f){saveLibrary();refreshLists();} /* before the templates, so they can name what was just added */
   var got=adopt(raw);
-  if(!n.p&&!n.m&&!got.tpls.length&&!got.sets.length){toast("Nothing in that pack could be used.");return false;}
+  if(!n.p&&!n.m&&!n.f&&!got.tpls.length&&!got.sets.length){toast("Nothing in that pack could be used.");return false;}
   var tn=got.tpls.map(function(q){return q.name}),sn=got.sets.map(function(q){return q.name});
   store.tpls=store.tpls.filter(function(q){return tn.indexOf(q.name)<0}).concat(got.tpls);
   store.sets=store.sets.filter(function(q){return sn.indexOf(q.name)<0}).concat(got.sets);
   advT=findT(advT.name)||BUILTIN_T[0];advS=findS(advS.name)||BUILTIN_S[0];
   if(journey)selectJourney(store.sel);
   saveStore();fillJT();advFill();
-  toast("Loaded "+packSummary({palettes:{length:n.p},motions:{length:n.m},templates:got.tpls,sets:got.sets})+".");
+  toast("Loaded "+packSummary({palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},templates:got.tpls,sets:got.sets})+".");
   return true;
 }
 function libRemove(kind,i){
   if(kind==="p"){PALETTES.splice(i,1);if(pi===i)pi=0;else if(pi>i)pi--;}
-  else{MOTIONS.splice(i,1);if(moi===i)moi=0;else if(moi>i)moi--;}
+  else if(kind==="m"){MOTIONS.splice(i,1);if(moi===i)moi=0;else if(moi>i)moi--;}
+  else{if(LOOKS[i].prog)gl.deleteProgram(LOOKS[i].prog.prog);LOOKS.splice(i,1);if(lki===i)lki=0;else if(lki>i)lki--;}
   saveLibrary();refreshLists();advFill();
 }
 function advRenderLib(){ /* the palettes and motions that came from packs, each with a Remove button */
@@ -1727,7 +1799,8 @@ function advRenderLib(){ /* the palettes and motions that came from packs, each 
   };
   PALETTES.forEach(function(q,i){if(i>=NPAL)row("p","Palette: "+q.name,i)});
   MOTIONS.forEach(function(o,i){if(i>=NMOT)row("m","Motion: "+o.name,i)});
-  if(!box.firstChild)box.appendChild(mk("p",{"class":"advNote",text:"No added palettes or motions yet."}));
+  LOOKS.forEach(function(o,i){if(i>=NLOOK)row("f","Filter: "+o.name+(o.code&&!o.reviewed?" (not reviewed, so shown smoothed)":""),i)});
+  if(!box.firstChild)box.appendChild(mk("p",{"class":"advNote",text:"No added palettes, motions or filters yet."}));
 }
 $("advCopy").addEventListener("click",function(){
   var k=packNow(),txt=JSON.stringify(k);$("advIO").value=txt;
@@ -1770,7 +1843,7 @@ function loadSitePacks(){
 $("advSiteAdd").addEventListener("click",function(){
   var file=$("advSite").value;
   if(!sitePacks||sitePacks.indexOf(file)<0)return;
-  fetchText("packs/"+file).then(loadPack,function(){toast("That pack could not be fetched.")});
+  fetchText("packs/"+file).then(function(t){loadPack(t,"site")},function(){toast("That pack could not be fetched.")});
 });
 function openAdv(toLibrary){
   var cur=store.sel.charAt(0)==="t"?findT(store.sel.slice(2)):null,cs=store.sel.charAt(0)==="s"?findS(store.sel.slice(2)):null;
@@ -2429,7 +2502,7 @@ function frame(now){
   /* 2. feedback: the last frame, warped by the chosen motion and fading, with this frame laid over it */
   var mo=MOTIONS[moi],lk=LOOKS[lki],k60=dt*60,TU=pTrail.U;
   /* VR viewer: filters that move parts of the picture would show each eye something different, so they are left out */
-  if(stereo&&(lk.echo||lk.mos||lk.liq||lk.hue||(lk.fx>0&&lk.fx<5)))lk=LOOKS[0];
+  if(stereo&&(lk.echo||lk.mos||lk.liq||lk.hue||lk.code||(lk.fx>0&&lk.fx<5)))lk=LOOKS[0];
   var tx=hueT+wHue+0.2,tint=[0,0,0];
   for(j=0;j<3;j++)tint[j]=Math.min(1,Math.max(0,palCur.a[j]+palCur.b[j]*Math.cos(6.28318*(palCur.c[j]*tx+palCur.d[j]))));
   var tc=tT[cur],tp=tT[1-cur];
@@ -2459,8 +2532,14 @@ function frame(now){
   }
 
   /* 4. to the screen: the chosen filter, colour fringing at the edges, bloom, and the warp twist */
-  var FU=pFinal.U;
-  passTo(null,pFinal);bindTex(0,tc.t);bindTex(1,tB[0].t);
+  /* a pack filter with code has its own copy of this pass. Unreviewed code is blended with the last finished picture,
+     so whatever it does, it cannot flash: a change takes about a quarter of a second to come through. */
+  var lp=lk.code?filterProg(lk):null;
+  if(lk.code&&!lp&&!lk.told){lk.told=1;toast("Filter "+lk.name+" does not work on this device.");}
+  var slow=!!lp&&!lk.reviewed,PF=lp||pFinal,FU=PF.U;
+  if(slow&&!tF[0]){tF[0]=target(canvas.width,canvas.height);tF[1]=target(canvas.width,canvas.height);}
+  passTo(slow?tF[fcur]:null,PF);bindTex(0,tc.t);bindTex(1,tB[0].t);
+  if(lp){bindTex(3,slow?tF[1-fcur].t:tc.t);gl.uniform1i(FU.uPrev,3);gl.uniform1f(FU.uKeep,slow?Math.exp(-dt/0.25):0);}
   gl.uniform1i(FU.uT,0);gl.uniform1i(FU.uB,1);
   gl.uniform1f(FU.uWarp,warp);gl.uniform1f(FU.uTr,stereo?5:trType);gl.uniform1f(FU.uVr,stereo?1:0); /* VR viewer always uses the blink transition */
   gl.uniform1f(FU.uCA,stereo?0:fx.ca*(1+1.5*spN)+0.012*boost+(lk.ca||0)+(fi===2?0:0.006*hp));
@@ -2473,6 +2552,7 @@ function frame(now){
   gl.uniform3fv(FU.uPa,palCur.a);gl.uniform3fv(FU.uPb,palCur.b);gl.uniform3fv(FU.uPc,palCur.c);gl.uniform3fv(FU.uPd,palCur.d);
   gl.uniform3f(FU.uTint,tint[0],tint[1],tint[2]);
   gl.drawArrays(gl.TRIANGLES,0,3);
+  if(slow){passTo(null,pCopy);bindTex(0,tF[fcur].t);gl.uniform1i(pCopy.U.uT,0);gl.drawArrays(gl.TRIANGLES,0,3);fcur=1-fcur;}
   cur=1-cur;
 }
 canvas.addEventListener("webglcontextlost",function(e){e.preventDefault();errBox.textContent="The graphics context was lost. Reload the page to continue.";});

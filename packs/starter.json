@@ -10,13 +10,13 @@
   {"name": "Slow spin", "decay": 0.96, "zoom": 0.998, "rot": 0.006},
   {"name": "Updraft", "decay": 0.962, "zoom": 1.002, "dy": -0.005, "wob": 0.001}
  ],
+ "filters": [
+  {"name": "Inked", "edge": 0.6, "post": 6},
+  {"name": "Duotone", "code": "float l=luma(col);col=mix(pal(0.15),pal(0.65),smoothstep(0.05,0.8,l))*(0.25+0.75*l);"},
+  {"name": "Soft focus", "code": "vec3 s=vec3(0.0);for(int i=0;i<8;i++){float a=float(i)*0.7854;s+=scene(uv+3.5*pixel*vec2(cos(a),sin(a)));}col=mix(col,s/8.0,0.6);"}
+ ],
  "templates": [
-  {"name": "Starter drift",
-   "palette": {"mode": "random", "every": 30, "set": ["Glacier", "Rust and teal"]},
-   "mirrors": {"mode": "off"},
-   "motion": {"mode": "random", "every": 40, "set": ["Slow spin", "Updraft"]},
-   "filter": {"mode": "off"},
-   "overlay": {"mode": "off"}}
+  {"name": "Starter drift", "palette": {"mode": "random", "every": 30, "set": ["Glacier", "Rust and teal"]}, "mirrors": {"mode": "off"}, "motion": {"mode": "random", "every": 40, "set": ["Slow spin", "Updraft"]}, "filter": {"mode": "random", "every": 45, "set": ["none", "Duotone", "Soft focus"]}, "overlay": {"mode": "off"}}
  ],
  "sets": []
 }
