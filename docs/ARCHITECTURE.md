@@ -15,7 +15,7 @@ Features, in the order a user meets them:
 - **Kaleidoscope mirrors**: off, 3, 4, 6, 8 or 12 segments, applied to the ray direction.
 - **13 palettes** (7 available at once, 6 unlocked by finding orbs).
 - **Feedback motions** (6), **filters** (17), **overlays** (7) and **transitions** (8).
-- **Music**: a built-in generative track, a user's audio file with a scrubber, or tap tempo for music playing in another app. Three frequency bands drive different parts of the picture.
+- **Music**: a built-in generative track, a user's audio file with a scrubber, the sound of another browser tab, the microphone, or tap tempo for music playing in another app. Three frequency bands drive different parts of the picture.
 - **Journey**: an autopilot that flies, and changes world, palette, mirrors, motion, filter and overlay on jittered clocks. What it may change is set by templates; sets play several templates in turn. Both are user-editable and stored in the browser.
 - **Orbs** to find, **Share spot** links, and a morphing parameter that makes every world breathe.
 - **VR viewer**: side-by-side stereo with gyroscope look, for a phone in a Cardboard-style holder (section 13).
@@ -38,7 +38,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 
 | Artifact constraint | Effect on the current code | Now possible |
 |---|---|---|
-| Microphone blocked | No live audio input. Tap tempo exists as the workaround for Apple Music and other apps. | `getUserMedia` to react to any sound in the room. Needs HTTPS, which Pages provides. |
+| Microphone blocked | There was no live audio input. Tap tempo exists as the workaround for Apple Music and other apps. | Done: the Microphone and Listen to a tab sources (section 10). Both need HTTPS, which Pages provides. |
 | Device motion blocked | Look was touch or mouse only. | Done for the VR viewer (section 13). Gyroscope look outside that mode is still open. |
 | Only `#name` hashes passed through | Share spot packs all state into one token of letters, digits and a hyphen. | Query strings or richer hashes, if wanted. The current encoding still works. |
 | Scripts only from a short CDN list | No libraries are used. Apple's MusicKit could not load. | Any script. Note that Apple Music audio still cannot be analysed: it is DRM-protected and never reaches Web Audio. |
@@ -311,6 +311,8 @@ drone oscillators -> droneGain -> lowpass -+
 kick, bass, pluck, hat --------------------+-> bus -> analyser -> master -> destination
 pluck -> sendIn -> delay (feedback) -------+
 file (buffer source or media element) -----+
+
+shared tab or microphone -> cap.gain -> analyser      (master gain is 0 while listening)
 ```
 
 One `AnalyserNode` (FFT 1024) sees whatever is playing. `ensureAudio()` builds the graph on first use.
@@ -319,6 +321,9 @@ One `AnalyserNode` (FFT 1024) sees whatever is playing. `ensureAudio()` builds t
 
 - **built**: a generative track at 92 BPM. `tick()` runs every 90 ms and schedules eighth-note steps 350 ms ahead with `playStep`. Kick on every beat, hat off the beat, a bass note each bar, and a triangle-wave arpeggio that random-walks a minor pentatonic scale. The root moves through A, F, C, G every four bars and the drone retunes with it.
 - **file**: `decodeFile` reads the file and decodes it into an `AudioBuffer`, played by a looping `AudioBufferSourceNode`. Seeking is stop-and-restart at an offset, which is exact. Because a decoded hour of stereo audio is over a gigabyte, the file's length is probed first with a media element: anything over 15 minutes, or over 80 MB, or that decodes shorter than its reported length, plays through the media element instead (`useElement`). The `player` object abstracts the two (`pPlay`, `pPause`, `pSeek`, `pPos`, `pDur`).
+- **tab**: `getDisplayMedia` with audio. The user picks a tab in the browser's share dialog and turns on tab audio. Offered only where `getDisplayMedia` exists and the device has no touch screen, which in practice means Chrome and Edge on a computer; Firefox and Safari have the API but pass no audio, and that case ends with a message. The video track is requested as small and slow as allowed and is not used.
+- **mic**: `getUserMedia` with echo cancellation, noise suppression and automatic gain off, so the level follows the music.
+- Both go through `startListening(mode)`: the stream becomes a `MediaStreamAudioSourceNode` into `cap.gain` (1 for a tab, 3 for a microphone), which feeds the analyser. `master.gain` is set to 0 while listening so the captured sound is never played back; a shared tab keeps playing from its own tab, and a microphone would feed back. `stopListening()` stops the tracks and restores the gain. A token (`cap.tok`) discards a stream that arrives after the music setting has changed. If the user stops sharing or the track ends, the mode falls back to off with a message. `liveAudio()` is true in these modes once a stream is connected, so the bands, overlays and the change detector work as for a file.
 - **tap**: no sound. `tap()` averages the last few tap intervals; intervals under 0.36 s are doubled to keep pulses slow. The audio context is suspended so that music playing in another app is not interrupted.
 - **off**: suspended as for tap.
 
@@ -473,6 +478,7 @@ Not verified, because they need a real device or a human:
 - Seeking in the streaming fallback on iOS, used for files over 15 minutes.
 - Whether iOS keeps another app's music playing while the page is open in tap mode.
 - Text entry in the setup panel on iOS (`user-select: text` is set on inputs because the body disables selection).
+- Listening to a real Spotify or YouTube tab, and to a real microphone. Both paths were run in headless Chromium with simulated devices: the analyser received sound, the output stayed muted, and switching away released the stream. Whether Spotify's copy-protected audio reaches a shared tab stream, how strong the microphone gain of 3 should be, and what iOS does to another app's music when the microphone opens are unknown.
 - Whether the screen wake lock holds on a real phone with Journey or the VR viewer on, in Safari and as a home-screen web app.
 - Everything about the VR viewer on a real phone: whether the two pictures merge through real lenses, whether the assumed pixel size is close enough, whether head turns go the right way in both landscape directions, and whether the autopilot is comfortable. The head-turn math is unit tested but the sensor conventions were taken from the specification, not from a device.
 - The home-screen web app mode on iPhone (see section 2): that it opens without Safari's bars, and that the safe-area padding keeps the HUD clear of the notch and home bar.
@@ -489,7 +495,6 @@ Not verified, because they need a real device or a human:
 
 ## 16. Ideas not yet built
 
-- Microphone input (newly possible off the artifact sandbox; see section 2).
 - VR viewer: a way to set the screen size or lens spacing, comfort options for the autopilot (slower turns, a vignette while turning), trails and overlays redone per eye, and a WebXR mode for real headsets.
 - Export and import of templates as a file.
 - Saving the current look (palette, mirrors, motion, filter, overlay) as a one-tap preset, separate from journey templates.
