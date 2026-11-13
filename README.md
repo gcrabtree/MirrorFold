@@ -246,11 +246,11 @@ Added palettes, motions, filters and overlays appear at the end of their lists a
 
 ### Making your own
 
-The editor is a sheet of sliders along the bottom of the screen. The picture stays in view above it and changes as you move a slider, and every change is saved at once. Type a name, and press **Done** to close it.
+The editor is a sheet of controls along the bottom of the screen, or down the right side on a phone held sideways. The picture stays in view beside it and changes as you move a control, and every change is saved at once. Type a name, press **Help** to read what each control does, and press **Done** to close it.
 
-| Editor | Sliders |
+| Editor | Controls |
 |---|---|
-| Palette | Middle, Swing, Repeats and Start, each for red, green and blue. A strip shows the whole palette. |
+| Palette | First colour and Second colour, which the palette runs between, then Colour changes, Slide and Rainbow. A strip shows the whole palette. **Fine tuning** opens Level, Range, Waves and Offset, each for red, green and blue. |
 | Motion | Trail length, Zoom, Turn, Swirl, Wobble, Ripple, Slide sideways, Slide up or down, Beat push |
 | Filter | Outlines, Brightness steps, Solarise, Negative, Echo, Mosaic blocks, Liquid, Colour turn, Colour fringing, Built-in effect |
 

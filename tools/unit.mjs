@@ -16,8 +16,8 @@ function grab(name) {
   if (!m) throw new Error("could not find function " + name + " in index.html");
   return m[0];
 }
-const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter", "cleanOverlay"];
-const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter, cleanOverlay } = new Function(
+const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter", "cleanOverlay", "palFromSimple", "palToSimple"];
+const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter, cleanOverlay, palFromSimple, palToSimple } = new Function(
   NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
 
 let failed = 0;
@@ -154,6 +154,22 @@ expect("an overlay with an unknown sound source is refused", cleanOverlay({ name
 expect("overlay code is held to the same rules", cleanOverlay({ name: "x", code: "ln=step(0.5,fract(uTime*9.0));" }) === null);
 expect("sound reads in loops are counted", cleanCode("for(int i=0;i<40;i++){ln+=sound(0.1)+sound(0.2);}") === null && cleanCode("for(int i=0;i<16;i++){ln+=sound(float(i)/16.0);}") !== null);
 expect("a filter with refused code is refused whole", cleanFilter({ name: "x", edge: 0.5, code: "col*=uTime;" }) === null);
+
+// ---- palette editor: two colours and three settings make a palette, and can be read back from it
+const palAt = (q, x) => [0, 1, 2].map(j => q.a[j] + q.b[j] * Math.cos(2 * Math.PI * (q.c[j] * x + q.d[j])));
+const closeTo = (u, w, e) => u.every((x, j) => Math.abs(x - w[j]) < e);
+let two = palFromSimple({ one: [1, 0.2, 0], two: [0, 0.4, 1], changes: 1, slide: 0, rainbow: 0 });
+expect("a two-colour palette starts at the first colour and ends at the second", closeTo(palAt(two, 0), [1, 0.2, 0], 1e-3) && closeTo(palAt(two, 1), [0, 0.4, 1], 1e-3));
+expect("a two-colour palette passes the cleaner unchanged", JSON.stringify(cleanPalette({ name: "x", ...two })) === JSON.stringify({ name: "x", ...two }));
+let rtBad = 0, rtN = 0;
+for (let n = 1; n <= 6; n++) for (const slide of [0, 0.25, 0.5, 0.99]) for (const rainbow of [0, 0.3, 1]) for (const [one, two2] of [[[1, 0.2, 0], [0, 0.4, 1]], [[0, 0, 0], [1, 1, 1]], [[0.8, 0.5, 0.5], [0.1, 0.5, 0.9]]]) {
+  const q = palFromSimple({ one, two: two2, changes: n, slide, rainbow }), s = palToSimple(q), q2 = palFromSimple(s);
+  rtN++;
+  if (!s.exact || s.changes !== n || [0, 0.13, 0.5, 0.77, 1].some(x => !closeTo(palAt(q, x), palAt(q2, x), 0.03))) rtBad++;
+}
+expect("settings read back from a two-colour palette rebuild the same palette", rtBad === 0, rtBad + " of " + rtN + " differ");
+expect("the built-in Spectrum reads as black to white with full rainbow", (s => s.exact && s.changes === 2 && Math.abs(s.rainbow - 1) < 0.03)(palToSimple({ a: [.5, .5, .5], b: [.5, .5, .5], c: [1, 1, 1], d: [0, .33, .67] })));
+expect("a palette with unequal waves is reported as not exact", palToSimple({ a: [.5, .5, .5], b: [.5, .5, .5], c: [1, .7, .4], d: [0, .15, .2] }).exact === false);
 
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

@@ -56,19 +56,35 @@ a.btn{text-decoration:none;display:inline-block}
 #adv[hidden]{display:none}
 .advIn{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
 .advItem{font-size:13px;flex:1;min-width:120px}
-/* the editor is a sheet along the bottom, so the picture stays in view above it while the sliders move */
-#ed{position:fixed;left:0;right:0;bottom:0;z-index:7;max-height:48vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:rgba(5,3,11,.8);
-  border-top:1px solid var(--edge);padding:10px 14px;display:flex;flex-direction:column;gap:8px}
-#ed[hidden]{display:none}
-#ed label,#ed .edVal{font-size:12px;color:var(--ink-dim)}
-#ed input[type=text]{flex:1;min-width:120px;font:500 13px/1.3 var(--body);color:var(--ink);background:var(--glass);border:1px solid var(--edge);border-radius:10px;padding:7px 10px}
-#ed input[type=range]{flex:1;min-width:70px;accent-color:var(--cool)}
-#ed .edLab{width:112px;flex:none}
-#ed .edVal{width:46px;flex:none;text-align:right}
-#edRows{display:flex;flex-direction:column;gap:6px}
-#edSwatch{position:static;width:100%;height:14px;flex:none;border-radius:7px;display:block}
-#edSwatch[hidden]{display:none}
-#ed .edHead{flex:1;min-width:70px;margin-right:54px;font-size:12px;color:var(--ink-dim)}
+/* the editor is a sheet along the bottom, so the picture stays in view above it while the controls move.
+   On a phone held sideways it is a panel down the right side instead, because there is no height to spare. */
+#ed{position:fixed;left:0;right:0;bottom:0;z-index:7;max-height:52vh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  background:rgba(5,3,11,.86);border-top:1px solid var(--edge);padding:0 14px 12px;display:flex;flex-direction:column;gap:10px}
+#ed[hidden],#ed [hidden]{display:none}
+#edTop{position:sticky;top:0;z-index:1;background:rgb(5,3,11);margin:0 -14px;padding:10px 14px 8px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--edge)}
+#ed label,#ed .edVal,#ed .edGroupName{font-size:12px;color:var(--ink-dim)}
+#ed input[type=text]{flex:1;min-width:90px;width:90px;font:500 13px/1.3 var(--body);color:var(--ink);background:var(--glass);border:1px solid var(--edge);border-radius:10px;padding:7px 10px;
+  -webkit-user-select:text;user-select:text}
+#edSwatch{position:static;width:100%;height:26px;flex:none;border-radius:8px;display:block}
+.edGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 22px}
+.edRow{display:grid;grid-template-columns:1fr auto;align-items:center;gap:0 8px}
+.edRow label{color:var(--ink)!important;font-size:13px!important}
+.edRow input[type=range]{grid-column:1/3;width:100%;height:34px;margin:0;accent-color:var(--cool);touch-action:pan-y}
+.edRed input[type=range]{accent-color:#ff6b6b}.edGreen input[type=range]{accent-color:#5fd97a}.edBlue input[type=range]{accent-color:#6ba8ff}
+.edGroup{display:flex;flex-direction:column;gap:2px;border:1px solid var(--edge);border-radius:14px;padding:8px 12px}
+#ed .edGroupName{font:600 12px/1.4 var(--display);color:var(--cool)}
+.edPick{display:flex;flex-wrap:wrap;gap:8px 22px;margin-bottom:10px}
+.edPick span{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.edPick label{color:var(--ink)!important;font-size:13px!important}
+.edPick input[type=color]{width:56px;height:40px;padding:0;border:1px solid var(--edge);border-radius:10px;background:none;cursor:pointer}
+#edFine{align-self:flex-start}
+#edHelp{display:flex;flex-direction:column;gap:8px;border:1px solid var(--edge);border-radius:14px;padding:10px 12px}
+#edHelp p{color:var(--ink)}#edHelp b{color:var(--cool);font-weight:600}
+#ed:not([hidden])~#toast{bottom:auto;top:16%;z-index:8}
+@media (orientation:landscape) and (max-height:520px){
+#ed{left:auto;top:0;width:min(360px,48vw);max-height:none;border-top:0;border-left:1px solid var(--edge)}
+#ed:not([hidden])~#toast{right:min(360px,48vw)}
+}
 #advMine{display:flex;flex-direction:column;gap:6px}
 .advRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .advHead{justify-content:space-between}
@@ -123,7 +139,7 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
 /* the picture runs under the status bar, notch and home bar; keep controls and panels inside the safe area */
 @supports(padding:max(0px)){
 #hud{top:max(12px,calc(env(safe-area-inset-top) + 6px));left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right))}
-#ed{padding:10px max(14px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+#ed{padding-bottom:max(12px,env(safe-area-inset-bottom));padding-right:max(14px,env(safe-area-inset-right))}
 #adv{padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 #start{padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 #err{bottom:max(16px,env(safe-area-inset-bottom))}
@@ -219,7 +235,7 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
     <div class="advRow" id="advSiteRow" hidden><select id="advSite" aria-label="Packs published with Mirrorfold"></select><button id="advSiteAdd" type="button">Add this pack</button></div>
     <div class="advRow"><button id="advFile" type="button">Load a pack file</button><button id="advSave" type="button">Save mine as a pack file</button><input id="packIn" type="file" accept=".json,application/json" hidden></div>
     <div class="advRow"><button id="advNewP" type="button">New palette</button><button id="advNewM" type="button">New motion</button><button id="advNewF" type="button">New filter</button></div>
-    <p class="advNote">New starts from a copy of what is showing now, and opens sliders so you can change it while you watch.</p>
+    <p class="advNote">New starts from a copy of what is showing now, and opens controls so you can change it while you watch. Each has a Help button.</p>
     <div id="advMine"></div>
     <p class="advNote">Or move a pack as text: copy yours out of this box, or paste one in and load it.</p>
     <textarea id="advIO" rows="4" aria-label="Pack as text" spellcheck="false"></textarea>
@@ -227,9 +243,23 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
   </div>
 </div>
 <div id="ed" hidden>
-  <div class="advRow"><label for="edName" id="edKind">Palette</label><input id="edName" type="text" maxlength="28" autocomplete="off"><button id="edDone" type="button" class="advGo">Done</button></div>
-  <canvas id="edSwatch" width="256" height="1" aria-hidden="true"></canvas>
-  <div id="edRows"></div>
+  <div id="edTop">
+    <div class="advRow"><label for="edName" id="edKind">Palette</label><input id="edName" type="text" maxlength="28" autocomplete="off"><button id="edHelpBtn" type="button" aria-expanded="false" aria-controls="edHelp">Help</button><button id="edDone" type="button" class="advGo">Done</button></div>
+    <canvas id="edSwatch" width="256" height="1" aria-hidden="true"></canvas>
+  </div>
+  <div id="edHelp" hidden></div>
+  <div id="edSimple" hidden>
+    <div class="edPick"><span><label for="es_one">First colour</label><input id="es_one" type="color" value="#000000"></span><span><label for="es_two">Second colour</label><input id="es_two" type="color" value="#ffffff"></span></div>
+    <div class="edGrid">
+      <div class="edRow"><label for="es_changes">Colour changes</label><span class="edVal" id="esv_changes"></span><input id="es_changes" type="range" min="1" max="6" step="1"></div>
+      <div class="edRow"><label for="es_slide">Slide</label><span class="edVal" id="esv_slide"></span><input id="es_slide" type="range" min="0" max="1" step="0.01"></div>
+      <div class="edRow"><label for="es_rainbow">Rainbow</label><span class="edVal" id="esv_rainbow"></span><input id="es_rainbow" type="range" min="0" max="1" step="0.01"></div>
+    </div>
+    <p class="advNote" id="edNote" hidden>This palette was not made from two colours, so these controls show the nearest match. Moving one rebuilds the palette from them.</p>
+  </div>
+  <div id="edRows" class="edGrid"></div>
+  <button id="edFine" type="button" aria-expanded="false" aria-controls="edFineRows" hidden>Fine tuning</button>
+  <div id="edFineRows" class="edGrid" hidden></div>
 </div>
 <div id="toast" role="status"></div>
 <div id="err"></div>
@@ -1870,21 +1900,79 @@ function advRenderLib(){ /* the palettes and motions that came from packs, each 
   OVERLAYS.forEach(function(o,i){if(i>=NOV)row("o","Overlay: "+o.name+(o.reviewed?"":" (not reviewed, so shown smoothed)"),i)});
   if(!box.firstChild)box.appendChild(mk("p",{"class":"advNote",text:"Nothing added yet."}));
 }
-/* ---------- the editor: sliders for an added palette, motion or filter ----------
-   Each slider row is [field, label, lowest, highest, step]. What the sliders say goes through the same cleaners as a pack. */
+/* ---------- the editor: controls for an added palette, motion or filter ----------
+   Each slider row is [field, label, lowest, highest, step, help]. What the controls say goes through the same cleaners as a pack. */
 var ED={
  p:{word:"palette",cat:"palette",list:PALETTES,built:NPAL,clean:cleanPalette,rgb:true,
-    rows:[["a","Middle",0,1,0.01],["b","Swing",0,1,0.01],["c","Repeats",0,3,0.05],["d","Start",-2,2,0.01]]},
+    help:"A palette is the strip of colours a world is painted with. The strip at the top shows it from one end to the other. Pick two colours and the palette runs between them.",
+    rows:[["a","Level",0,1,0.01,"How much of that colour there is on average."],
+          ["b","Range",0,1,0.01,"How far it rises above and falls below its level along the strip. At 0 it stays the same all the way."],
+          ["c","Waves",0,3,0.05,"How many times it rises and falls along the strip."],
+          ["d","Offset",-2,2,0.01,"Where along the strip its rise starts. 1 is one whole wave."]]},
  m:{word:"motion",cat:"motion",list:MOTIONS,built:NMOT,clean:cleanMotion,
-    rows:[["decay","Trail length",0,0.98,0.005],["zoom","Zoom",0.95,1.05,0.001],["rot","Turn",-0.025,0.025,0.0005],["swirl","Swirl",-0.08,0.08,0.002],
-          ["wob","Wobble",0,0.006,0.0002],["rip","Ripple",0,0.03,0.001],["dx","Slide sideways",-0.012,0.012,0.0005],["dy","Slide up or down",-0.012,0.012,0.0005],["kick","Beat push",-1,1,0.05]]},
+    help:"A motion says how the trails behind the picture move. Each frame, what was on screen a moment ago is drawn again, a little dimmer and a little moved.",
+    rows:[["decay","Trail length",0,0.98,0.005,"How long trails last. At 0 there are none, and the other controls have nothing to move."],
+          ["zoom","Zoom",0.95,1.05,0.001,"Below 1 the trails spread outward from the middle. Above 1 they shrink into it. At 1 they stay the same size."],
+          ["rot","Turn",-0.025,0.025,0.0005,"Turns the trails about the middle, one way or the other. Middle notes in the music turn them faster."],
+          ["swirl","Swirl",-0.08,0.08,0.002,"Turns the middle and the edges by different amounts, which twists the trails into a spiral."],
+          ["wob","Wobble",0,0.006,0.0002,"Bends the trails in slow waves."],
+          ["rip","Ripple",0,0.03,0.001,"Sends rings outward through the trails. Beats make them stronger."],
+          ["dx","Slide sideways",-0.012,0.012,0.0005,"Moves the trails left or right."],
+          ["dy","Slide up or down",-0.012,0.012,0.0005,"Moves the trails up or down."],
+          ["kick","Beat push",-1,1,0.05,"On each beat, pushes the trails outward (above 0) or pulls them inward (below 0)."]]},
  f:{word:"filter",cat:"filter",list:LOOKS,built:NLOOK,clean:cleanFilter,
-    rows:[["edge","Outlines",0,1,0.01],["post","Brightness steps",0,16,1],["solar","Solarise",0,1,0.01],["inv","Negative",0,1,0.01],["echo","Echo",0,1,0.01],
-          ["mos","Mosaic blocks",0,400,4],["liq","Liquid",0,0.03,0.001],["hue","Colour turn",0,1,0.01],["ca","Colour fringing",0,0.04,0.001],["fx","Built-in effect",0,9,1]]}
+    help:"A filter changes the finished picture. Each control adds one effect, and at 0 that effect is off. They can be mixed.",
+    rows:[["edge","Outlines",0,1,0.01,"Draws glowing lines where the picture changes sharply, and darkens the rest."],
+          ["post","Brightness steps",0,16,1,"Cuts the smooth shading into this many flat steps. Small numbers look like a poster."],
+          ["solar","Solarise",0,1,0.01,"Turns the brightest parts dark, as in an over-exposed photograph."],
+          ["inv","Negative",0,1,0.01,"Swaps light for dark and each colour for its opposite."],
+          ["echo","Echo",0,1,0.01,"Lays a second copy of the picture over it, turned upside down."],
+          ["mos","Mosaic blocks",0,400,4,"Builds the picture from square blocks. The number is how many blocks fit from top to bottom, so small numbers give big blocks."],
+          ["liq","Liquid",0,0.03,0.001,"Makes the picture waver as if seen through water."],
+          ["hue","Colour turn",0,1,0.01,"Shifts every colour round the colour wheel, in slowly moving rings."],
+          ["ca","Colour fringing",0,0.04,0.001,"Pulls red and blue apart toward the edges of the screen."],
+          ["fx","Built-in effect",0,9,1,"Adds one of the nine ready-made effects."]]}
 };
+/* the palette editor's plain controls, which build a whole palette from two colours */
+var ED_SIMPLE=[["changes","Colour changes",1,6,1,"How many times the strip goes from one colour to the other. At 1 it goes from the first colour to the second. At 2 it goes there and back."],
+               ["slide","Slide",0,1,0.01,"Moves all the colours along the strip, so a different one comes first."],
+               ["rainbow","Rainbow",0,1,0.01,"At 0 the strip holds only blends of your two colours. Higher values set red, green and blue out of step, so other colours appear in between."]];
 var FX_NAMES=["none","Quad","Tiles","Bulge","Twirl","Thermal","CRT","Halftone","Contour","Noir"];
 var ed=null; /* {kind, item} while the editor is open */
+/* A palette from two colours. Each of red, green and blue swings between its amount in the first colour and its amount in the second.
+   "changes" is how many times, "slide" moves the whole strip along, and "rainbow" sets the three out of step. */
+function palFromSimple(s){
+  var out={a:[],b:[],c:[],d:[]},j,d;
+  for(j=0;j<3;j++){
+    out.a.push(+((s.one[j]+s.two[j])/2).toFixed(4));out.b.push(+(Math.abs(s.one[j]-s.two[j])/2).toFixed(4));out.c.push(s.changes/2);
+    d=s.slide+s.rainbow*j/3+(s.one[j]<s.two[j]?0.5:0);
+    out.d.push(+(d-Math.floor(d)).toFixed(4));
+  }
+  return out;
+}
+/* The other way: the two colours and three settings that give this palette. "exact" is false when no settings do,
+   and then they are only the nearest guess. */
+function palToSimple(q){
+  var fr=function(x){return x-Math.floor(x)},near=function(x){x=fr(x);return Math.min(x,1-x)<0.012};
+  var cl=function(x){return Math.max(0,Math.min(1,x))};
+  var make=function(f,slide,rainbow,exact){
+    var s={one:[],two:[],changes:Math.max(1,Math.min(6,Math.round((q.c[0]+q.c[1]+q.c[2])/1.5))),slide:slide,rainbow:rainbow,exact:exact},j;
+    for(j=0;j<3;j++){s.one.push(cl(q.a[j]+(f[j]?-1:1)*q.b[j]));s.two.push(cl(q.a[j]-(f[j]?-1:1)*q.b[j]));}
+    return s;
+  };
+  var fits=Math.abs(q.c[0]-q.c[1])<0.004&&Math.abs(q.c[0]-q.c[2])<0.004&&near(q.c[0]*2)&&q.c[0]>0.49,m,f,slide,rainbow,j;
+  for(j=0;j<3;j++)if(q.a[j]+q.b[j]>1.004||q.a[j]-q.b[j]<-0.004)fits=false;
+  if(fits)for(m=0;m<8;m++){ /* each colour may run from the first colour's amount to the second's, or the other way */
+    f=[m&1,m>>1&1,m>>2&1];
+    slide=fr(q.d[0]-f[0]/2);rainbow=3*fr(q.d[1]-f[1]/2-slide);
+    if(rainbow>2.98)rainbow=0;
+    if(rainbow<1.02&&near(q.d[2]-f[2]/2-slide-2*rainbow/3))return make(f,slide,Math.min(1,rainbow),true);
+  }
+  return make([0,0,0],fr(q.d[0]),Math.min(1,3*fr(q.d[1]-q.d[0])),false);
+}
 function edShow(v,row){return row[0]==="fx"?FX_NAMES[v|0]:String(+(+v).toFixed(row[4]<0.001?4:row[4]<0.01?3:2));}
+function edHex(c){return "#"+c.map(function(x){return ("0"+Math.round(255*x).toString(16)).slice(-2)}).join("");}
+function edRgb(h){return [1,3,5].map(function(i){return parseInt(h.substr(i,2),16)/255});}
 function edSwatch(){ /* the palette from one end to the other */
   var cv=$("edSwatch");cv.hidden=ed.kind!=="p";if(cv.hidden)return;
   var x2=cv.getContext("2d"),q=ed.item,im=x2.createImageData(256,1),i,j;
@@ -1909,26 +1997,56 @@ function edRead(){ /* sliders to the item, by way of the cleaner */
   });
   edSwatch();saveLibrary();
 }
+function edSimpleShow(){ /* set the plain palette controls to match the palette, without changing it */
+  var s=palToSimple(ed.item);
+  $("es_one").value=edHex(s.one);$("es_two").value=edHex(s.two);
+  ED_SIMPLE.forEach(function(r){$("es_"+r[0]).value=String(s[r[0]]);$("esv_"+r[0]).textContent=edShow($("es_"+r[0]).value,r)});
+  $("edNote").hidden=s.exact;
+}
+function edSimpleRead(){ /* the plain palette controls rebuild the whole palette */
+  var s={one:edRgb($("es_one").value),two:edRgb($("es_two").value)},q;
+  ED_SIMPLE.forEach(function(r){s[r[0]]=+$("es_"+r[0]).value;$("esv_"+r[0]).textContent=edShow(s[r[0]],r)});
+  q=palFromSimple(s);
+  ED.p.rows.forEach(function(r){[0,1,2].forEach(function(j){$("ed_"+r[0]+j).value=String(q[r[0]][j])})});
+  $("edNote").hidden=true;edRead();
+}
+function edSlider(r,id,val,label,onIn){ /* one slider: its name and its value above it */
+  var sl=mk("input",{type:"range",id:"ed_"+id,min:String(r[2]),max:String(r[3]),step:String(r[4])});
+  sl.value=String(val);sl.addEventListener("input",onIn);
+  return mk("div",{"class":"edRow"},[mk("label",{"for":"ed_"+id,text:label}),mk("span",{"class":"edVal",id:"ev_"+id}),sl]);
+}
+function edHelpFill(){ /* what each control does, in the order they appear */
+  var E=ED[ed.kind],box=$("edHelp"),line=function(name,text){box.appendChild(mk("p",{},[mk("b",{text:name+". "}),document.createTextNode(text)]))};
+  box.textContent="";box.appendChild(mk("p",{text:E.help}));
+  if(ed.kind==="p"){
+    line("First colour, Second colour","The two colours the palette runs between. Tap one to choose it.");
+    ED_SIMPLE.forEach(function(r){line(r[1],r[5])});
+    line("Fine tuning","Opens twelve more sliders, for people who want them. A palette is made of three waves, one each for red, green and blue, and these set each wave by itself. Moving one of the controls above sets all twelve again.");
+  }
+  E.rows.forEach(function(r){line(r[1],r[5])});
+  if(ed.item.code)line("Program","This filter also has a program from its pack. The sliders are added to what the program does and do not change it.");
+  box.appendChild(mk("p",{text:"Every change is saved as you make it. Sliders stop at the limits a pack is held to. Done closes the editor."}));
+}
 function edOpen(kind,i){
-  var E=ED[kind],item=E.list[i],box=$("edRows");
+  var E=ED[kind],item=E.list[i],box=$("edRows"),fine;
   if(!item||i<E.built)return;
   ed={kind:kind,item:item};
   if(kind==="p")setPalette(i);else if(kind==="m")setMotion(i);else setLook(i);
   $("edKind").textContent=E.word.charAt(0).toUpperCase()+E.word.slice(1);$("edName").value=item.name;
-  box.textContent="";
-  if(E.rgb)box.appendChild(mk("div",{"class":"advRow"},[mk("span",{"class":"edLab"}),mk("span",{"class":"edHead",text:"Red"}),mk("span",{"class":"edHead",text:"Green"}),mk("span",{"class":"edHead",text:"Blue"})]));
-  E.rows.forEach(function(r){
-    var kids=[mk("span",{"class":"edLab advItem",text:r[1]})];
-    var slider=function(id,val,label){
-      var sl=mk("input",{type:"range",id:"ed_"+id,min:String(r[2]),max:String(r[3]),step:String(r[4]),"aria-label":label});
-      sl.value=String(val);sl.addEventListener("input",edRead);
-      kids.push(sl,mk("span",{"class":"edVal",id:"ev_"+id}));
-    };
-    if(E.rgb)["red","green","blue"].forEach(function(c,j){slider(r[0]+j,item[r[0]][j],r[1]+", "+c)});
-    else slider(r[0],item[r[0]]!==undefined?item[r[0]]:(r[0]==="zoom"?0.994:0),r[1]);
-    box.appendChild(mk("div",{"class":"advRow"},kids));
+  box.textContent="";$("edFineRows").textContent="";
+  $("edSimple").hidden=$("edFine").hidden=kind!=="p";$("edFineRows").hidden=true;$("edFine").setAttribute("aria-expanded","false");
+  if(E.rgb)E.rows.forEach(function(r){ /* fine tuning: one group for each row, with a slider each for red, green and blue */
+    var kids=[mk("span",{"class":"edGroupName",text:r[1]})];
+    ["Red","Green","Blue"].forEach(function(c,j){
+      var row=edSlider(r,r[0]+j,item[r[0]][j],c,function(){edRead();edSimpleShow()});
+      row.className="edRow ed"+c;row.lastChild.setAttribute("aria-label",r[1]+", "+c.toLowerCase());kids.push(row);
+    });
+    $("edFineRows").appendChild(mk("div",{"class":"edGroup"},kids));
   });
+  else E.rows.forEach(function(r){box.appendChild(edSlider(r,r[0],item[r[0]]!==undefined?item[r[0]]:(r[0]==="zoom"?0.994:0),r[1],edRead))});
+  $("edHelp").hidden=true;$("edHelpBtn").setAttribute("aria-expanded","false");edHelpFill();
   adv.hidden=true;$("ed").hidden=false;$("ed").scrollTop=0;edRead();
+  if(kind==="p")edSimpleShow();
 }
 function edNew(kind){
   var E=ED[kind],cur=kind==="p"?PALETTES[pi]:kind==="m"?MOTIONS[moi]:LOOKS[lki],src=JSON.parse(JSON.stringify(cur,function(k,v){return k==="prog"?undefined:v}));
@@ -1940,7 +2058,7 @@ function edNew(kind){
   var item=E.clean(src);if(!item)return;
   E.list.push(item);saveLibrary();refreshLists();
   edOpen(kind,E.list.length-1);
-  toast("Made "+item.name+". Move the sliders and watch.");
+  toast("Made "+item.name+". Change it and watch.");
 }
 $("edName").addEventListener("change",function(){
   var E=ED[ed.kind],old=ed.item.name,nn=uniqueName(cleanName(this.value)||"My "+E.word,E.list.filter(function(q){return q!==ed.item}).map(function(q){return q.name}));
@@ -1951,6 +2069,13 @@ $("edName").addEventListener("change",function(){
 $("edDone").addEventListener("click",function(){
   var nm=ed.item.name;ed=null;$("ed").hidden=true;advFill();toast("Saved "+nm+".");wakeHud();
 });
+$("edHelpBtn").addEventListener("click",function(){
+  var h=$("edHelp");h.hidden=!h.hidden;this.setAttribute("aria-expanded",String(!h.hidden));if(!h.hidden)$("ed").scrollTop=0;
+});
+$("edFine").addEventListener("click",function(){
+  var f=$("edFineRows");f.hidden=!f.hidden;this.setAttribute("aria-expanded",String(!f.hidden));
+});
+["es_one","es_two"].concat(ED_SIMPLE.map(function(r){return "es_"+r[0]})).forEach(function(id){$(id).addEventListener("input",edSimpleRead)});
 $("advNewP").addEventListener("click",function(){edNew("p")});
 $("advNewM").addEventListener("click",function(){edNew("m")});
 $("advNewF").addEventListener("click",function(){edNew("f")});
