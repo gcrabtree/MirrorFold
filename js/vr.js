@@ -1,7 +1,13 @@
-import { cross, norm, rot, toast } from "./flight.js";
-import { press, wakeHud } from "./input.js";
+import { cam, cross, norm, rot } from "./camera.js";
 import { $, isTouch } from "./dom.js";
-import { G } from "./shared.js";
+import { toast } from "./flight.js";
+import { press, wakeHud } from "./input.js";
+import { journey } from "./journey.js";
+import { started } from "./loop.js";
+export let stereo=false;        /* the VR viewer is on */
+export let vrEye=0.004;         /* half the distance between the two eyes, in world units; follows the distance to the nearest surface */
+let gyroPrev=null,wakeLock=null;
+export function vrEyeStep(dist,dt){vrEye+=(Math.max(0.00002,dist*0.021)-vrEye)*(1-Math.exp(-dt*1.5));}
 let gyroBound;
 
 /* ---------- VR viewer ----------
@@ -27,15 +33,15 @@ function screenAngle(){
   return (screen.orientation&&screen.orientation.angle)||0;
 }
 function onGyro(e){
-  if(!G.stereo||e.alpha===null||e.beta===null||e.gamma===null){G.gyroPrev=null;return;}
-  var S=devMat(e.alpha,e.beta,e.gamma,screenAngle()),P=G.gyroPrev;G.gyroPrev=S;
-  if(!P||!G.started)return;
+  if(!stereo||e.alpha===null||e.beta===null||e.gamma===null){gyroPrev=null;return;}
+  var S=devMat(e.alpha,e.beta,e.gamma,screenAngle()),P=gyroPrev;gyroPrev=S;
+  if(!P||!started)return;
   var w=gyroTurn(P,S),an=Math.hypot(w[0],w[1],w[2]);
   if(an<1e-6||an>0.6)return; /* a jump this large is the screen turning over, not a head */
   /* the camera's forward axis points into the screen, so turns about right and up change sign */
-  var ax=[(-w[0]*G.R[0]-w[1]*G.Up[0]+w[2]*G.F[0])/an,(-w[0]*G.R[1]-w[1]*G.Up[1]+w[2]*G.F[1])/an,(-w[0]*G.R[2]-w[1]*G.Up[2]+w[2]*G.F[2])/an];
-  G.F=rot(G.F,ax,an);G.Up=rot(G.Up,ax,an);G.userTurn+=an;
-  G.F=norm(G.F);G.R=norm(cross(G.Up,G.F));G.Up=cross(G.F,G.R);
+  var ax=[(-w[0]*cam.R[0]-w[1]*cam.Up[0]+w[2]*cam.F[0])/an,(-w[0]*cam.R[1]-w[1]*cam.Up[1]+w[2]*cam.F[1])/an,(-w[0]*cam.R[2]-w[1]*cam.Up[2]+w[2]*cam.F[2])/an];
+  cam.F=rot(cam.F,ax,an);cam.Up=rot(cam.Up,ax,an);cam.userTurn+=an;
+  cam.F=norm(cam.F);cam.R=norm(cross(cam.Up,cam.F));cam.Up=cross(cam.F,cam.R);
 }
 function gyroStart(){
   if(gyroBound||!window.DeviceOrientationEvent)return;
@@ -50,16 +56,16 @@ function gyroStart(){
 }
 /* the screen is kept awake while Journey or the VR viewer is on, because nobody is touching it then */
 export function keepAwake(){
-  var on=G.journey||G.stereo;
+  var on=journey||stereo;
   try{
-    if(on&&!G.wakeLock&&navigator.wakeLock){navigator.wakeLock.request("screen").then(function(l){G.wakeLock=l;l.addEventListener("release",function(){if(G.wakeLock===l)G.wakeLock=null});if(!(G.journey||G.stereo))keepAwake();}).catch(function(){});}
-    else if(!on&&G.wakeLock){var l0=G.wakeLock;G.wakeLock=null;l0.release();}
+    if(on&&!wakeLock&&navigator.wakeLock){navigator.wakeLock.request("screen").then(function(l){wakeLock=l;l.addEventListener("release",function(){if(wakeLock===l)wakeLock=null});if(!(journey||stereo))keepAwake();}).catch(function(){});}
+    else if(!on&&wakeLock){var l0=wakeLock;wakeLock=null;l0.release();}
   }catch(_){}
 }
 function setStereo(on){
-  G.stereo=!!on;G.gyroPrev=null;press($("bVr"),G.stereo);
+  stereo=!!on;gyroPrev=null;press($("bVr"),stereo);
   keepAwake();
-  if(G.stereo){gyroStart();toast(window.innerWidth<window.innerHeight?"VR viewer on. Turn the phone sideways.":"VR viewer on");}
+  if(stereo){gyroStart();toast(window.innerWidth<window.innerHeight?"VR viewer on. Turn the phone sideways.":"VR viewer on");}
   else toast("VR viewer off");
 }
 
@@ -72,11 +78,12 @@ gyroBound=false;
   if(h&&seg)$("aHelp").href="https://github.com/"+h[1]+"/"+seg+"#readme";
 })();
 if(!isTouch)$("bVr").style.display="none";
-$("bVr").addEventListener("click",function(){setStereo(!G.stereo);wakeHud()});
-window.addEventListener("orientationchange",function(){G.gyroPrev=null});
-document.addEventListener("visibilitychange",function(){G.gyroPrev=null;if(!document.hidden)keepAwake()});
+$("bVr").addEventListener("click",function(){setStereo(!stereo);wakeHud()});
+window.addEventListener("orientationchange",function(){gyroPrev=null});
+document.addEventListener("visibilitychange",function(){gyroPrev=null;if(!document.hidden)keepAwake()});
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get devMat(){return devMat}, get gyroTurn(){return gyroTurn}, get screenAngle(){return screenAngle}, get onGyro(){return onGyro}, get gyroBound(){return gyroBound},set gyroBound(v){gyroBound=v}, get gyroStart(){return gyroStart},
-  get keepAwake(){return keepAwake}, get setStereo(){return setStereo}};
+export const __dbg={get stereo(){return stereo},set stereo(v){stereo=v}, get vrEye(){return vrEye},set vrEye(v){vrEye=v}, get gyroPrev(){return gyroPrev},set gyroPrev(v){gyroPrev=v}, get wakeLock(){return wakeLock},set wakeLock(v){wakeLock=v}, get vrEyeStep(){return vrEyeStep}, get gyroBound(){return gyroBound},set gyroBound(v){gyroBound=v},
+  get devMat(){return devMat}, get gyroTurn(){return gyroTurn}, get screenAngle(){return screenAngle}, get onGyro(){return onGyro}, get gyroStart(){return gyroStart}, get keepAwake(){return keepAwake},
+  get setStereo(){return setStereo}};

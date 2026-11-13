@@ -23,10 +23,13 @@ import * as m20 from "./vr.js";
 import * as m21 from "./audio.js";
 import * as m22 from "./listen.js";
 import * as m23 from "./loop.js";
-import { G } from "./shared.js";
-const mods=[m0,m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,m19,m20,m21,m22,m23];
+import * as m24 from "./camera.js";
+import * as m25 from "./clock.js";
+import * as m26 from "./warp.js";
+const mods=[m0,m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,m19,m20,m21,m22,m23,m24,m25,m26];
 try{for(const m of mods)if(m.init)m.init();}catch(e){if(e.message!=="no WebGL")throw e;}
 /* window.MF gives the test tools and the console every internal name, as the single script's closure used to */
 const MF={};for(const m of mods)Object.defineProperties(MF,Object.getOwnPropertyDescriptors(m.__dbg));
-for(const k of Object.keys(G))Object.defineProperty(MF,k,{get(){return G[k]},set(v){G[k]=v},enumerable:true});
+/* the fields of the state objects can also be named bare (MF.pos for MF.cam.pos), which keeps test code short */
+for(const o of [MF.cam,MF.tr,MF.clock,MF.scene,MF.sel,MF.flip])for(const k of Object.keys(o))Object.defineProperty(MF,k,{get(){return o[k]},set(v){o[k]=v},enumerable:true,configurable:true});
 window.MF=MF;window.dispatchEvent(new Event("mf-ready"));

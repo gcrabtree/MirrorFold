@@ -1,9 +1,10 @@
-import { $, errBox, isTouch } from "./dom.js";
-import { selMusic } from "./choose.js";
 import { ac, analyser, cap, ensureAudio, fbins, master, pPause, pPlay, player, startBuilt, stopBuilt } from "./audio.js";
+import { selMusic } from "./choose.js";
+import { $, errBox, isTouch } from "./dom.js";
 import { toast } from "./flight.js";
 import { wakeHud } from "./input.js";
-import { G } from "./shared.js";
+export let musicMode="off",beat=0,level=0; /* where the sound comes from, and the two numbers the picture reads: a pulse that decays, and how loud the low end is */
+let taps=[],tapInt=0,tapAt=0;
 export let soundChanged;
 let canTab, canMic, detectChange;
 
@@ -37,12 +38,12 @@ function startListening(mode){
     toast(mode==="tab"?"Listening to the shared tab":"Listening to the microphone");
   }).catch(function(){fail(mode==="tab"?"No tab was shared":"Microphone access was refused")});
 }
-function listening(){return (G.musicMode==="tab"||G.musicMode==="mic")&&!!cap.node;}
+function listening(){return (musicMode==="tab"||musicMode==="mic")&&!!cap.node;}
 export function setMusic(mode){
   if((mode==="tab"&&!canTab)||(mode==="mic"&&!canMic))mode="off";
   if(mode!=="off"&&mode!=="tap"&&!ensureAudio()){mode="off";errBox.textContent="This browser cannot play audio here.";}
-  if(cap.stream||G.musicMode==="tab"||G.musicMode==="mic")stopListening();
-  G.musicMode=mode;selMusic.value=mode;
+  if(cap.stream||musicMode==="tab"||musicMode==="mic")stopListening();
+  musicMode=mode;selMusic.value=mode;
   $("rowTap").hidden=mode!=="tap";$("rowFile").hidden=mode!=="file";
   try{
     if(mode==="built"){pPause();ac.resume();startBuilt();}
@@ -52,18 +53,18 @@ export function setMusic(mode){
       if(ac){stopBuilt();pPause();ac.suspend();}
     }
   }catch(_){}
-  if(mode!=="tap"){G.taps=[];G.tapInt=0;$("bTap").textContent="Tap the beat";}
-  G.beat=0;G.level=0;
+  if(mode!=="tap"){taps=[];tapInt=0;$("bTap").textContent="Tap the beat";}
+  beat=0;level=0;
 }
 export function tap(){
   var now=performance.now()/1000;
-  if(G.taps.length&&now-G.taps[G.taps.length-1]>2.2)G.taps=[];
-  G.taps.push(now);if(G.taps.length>6)G.taps.shift();
-  G.tapAt=now;bands.b.p=1;
-  if(G.taps.length>=2){
-    var iv=(G.taps[G.taps.length-1]-G.taps[0])/(G.taps.length-1);
+  if(taps.length&&now-taps[taps.length-1]>2.2)taps=[];
+  taps.push(now);if(taps.length>6)taps.shift();
+  tapAt=now;bands.b.p=1;
+  if(taps.length>=2){
+    var iv=(taps[taps.length-1]-taps[0])/(taps.length-1);
     while(iv<0.36)iv*=2; /* keep pulses slow: faster than about 165 bpm is halved */
-    G.tapInt=iv;$("bTap").textContent=Math.round(60/iv)+" bpm, tap to adjust";
+    tapInt=iv;$("bTap").textContent=Math.round(60/iv)+" bpm, tap to adjust";
   }else{$("bTap").textContent="Keep tapping";}
 }
 /* Three bands, each with a level (how loud, smoothed) and a pulse (a hit that decays).
@@ -77,7 +78,7 @@ function bandStep(o,raw,dt,gain){
   o.lv+=(x-o.lv)*Math.min(1,dt*(x>o.lv?10:2));
 }
 function bandAvg(a,b){var t=0;for(var i=a;i<=b;i++)t+=fbins[i];return t/((b-a+1)*255);}
-export function liveAudio(){return (G.musicMode==="built"||G.musicMode==="file"||listening())&&!!analyser&&!!ac&&ac.state==="running";}
+export function liveAudio(){return (musicMode==="built"||musicMode==="file"||listening())&&!!analyser&&!!ac&&ac.state==="running";}
 /* A major change in the sound: the last second or so differs sharply from the last several, in loudness or in
    the balance of low to high. It fires once, then takes the new sound as normal. */
 function makeChangeDetector(){
@@ -97,8 +98,8 @@ function makeChangeDetector(){
 }
 export function readMusic(dt){
   soundChanged=false;var k,o;
-  if(G.musicMode==="tap"&&G.tapInt>0){ /* no sound to read: bass on the beat, mids between beats, treble twice a beat */
-    var ph=((performance.now()/1000-G.tapAt)/G.tapInt)%1;
+  if(musicMode==="tap"&&tapInt>0){ /* no sound to read: bass on the beat, mids between beats, treble twice a beat */
+    var ph=((performance.now()/1000-tapAt)/tapInt)%1;
     bands.b.p=Math.exp(-ph*4.5);bands.b.lv=0.45;
     bands.m.p=0.7*Math.exp(-((ph+0.5)%1)*5);bands.m.lv=0.35;
     bands.t.p=0.5*Math.exp(-((ph*2)%1)*6);bands.t.lv=0.3;
@@ -108,7 +109,7 @@ export function readMusic(dt){
     bandStep(bands.b,rb,dt,3.2);bandStep(bands.m,rm,dt,4);bandStep(bands.t,rt,dt,4.5);
     soundChanged=detectChange(dt,0.5*rb+0.35*rm+0.15*rt,(rt+0.5*rm)/(rb+rm+rt+0.001));
   }else{for(k in bands){o=bands[k];o.p*=Math.exp(-dt*5);o.lv*=Math.exp(-dt*2);}}
-  G.beat=bands.b.p;G.level=bands.b.lv;
+  beat=bands.b.p;level=bands.b.lv;
 }
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
@@ -125,13 +126,14 @@ canMic=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
 selMusic.addEventListener("change",function(){setMusic(this.value);wakeHud()});
 /* a dropdown change may not count as a tap for the browser's audio rules, so any later tap unlocks sound */
 document.addEventListener("pointerdown",function(){
-  if(ac&&ac.state==="suspended"&&G.musicMode!=="off"&&G.musicMode!=="tap"){try{ac.resume()}catch(_){}}
+  if(ac&&ac.state==="suspended"&&musicMode!=="off"&&musicMode!=="tap"){try{ac.resume()}catch(_){}}
 },true);
 $("bTap").addEventListener("pointerdown",function(e){e.preventDefault();tap();wakeHud()});
 soundChanged=false,detectChange=makeChangeDetector();
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get stopListening(){return stopListening}, get startListening(){return startListening}, get listening(){return listening}, get setMusic(){return setMusic},
-  get tap(){return tap}, get bands(){return bands}, get bandStep(){return bandStep}, get bandAvg(){return bandAvg}, get liveAudio(){return liveAudio}, get makeChangeDetector(){return makeChangeDetector},
-  get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get readMusic(){return readMusic}};
+export const __dbg={get musicMode(){return musicMode},set musicMode(v){musicMode=v}, get beat(){return beat},set beat(v){beat=v}, get level(){return level},set level(v){level=v}, get taps(){return taps},set taps(v){taps=v}, get tapInt(){return tapInt},set tapInt(v){tapInt=v}, get tapAt(){return tapAt},set tapAt(v){tapAt=v},
+  get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get stopListening(){return stopListening}, get startListening(){return startListening},
+  get listening(){return listening}, get setMusic(){return setMusic}, get tap(){return tap}, get bands(){return bands}, get bandStep(){return bandStep}, get bandAvg(){return bandAvg},
+  get liveAudio(){return liveAudio}, get makeChangeDetector(){return makeChangeDetector}, get readMusic(){return readMusic}};

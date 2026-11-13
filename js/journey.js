@@ -1,13 +1,17 @@
-import { PALETTES, WORLDS, palOpen } from "./worlds.js";
-import { LOOKS, MOTIONS, OVERLAYS, mirrors } from "./state.js";
-import { LK } from "./landscapes.js";
-import { landKind, landMode, setLand, setLandKind } from "./land.js";
-import { requestWorld, selJT, setLook, setMirrors, setMotion, setOverlay, setPalette, warpThen } from "./choose.js";
+import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay, setPalette, warpThen } from "./choose.js";
+import { $ } from "./dom.js";
 import { J, jReset, toast } from "./flight.js";
 import { press, wakeHud } from "./input.js";
-import { $ } from "./dom.js";
+import { landKind, landMode, setLand, setLandKind } from "./land.js";
+import { LK } from "./landscapes.js";
+import { LOOKS, MOTIONS, OVERLAYS, mirrors, sel } from "./state.js";
 import { keepAwake } from "./vr.js";
-import { G } from "./shared.js";
+import { tr } from "./warp.js";
+import { PALETTES, WORLDS, palOpen } from "./worlds.js";
+export let jt; /* the template in use */
+export let journey=false;   /* Journey is on */
+export let jMove="travel";  /* "travel" flies and steers for you; "drift" leaves the flying to you and only changes the scenery */
+export function jtReset(){jt=BUILTIN_T[0];}
 export let CATS, BUILTIN_T, BUILTIN_S, jset;
 
 export const MODE_LABEL={off:"off",keep:"as set",random:"random"};
@@ -42,13 +46,13 @@ export function allS(){return BUILTIN_S.concat(store.sets)}
 export function findT(n){var a=allT();for(var i=0;i<a.length;i++)if(a[i].name===n)return a[i];return null;}
 export function findS(n){var a=allS();for(var i=0;i<a.length;i++)if(a[i].name===n)return a[i];return null;}
 
-export function jCur(k){return k==="world"?G.world.id:k==="palette"?PALETTES[G.pi].name:k==="mirrors"?String(mirrors[G.mi]):k==="motion"?MOTIONS[G.moi].name:k==="filter"?LOOKS[G.lki].name:k==="land"?(landMode?LK[landKind].id+(landMode===2?" over":" alone"):"none"):OVERLAYS[G.ovi].name;}
+export function jCur(k){return k==="world"?scene.world.id:k==="palette"?PALETTES[sel.pi].name:k==="mirrors"?String(mirrors[sel.mi]):k==="motion"?MOTIONS[sel.moi].name:k==="filter"?LOOKS[sel.lki].name:k==="land"?(landMode?LK[landKind].id+(landMode===2?" over":" alone"):"none"):OVERLAYS[sel.ovi].name;}
 export function jNone(k){return k==="mirrors"?"0":"none";}
 function jIndex(k,key){var o=catOf(k).opts;for(var i=0;i<o.length;i++)if(o[i][0]===key)return i;return -1;}
 export function jApply(k,key){ /* false means it could not start yet (a transition is running) and should be retried */
   var i=jIndex(k,key);
   if(i<0||key===jCur(k))return true;
-  if(k==="world"){if(G.warpDir!==0||G.hyb)return false;requestWorld(i);return true;}
+  if(k==="world"){if(tr.warpDir!==0||scene.hyb)return false;requestWorld(i);return true;}
   if(k==="mirrors")return warpThen(function(){setMirrors(i)});
   if(k==="land")return warpThen(function(){
     var sp=key.split(" "),kk;for(kk=0;kk<LK.length;kk++)if(LK[kk].id===sp[0])setLandKind(kk);
@@ -78,10 +82,10 @@ export function jPick(k,cfg,cur,pool){
   return others[Math.floor(Math.random()*others.length)];
 }
 export function applyTemplate(t,announce){
-  G.jt=t;
+  jt=t;
   CATS.forEach(function(c){
     var cfg=t[c.k];J[c.k].base=cfg.every;jReset(c.k);
-    if(!G.journey||cfg.mode!=="random")return;
+    if(!journey||cfg.mode!=="random")return;
     var pool=jPool(c.k,cfg);
     if(pool.length&&pool.indexOf(jCur(c.k))<0)J[c.k].t=J[c.k].next+1; /* what is showing is not in this template's options: change at once */
   });
@@ -111,11 +115,11 @@ export function fillJT(){
   selJT.value=store.sel;if(selJT.value!==store.sel){store.sel="t:Classic";selJT.value=store.sel;}
 }
 function setJMove(mv){
-  G.jMove=mv==="drift"?"drift":"travel";$("bJMove").textContent="Movement "+G.jMove;
-  try{localStorage.setItem("mirrorfold-move",G.jMove)}catch(_){}
+  jMove=mv==="drift"?"drift":"travel";$("bJMove").textContent="Movement "+jMove;
+  try{localStorage.setItem("mirrorfold-move",jMove)}catch(_){}
 }
 export function setJourney(on){
-  G.journey=on;press($("bJourney"),on);$("rowJourney").hidden=!on;
+  journey=on;press($("bJourney"),on);$("rowJourney").hidden=!on;
   if(on)selectJourney(store.sel);
   keepAwake();
 }
@@ -152,19 +156,21 @@ try{
   var rawJ=JSON.parse(localStorage.getItem("mirrorfold-journeys")||"{}"),got=adopt(rawJ);
   store.tpls=got.tpls;store.sets=got.sets;if(typeof rawJ.sel==="string")store.sel=rawJ.sel;
 }catch(_){}
-G.jt=BUILTIN_T[0],jset=null;
+jt=BUILTIN_T[0],jset=null;
 fillJT();
 selJT.addEventListener("change",function(){selectJourney(this.value);wakeHud()});
-$("bJMove").textContent="Movement "+G.jMove;
+try{if(localStorage.getItem("mirrorfold-move")==="drift")jMove="drift"}catch(_){}
+$("bJMove").textContent="Movement "+jMove;
 $("bJMove").addEventListener("click",function(){
-  setJMove(G.jMove==="travel"?"drift":"travel");
-  toast(G.jMove==="travel"?"Journey flies for you":"Journey leaves the flying to you");wakeHud();
+  setJMove(jMove==="travel"?"drift":"travel");
+  toast(jMove==="travel"?"Journey flies for you":"Journey leaves the flying to you");wakeHud();
 });
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get CATS(){return CATS},set CATS(v){CATS=v}, get MODE_LABEL(){return MODE_LABEL}, get catOf(){return catOf}, get normT(){return normT}, get normS(){return normS}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v},
-  get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get store(){return store}, get adopt(){return adopt}, get saveStore(){return saveStore}, get allT(){return allT}, get allS(){return allS},
-  get findT(){return findT}, get findS(){return findS}, get jset(){return jset},set jset(v){jset=v}, get jCur(){return jCur}, get jNone(){return jNone}, get jIndex(){return jIndex},
-  get jApply(){return jApply}, get jPool(){return jPool}, get jPick(){return jPick}, get applyTemplate(){return applyTemplate}, get advanceSet(){return advanceSet}, get selectJourney(){return selectJourney},
-  get fillJT(){return fillJT}, get setJMove(){return setJMove}, get setJourney(){return setJourney}};
+export const __dbg={get jt(){return jt},set jt(v){jt=v}, get journey(){return journey},set journey(v){journey=v}, get jMove(){return jMove},set jMove(v){jMove=v}, get jtReset(){return jtReset}, get CATS(){return CATS},set CATS(v){CATS=v}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v},
+  get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get jset(){return jset},set jset(v){jset=v}, get MODE_LABEL(){return MODE_LABEL}, get catOf(){return catOf}, get normT(){return normT}, get normS(){return normS},
+  get store(){return store}, get adopt(){return adopt}, get saveStore(){return saveStore}, get allT(){return allT}, get allS(){return allS}, get findT(){return findT},
+  get findS(){return findS}, get jCur(){return jCur}, get jNone(){return jNone}, get jIndex(){return jIndex}, get jApply(){return jApply}, get jPool(){return jPool},
+  get jPick(){return jPick}, get applyTemplate(){return applyTemplate}, get advanceSet(){return advanceSet}, get selectJourney(){return selectJourney}, get fillJT(){return fillJT}, get setJMove(){return setJMove},
+  get setJourney(){return setJourney}};

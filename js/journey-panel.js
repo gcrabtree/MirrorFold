@@ -1,10 +1,11 @@
 import { $ } from "./dom.js";
-import { BUILTIN_S, BUILTIN_T, CATS, MODE_LABEL, allS, allT, applyTemplate, fillJT, findS, findT, normS, normT,
-  saveStore, selectJourney, setJourney, store } from "./journey.js";
-import { advRenderLib } from "./pack-io.js";
 import { toast } from "./flight.js";
 import { wakeHud } from "./input.js";
-import { G } from "./shared.js";
+import { BUILTIN_S, BUILTIN_T, CATS, MODE_LABEL, allS, allT, applyTemplate, fillJT, findS, findT, journey, jt,
+  jtReset, normS, normT, saveStore, selectJourney, setJourney, store } from "./journey.js";
+import { advRenderLib } from "./pack-io.js";
+export let advT,advS; /* the template and the set the panel is showing */
+export function advPick(t,s){if(t)advT=t;if(s)advS=s;} /* choose which template and set the panel shows */
 export let adv;
 let advTpl, advSet;
 
@@ -12,13 +13,13 @@ export function mk(tag,props,kids){var e=document.createElement(tag),k;for(k in 
 export function uniqueName(base,taken){var n=base.slice(0,28),i=2;while(taken.indexOf(n)>=0){n=(base.slice(0,24)+" "+i);i++;}return n;}
 export function advFill(){
   advTpl.textContent="";allT().forEach(function(t){advTpl.appendChild(mk("option",{value:t.name,text:t.name+(t.builtin?" (built-in)":"")}))});
-  advTpl.value=G.advT.name;
+  advTpl.value=advT.name;
   advSet.textContent="";allS().forEach(function(x){advSet.appendChild(mk("option",{value:x.name,text:x.name+(x.builtin?" (built-in)":"")}))});
-  advSet.value=G.advS.name;
+  advSet.value=advS.name;
   advRenderT();advRenderS();advRenderLib();
 }
 function advRenderT(){
-  var t=G.advT,ro=t.builtin,box=$("advCats");
+  var t=advT,ro=t.builtin,box=$("advCats");
   $("advName").value=t.name;$("advName").disabled=ro;$("advDel").disabled=ro;$("advDel").textContent="Delete";
   $("advLock").textContent=ro?"Built-in templates cannot be changed. Duplicate one to make your own.":"";
   box.textContent="";
@@ -58,9 +59,9 @@ function advRenderT(){
     box.appendChild(mk("fieldset",{},kids));
   });
 }
-function advChanged(){saveStore();if(G.journey&&G.jt===G.advT)applyTemplate(G.advT);}
+function advChanged(){saveStore();if(journey&&jt===advT)applyTemplate(advT);}
 function advRenderS(){
-  var x=G.advS,ro=x.builtin,box=$("advSetBody");
+  var x=advS,ro=x.builtin,box=$("advSetBody");
   $("advSetDel").disabled=ro;$("advSetDel").textContent="Delete";
   $("advSetLock").textContent=ro?"Built-in sets cannot be changed. New set starts from a copy of this one.":"";
   box.textContent="";
@@ -83,7 +84,7 @@ function advRenderS(){
     box.appendChild(mk("div",{"class":"advRow"},[ts,mk("label",{"for":"advSm_"+ix,text:"for"}),mn,mk("label",{"for":"advSm_"+ix,text:"min"}),rm]));
   });
   var add=mk("button",{type:"button",text:"Add a step"});add.disabled=ro;
-  add.addEventListener("click",function(){x.items.push({tpl:G.advT.name,min:2});saveStore();advRenderS()});
+  add.addEventListener("click",function(){x.items.push({tpl:advT.name,min:2});saveStore();advRenderS()});
   box.appendChild(mk("div",{"class":"advRow"},[add]));
 }
 function twoTap(btn,fn){ /* deleting takes a second tap */
@@ -92,55 +93,56 @@ function twoTap(btn,fn){ /* deleting takes a second tap */
 }
 function useJourney(sel,label){
   store.sel=sel;saveStore();fillJT();
-  if(!G.journey)setJourney(true);else selectJourney(sel);
+  if(!journey)setJourney(true);else selectJourney(sel);
   adv.hidden=true;toast("Journey: "+label);wakeHud();
 }
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 /* ---------- journey setup panel ---------- */
-adv=$("adv"),advTpl=$("advTpl"),advSet=$("advSet"),G.advT=BUILTIN_T[0],G.advS=BUILTIN_S[0];
-advTpl.addEventListener("change",function(){G.advT=findT(this.value)||BUILTIN_T[0];advRenderT()});
-advSet.addEventListener("change",function(){G.advS=findS(this.value)||BUILTIN_S[0];advRenderS()});
+adv=$("adv"),advTpl=$("advTpl"),advSet=$("advSet"),advT=BUILTIN_T[0],advS=BUILTIN_S[0];
+advTpl.addEventListener("change",function(){advT=findT(this.value)||BUILTIN_T[0];advRenderT()});
+advSet.addEventListener("change",function(){advS=findS(this.value)||BUILTIN_S[0];advRenderS()});
 $("advName").addEventListener("change",function(){
-  if(G.advT.builtin)return;
-  var old=G.advT.name,nn=uniqueName(this.value.trim()||"My template",allT().filter(function(q){return q!==G.advT}).map(function(q){return q.name}));
-  G.advT.name=nn;
+  if(advT.builtin)return;
+  var old=advT.name,nn=uniqueName(this.value.trim()||"My template",allT().filter(function(q){return q!==advT}).map(function(q){return q.name}));
+  advT.name=nn;
   allS().forEach(function(x){x.items.forEach(function(it){if(it.tpl===old)it.tpl=nn})});
   if(store.sel==="t:"+old)store.sel="t:"+nn;
   saveStore();fillJT();advFill();
 });
 $("advDup").addEventListener("click",function(){
-  var c=normT(JSON.parse(JSON.stringify(G.advT)),false);
-  c.name=uniqueName(G.advT.name+" copy",allT().map(function(q){return q.name}));
-  store.tpls.push(c);G.advT=c;saveStore();fillJT();advFill();toast("Made "+c.name+". Edit it below.");
+  var c=normT(JSON.parse(JSON.stringify(advT)),false);
+  c.name=uniqueName(advT.name+" copy",allT().map(function(q){return q.name}));
+  store.tpls.push(c);advT=c;saveStore();fillJT();advFill();toast("Made "+c.name+". Edit it below.");
 });
 $("advDel").addEventListener("click",function(){
-  if(G.advT.builtin)return;var b=this;
+  if(advT.builtin)return;var b=this;
   twoTap(b,function(){
-    var gone=G.advT;store.tpls=store.tpls.filter(function(q){return q!==gone});
+    var gone=advT;store.tpls=store.tpls.filter(function(q){return q!==gone});
     if(store.sel==="t:"+gone.name)store.sel="t:Classic";
-    if(G.jt===gone){G.jt=BUILTIN_T[0];if(G.journey)selectJourney(store.sel);}
-    G.advT=BUILTIN_T[0];saveStore();fillJT();advFill();
+    if(jt===gone){jtReset();if(journey)selectJourney(store.sel);}
+    advT=BUILTIN_T[0];saveStore();fillJT();advFill();
   });
 });
 $("advSetNew").addEventListener("click",function(){
-  var c=normS(JSON.parse(JSON.stringify(G.advS)),false);
+  var c=normS(JSON.parse(JSON.stringify(advS)),false);
   c.name=uniqueName("My set",allS().map(function(q){return q.name}));
-  store.sets.push(c);G.advS=c;saveStore();fillJT();advFill();toast("Made "+c.name+". Edit it below.");
+  store.sets.push(c);advS=c;saveStore();fillJT();advFill();toast("Made "+c.name+". Edit it below.");
 });
 $("advSetDel").addEventListener("click",function(){
-  if(G.advS.builtin)return;var b=this;
+  if(advS.builtin)return;var b=this;
   twoTap(b,function(){
-    var gone=G.advS;store.sets=store.sets.filter(function(q){return q!==gone});
-    if(store.sel==="s:"+gone.name){store.sel="t:Classic";if(G.journey)selectJourney(store.sel);}
-    G.advS=BUILTIN_S[0];saveStore();fillJT();advFill();
+    var gone=advS;store.sets=store.sets.filter(function(q){return q!==gone});
+    if(store.sel==="s:"+gone.name){store.sel="t:Classic";if(journey)selectJourney(store.sel);}
+    advS=BUILTIN_S[0];saveStore();fillJT();advFill();
   });
 });
-$("advUseT").addEventListener("click",function(){useJourney("t:"+G.advT.name,G.advT.name)});
-$("advUseS").addEventListener("click",function(){useJourney("s:"+G.advS.name,G.advS.name)});
+$("advUseT").addEventListener("click",function(){useJourney("t:"+advT.name,advT.name)});
+$("advUseS").addEventListener("click",function(){useJourney("s:"+advS.name,advS.name)});
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get adv(){return adv},set adv(v){adv=v}, get advTpl(){return advTpl},set advTpl(v){advTpl=v}, get advSet(){return advSet},set advSet(v){advSet=v}, get mk(){return mk}, get uniqueName(){return uniqueName}, get advFill(){return advFill},
-  get advRenderT(){return advRenderT}, get advChanged(){return advChanged}, get advRenderS(){return advRenderS}, get twoTap(){return twoTap}, get useJourney(){return useJourney}};
+export const __dbg={get advT(){return advT},set advT(v){advT=v}, get advS(){return advS},set advS(v){advS=v}, get advPick(){return advPick}, get adv(){return adv},set adv(v){adv=v}, get advTpl(){return advTpl},set advTpl(v){advTpl=v}, get advSet(){return advSet},set advSet(v){advSet=v},
+  get mk(){return mk}, get uniqueName(){return uniqueName}, get advFill(){return advFill}, get advRenderT(){return advRenderT}, get advChanged(){return advChanged}, get advRenderS(){return advRenderS},
+  get twoTap(){return twoTap}, get useJourney(){return useJourney}};

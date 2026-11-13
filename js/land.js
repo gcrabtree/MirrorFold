@@ -1,14 +1,21 @@
 /* The land at run time: its noise table, height, programs, drawing and controls. */
-import { LK, landSrc } from "./landscapes.js";
-import { LAND_PRE_MAIN, LFREQ } from "./land-shader.js";
+import { cam } from "./camera.js";
+import { clock } from "./clock.js";
 import { $, gl } from "./dom.js";
-import { link } from "./programs.js";
-import { freeT, tA, target } from "./targets.js";
-import { bindTex, camArr, passTo } from "./loop.js";
-import { mirrors } from "./state.js";
-import { palCur } from "./shaders.js";
 import { toast } from "./flight.js";
-import { G } from "./shared.js";
+import { LAND_PRE_MAIN, LFREQ } from "./land-shader.js";
+import { LK, landSrc } from "./landscapes.js";
+import { camArr } from "./loop.js";
+import { bindTex, link, passTo } from "./programs.js";
+import { palCur } from "./shaders.js";
+import { mirrors, sel } from "./state.js";
+import { freeT, tA, target } from "./targets.js";
+export let tL=null,tC=null,tLP=null; /* the land's own picture when it is over a world, that picture laid over the world, and the coarse first pass */
+export let landClear=0.11;           /* how high above the ground the camera flies */
+export function landClimb(d){landClear=Math.max(0.035,Math.min(1.5,landClear+d));}
+export function landFreeTargets(){freeT(tL);freeT(tC);freeT(tLP);tL=tC=tLP=null;}
+export function landLayer(){if(!tL)tL=target(tA.w,tA.h);return tL;}
+export function landMixed(){if(!tC)tC=target(tA.w,tA.h);return tC;}
 export let landMode, landKind, landTint, landFx, pLand, pMix;
 let pLandPre, landTex;
 
@@ -73,7 +80,7 @@ function landBuild(){ /* compiled the first time the land is turned on; false if
 const LP_CI=new Float32Array(26),LP_CF=new Float32Array(26),LP_LI=new Float32Array(12),LP_LF=new Float32Array(12);
 export function landPass(dst,over,fov,hue){
   var pw=Math.ceil(tA.w/8),ph=Math.ceil(tA.h/8),k,tt,wrap=function(v){return v-256*Math.floor(v/256)};
-  if(!G.tLP||G.tLP.w!==pw||G.tLP.h!==ph){freeT(G.tLP);G.tLP=target(pw,ph);}
+  if(!tLP||tLP.w!==pw||tLP.h!==ph){freeT(tLP);tLP=target(pw,ph);}
   /* the camera's place in each noise layer and each grid of things, split into a whole number and a remainder so the shader loses nothing */
   var ci=LP_CI,cf=LP_CF,li=LP_LI,lf=LP_LF,px=lpos[0]*LFREQ,pz=lpos[2]*LFREQ; /* kept between frames, so nothing is left for the browser to clear up */
   for(k=0;k<13;k++){px=wrap(px);pz=wrap(pz);ci[2*k]=Math.floor(px);ci[2*k+1]=Math.floor(pz);cf[2*k]=px-Math.floor(px);cf[2*k+1]=pz-Math.floor(pz);tt=2*px-pz;pz=px+2*pz;px=tt;}
@@ -81,9 +88,9 @@ export function landPass(dst,over,fov,hue){
     li[2*j]=Math.floor(bx);li[2*j+1]=Math.floor(bz);lf[2*j]=bx-Math.floor(bx);lf[2*j+1]=bz-Math.floor(bz);});
   var da=[wrap(lpos[0]*LFREQ*429),wrap(lpos[2]*LFREQ*429)],db=[wrap(lpos[0]*LFREQ*2571),wrap(lpos[2]*LFREQ*2571)];
   var set=function(U){
-    gl.uniform2f(U.uRes,tA.w,tA.h);gl.uniform1f(U.uTime,G.time);
+    gl.uniform2f(U.uRes,tA.w,tA.h);gl.uniform1f(U.uTime,clock.time);
     gl.uniform3f(U.uPos,lpos[0],lpos[1],lpos[2]);gl.uniformMatrix3fv(U.uCam,false,camArr);
-    gl.uniform1f(U.uFov,fov);gl.uniform1f(U.uSeg,mirrors[G.mi]);gl.uniform1f(U.uSpin,G.spin);gl.uniform1f(U.uSky,over?1:0);
+    gl.uniform1f(U.uFov,fov);gl.uniform1f(U.uSeg,mirrors[sel.mi]);gl.uniform1f(U.uSpin,clock.spin);gl.uniform1f(U.uSky,over?1:0);
     gl.uniform2fv(U.uCi,ci);gl.uniform2fv(U.uCf,cf);gl.uniform2fv(U.uLi,li);gl.uniform2fv(U.uLf,lf);
     gl.uniform4f(U.uDa,Math.floor(da[0]),Math.floor(da[1]),da[0]%1,da[1]%1);gl.uniform4f(U.uDb,Math.floor(db[0]),Math.floor(db[1]),db[0]%1,db[1]%1);
     gl.uniform3fv(U.uPa,palCur.a);gl.uniform3fv(U.uPb,palCur.b);gl.uniform3fv(U.uPc,palCur.c);gl.uniform3fv(U.uPd,palCur.d);
@@ -91,23 +98,23 @@ export function landPass(dst,over,fov,hue){
     gl.uniform3fv(U.uSun,LK[landKind].sun);gl.uniform3fv(U.uSunCol,LK[landKind].sunCol);
     gl.uniform1i(U.uX,7);gl.uniform1i(U.uN,4);gl.uniform1i(U.uPre,5);gl.uniform1i(U.uSkyT,6);gl.uniform2f(U.uPreRes,pw,ph);gl.uniform1f(U.uK,8);
   };
-  camArr[0]=G.R[0];camArr[1]=G.R[1];camArr[2]=G.R[2];camArr[3]=G.Up[0];camArr[4]=G.Up[1];camArr[5]=G.Up[2];camArr[6]=G.F[0];camArr[7]=G.F[1];camArr[8]=G.F[2];
+  camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];
   bindTex(5,landTex);bindTex(6,landTex);bindTex(7,LK[landKind].xtex||landTex);bindTex(4,landTex);
-  if(pLandPre){passTo(G.tLP,pLandPre);set(pLandPre.U);gl.drawArrays(gl.TRIANGLES,0,3);}
-  bindTex(5,G.tLP.t);bindTex(6,over?tA.t:landTex);
+  if(pLandPre){passTo(tLP,pLandPre);set(pLandPre.U);gl.drawArrays(gl.TRIANGLES,0,3);}
+  bindTex(5,tLP.t);bindTex(6,over?tA.t:landTex);
   passTo(dst,pLand);set(pLand.U);gl.drawArrays(gl.TRIANGLES,0,3);
 }
 export function setLand(mode){
   if(mode&&!landBuild()){toast("The land does not work on this device.");mode=0;if(!pLandK[landKind])pLand=null;}
   landMode=mode;
-  if(mode)lpos[1]=Math.max(lpos[1],landFloor(lpos[0],lpos[2])+G.landClear);
+  if(mode)lpos[1]=Math.max(lpos[1],landFloor(lpos[0],lpos[2])+landClear);
   $("bLand").textContent=["Land off","Land alone","Land over world"][mode];
   $("bLandKind").hidden=$("bLandTint").hidden=!mode;$("bLandFx").hidden=mode!==2;
 }
 export function setLandKind(k){ /* each landscape's shader is compiled the first time it is chosen */
   var was=landKind;landKind=k;
   if(landMode&&!landBuild()){landKind=was;landBuild();toast("That landscape does not work on this device.");}
-  if(landMode)lpos[1]=Math.max(lpos[1],landFloor(lpos[0],lpos[2])+G.landClear);
+  if(landMode)lpos[1]=Math.max(lpos[1],landFloor(lpos[0],lpos[2])+landClear);
   $("bLandKind").textContent=LK[landKind].name;
 }
 export function setLandTint(k){landTint=k;$("bLandTint").textContent=["Land colours natural","Palette on sky and light","Palette on everything"][k];}
@@ -121,15 +128,13 @@ pLand=null;
 pLandPre=null;
 pMix=null;
 landTex=null;
-G.tL=null;
-G.tC=null;
-G.tLP=null;
-G.landClear=0.11;
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get FS_MIX(){return FS_MIX}, get LAND_U(){return LAND_U}, get LTAB(){return LTAB}, get landHash(){return landHash}, get landH(){return landH}, get landFloor(){return landFloor},
-  get LAYERS(){return LAYERS}, get landMode(){return landMode},set landMode(v){landMode=v}, get landKind(){return landKind},set landKind(v){landKind=v}, get landTint(){return landTint},set landTint(v){landTint=v}, get landFx(){return landFx},set landFx(v){landFx=v}, get pLand(){return pLand},set pLand(v){pLand=v},
-  get pLandPre(){return pLandPre},set pLandPre(v){pLandPre=v}, get pLandK(){return pLandK}, get pMix(){return pMix},set pMix(v){pMix=v}, get landTex(){return landTex},set landTex(v){landTex=v}, get lpos(){return lpos}, get lvel(){return lvel},
-  get lhead(){return lhead}, get landXTab(){return landXTab}, get landBuild(){return landBuild}, get LP_CI(){return LP_CI}, get LP_CF(){return LP_CF}, get LP_LI(){return LP_LI},
-  get LP_LF(){return LP_LF}, get landPass(){return landPass}, get setLand(){return setLand}, get setLandKind(){return setLandKind}, get setLandTint(){return setLandTint}, get setLandFx(){return setLandFx}};
+export const __dbg={get tL(){return tL},set tL(v){tL=v}, get tC(){return tC},set tC(v){tC=v}, get tLP(){return tLP},set tLP(v){tLP=v}, get landClear(){return landClear},set landClear(v){landClear=v}, get landClimb(){return landClimb}, get landFreeTargets(){return landFreeTargets},
+  get landLayer(){return landLayer}, get landMixed(){return landMixed}, get landMode(){return landMode},set landMode(v){landMode=v}, get landKind(){return landKind},set landKind(v){landKind=v}, get landTint(){return landTint},set landTint(v){landTint=v}, get landFx(){return landFx},set landFx(v){landFx=v},
+  get pLand(){return pLand},set pLand(v){pLand=v}, get pMix(){return pMix},set pMix(v){pMix=v}, get pLandPre(){return pLandPre},set pLandPre(v){pLandPre=v}, get landTex(){return landTex},set landTex(v){landTex=v}, get FS_MIX(){return FS_MIX}, get LAND_U(){return LAND_U},
+  get LTAB(){return LTAB}, get landHash(){return landHash}, get landH(){return landH}, get landFloor(){return landFloor}, get LAYERS(){return LAYERS}, get pLandK(){return pLandK},
+  get lpos(){return lpos}, get lvel(){return lvel}, get lhead(){return lhead}, get landXTab(){return landXTab}, get landBuild(){return landBuild}, get LP_CI(){return LP_CI},
+  get LP_CF(){return LP_CF}, get LP_LI(){return LP_LI}, get LP_LF(){return LP_LF}, get landPass(){return landPass}, get setLand(){return setLand}, get setLandKind(){return setLandKind},
+  get setLandTint(){return setLandTint}, get setLandFx(){return setLandFx}};

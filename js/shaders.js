@@ -1,10 +1,9 @@
 /* The scene shader and the post-processing shaders. */
-import { PALETTES } from "./worlds.js";
 import { STEPS, isTouch } from "./dom.js";
-import { G } from "./shared.js";
+import { PALETTES, orbsFound, unlocked } from "./worlds.js";
 export let palCur;
 
-export function saveProgress(){try{localStorage.setItem("mirrorfold",JSON.stringify({u:G.unlocked,n:G.orbsFound}))}catch(_){}}
+export function saveProgress(){try{localStorage.setItem("mirrorfold",JSON.stringify({u:unlocked,n:orbsFound}))}catch(_){}}
 
 export const VS="attribute vec2 a;varying vec2 v;void main(){v=a*0.5+0.5;gl_Position=vec4(a,0.0,1.0);}";
 export function fragSource(w){
@@ -273,5 +272,5 @@ palCur={a:PALETTES[0].a.slice(),b:PALETTES[0].b.slice(),c:PALETTES[0].c.slice(),
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get saveProgress(){return saveProgress}, get palCur(){return palCur},set palCur(v){palCur=v}, get VS(){return VS}, get fragSource(){return fragSource}, get FS_TRAIL(){return FS_TRAIL}, get FS_DOWN(){return FS_DOWN},
+export const __dbg={get palCur(){return palCur},set palCur(v){palCur=v}, get saveProgress(){return saveProgress}, get VS(){return VS}, get fragSource(){return fragSource}, get FS_TRAIL(){return FS_TRAIL}, get FS_DOWN(){return FS_DOWN},
   get FS_BLUR(){return FS_BLUR}, get FS_FINAL(){return FS_FINAL}, get finalSource(){return finalSource}, get trailSource(){return trailSource}, get TRAIL_U(){return TRAIL_U}};

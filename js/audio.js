@@ -1,7 +1,7 @@
 import { $, errBox } from "./dom.js";
-import { wakeHud } from "./input.js";
 import { toast } from "./flight.js";
-import { G } from "./shared.js";
+import { wakeHud } from "./input.js";
+import { musicMode } from "./listen.js";
 export let ac, master, analyser, filt, fbins, scrubbing;
 let bus, droneGain, sendIn, noiseBuf, audioEl, elNode, objUrl, scrub, scrubFill, scrubThumb, tLabel, scrubFr, lastSeek, elErr;
 
@@ -142,7 +142,7 @@ function scrubEnd(){
 }
 function fileReady(){
   $("bPlay").hidden=false;$("scrubWrap").hidden=false;showScrub(0);
-  if(G.musicMode==="file")pPlay();
+  if(musicMode==="file")pPlay();
   syncPlayBtn();wakeHud();
 }
 function prepElement(f){
@@ -203,14 +203,10 @@ filt=null;
 droneGain=null;
 sendIn=null;
 noiseBuf=null;
-G.musicMode="off";
-G.beat=0;
-G.level=0;
 fbins=null;
 var bmax=.08;
 var bavg=0;
 audioEl=null,elNode=null,objUrl=null;
-G.taps=[],G.tapInt=0,G.tapAt=0;
 scrub=$("scrub"),scrubFill=$("scrubFill"),scrubThumb=$("scrubThumb"),tLabel=$("tLabel"),scrubbing=false,scrubFr=0,lastSeek=0;
 scrub.addEventListener("pointerdown",function(e){
   if(!(pDur()>0))return;
@@ -263,13 +259,13 @@ $("bPlay").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get ac(){return ac},set ac(v){ac=v}, get master(){return master},set master(v){master=v}, get bus(){return bus},set bus(v){bus=v}, get analyser(){return analyser},set analyser(v){analyser=v}, get filt(){return filt},set filt(v){filt=v}, get droneGain(){return droneGain},set droneGain(v){droneGain=v},
-  get sendIn(){return sendIn},set sendIn(v){sendIn=v}, get noiseBuf(){return noiseBuf},set noiseBuf(v){noiseBuf=v}, get drones(){return drones}, get fbins(){return fbins},set fbins(v){fbins=v}, get audioEl(){return audioEl},set audioEl(v){audioEl=v}, get elNode(){return elNode},set elNode(v){elNode=v},
-  get objUrl(){return objUrl},set objUrl(v){objUrl=v}, get seq(){return seq}, get PENT(){return PENT}, get ROOTS(){return ROOTS}, get BPM(){return BPM}, get cap(){return cap},
-  get ensureAudio(){return ensureAudio}, get env(){return env}, get kick(){return kick}, get bass(){return bass}, get pluck(){return pluck}, get hat(){return hat},
-  get playStep(){return playStep}, get tick(){return tick}, get startBuilt(){return startBuilt}, get stopBuilt(){return stopBuilt}, get player(){return player}, get scrub(){return scrub},set scrub(v){scrub=v},
-  get scrubFill(){return scrubFill},set scrubFill(v){scrubFill=v}, get scrubThumb(){return scrubThumb},set scrubThumb(v){scrubThumb=v}, get tLabel(){return tLabel},set tLabel(v){tLabel=v}, get scrubbing(){return scrubbing},set scrubbing(v){scrubbing=v}, get scrubFr(){return scrubFr},set scrubFr(v){scrubFr=v}, get lastSeek(){return lastSeek},set lastSeek(v){lastSeek=v},
-  get mmss(){return mmss}, get pDur(){return pDur}, get pPos(){return pPos}, get pIsPlaying(){return pIsPlaying}, get pPlay(){return pPlay}, get pPause(){return pPause},
-  get pSeek(){return pSeek}, get syncPlayBtn(){return syncPlayBtn}, get showScrub(){return showScrub}, get scrubAt(){return scrubAt}, get scrubEnd(){return scrubEnd}, get fileReady(){return fileReady},
-  get elErr(){return elErr},set elErr(v){elErr=v}, get prepElement(){return prepElement}, get showElError(){return showElError}, get useElement(){return useElement}, get DECODE_MAX_SEC(){return DECODE_MAX_SEC}, get DECODE_MAX_BYTES(){return DECODE_MAX_BYTES},
+export const __dbg={get ac(){return ac},set ac(v){ac=v}, get master(){return master},set master(v){master=v}, get analyser(){return analyser},set analyser(v){analyser=v}, get filt(){return filt},set filt(v){filt=v}, get fbins(){return fbins},set fbins(v){fbins=v}, get scrubbing(){return scrubbing},set scrubbing(v){scrubbing=v},
+  get bus(){return bus},set bus(v){bus=v}, get droneGain(){return droneGain},set droneGain(v){droneGain=v}, get sendIn(){return sendIn},set sendIn(v){sendIn=v}, get noiseBuf(){return noiseBuf},set noiseBuf(v){noiseBuf=v}, get audioEl(){return audioEl},set audioEl(v){audioEl=v}, get elNode(){return elNode},set elNode(v){elNode=v},
+  get objUrl(){return objUrl},set objUrl(v){objUrl=v}, get scrub(){return scrub},set scrub(v){scrub=v}, get scrubFill(){return scrubFill},set scrubFill(v){scrubFill=v}, get scrubThumb(){return scrubThumb},set scrubThumb(v){scrubThumb=v}, get tLabel(){return tLabel},set tLabel(v){tLabel=v}, get scrubFr(){return scrubFr},set scrubFr(v){scrubFr=v},
+  get lastSeek(){return lastSeek},set lastSeek(v){lastSeek=v}, get elErr(){return elErr},set elErr(v){elErr=v}, get drones(){return drones}, get seq(){return seq}, get PENT(){return PENT}, get ROOTS(){return ROOTS},
+  get BPM(){return BPM}, get cap(){return cap}, get ensureAudio(){return ensureAudio}, get env(){return env}, get kick(){return kick}, get bass(){return bass},
+  get pluck(){return pluck}, get hat(){return hat}, get playStep(){return playStep}, get tick(){return tick}, get startBuilt(){return startBuilt}, get stopBuilt(){return stopBuilt},
+  get player(){return player}, get mmss(){return mmss}, get pDur(){return pDur}, get pPos(){return pPos}, get pIsPlaying(){return pIsPlaying}, get pPlay(){return pPlay},
+  get pPause(){return pPause}, get pSeek(){return pSeek}, get syncPlayBtn(){return syncPlayBtn}, get showScrub(){return showScrub}, get scrubAt(){return scrubAt}, get scrubEnd(){return scrubEnd},
+  get fileReady(){return fileReady}, get prepElement(){return prepElement}, get showElError(){return showElError}, get useElement(){return useElement}, get DECODE_MAX_SEC(){return DECODE_MAX_SEC}, get DECODE_MAX_BYTES(){return DECODE_MAX_BYTES},
   get decodeFile(){return decodeFile}, get showScrubIdle(){return showScrubIdle}};

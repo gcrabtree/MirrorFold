@@ -360,6 +360,7 @@ export const LAND_PRE_MAIN=[
 "  vec3 e=fract(clamp(t/80.0,0.0,0.99999)*vec3(1.0,255.0,65025.0));e.xy-=e.yz/255.0;", /* the distance, spread over three colour channels */
 "  gl_FragColor=vec4(e,1.0);",
 "}"].join("\n");
+
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
 export const __dbg={get LFREQ(){return LFREQ}, get LPERIOD(){return LPERIOD}, get LAND_T(){return LAND_T}, get ALPS_SHAPE(){return ALPS_SHAPE}, get ALPS_SKY(){return ALPS_SKY}, get ALPS_ZONE(){return ALPS_ZONE},
   get ALPS_SHAPES(){return ALPS_SHAPES}, get ALPS_GROUND(){return ALPS_GROUND}, get ALPS_COLS(){return ALPS_COLS}, get LAND_PRE_MAIN(){return LAND_PRE_MAIN}};
