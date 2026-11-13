@@ -1,38 +1,239 @@
 # Mirrorfold
 
-Fly through endless fractal worlds in your browser. Kaleidoscope mirrors, feedback trails, filters, overlays and an autopilot that reacts to music.
+Fly through endless fractal worlds in your browser. Seventeen worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
+
+**Try it: https://gcrabtree.github.io/MirrorFold/**
+
+![Contact sheet of all 17 worlds](docs/worlds.jpg)
+
+The whole app is one file, `index.html`. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
+
+## Contents
+
+- [What it does](#what-it-does)
+- [Run it](#run-it)
+- [Controls](#controls)
+- [The buttons](#the-buttons)
+- [Music](#music)
+- [Journey](#journey)
+- [Orbs and share links](#orbs-and-share-links)
+- [Performance](#performance)
+- [Motion and privacy](#motion-and-privacy)
+- [How it works](#how-it-works)
+- [Developing](#developing)
+- [What has not been tested](#what-has-not-been-tested)
+- [Licence](#licence)
+
+## What it does
+
+- **17 worlds.** Fifteen are solid fractal surfaces; two (Nebula and Aurora) are glowing volumes. Every world repeats forever in all directions.
+- **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
+- **Morph.** Each world slowly changes shape as you fly.
+- **Kaleidoscope mirrors**: off, or 3, 4, 6, 8 or 12 segments.
+- **13 colour palettes.** Seven are available from the start. Six are unlocked by finding orbs.
+- **6 feedback motions, 17 filters, 7 overlays and 8 transitions**, in the style of the MilkDrop music visualiser.
+- **Music reactivity** from a built-in track, your own audio file, or a tapped tempo.
+- **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter and overlay over time. You control what it may change with templates.
+- **Share spot** links that take someone to the exact place you are looking at.
+
+The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, Shards, Crystal, Julia, Web, Temple, Nebula, Fortress, Hive, Gates, Aurora.
 
 ## Run it
 
-Open `index.html`. That is the whole app.
+**Online:** open https://gcrabtree.github.io/MirrorFold/.
 
-To host it on GitHub Pages, put these files at the root of the published branch and enable Pages. No build is needed.
+**From a copy of this repository:** open `index.html` in a browser. It works straight from the file system.
+
+**From a local web server:**
+
+```
+python3 -m http.server 8000
+```
+
+Then open http://localhost:8000/.
+
+**Host your own copy:** put `index.html` on any static web host. For GitHub Pages, keep `index.html` at the root of the published branch and keep the empty `.nojekyll` file, which stops Pages from running Jekyll over the repository.
+
+On the start card, choose **Enter with music** or **Enter silent**.
 
 ## Controls
 
-**Phone:** left thumb moves, right thumb looks. Two fingers on the right side: pinch for speed, twist to roll. Double-tap for a burst of speed.
+### Phone or tablet
 
-**Desktop:** click to capture the mouse. W A S D to fly, Space and Shift for up and down, Q and E to roll, wheel for speed. `[` and `]` change world, P palette, M mirrors, J journey, T tap tempo, B boost.
+| Action | Gesture |
+|---|---|
+| Move | Left thumb, anywhere in the left 45% of the screen. A ring appears under your thumb. |
+| Look | Right thumb, anywhere else. |
+| Change speed | Two fingers on the right side, pinch. |
+| Roll | Two fingers on the right side, twist. |
+| Burst of speed | Double-tap on the right side. |
+
+### Mouse and keyboard
+
+Click the picture to capture the mouse. Where the browser does not allow that, drag to look.
+
+| Action | Key |
+|---|---|
+| Fly | `W` `A` `S` `D` |
+| Up, down | `Space`, `Shift` |
+| Roll | `Q`, `E` |
+| Look | Mouse, or arrow keys |
+| Change speed | Mouse wheel |
+| Burst of speed | `B`, or double-click |
+| Next or previous world | `]`, `[` |
+| Jump to one of the first nine worlds | `1` to `9` |
+| Next palette | `P` |
+| Next mirror setting | `M` |
+| Journey on or off | `J` |
+| Tap tempo | `T` |
+
+The controls at the top of the screen fade after five seconds without input and come back on any touch or mouse movement.
+
+## The buttons
+
+**First row:** World, Palette and Music.
+
+**Second row:**
+
+| Control | Options |
+|---|---|
+| Feedback motion | none, Melt, Vortex, Tunnel, Implode, Ripple, Drift. Each one smears the previous frame in a different way. |
+| Filter | none, Echo, Neon, Solar, Negative, Poster, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl, Thermal, CRT, Halftone, Contour, Noir. |
+| Overlay | none, Ring, Scope, Spectrum, Spokes, Rings, Spiral, Orbit. These draw the sound on top of the picture. |
+| Overlay strength | 15%, 30%, 50%, 75% or 100%. |
+
+**Third row:**
+
+| Button | What it does |
+|---|---|
+| Journey | Turns the autopilot on or off. |
+| Mirrors | Steps through off, 3, 4, 6, 8 and 12 segments. |
+| FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
+| Detail | Steps through auto, sharp and fast. See [Performance](#performance). |
+| Morph | Turns the slow change of each world's shape on or off. |
+| Drift | Turns the slow forward drift on or off when you are not steering. |
+| Orbs | Shows or hides the orbs. |
+| Share spot | Makes a link to where you are. |
+| Fullscreen | Fills the screen. |
 
 ## Music
 
-- **Built-in music:** a generative track the visuals react to.
-- **My audio file:** pick an MP3 or M4A you own. Files over 15 minutes are streamed rather than loaded whole.
-- **Tap tempo:** for music playing in another app, such as Apple Music. Enter silent, start your song, choose Tap tempo and tap the beat.
+Three bands of the sound drive different parts of the picture. Bass drives zoom kicks, bloom and flight speed. Mids drive the morph speed, rotation and the bands on surfaces. Treble drives highlights, colour fringing and how fast the colours drift.
 
-## Files
+| Setting | What it does |
+|---|---|
+| Built-in music | A generated track at 92 beats per minute. It is made in the browser, not a recording. |
+| My audio file | Plays a file you choose, with pause and a scrubber. Files longer than 15 minutes or larger than 80 MB are streamed instead of loaded whole. |
+| Tap tempo | Makes no sound. Use it when music is playing in another app, such as Apple Music or Spotify: enter silent, start your song there, choose Tap tempo and tap the beat. |
+| Music off | The worlds still move, without reacting to sound. |
+
+Mirrorfold cannot listen to the microphone or to other apps. Tap tempo is the way to follow music it cannot hear.
+
+## Journey
+
+Journey flies for you. It steers toward open space and changes things on separate clocks, so no two minutes are the same.
+
+A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter and overlay you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes instead of on a clock.
+
+A **set** plays several templates in turn, each for a number of minutes.
+
+Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, Calm, Follow the music. Built-in set: Grand tour.
+
+Turn Journey on and press **Edit journeys** to make your own. Built-in templates cannot be edited; use **Duplicate** to start from one. Your templates and sets are saved in your browser only. The **Backup** box in the editor copies them out as text and loads them back in, which is how you move them to another device.
+
+## Orbs and share links
+
+Each world hides a glowing orb. Fly into it to collect it. The first six orbs each unlock a new palette. After that, collecting an orb takes you to another world. Progress is saved in your browser.
+
+**Share spot** makes a link that records the world, palette, mirror setting, your position, the direction you are facing and the world's current shape. Opening the link puts the viewer in the same place. Roll is not recorded.
+
+A link ending in `#` and a world id opens that world, for example https://gcrabtree.github.io/MirrorFold/#julia. The ids are the world names in lower case.
+
+## Performance
+
+Every pixel is computed by stepping a ray through a fractal, which is heavy work for a graphics chip. The **Detail** button trades sharpness for speed:
+
+| Mode | Behaviour |
+|---|---|
+| auto | Starts at 85% resolution and adjusts between 60% and 100% to hold the frame rate. This is the default. |
+| sharp | Full resolution, up to three device pixels per CSS pixel. |
+| fast | Half resolution. |
+
+Bulbs, Julia, Box and Fortress are the heaviest worlds. If the picture stutters, try **Detail fast** or **FX clean**.
+
+## Motion and privacy
+
+**Motion.** Colour and motion shift constantly. Pulses are soft and slow by design and nothing strobes; a tapped tempo above about 165 beats per minute is halved. If your device is set to reduce motion, all reactions to sound are cut to a quarter and several motions are disabled.
+
+**Privacy.** Mirrorfold makes no network requests of its own. The page loads two fonts from Google Fonts, and that is all. An audio file you choose is read by your browser and is not uploaded. Templates, orb progress and the orbs setting are kept in your browser's local storage.
+
+## How it works
+
+Each frame draws five passes:
+
+1. **Scene.** A fragment shader marches one ray per pixel through a distance estimator for the current world (sphere tracing). Mirrors fold the ray direction, so the kaleidoscope is a true view of a 3D scene and not a folded image.
+2. **Feedback.** The previous frame is warped, faded and combined with the new one. This gives the trails and motions.
+3. **Bloom.** A bright pass is blurred at quarter resolution.
+4. **Final.** Filters, colour fringing, bloom and transitions are applied on the way to the screen.
+
+Each world's distance estimator is written twice: once in GLSL for drawing, and once in JavaScript so the app can scale flight speed, steer the autopilot and place orbs. Every world is exactly periodic, and the camera position is wrapped by that period each frame to keep floating-point precision.
+
+Sound goes through one Web Audio analyser. Three bands each keep a level and a soft pulse. A change detector compares short and long averages to decide when the music has changed enough to change world.
+
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) covers all of this in detail: the render pipeline, the math of every world, the audio analysis, the journey engine, known weaknesses, ideas not yet built and a suggested split into modules.
+
+## Developing
+
+### Files
 
 | Path | What it is |
 |---|---|
-| `index.html` | The app |
-| `docs/ARCHITECTURE.md` | How it works: pipeline, math, audio, journey engine, known issues |
+| `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,150 lines |
+| `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/worlds.jpg` | Contact sheet of all 17 worlds |
+| `tools/unit.mjs` | Tests for the change detector and the weighted picker |
+| `tools/check.py` | Headless smoke test |
+| `tools/render.py` | Headless screenshots |
+| `tools/harness.py` | Shared code for the two Python tools |
 | `CLAUDE.md` | Working notes for Claude Code sessions |
-| `tools/` | Headless test harness and renderer (see `CLAUDE.md` for commands) |
+| `.nojekyll` | Stops GitHub Pages from running Jekyll |
 
-## Testing
+### Tests and tools
 
 ```
-node tools/unit.mjs
-python3 tools/check.py
+node tools/unit.mjs                     # pure-logic tests
+python3 tools/check.py                  # all shaders compile, no script or WebGL errors
+python3 tools/render.py --world julia -o out.png          # screenshot one world
+python3 tools/render.py --all -o sheet.jpg                # contact sheet of every world
+python3 tools/render.py --world temple --js "setLook(2)" -o neon.png
 ```
+
+`unit.mjs` needs Node. The Python tools need `google-chrome` or `chromium` on your PATH; they run it headless with software WebGL. `--all` also needs Pillow.
+
+### Rules that are easy to break
+
+- A world's GLSL `map` and JavaScript `de` must compute the same distance. If they drift apart, the camera clips through walls or crawls in open space.
+- A world's field must repeat exactly at its `period`, or the camera wrap shows as a jump.
+- Journey templates store options by name. Renaming a world id, motion, filter, overlay or palette silently removes it from people's saved templates.
+- The tools find code in `index.html` by exact strings and by function name. If you restructure the script, update the tools in the same change.
+- After any shader change, run `check.py`, then render the affected world and look at it. Shaders can compile cleanly and still look wrong.
+
+The code is ES5 in one closure: `var`, function declarations, no modules. Shaders are GLSL ES 1.00. The architecture document has a checklist for adding a world.
+
+## What has not been tested
+
+The app was developed against headless Chrome with software rendering. These have not been checked on a real device:
+
+- Frame rate on phones.
+- Multi-touch gestures. The twist direction may feel reversed.
+- How the built-in music sounds, and how strong each reaction should be.
+- The change detector on real songs.
+- Seeking in files over 15 minutes on iOS.
+- Whether iOS keeps another app's music playing in Tap tempo mode.
+- Typing in the journey editor on iOS.
+
+Known weak spots: Box and Fortress look grainy, and the controls cover a lot of a phone screen until they fade. Reports from real devices are welcome as issues.
+
+## Licence
+
+[MIT](LICENSE).
