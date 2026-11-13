@@ -1,10 +1,10 @@
 # Mirrorfold packs
 
-A pack is one JSON file of palettes, motions, filters, overlays, Journey templates and sets. Almost all of it is names and numbers. The exceptions are filters and overlays, which may hold a short picture program for the graphics chip. Nothing in a pack is ever run as JavaScript, so a pack cannot reach the page, your files or the network.
+A pack is one JSON file of worlds, palettes, motions, filters, overlays, Journey templates and sets. Almost all of it is names and numbers. The exceptions are filters and overlays, which may hold a short picture program for the graphics chip. Nothing in a pack is ever run as JavaScript, so a pack cannot reach the page, your files or the network.
 
 Packs in this folder are offered to everyone in the app: press **Library**, choose a pack, and press **Add this pack**. Anyone can also load a pack file from their own device with **Load a pack file**, without it being in this folder.
 
-Worlds cannot be put in a pack yet.
+Worlds, like filters and overlays, hold a short picture program. See [Worlds](#worlds).
 
 Palettes, motions and filter mixes can be made in the app without writing anything: press **Library**, then **New palette**, **New motion** or **New filter**, and move the sliders. **Save mine as a pack file** then writes them in the format below.
 
@@ -38,6 +38,37 @@ Palettes, motions and filter mixes can be made in the app without writing anythi
 ```
 
 `"mirrorfold": 1` is the format version. Every list is optional. Names are 1 to 28 characters.
+
+### Worlds
+
+A world is the body of a distance function, written in the shader language GLSL: given a point, it returns how far that point is from the nearest surface. Mirrorfold draws the world from it and flies through it.
+
+```json
+{"name": "Column hall", "hue": 0.55, "fog": 0.13, "maxd": 22, "speed": 0.8, "period": [2, 4, 2],
+ "code": "vec2 c=mod(p.xz+0.5,1.0)-0.5;float pil=length(c)-0.12-0.03*sin(p.y*12.0)-0.03*m;float slab=0.9-abs(p.y);orb=vec4(abs(c)*3.0,abs(p.y),dot(c,c)*6.0);return min(pil,slab)*0.8;"}
+```
+
+| Field | Meaning | Range | If left out |
+|---|---|---|---|
+| `name` | Shown in the world list. Needs at least one letter. Its letters, lower-cased, after the word `pack`, are the world's id (`packcolumnhall`), which templates and links use. | 1 to 28 plain characters | required |
+| `period` | The size of the box the world repeats in, along x, y and z. | three numbers, 0.5 to 16 | required |
+| `code` | The program. | see below | required |
+| `hue` | Shifts the palette for this world. | 0 to 1 | 0 |
+| `fog` | How quickly the distance fades out. | 0.02 to 0.5 | 0.15 |
+| `maxd` | How far a ray is followed. | 4 to 30 | 18 |
+| `speed` | Flying speed. | 0.2 to 1.5 | 0.7 |
+
+What the code is given, and what it must do:
+
+- `p` is the point, a `vec3`. It has already been folded into the repeating box, so each of its parts lies between minus half and plus half of the `period`. The world therefore always repeats exactly. If the shape does not join up across the edges of the box, there will be a visible seam there.
+- `m` is the morph, a `float` that drifts slowly between about -1.2 and 1.2 while **Morph** is on. Use it to make the shape breathe.
+- The code must `return` a `float`: the distance from `p` to the nearest surface, negative inside. It must never be larger than the true distance, or rays will skip through surfaces; multiply by a number below 1 if the shape is bent or stretched.
+- It may set `orb`, a `vec4`, which colours the surface (the built-in worlds put the smallest values seen while folding there). If it does not, a plain pattern is used.
+- There is no clock and no sound: a world holds still apart from the morph.
+
+The rules for the code are the ones for filter code (below), with these differences: there is no `scene`, `col`, `time`, `beat` or `sound`, and the loops may run at most 16 times in all, because the code runs at every step of every ray.
+
+Because a pack carries no JavaScript, the app cannot work the distance out itself. It asks the graphics chip, once for each picture, how far the camera and four points ahead of it are from the world, and flies by the answers. Worlds from packs cannot take part in a blend with another world.
 
 ### Palettes
 
@@ -158,8 +189,6 @@ Set `ln` to how strongly the overlay shows at this pixel, from 0 (not at all) to
 | `aspect` | Screen width divided by height |
 
 The overlay is drawn into the trails, so it smears with the chosen motion, and the **Overlay** strength button scales it.
-
-### Templates and sets
 
 ### Templates and sets
 

@@ -16,8 +16,8 @@ function grab(name) {
   if (!m) throw new Error("could not find function " + name + " in index.html");
   return m[0];
 }
-const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter", "cleanOverlay", "palFromSimple", "palToSimple"];
-const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter, cleanOverlay, palFromSimple, palToSimple } = new Function(
+const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter", "cleanOverlay", "cleanWorld", "palFromSimple", "palToSimple"];
+const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter, cleanOverlay, cleanWorld, palFromSimple, palToSimple } = new Function(
   NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
 
 let failed = 0;
@@ -151,6 +151,15 @@ c = cleanOverlay({ name: "Loop", sound: "bands", code: ovCode, reviewed: true })
 expect("a good overlay passes, and cannot mark itself reviewed", JSON.stringify(c) === JSON.stringify({ name: "Loop", sound: "bands", code: ovCode }));
 expect("an overlay without code is refused", cleanOverlay({ name: "x" }) === null);
 expect("an overlay with an unknown sound source is refused", cleanOverlay({ name: "x", sound: "mic", code: ovCode }) === null);
+const wCode = "float d=length(p)-0.3-0.1*m;for(int i=0;i<8;i++){d=min(d,length(p-0.1*float(i))-0.05);}return d;";
+c = cleanWorld({ name: "Balls", period: [2, 2, 99], code: wCode, fog: 9, reviewed: true, de: "alert(1)" });
+expect("a world keeps its code, has its numbers kept in range, and loses unknown fields", c && c.code === wCode && c.period[2] === 16 && c.fog === 0.5 && c.speed === 0.7 && !("reviewed" in c) && !("de" in c), JSON.stringify(c));
+expect("a world without a period is refused", cleanWorld({ name: "x", code: wCode }) === null);
+expect("a world that returns nothing is refused", cleanWorld({ name: "x", period: [2, 2, 2], code: "float d=1.0;" }) === null);
+expect("a world whose loops run more than 16 times is refused", cleanWorld({ name: "x", period: [2, 2, 2], code: wCode.replace("i<8", "i<17") }) === null);
+expect("a world may not use the clock or the sound", cleanWorld({ name: "x", period: [2, 2, 2], code: "return length(p)-0.3*time;" }) === null && cleanWorld({ name: "x", period: [2, 2, 2], code: "return length(p)-0.3*uTime;" }) === null);
+expect("a world may not close its function and start another", cleanWorld({ name: "x", period: [2, 2, 2], code: "return 1.0;} float f(){return 2.0;" }) === null);
+expect("a world's name needs a letter", cleanWorld({ name: "123", period: [2, 2, 2], code: wCode }) === null);
 expect("overlay code is held to the same rules", cleanOverlay({ name: "x", code: "ln=step(0.5,fract(uTime*9.0));" }) === null);
 expect("sound reads in loops are counted", cleanCode("for(int i=0;i<40;i++){ln+=sound(0.1)+sound(0.2);}") === null && cleanCode("for(int i=0;i<16;i++){ln+=sound(float(i)/16.0);}") !== null);
 expect("a filter with refused code is refused whole", cleanFilter({ name: "x", edge: 0.5, code: "col*=uTime;" }) === null);
