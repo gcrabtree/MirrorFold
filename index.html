@@ -1211,7 +1211,7 @@ var LFREQ=0.35,LPERIOD=256/LFREQ;
 var LAND_T=[
 "precision highp float;",
 "uniform vec2 uRes;uniform float uTime,uHue,uTint,uFov,uSeg,uSpin,uSky;uniform vec3 uPos,uSun,uSunCol,uPa,uPb,uPc,uPd;uniform mat3 uCam;uniform sampler2D uSkyT;",
-"uniform vec2 uCi[13],uCf[13],uLi[6],uLf[6],uPreRes;uniform vec4 uDa,uDb;uniform sampler2D uN,uPre;uniform float uK;", /* where the camera sits in each noise layer, worked out exactly in JavaScript */
+"uniform vec2 uCi[13],uCf[13],uLi[6],uLf[6],uPreRes;uniform vec4 uDa,uDb;uniform sampler2D uN,uPre,uX;uniform float uK;", /* where the camera sits in each noise layer, worked out exactly in JavaScript */
 "@CONST",
 "vec3 gTop,gLow,gSun,gHaze,gAmb;", /* sky, sun and haze colours, set once in main: natural, or taken from the palette */
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
@@ -1234,18 +1234,20 @@ var LAND_T=[
    which carves ridges and gullies. */
 "#define TERR(name,N) float name(vec2 q){vec2 p=q*FREQ,d=vec2(0.0);float a=0.0,b=1.0;for(int i=0;i<N;i++){vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;a+=b*(i<3?n.x:n.x-0.5)/(1.0+dot(d,d));b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;}return shape(a);}",
 "TERR(terrL,4)",
+/* four layers again, but never below the true height: the two layers left out can add at most 0.047, which shapeU allows for */
+"float terrU(vec2 q){vec2 p=q*FREQ,d=vec2(0.0);float a=0.0,b=1.0;for(int i=0;i<4;i++){vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;a+=b*(i<3?n.x:n.x-0.5)/(1.0+dot(d,d));b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;}return shapeU(a);}",
 "TERR(terrM,6)",
 /* the same six layers, also giving a close guess at the slope (xy of the result) for the cost of the height alone */
 "vec3 terrG(vec2 q){vec2 p=q*FREQ,d=vec2(0.0),g=vec2(0.0);float a=0.0,b=1.0;mat2 T=mat2(1.0,0.0,0.0,1.0);",
 "  for(int i=0;i<6;i++){vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;float w=b/(1.0+dot(d,d));a+=w*(i<3?n.x:n.x-0.5);g+=w*(T*n.yz);b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;T=T*mat2(2.0,-1.0,1.0,2.0);}",
 "  return vec3(g*FREQ*dshape(a),shape(a));}",
 /* the full detail: nine layers everywhere, and four finer ones that fade in as "det" rises close to the camera */
-"float terrD(vec2 q,float det){vec2 p=q*FREQ,d=vec2(0.0);float a=0.0,b=1.0;",
+"float terrD(vec2 q,float det){vec2 p=q*FREQ,d=vec2(0.0);float a=0.0,b=1.0,af=0.0;",
 "  for(int i=0;i<13;i++){",
 "    if(i>8&&det<=0.0)break;",
-"    vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;a+=b*(i>8?det*0.8:1.0)*(i<3?n.x:n.x-0.5)/(1.0+dot(d,d));b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;",
+"    vec3 n=noised(uCi[i],uCf[i]+p);d+=n.yz;float c=b*(i>8?det*0.8:1.0)*(i<3?n.x:n.x-0.5)/(1.0+dot(d,d));if(i<6)a+=c;else af+=c;b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;",
 "  }",
-"  return shape(a);}",
+"  return shape(a+af/(1.0+FLUTE*dshape(a)));}", /* where the shape is a cliff the fine layers are turned down, or they would score it with upright grooves */
 "float fbm(vec2 p){float a=0.0,b=0.5;for(int i=0;i<4;i++){a+=b*noise(p);b*=0.5;p=mat2(2.0,1.0,-1.0,2.0)*p;}return a;}",
 
 "@EXTRA",
@@ -1308,14 +1310,14 @@ var LAND_T=[
    Things are added only within "reach" of the start, so a mirrored ray can leave them out. */
 "float gX;", /* set by march: 1 if the ray met a free-standing shape, not the ground */
 "float march(vec3 ro,vec3 rd,float far,float reach,float t,float rough){",
-"  float h=1.0,tp=t,dx=1e3;gX=0.0;",
+"  float h=1.0,tp=t,dx=1e3;bool hi=true;gX=0.0;",
 "  for(int i=0;i<200;i++){",
 "    vec3 p=ro+rd*t;float lim=1e3;",
-"    if(i<5&&t>0.03&&p.y<terrM(p.xz)){t*=0.6;h=1.0;continue;}",
+"    if(i<5&&t>0.03&&p.y<terrM(p.xz)){t*=0.6;h=1.0;hi=true;continue;}",
 "#ifdef EXTRAS",
 "    dx=extra(p);if(dx<0.0005*t*rough+0.00005){gX=1.0;return t;}",
 "#endif", /* began inside the land: back toward the camera and try again */
-"    if(h>0.5){h=p.y-terrL(p.xz)-MARG;if(h<0.3)h=p.y-terrM(p.xz);}", /* high up, a rough height with a safe margin costs less */
+"    if(hi){h=p.y-terrU(p.xz);if(h<0.12){hi=false;h=p.y-terrM(p.xz);}}", /* well clear of the ground, the four-layer height that is never too low costs less */
 "    else if(t<reach&&h<0.08){", /* low enough to meet a tree or a rock: add them, and take short steps so none is stepped over */
 "      vec3 G=terrG(p.xz);float yv;h=p.y-G.z;",
 "      if(h<0.036){",
@@ -1323,7 +1325,7 @@ var LAND_T=[
 "        if(tall||h<0.016){h-=things(p.xz,Z,t).x;lim=tall?0.0025+0.006*t:0.006+0.012*t;}",
 "        if(h<0.0006*t+0.00005)return t;",
 "      }",
-"    }else h=p.y-terrM(p.xz);",
+"    }else{h=p.y-terrM(p.xz);hi=h>0.3;}",
 "    if(h<0.0012*t*rough){", /* met the land. If the step went in deep, as it can through a cliff, search back for where it went in. */
 "      if(h<-0.002*t)for(int j=0;j<7;j++){float tm=0.5*(tp+t);p=ro+rd*tm;if(p.y>terrM(p.xz))tp=tm;else t=tm;}",
 "      else for(int j=0;j<3;j++){p=ro+rd*t;t+=0.6*(p.y-terrM(p.xz));}",
@@ -1336,8 +1338,8 @@ var LAND_T=[
 "}",
 "float shadow(vec3 ro){",
 "  float res=1.0,t=0.05;ro.y=max(ro.y,terrM(ro.xz)+0.006);",
-"  for(int i=0;i<36;i++){",
-"    vec3 p=ro+uSun*t;float h=p.y-(p.y>terrL(p.xz)+0.31+MARG?terrL(p.xz)+MARG:terrM(p.xz));",
+"  for(int i=0;i<SHN;i++){",
+"    vec3 p=ro+uSun*t;float h=p.y-terrU(p.xz);if(h<0.25)h=p.y-terrM(p.xz);",
 "#ifdef EXTRAS",
 "    h=min(h,extra(p));",
 "#endif",
@@ -1395,7 +1397,8 @@ var LAND_T=[
 var ALPS_SHAPE=[
 /* broad flat valley floors, steep high peaks */
 "float shape(float a){return 1.5*pow(max(a-0.22,0.0),1.35);}",
-"float dshape(float a){return 2.025*pow(max(a-0.22,0.0001),0.35);}"
+"float dshape(float a){return 2.025*pow(max(a-0.22,0.0001),0.35);}",
+"float shapeU(float a){return shape(a+0.047);}"
 ].join("\n");
 var ALPS_SKY=[
 "vec3 sky(vec3 rd){",
@@ -1542,7 +1545,7 @@ var LAND_PRE_MAIN=[
 "  for(int i=0;i<90;i++){",
 "    vec3 p=ro+rd*t;",
 "    float ny=0.45;", /* how much of the height above the land counts as clear distance: less where the land is steep */
-"    if(h>0.5){h=p.y-terrL(p.xz)-MARG;if(h<0.3)h=p.y-terrM(p.xz);}",
+"    if(h>0.5){h=p.y-terrU(p.xz);if(h<0.3)h=p.y-terrM(p.xz);}",
 "    else{vec3 G=terrG(p.xz);h=p.y-G.z;ny=0.6*inversesqrt(1.0+dot(G.xy,G.xy));}",
 "    float s=min(ny,0.42)*(h-(t<2.4?0.036:0.0))-r*t;", /* near the camera the land is treated as higher, to clear the trees */
 "#ifdef EXTRAS",
@@ -1565,7 +1568,8 @@ function stepShape(S,rise,from){ /* JavaScript and GLSL for a stepped shape */
   return {js:function(a){var h=rise*(a-from),i,t;for(i=0;i<S.length;i++){t=Math.max(0,Math.min(1,(a-S[i][0])/(S[i][1]-S[i][0])));h+=S[i][2]*t*t*(3-2*t);}return h;},
     gl:"float dss(float e0,float e1,float a){float t=clamp((a-e0)/(e1-e0),0.0,1.0);return 6.0*t*(1.0-t)/(e1-e0);}\n"+
       "float shape(float a){return "+f(rise)+"*(a-"+f(from)+")"+S.map(function(s){return "+"+f(s[2])+"*smoothstep("+f(s[0])+","+f(s[1])+",a)"}).join("")+";}\n"+
-      "float dshape(float a){return "+f(rise)+S.map(function(s){return "+"+f(s[2])+"*dss("+f(s[0])+","+f(s[1])+",a)"}).join("")+";}"};
+      "float dshape(float a){return "+f(rise)+S.map(function(s){return "+"+f(s[2])+"*dss("+f(s[0])+","+f(s[1])+",a)"}).join("")+";}\n"+
+      "float shapeU(float a){return shape(a+0.047);}"};
 }
 var CANYON_SHAPE=stepShape(CANYON_STEPS,0.4,0.30);
 /* Free-standing rock, which a height cannot describe because it has air underneath: an arch or a balanced rock, at most
@@ -1573,16 +1577,15 @@ var CANYON_SHAPE=stepShape(CANYON_STEPS,0.4,0.30);
 var CANYON_EXTRA=[
 "float extra(vec3 p){",
 "  vec2 x=uCf[0]+p.xz*FREQ,i=floor(x),f=x-i;",
+"  vec4 B=texture2D(uX,(uCi[0]+i+0.5)/256.0);", /* worked out once in JavaScript: whether this square has a shape, and the height of the ground it stands on */
+"  float far=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y))/FREQ+0.5;", /* shapes keep this far inside their own square, so a ray is not slowed where it crosses from square to square */
+"  if(B.b<0.5)return far;",
 "  vec4 A=texture2D(uN,(uCi[0]+i+vec2(91.5,37.5))/256.0);",
-"  float far=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y))/FREQ+0.07;", /* shapes keep this far inside their own square */
-"  if(A.r<0.5)return far;",
-"  vec2 q=(f-(0.2+0.6*A.gb))/FREQ;", /* offset from the middle of the shape */
-"  float dl=length(q)-0.5;",
+"  vec2 q=(f-(0.35+0.3*A.gb))/FREQ;", /* offset from the middle of the shape */
+"  float y=p.y-((B.r*65280.0+B.g*255.0)/13107.0-0.5),dl=max(length(q)-0.5,y-0.75);", /* nothing reaches further out than this, or higher */
 "  if(dl>0.04)return min(dl,far);",
 "  float R=0.14+0.20*fract(A.r*7.0),r=R*(0.12+0.10*fract(A.r*13.0)),an=6.2832*A.a;",
 "  vec2 d=vec2(cos(an),sin(an));",
-"  float ya=terrM(p.xz-q+d*R),yb=terrM(p.xz-q-d*R),yc=terrM(p.xz-q),y=p.y-min(ya,yb);", /* the ground under its two feet and its middle: it stands only where that is level and dry */
-"  if(min(ya,yb)<WATER+0.02||max(ya,max(yb,yc))-min(ya,min(yb,yc))>0.04)return far;",
 "  float u=dot(q,d),w=dot(q,vec2(-d.y,d.x));",
 "  float lump=noise(vec2(u*14.0+A.a*40.0,y*14.0+w*9.0));", /* uneven, so it reads as weathered rock */
 "  if(fract(A.r*29.0)>0.68){", /* a balanced rock: a thin stem with a wider block on top */
@@ -1596,16 +1599,23 @@ var CANYON_EXTRA=[
 "  vec2 b=vec2(ring-r*(0.8+0.5*lump)*(1.0+0.4*smoothstep(-R,R,y)),abs(w)-r*(0.55+0.5*lump));",
 "  return (min(max(b.x,b.y),0.0)+length(max(b,0.0))-0.2*r)*0.65;",
 "}"].join("\n");
-function canyonExtra(x,y,z){ /* the same in JavaScript, so the camera can be kept out of the rock */
+/* Whether square (ix,iz) of the coarsest grid has an arch or a balanced rock, and the height it stands at: only where the
+   ground under its two feet and its middle is level and dry. Returns null for none. landXTab() keeps the answers. */
+function canyonCell(ix,iz){
+  var Ar=landHash(ix+91,iz+37),Ag=landHash(ix+92,iz+37),Ab=landHash(ix+91,iz+38),Aa=landHash(ix+92,iz+38),fr=function(v){return v-Math.floor(v)};
+  if(Ar<0.5)return null;
+  var cx=(ix+0.35+0.3*Ag)/LFREQ,cz=(iz+0.35+0.3*Ab)/LFREQ,R=0.14+0.20*fr(Ar*7),an=6.2832*Aa,dx=Math.cos(an)*R,dz=Math.sin(an)*R;
+  var ya=landH(cx+dx,cz+dz,6),yb=landH(cx-dx,cz-dz,6),yc=landH(cx,cz,6);
+  return (Math.min(ya,yb)<LK[1].water+0.02||Math.max(ya,yb,yc)-Math.min(ya,yb,yc)>0.04)?null:Math.min(ya,yb);
+}
+function canyonExtra(x,y,z){ /* the same distance in JavaScript, so the camera can be kept out of the rock */
   var X=x*LFREQ,Z=z*LFREQ,ix=Math.floor(X),iz=Math.floor(Z),fx=X-ix,fz=Z-iz,fr=function(v){return v-Math.floor(v)};
+  var far=Math.min(fx,1-fx,fz,1-fz)/LFREQ+0.5,base=LK[1].xh[(ix&255)+256*(iz&255)];
+  if(base!==base)return far;
   var Ar=landHash(ix+91,iz+37),Ag=landHash(ix+92,iz+37),Ab=landHash(ix+91,iz+38),Aa=landHash(ix+92,iz+38);
-  var far=Math.min(fx,1-fx,fz,1-fz)/LFREQ+0.07;
-  if(Ar<0.5)return far;
-  var qx=(fx-(0.2+0.6*Ag))/LFREQ,qz=(fz-(0.2+0.6*Ab))/LFREQ,dl=Math.hypot(qx,qz)-0.5;
+  var qx=(fx-(0.35+0.3*Ag))/LFREQ,qz=(fz-(0.35+0.3*Ab))/LFREQ,yy=y-base,dl=Math.max(Math.hypot(qx,qz)-0.5,yy-0.75);
   if(dl>0.04)return Math.min(dl,far);
   var R=0.14+0.20*fr(Ar*7),r=R*(0.12+0.10*fr(Ar*13)),an=6.2832*Aa,dx=Math.cos(an),dz=Math.sin(an);
-  var ya=landH(x-qx+dx*R,z-qz+dz*R,6),yb=landH(x-qx-dx*R,z-qz-dz*R,6),yc=landH(x-qx,z-qz,6),yy=y-Math.min(ya,yb);
-  if(Math.min(ya,yb)<LK[1].water+0.02||Math.max(ya,yb,yc)-Math.min(ya,yb,yc)>0.04)return far;
   var u=qx*dx+qz*dz,w=-qx*dz+qz*dx,bx,by,bz,m=function(v){return Math.max(v,0)}; /* the lumpiness is left out: its middle value is used */
   if(fr(Ar*29)>0.68){
     var H=0.07+0.12*Aa,stem=Math.max(Math.hypot(qx,qz)-0.018-0.010*Ag,yy-H);
@@ -1626,7 +1636,7 @@ var CANYON_ZONE=[
 "  float rip=smoothstep(WATER+0.07,WATER+0.02,hgt);", /* green only near the river */
 "  float trees=dry*lvl*(0.75*rip+0.10*smoothstep(0.45,0.7,n1));",
 "  float brush=dry*lvl*min(0.3+0.7*rip+0.5*n2,1.0);",
-"  float stony=dry*(0.9*(1.0-smoothstep(0.45,0.8,ny))+0.12);",
+"  float stony=dry*(0.9*smoothstep(0.40,0.60,ny)*(1.0-smoothstep(0.62,0.85,ny))+0.12*lvl);", /* fallen rock lies on the slopes under the cliffs, not on the cliffs */
 "  return vec3(trees,brush,clamp(stony,0.0,1.0));",
 "}"].join("\n");
 var CANYON_GROUND=[
@@ -1655,7 +1665,8 @@ var CANYON_GROUND=[
 "  float lvl=smoothstep(0.60,0.86,nT.y+0.08*(fine-0.5));", /* 1 on level ground, 0 on a cliff */
 "  vec3 rock=strata(p.y,W);",
 "  vec2 fw=normalize(nT.xz+vec2(0.0001));float along=dot(W,vec2(-fw.y,fw.x));",
-"  rock*=1.0-0.45*(1.0-lvl)*smoothstep(0.50,0.80,noise(vec2(along*30.0,p.y*5.0+3.0)));", /* dark streaks run down the cliffs */
+"  rock*=1.0-0.30*(1.0-lvl)*smoothstep(0.50,0.80,noise(vec2(along*30.0,p.y*9.0+3.0)));", /* dark streaks run down the cliffs */
+"  grain=mix(1.0+det*0.5*(noise(vec2(along*150.0,p.y*150.0))-0.5)+det2*0.4*(noise(vec2(along*900.0,p.y*900.0))-0.5),grain,smoothstep(0.35,0.6,nT.y));", /* on a cliff the grain is laid out across and up the face; laid out over the ground it would smear down it */
 "  if(det>0.0){", /* close up the rock is jointed: upright cracks on the cliffs, a crazed pattern on the flat */
 "    vec2 u=mix(W*38.0,vec2(along*26.0,p.y*55.0+dot(W,fw)*9.0),smoothstep(0.75,0.5,nT.y));",
 "    float crack=smoothstep(0.030,0.0,abs(noise(u)-0.5))+0.6*smoothstep(0.035,0.0,abs(noise(u*2.7+7.0)-0.5));",
@@ -1678,7 +1689,7 @@ var CANYON_GROUND=[
 "    else oc=rock*(0.75+0.5*v2)*grain;", /* fallen rock, the colour of the cliff it came from */
 "    col=mix(col,oc,thing);",
 "  }",
-"  n=normalize(n+(vec3(dA.y,0.0,dA.z)*0.08*det+vec3(dB.y,0.0,dB.z)*0.03*det2)*(th.y>0.5&&th.y<2.5?0.0:1.0));",
+"  n=normalize(n+(vec3(dA.y,0.0,dA.z)*0.08*det+vec3(dB.y,0.0,dB.z)*0.03*det2)*(th.y>0.5&&th.y<2.5?0.0:1.0)*smoothstep(0.35,0.6,nT.y));",
 "  if(uTint>1.5){float lu=dot(col,vec3(0.3,0.59,0.11));col=mix(col,pal(uHue+0.25+1.1*lu+0.25*p.y)*(0.22+1.4*lu),0.9);}",
 "  float dif=clamp(dot(n,uSun),0.0,1.0),sh=dif<=0.001?0.0:mir>0.5?1.0:shadow(p+nT*0.004+vec3(0.0,0.002,0.0));",
 "  vec3 lin=dif*sh*gSun*1.4+(0.45+0.55*n.y)*gAmb*0.75+(clamp(dot(n,normalize(vec3(-uSun.x,0.0,-uSun.z))),0.0,1.0)+0.5*(1.0-n.y))*vec3(0.34,0.17,0.08)*0.45;", /* red light thrown back by the sunlit ground */
@@ -1703,19 +1714,21 @@ var CANYON_XCOL=[
    light run through the soil, and what grows there glows. A crystal, a ring or a slab floats over many of the squares. */
 var PLANET_SHAPE=[
 "float shape(float a){float b=max(a-0.75,0.0);return 0.25*(a-0.30)+3.0*b*b+0.018*sin(70.0*a);}",
-"float dshape(float a){return 0.25+6.0*max(a-0.75,0.0)+1.26*cos(70.0*a);}"
+"float dshape(float a){return 0.25+6.0*max(a-0.75,0.0)+1.26*cos(70.0*a);}",
+"float shapeU(float a){float b=max(a-0.703,0.0);return 0.25*(a-0.253)+3.0*b*b+0.018;}"
 ].join("\n");
 function planetShape(a){var b=Math.max(a-0.75,0);return 0.25*(a-0.30)+3*b*b+0.018*Math.sin(70*a);}
 var PLANET_EXTRA=[
 "float extra(vec3 p){",
 "  vec2 x=uCf[0]+p.xz*FREQ,i=floor(x),f=x-i;",
+"  vec4 B=texture2D(uX,(uCi[0]+i+0.5)/256.0);",
+"  float far=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y))/FREQ+0.5;",
+"  if(B.b<0.5)return far;",
 "  vec4 A=texture2D(uN,(uCi[0]+i+vec2(91.5,37.5))/256.0);",
-"  float far=min(min(f.x,1.0-f.x),min(f.y,1.0-f.y))/FREQ+0.07;",
-"  if(A.r<0.4)return far;",
-"  vec2 q=(f-(0.2+0.6*A.gb))/FREQ;",
-"  float dl=length(q)-0.5;",
+"  vec2 q=(f-(0.35+0.3*A.gb))/FREQ;",
+"  float y=p.y-((B.r*65280.0+B.g*255.0)/13107.0-0.5)-0.30-0.5*A.a-0.03*sin(uTime*0.5+A.a*40.0);", /* it hangs above the ground and rises and falls slowly */
+"  float dl=max(length(q)-0.5,abs(y)-0.36);", /* nothing reaches further out than this, or further up or down */
 "  if(dl>0.04)return min(dl,far);",
-"  float y=p.y-max(terrM(p.xz-q),WATER)-0.30-0.5*A.a-0.03*sin(uTime*0.5+A.a*40.0);", /* it hangs above the ground and rises and falls slowly */
 "  float an=6.2832*A.a+uTime*0.2*(A.g-0.5),k=fract(A.r*29.0),s=0.07+0.10*fract(A.r*7.0);", /* and turns slowly */
 "  vec2 d=vec2(cos(an),sin(an));",
 "  float u=dot(q,d),w=dot(q,vec2(-d.y,d.x));",
@@ -1724,14 +1737,17 @@ var PLANET_EXTRA=[
 "  vec3 b=abs(vec3(u,y,w))-vec3(0.045,0.20,0.012)*(0.6+4.0*s);", /* a thin upright slab */
 "  return min(max(b.x,max(b.y,b.z)),0.0)+length(max(b,0.0));",
 "}"].join("\n");
+function planetCell(ix,iz){ /* the ground under the middle of the shape floating over square (ix,iz), or null for none */
+  if(landHash(ix+91,iz+37)<0.5)return null;
+  return Math.max(landH((ix+0.35+0.3*landHash(ix+92,iz+37))/LFREQ,(iz+0.35+0.3*landHash(ix+91,iz+38))/LFREQ,6),LK[2].water);
+}
 function planetExtra(x,y,z){ /* the same in JavaScript, so the camera can be kept out of the shapes */
   var X=x*LFREQ,Z=z*LFREQ,ix=Math.floor(X),iz=Math.floor(Z),fx=X-ix,fz=Z-iz,fr=function(v){return v-Math.floor(v)},m=function(v){return Math.max(v,0)};
   var Ar=landHash(ix+91,iz+37),Ag=landHash(ix+92,iz+37),Ab=landHash(ix+91,iz+38),Aa=landHash(ix+92,iz+38);
-  var far=Math.min(fx,1-fx,fz,1-fz)/LFREQ+0.07;
-  if(Ar<0.4)return far;
-  var qx=(fx-(0.2+0.6*Ag))/LFREQ,qz=(fz-(0.2+0.6*Ab))/LFREQ,dl=Math.hypot(qx,qz)-0.5;
+  var far=Math.min(fx,1-fx,fz,1-fz)/LFREQ+0.5,base=LK[2].xh[(ix&255)+256*(iz&255)];
+  if(base!==base)return far;
+  var qx=(fx-(0.35+0.3*Ag))/LFREQ,qz=(fz-(0.35+0.3*Ab))/LFREQ,yy=y-base-0.30-0.5*Aa-0.03*Math.sin(time*0.5+Aa*40),dl=Math.max(Math.hypot(qx,qz)-0.5,Math.abs(yy)-0.36);
   if(dl>0.04)return Math.min(dl,far);
-  var yy=y-Math.max(landH(x-qx,z-qz,6),LK[2].water)-0.30-0.5*Aa-0.03*Math.sin(time*0.5+Aa*40);
   var an=6.2832*Aa+time*0.2*(Ag-0.5),k=fr(Ar*29),s=0.07+0.10*fr(Ar*7),u=qx*Math.cos(an)+qz*Math.sin(an),w=-qx*Math.sin(an)+qz*Math.cos(an);
   if(k<0.4)return (Math.abs(u)+Math.abs(w)+0.5*Math.abs(yy)-s)*0.6;
   if(k<0.7){var R=0.16+0.16*fr(Ar*13);return Math.hypot(Math.hypot(u,yy)-R,w)-0.012-0.05*R;}
@@ -1768,7 +1784,7 @@ var PLANET_ZONE=[
 "  float ny=inversesqrt(1.0+dot(g,g)),n1=noise(W*FREQ*5.0+3.0),n2=noise(W*FREQ*17.0);",
 "  yv=hgt;",
 "  float dry=smoothstep(WATER+0.003,WATER+0.012,hgt),lvl=smoothstep(0.62,0.85,ny);",
-"  float grove=dry*lvl*smoothstep(0.42,0.62,0.7*noise(W*FREQ*7.0+11.0)+0.3*n2);",
+"  float grove=dry*lvl*smoothstep(0.52,0.70,0.7*noise(W*FREQ*7.0+11.0)+0.3*n2);",
 "  return vec3(0.7*grove,dry*lvl*(1.0-0.6*grove),clamp(dry*(0.25+0.6*(1.0-lvl)),0.0,1.0));",
 "}"].join("\n");
 var PLANET_GROUND=[
@@ -1827,34 +1843,33 @@ var PLANET_XCOL=[
 "  col=col*(clamp(dot(n,uSun),0.0,1.0)*gSun*1.2+(0.45+0.55*n.y)*gAmb)+iri*(0.20+0.10*sin(uTime*0.5+p.y*9.0))+gSun*pow(max(dot(reflect(rd,n),uSun),0.0),60.0);",
 "  return haze(col,t,rd);",
 "}"].join("\n");
-/* The landscapes. Each has the level of its water, the greatest height a ray need climb to, how far the rough height may
-   be below the true one, its shape in JavaScript (which must match "shape" in its shader text), and the pieces of shader. */
+/* The landscapes. Each has the level of its water, the greatest height a ray need climb to, how much the fine layers are turned down on cliffs, its shape in JavaScript (which must match "shape" in its shader text), and the pieces of shader. */
 var LK=[
-  {name:"Land is the Alps",water:0.085,hmax:2.6,marg:0.14,defs:"TREE=0.7200,SNOW=1.0500,BROAD=0.82,TSC=1.0",
+  {name:"Land is the Alps",water:0.085,hmax:2.6,flute:0,defs:"TREE=0.7200,SNOW=1.0500,BROAD=0.82,TSC=1.0",
    wat:"const vec3 WSHAL=vec3(0.10,0.42,0.40),WDEEP=vec3(0.015,0.11,0.18),WGLOW=vec3(0.0),WFOAM=vec3(0.85,0.90,0.92);",
    sun:[0.654,0.485,0.580],sunCol:[1.0,0.93,0.80],extra:null,
    shape:function(a){return 1.5*Math.pow(Math.max(a-0.22,0),1.35)},
    gl:{SHAPE:ALPS_SHAPE,EXTRA:"",SKY:ALPS_SKY,ZONE:ALPS_ZONE,SHAPES:ALPS_SHAPES,GROUND:ALPS_GROUND,XCOL:"",COLS:ALPS_COLS}},
-  {name:"Land is canyon country",water:0.0,hmax:2.1,marg:0.27,defs:"BROAD=0.25,TSC=0.6",
+  {name:"Land is canyon country",water:0.0,hmax:2.1,flute:0.6,defs:"BROAD=0.25,TSC=0.6",
    wat:"const vec3 WSHAL=vec3(0.16,0.30,0.20),WDEEP=vec3(0.04,0.15,0.13),WGLOW=vec3(0.0),WFOAM=vec3(0.80,0.74,0.62);",
-   sun:[0.654,0.485,0.580],sunCol:[1.0,0.90,0.74],extra:canyonExtra,
+   sun:[0.654,0.485,0.580],sunCol:[1.0,0.90,0.74],extra:canyonExtra,xcell:canyonCell,
    shape:CANYON_SHAPE.js,
    gl:{SHAPE:CANYON_SHAPE.gl,EXTRA:CANYON_EXTRA,SKY:ALPS_SKY,ZONE:CANYON_ZONE,SHAPES:ALPS_SHAPES,GROUND:CANYON_GROUND,XCOL:CANYON_XCOL,
        COLS:"  gTop=vec3(0.10,0.30,0.74);gLow=vec3(0.80,0.80,0.84);gSun=uSunCol;gHaze=vec3(0.80,0.72,0.66);gAmb=vec3(0.24,0.27,0.38);"}},
-  {name:"Land is a strange planet",water:0.02,hmax:3.9,marg:0.24,defs:"BROAD=0.55,TSC=1.3",
+  {name:"Land is a strange planet",water:0.02,hmax:3.9,flute:0.25,shn:22,defs:"BROAD=0.55,TSC=1.3",
    wat:"const vec3 WSHAL=vec3(0.05,0.50,0.55),WDEEP=vec3(0.25,0.03,0.38),WGLOW=vec3(0.02,0.20,0.18),WFOAM=vec3(0.60,1.00,0.92);",
-   sun:[0.80,0.30,0.52],sunCol:[0.86,0.90,1.0],extra:planetExtra,
+   sun:[0.80,0.30,0.52],sunCol:[0.86,0.90,1.0],extra:planetExtra,xcell:planetCell,
    shape:planetShape,
    gl:{SHAPE:PLANET_SHAPE,EXTRA:PLANET_EXTRA,SKY:PLANET_SKY,ZONE:PLANET_ZONE,SHAPES:PLANET_SHAPES,GROUND:PLANET_GROUND,XCOL:PLANET_XCOL,
        COLS:"  gTop=vec3(0.012,0.008,0.06);gLow=vec3(0.07,0.20,0.27);gSun=uSunCol;gHaze=vec3(0.17,0.15,0.34);gAmb=vec3(0.20,0.15,0.34);"}}
 ];
 function landSrc(k){
   var K=LK[k],g=K.gl,f=function(v){return v.toFixed(4)};
-  g.CONST="const float FREQ="+f(LFREQ)+",WATER="+f(K.water)+",HMAX="+f(K.hmax)+",MARG="+f(K.marg)+","+K.defs+";\n"+K.wat+(K.extra?"\n#define EXTRAS":"");
+  g.CONST="const float FREQ="+f(LFREQ)+",WATER="+f(K.water)+",HMAX="+f(K.hmax)+",FLUTE="+f(K.flute)+","+K.defs+";\nconst int SHN="+(K.shn||36)+";\n"+K.wat+(K.extra?"\n#define EXTRAS":"");
   return LAND_T.map(function(l){return l.charAt(0)==="@"?g[l.slice(1)]:l}).join("\n");
 }
 var FS_MIX="precision highp float;varying vec2 v;uniform sampler2D uT,uL;void main(){vec4 L=texture2D(uL,v);gl_FragColor=vec4(mix(texture2D(uT,v).rgb,L.rgb,L.a),1.0);}"; /* the land laid over the world */
-var LAND_U=["uRes","uTime","uPos","uCam","uFov","uSeg","uSpin","uSky","uSkyT","uSun","uSunCol","uCi","uCf","uLi","uLf","uDa","uDb","uPa","uPb","uPc","uPd","uHue","uTint","uN","uPre","uPreRes","uK"];
+var LAND_U=["uX","uRes","uTime","uPos","uCam","uFov","uSeg","uSpin","uSky","uSkyT","uSun","uSunCol","uCi","uCf","uLi","uLf","uDa","uDb","uPa","uPb","uPc","uPd","uHue","uTint","uN","uPre","uPreRes","uK"];
 /* the table of random numbers, made the same way every time */
 var LTAB=new Uint8Array(65536);
 (function(){var sd=20261113,i;for(i=0;i<65536;i++){sd=(Math.imul(sd,1664525)+1013904223)>>>0;LTAB[i]=sd>>>24;}})();
@@ -1877,11 +1892,28 @@ var LAYERS=[[240,0],[100,1],[160,1],[30,1],[230,0],[320,1]]; /* the grids things
 var landMode=0,landKind=0,landTint=0,landFx=0; /* which landscape (an entry in LK); 0 off, 1 alone, 2 over the world; palette on nothing, sky and light, everything; effects on everything, sky, land */
 var pLand=null,pLandPre=null,pLandK=[],pMix=null,landTex=null,tL=null,tC=null,tLP=null;
 var lpos=[412,1,300],lvel=[0,0],lhead=[0.56,0.83],landClear=0.11;
+/* For a landscape with free-standing shapes: a table, one entry to each square of the coarsest grid, of whether a shape
+   stands there and the height of the ground under it. The shader reads it as a texture (height in two bytes), JavaScript as xh. */
+function landXTab(K){
+  if(!K.xcell||K.xh)return;
+  var px=new Uint8Array(262144),ix,iz,o,v,q;K.xh=new Float32Array(65536);
+  for(iz=0;iz<256;iz++)for(ix=0;ix<256;ix++){
+    o=ix+256*iz;v=K.xcell(ix,iz);
+    if(v===null){K.xh[o]=NaN;continue;}
+    q=Math.round(Math.max(0,Math.min(65535,(v+0.5)*13107)));K.xh[o]=q/13107-0.5;
+    px[4*o]=q>>8;px[4*o+1]=q&255;px[4*o+2]=255;px[4*o+3]=255;
+  }
+  K.xtex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,K.xtex);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,256,0,gl.RGBA,gl.UNSIGNED_BYTE,px);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+}
 function landBuild(){ /* compiled the first time the land is turned on; false if this device cannot */
   var c=pLandK[landKind],src;
   if(c){pLand=c[0];pLandPre=c[1];return true;}
   try{src=landSrc(landKind);c=[link(src,LAND_U),link(src.slice(0,src.indexOf("/*sky*/"))+LAND_PRE_MAIN,LAND_U)];if(!pMix)pMix=link(FS_MIX,["uT","uL"]);}catch(e){return false;}
   pLandK[landKind]=c;pLand=c[0];pLandPre=c[1];
+  landXTab(LK[landKind]);
   if(landTex)return true;
   /* each texel holds its own number and those of the three neighbours to its right, above, and above right */
   var px=new Uint8Array(262144),x,y,o;
@@ -1911,10 +1943,10 @@ function landPass(dst,over,fov,hue){
     gl.uniform3fv(U.uPa,palCur.a);gl.uniform3fv(U.uPb,palCur.b);gl.uniform3fv(U.uPc,palCur.c);gl.uniform3fv(U.uPd,palCur.d);
     gl.uniform1f(U.uHue,hue);gl.uniform1f(U.uTint,landTint);
     gl.uniform3fv(U.uSun,LK[landKind].sun);gl.uniform3fv(U.uSunCol,LK[landKind].sunCol);
-    gl.uniform1i(U.uN,4);gl.uniform1i(U.uPre,5);gl.uniform1i(U.uSkyT,6);gl.uniform2f(U.uPreRes,pw,ph);gl.uniform1f(U.uK,8);
+    gl.uniform1i(U.uX,7);gl.uniform1i(U.uN,4);gl.uniform1i(U.uPre,5);gl.uniform1i(U.uSkyT,6);gl.uniform2f(U.uPreRes,pw,ph);gl.uniform1f(U.uK,8);
   };
   camArr[0]=R[0];camArr[1]=R[1];camArr[2]=R[2];camArr[3]=Up[0];camArr[4]=Up[1];camArr[5]=Up[2];camArr[6]=F[0];camArr[7]=F[1];camArr[8]=F[2];
-  bindTex(5,landTex);bindTex(6,landTex);bindTex(4,landTex);
+  bindTex(5,landTex);bindTex(6,landTex);bindTex(7,LK[landKind].xtex||landTex);bindTex(4,landTex);
   passTo(tLP,pLandPre);set(pLandPre.U);gl.drawArrays(gl.TRIANGLES,0,3);
   bindTex(5,tLP.t);bindTex(6,over?tA.t:landTex);
   passTo(dst,pLand);set(pLand.U);gl.drawArrays(gl.TRIANGLES,0,3);
