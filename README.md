@@ -248,7 +248,7 @@ A **template** says what Journey may change and how often. For each of world, pa
 
 A **set** plays several templates in turn, each for a number of minutes.
 
-Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, Calm, Follow the music. Built-in set: Grand tour.
+Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, Calm, Landscapes, Follow the music. Built-in set: Grand tour.
 
 Turn Journey on and press **Edit journeys** to make your own. Built-in templates cannot be edited; use **Duplicate** to start from one. Your templates and sets are saved in your browser only. To keep a copy or move them to another device, save them as a pack; see [Library and packs](#library-and-packs).
 
