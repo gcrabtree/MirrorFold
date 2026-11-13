@@ -460,7 +460,6 @@ Not verified, because they need a real device or a human:
 - **Hybrid code is dead weight** unless the feature returns.
 - **`bmax` and `bavg` are unused** leftovers from the single-band analyser.
 - **Sponge with Halls and similar blends looked murky**, which is part of why blends were cut.
-- **No licence file.** Add one before publishing if you want others to reuse the code.
 
 ## 16. Ideas not yet built
 
