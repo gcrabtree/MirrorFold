@@ -13,6 +13,7 @@ python3 tools/check.py                  # headless smoke test: all shaders compi
 python3 tools/render.py --world julia -o out.png          # screenshot one world
 python3 tools/render.py --all -o sheet.jpg                # contact sheet of every world
 python3 tools/render.py --world temple --js "setLook(2)" -o neon.png
+python3 tools/render.py --world sponge --js "setLand(2);setLandFx(1)" -o land.png   # the land over a world; setLand(1) is the land alone
 python3 tools/render.py --world sponge --size 852x393 --js "setStereo(true)" -o vr.png   # VR viewer picture
 ```
 
@@ -21,6 +22,8 @@ The Python tools need `google-chrome` or `chromium` on PATH (they run it headles
 ## Rules that are easy to break
 
 - **Every world has its distance estimator twice**: GLSL in `glsl` (`map`) and JavaScript in `de`. They must match. JavaScript uses it for flight speed, autopilot steering and orb placement.
+- **The land has its height twice too**: `terrL`/`terrM` in `LAND_FS` and `landH` in JavaScript, both reading the table `LTAB`. They must match. Its layers use the whole-number matrix `[2 -1; 1 2]` so that it repeats exactly every `LPERIOD`; do not replace it with an arbitrary rotation.
+- **The land shader measures from the camera.** World positions go in through `uCi`/`uCf` and the like, worked out in doubles in `landPass`. Do not add a pattern finer than about 1/50 unit that is computed from `uPos` in the shader: it will shake.
 - **Every world's field must be exactly periodic** with its `period`. The camera position is wrapped by that period every frame.
 - **`tools/harness.py` depends on the first and last lines of the script** (`<script>\n(function(){` and `requestAnimationFrame(frame);\n})();`). It asserts on them. If you restructure the script, update the harness in the same change.
 - **`tools/unit.mjs` extracts `makeChangeDetector`, `jPick`, `devMat`, `gyroTurn`, `userActive`, `cleanName`, `cleanPalette`, `cleanMotion`, `cleanCode`, `cleanFilter`, `cleanOverlay`, `palFromSimple` and `palToSimple` by name** with a regex that expects the function to end with a `}` at the start of a line. `tools/pack.mjs` extracts the cleaners the same way. Extracted functions must not use anything outside themselves and each other.
