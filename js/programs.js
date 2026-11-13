@@ -1,6 +1,6 @@
 /* Compiling and linking shader programs. */
-import { canvas, gl } from "./dom.js";
-import { TRAIL_U, VS, finalSource, fragSource, trailSource } from "./shaders.js";
+import { canvas, errBox, gl } from "./dom.js";
+import { FS_BLUR, FS_DOWN, FS_FINAL, FS_TRAIL, TRAIL_U, VS, finalSource, fragSource, trailSource } from "./shaders.js";
 import { WORLDS } from "./worlds.js";
 let vsObj;
 
@@ -49,11 +49,20 @@ export function hybProg(a,b){
 export function bindTex(unit,t){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t);}
 export function passTo(o,p){gl.bindFramebuffer(gl.FRAMEBUFFER,o?o.f:null);gl.viewport(0,0,o?o.w:canvas.width,o?o.h:canvas.height);gl.useProgram(p.prog);}
 
+export let pTrail, pDown, pBlur, pFinal, pCopy; /* the programs for the trails, the two halves of the glow, the finished picture, and a plain copy */
+
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 vsObj=null;
+try{
+  pTrail=link(FS_TRAIL,TRAIL_U);
+  pDown=link(FS_DOWN,["uT","uPx"]);
+  pBlur=link(FS_BLUR,["uT","uDir"]);
+  pFinal=link(FS_FINAL,FINAL_U);pCopy=link(FS_COPY,["uT"]);
+}catch(e){errBox.textContent="The effects shaders did not compile on this device.\n"+e.message;throw new Error("stop");}
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
 export const __dbg={get vsObj(){return vsObj},set vsObj(v){vsObj=v}, get overlayProg(){return overlayProg}, get FS_COPY(){return FS_COPY}, get FINAL_U(){return FINAL_U}, get filterProg(){return filterProg}, get sh(){return sh},
-  get link(){return link}, get build(){return build}, get hybCache(){return hybCache}, get hybProg(){return hybProg}, get bindTex(){return bindTex}, get passTo(){return passTo}};
+  get link(){return link}, get build(){return build}, get hybCache(){return hybCache}, get hybProg(){return hybProg}, get bindTex(){return bindTex}, get passTo(){return passTo},
+  get pTrail(){return pTrail},set pTrail(v){pTrail=v}, get pDown(){return pDown},set pDown(v){pDown=v}, get pBlur(){return pBlur},set pBlur(v){pBlur=v}, get pFinal(){return pFinal},set pFinal(v){pFinal=v}, get pCopy(){return pCopy},set pCopy(v){pCopy=v}};

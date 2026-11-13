@@ -2,8 +2,6 @@
 import { calm } from "./dom.js";
 export const sel={pi:0,mi:0,fi:0,moi:0,lki:0,ovsi:2,ovi:0}; /* palette, mirrors, FX, motion, filter, overlay strength, overlay */
 
-export const stick={id:null,ox:0,oy:0,x:0,y:0};
-export const look={id:null,x:0,y:0};
 export const mirrors=[0,3,4,6,8,12];
 export const FX=[{name:"glow",decay:.78,bloom:.55,ca:.004},{name:"trails",decay:.93,bloom:.75,ca:.008},{name:"clean",decay:0,bloom:0,ca:0}];
 /* MilkDrop-style layers. A motion warps the previous frame before the new one is laid over it (per frame at 60 fps).
@@ -48,5 +46,5 @@ sel.fi=calm?2:0; /* with reduced motion asked for, start with the clean look */
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get sel(){return sel}, get stick(){return stick}, get look(){return look}, get mirrors(){return mirrors}, get FX(){return FX}, get MOTIONS(){return MOTIONS},
-  get LOOKS(){return LOOKS}, get OVS(){return OVS}, get OVERLAYS(){return OVERLAYS}, get TRANSITIONS(){return TRANSITIONS}};
+export const __dbg={get sel(){return sel}, get mirrors(){return mirrors}, get FX(){return FX}, get MOTIONS(){return MOTIONS}, get LOOKS(){return LOOKS}, get OVS(){return OVS},
+  get OVERLAYS(){return OVERLAYS}, get TRANSITIONS(){return TRANSITIONS}};

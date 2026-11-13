@@ -336,7 +336,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 |---|---|
 | `index.html` | The page's markup |
 | `css/app.css` | The styling |
-| `js/` | The app, as about 25 modules; the architecture document lists what each holds |
+| `js/` | The app, as about 35 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 17 worlds |
@@ -375,7 +375,7 @@ python3 tools/render.py --world temple --js "setLook(2)" -o neon.png
 - A world's GLSL `map` and JavaScript `de` must compute the same distance. If they drift apart, the camera clips through walls or crawls in open space.
 - A world's field must repeat exactly at its `period`, or the camera wrap shows as a jump.
 - Journey templates store options by name. Renaming a world id, motion, filter, overlay or palette silently removes it from people's saved templates.
-- Code that runs at start-up belongs in a file's `init()`, and a value set by more than one file belongs on `G` in `js/shared.js`. The architecture document, section 3, explains why.
+- Code that runs at start-up belongs in a file's `init()`, every value is set by one file only, and a frame is a list of steps in `js/loop.js`. The architecture document, section 3, explains each.
 - After any shader change, run `check.py`, then render the affected world and look at it. Shaders can compile cleanly and still look wrong.
 
 The code is ES modules, written in ES5 style inside each file: `var`, function declarations, no classes. Shaders are GLSL ES 1.00. The architecture document has a checklist for adding a world.

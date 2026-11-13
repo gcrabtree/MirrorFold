@@ -2,7 +2,7 @@
 
 This document is written for an engineer (or a Claude Code session) picking the project up cold. It describes what the app does, how the code is laid out, the math behind each part, how to test it, and what is known to be weak.
 
-The app is `index.html` (markup), `css/app.css` and about 25 JavaScript modules in `js/` (about 4,400 lines in all, GLSL included). There is no build step and there are no dependencies apart from two Google Fonts. It began as one file; section 17 describes the split.
+The app is `index.html` (markup), `css/app.css` and about 35 JavaScript modules in `js/` (about 4,500 lines in all, GLSL included). There is no build step and there are no dependencies apart from two Google Fonts. It began as one file; section 17 describes the split.
 
 ## 1. What it is
 
@@ -53,37 +53,47 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `index.html` | Markup only: the canvas, the controls, the start card, the setup panel |
 | `css/app.css` | All styling |
 | `js/main.js` | Loads every file below, runs each one's `init()` in this order, then publishes `window.MF` |
-| `js/shared.js` | `G`: the values more than one file sets (camera position and directions, what is showing, what is switched on) |
-| `js/dom.js` | `$`, the canvas, the WebGL context, touch and reduced-motion detection, `STEPS` |
-| `js/worlds.js` | `WORLDS` (each world's GLSL `map` beside its JavaScript `de`), `PALETTES`, unlock state |
+| `js/dom.js` | `$`, the canvas, the WebGL context, touch and reduced-motion detection, `STEPS`, `toast` |
+| `js/worlds.js` | `WORLDS`: each world's GLSL `map` beside its JavaScript `de` |
+| `js/palettes.js` | `PALETTES`, which are unlocked, `setPalette`, and `palCur`, the palette in use easing toward the chosen one |
 | `js/packs.js` | The cleaners: `cleanName`, `cleanPalette`, `cleanMotion`, `cleanCode`, `cleanFilter`, `cleanOverlay`, `cleanWorld` |
 | `js/shaders.js` | `fragSource(w)` and the post-processing shaders `FS_TRAIL`, `FS_DOWN`, `FS_BLUR`, `FS_FINAL` |
-| `js/programs.js` | `sh`, `link`, `build(w)`, `hybProg`, and the programs for pack filters and overlays |
-| `js/probe.js` | The distance probe, and worlds from packs (`packWorld`, `deMany`, `packFrame`) |
-| `js/targets.js` | The effect programs, render targets, `resize`, detail modes |
+| `js/programs.js` | `sh`, `link`, `build(w)`, `hybProg`, `passTo`, `bindTex`, the effect programs, and the programs for pack filters and overlays |
+| `js/probe.js` | The distance probe, and `chipWait`, the once-a-frame wait for the graphics chip |
+| `js/pack-worlds.js` | Worlds from packs: `packWorld`, `deMany`, `packFrame` |
+| `js/targets.js` | Render targets, `resize`, the detail setting and Detail auto |
 | `js/land-shader.js` | `LAND_T`, the land shader template, and the Alps' pieces of it |
 | `js/landscapes.js` | Canyon country, the strange planet, the steel ball, the city, and the list `LK` |
-| `js/land.js` | The land at run time: `LTAB`, `landH`, `landBuild`, `landPass`, `setLand` and the other land controls |
-| `js/state.js` | Motions, filters, overlays, FX, mirrors, and the starting values of the camera and flags |
+| `js/land.js` | The land at run time: `LTAB`, `landH`, `landBuild`, `landPass`, `moveLand`, `setLand` and the other land controls |
+| `js/state.js` | The built-in motions, filters, overlays, FX and mirror counts, and `sel`, what is chosen in each list |
 | `js/library.js` | What packs have added: `addToLibrary`, `saveLibrary`, removal |
-| `js/flight.js` | Journey clocks `J`, `beginWarp`, `userLook`, `userActive`, `toast`, `deAt`, `morphValue`, vector helpers |
-| `js/choose.js` | Filling the lists, orbs, `setWorldNow`, `requestWorld`, `warpThen`, palettes, share spots, the address hash, mirrors |
+| `js/camera.js` | `cam`, the camera's state; `steering`, `turn`, `move`; `userLook`, `userActive`; vector helpers |
+| `js/clock.js` | `clock`: time, the morph's clock, colour drift, mirror spin; `tickClock`, `morphValue` |
+| `js/warp.js` | `tr`, the transition's state; `beginWarp`, `warpThen`, `stepWarp` |
+| `js/flight.js` | `measure` (distance to the nearest surface and the world's speed), `deAt`, `doBoost` |
+| `js/choose.js` | `scene`, what is showing; filling the lists; `setWorldNow`, `requestWorld`; blends; the address hash; mirrors |
+| `js/orbs.js` | `spawnOrb`, `collectOrb`, `stepOrb` |
+| `js/spots.js` | Share spots: `encodeSpot`, `applySpot`, `fromHash` |
 | `js/input.js` | Pointer, wheel and keyboard handlers, gestures, the fading controls |
-| `js/journey.js` | `CATS`, built-in templates and sets, their storage, the Journey engine |
+| `js/journey.js` | `CATS`, built-in templates and sets, their storage, the clocks `J`, `autopilot`, `stepJourney` |
 | `js/journey-panel.js` | The setup panel for templates and sets |
-| `js/pack-io.js` | `refreshLists`, `packNow`, `loadPack`, the library list |
+| `js/pack-io.js` | `refreshLists`, `packNow`, `loadPack`, site packs, the library list |
 | `js/editor.js` | The slider editor for palettes, motions and filters |
-| `js/controls.js` | Site packs, opening the setup panel, the wave picture, Stats, and the remaining buttons |
+| `js/controls.js` | The Orbs, Morph and Drift switches and the wiring of the remaining buttons |
+| `js/stats.js` | The Stats readout |
 | `js/vr.js` | The VR viewer: stereo, head turning, wake lock |
 | `js/audio.js` | The audio graph, built-in music, the file player and scrubber |
-| `js/listen.js` | Listening to a tab or the microphone, `setMusic`, tap tempo, the bands, the change detector |
-| `js/loop.js` | `begin` and `frame(now)`: the whole per-frame update and render |
+| `js/listen.js` | Listening to a tab or the microphone, `setMusic`, tap tempo, the bands, the change detector, `soundFrame`, the wave picture |
+| `js/render.js` | Drawing a frame: `drawScene`, `drawTrails`, `drawBloom`, `drawFinal` |
+| `js/loop.js` | `begin` and `frame(now)`, which calls the steps of a frame in order |
 
-**How the modules fit together.** Each file holds function declarations, constants that need nothing from elsewhere, and its own variables. Anything that has to happen when the app starts (building lists, wiring buttons, reading storage, compiling the effect shaders) is in the file's `init()`, and `main.js` calls the `init()`s in the order the code was originally written in, so start-up behaves exactly as it did in one file. Loading a module therefore does nothing by itself, which is why the Node tools can import the cleaners and other pure functions without a page.
+**How the modules fit together.** Each file holds function declarations, constants that need nothing from elsewhere, and its own variables. Anything that has to happen when the app starts (building lists, wiring buttons, reading storage, compiling the effect shaders) is in the file's `init()`, and `main.js` calls the `init()`s in a fixed order. Loading a module therefore does nothing by itself, which is why the Node tools can import the cleaners and other pure functions without a page.
 
-**Who owns a value.** A value that only its own file sets is an ordinary variable there, exported if other files read it (`export let`: importers always see the current value). A module may not assign to another module's variable, so a value that several files set lives on `G` in `shared.js` and is written `G.pos`, `G.world`, `G.journey` and so on. There are 69 of these. Reducing that number, by giving each value one owner with functions to change it, is the main refactoring left; see section 17.
+**Who owns a value.** Every value is set by exactly one file. Other files read it by importing it (`export let`: importers always see the current value) and change it only by calling that file's functions (`setDetail`, `setWorldNow`, `setPalette`, `landClimb` and so on). Five groups of values that many parts of a frame must change are small state objects, each defined in the file it belongs to: `cam` (camera.js), `tr` (warp.js), `clock` (clock.js), `scene` (choose.js) and `sel` (state.js). A module may not assign to a variable it imports, so this is enforced by the language, not by convention.
 
-**`__dbg` and `window.MF`.** Every file ends with `__dbg`, an object with a getter (and, where the value can change, a setter) for every name in the file. `main.js` merges them, and the values on `G`, into `window.MF`. The test tools run their code inside `with(window.MF)`, so it can name any internal variable or function, and so can the browser console (`MF.setLand(1)`). When you add a top-level name to a file, add it to that file's `__dbg` if a test needs it.
+**A frame.** `frame()` in `loop.js` is a list of calls: wait for the chip, read the sound, advance the clocks and the transition, measure the distance to the nearest surface, work out the steering, run the autopilot and Journey's clocks, turn and move the camera, move the land, update the orb, then draw (`drawScene`, `drawTrails`, `drawBloom`, `drawFinal`). Each step lives in the file that owns what it changes. The steps pass what they work out through one reused object, the frame's notes, called `fr` inside them; the comment above it in `loop.js` lists its fields.
+
+**`__dbg` and `window.MF`.** Every file ends with `__dbg`, an object with a getter (and, where the value can change, a setter) for every name in the file. `main.js` merges them into `window.MF`, and also offers each field of the five state objects by its bare name (`MF.pos` for `MF.cam.pos`). The test tools run their code inside `with(window.MF)`, so it can name any internal variable or function, and so can the browser console (`MF.setLand(1)`). When you add a top-level name to a file, add it to that file's `__dbg` if a test needs it.
 
 The code is still ES5 in style inside the files (`var`, function declarations, no classes).
 
@@ -568,15 +578,20 @@ Not verified, because they need a real device or a human:
 - A proper MilkDrop-style per-pixel equation system, if the fixed motion list feels limiting.
 - Temporal anti-aliasing or jittered supersampling over the feedback buffer to tame fractal speckle.
 
-## 17. The split into modules, and what is left
+## 17. How the code came to be laid out this way
 
-The app was one script in one closure until it was split along its section comments into the files in section 3. The split was done by a program, not by hand: it parsed the script, worked out for every top-level name which sections read it and which set it, and moved the text without changing it apart from three things. Start-up statements went into each file's `init()`; names set by more than one file became `G.name`; and declarations that depend on nothing became `const`. Behaviour is meant to be identical, and the smoke test, the probe test, the unit tests and renders agreed before and after.
+The app was one script in one closure. It was split in four steps, each done mostly by programs that parsed the code and moved text without rewriting it, and each checked with the smoke test, the probe test, the unit tests and renders:
 
-That makes this a change of layout more than of design. What it gives: files of 30 to 500 lines with a stated job, explicit imports (so what a file depends on is written at its top), pure functions that tests import directly, and no reliance on exact strings in the source. What is left to do:
+1. **Files.** The script was cut along its section comments into modules. Start-up statements went into each file's `init()`; names set by more than one file went into one shared object.
+2. **Owners.** The shared object was removed. Values were moved to the file that sets them, the few changes from outside became function calls, and the values that a frame changes in many places became the five state objects.
+3. **The frame.** `frame()`, one function of 300 lines, was cut into the steps listed in section 3. The statements inside each step were not changed; each step begins by reading what it needs from the frame's notes and ends by leaving what later steps need.
+4. **Homes.** Code that sat in the wrong file because of where the old comments fell was moved: palettes, Stats, orbs, share spots, pack worlds, the effect programs.
 
-- **Shrink `G`.** Each of the 69 shared values should have one owning file and be changed through its functions (`setWorldNow` already is that for `G.world`). The camera (`pos`, `R`, `Up`, `F`, `vel`) and the transition state (`warp`, `warpDir`, `warpFn`) are the natural first groups.
-- **Break up `frame()`.** `loop.js` is one 300-line function that updates flight, Journey, the land, the orb and every render pass. Splitting it into update and draw steps per subsystem is the largest readability gain available.
-- **Move misplaced code.** The cut points were the old section comments, so some things sit oddly: palette state in `shaders.js`, Stats in `controls.js`, the effect programs in `targets.js`.
-- **Drop `__dbg`** in favour of tests that import what they use, once the browser tests no longer need to reach every name.
+What could still be better:
+
+- **The frame's notes are loosely typed.** `fr` has about thirty fields, and which step sets which is only written in a comment. Steps that returned their results and took them as arguments would make the flow checkable.
+- **The drawing steps set dozens of uniforms by hand.** A small table per program would shorten `render.js` and make a missed uniform harder.
+- **`__dbg` is boilerplate.** It exists because the browser tests reach every name. Tests that import what they use would let it go.
+- **`init()` order still matters** for a few files (the lists must be filled before a world is chosen, the library must load before templates are read). The order is the one in `main.js`.
 
 Keeping each world's GLSL next to its JavaScript `de` is worth preserving in any layout, because they must change together.

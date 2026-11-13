@@ -1,16 +1,19 @@
 import { musicFollowsSpeed, scrubFollow } from "./audio.js";
 import { move, steering, turn } from "./camera.js";
-import { scene, stepHybrid, stepOrb } from "./choose.js";
+import { scene, stepHybrid } from "./choose.js";
 import { morphValue, tickClock } from "./clock.js";
-import { morph, statsBegin, statsEnd, statsOn } from "./controls.js";
+import { morph } from "./controls.js";
 import { $, canvas, errBox } from "./dom.js";
 import { measure } from "./flight.js";
 import { wakeHud } from "./input.js";
 import { autopilot, jMove, journey, stepJourney } from "./journey.js";
 import { landMode, moveLand } from "./land.js";
 import { setMusic, soundFrame } from "./listen.js";
+import { stepOrb } from "./orbs.js";
+import { easePalette } from "./palettes.js";
 import { chipWait } from "./probe.js";
-import { drawBloom, drawFinal, drawScene, drawTrails, easePalette } from "./render.js";
+import { drawBloom, drawFinal, drawScene, drawTrails } from "./render.js";
+import { statsBegin, statsEnd, statsOn } from "./stats.js";
 import { autoDetail } from "./targets.js";
 import { stepWarp } from "./warp.js";
 export let started=false; /* the start card has been left */

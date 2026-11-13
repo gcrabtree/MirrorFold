@@ -1,8 +1,6 @@
 /* The effect programs, the pictures they draw into, and the picture size. */
-import { canvas, errBox, gl } from "./dom.js";
+import { canvas, gl } from "./dom.js";
 import { landFreeTargets, landMode } from "./land.js";
-import { FINAL_U, FS_COPY, link } from "./programs.js";
-import { FS_BLUR, FS_DOWN, FS_FINAL, FS_TRAIL, TRAIL_U } from "./shaders.js";
 export let di=0,q=0.85; /* the detail setting (a position in DETAIL) and the sharpness it currently gives, 0.35 to 1 */
 let acc=0,frames=0,qHold=0;
 export function setDetail(i){di=i;q=DETAIL[di]==="fast"?0.5:(DETAIL[di]==="sharp"?1:0.85);resize();}
@@ -15,7 +13,7 @@ export function autoDetail(now,dt){
   if(avg>0.036&&q>(landMode?0.35:0.6)){q=Math.max(landMode?0.35:0.6,q*0.9);qHold=now+20000;resize();} /* the land costs more, so it may give up more sharpness */
   else if(avg<0.022&&q<1&&now>qHold){q=Math.min(1,q*1.06);resize();} /* after stepping down, wait before trying to step up again: each change rebuilds every picture, which shows as a hitch */
 }
-export let pTrail, pDown, pBlur, pFinal, pCopy, tA, tF;
+export let tA, tF;
 
 /* ---------- render targets ---------- */
 export function target(w,h){
@@ -48,13 +46,6 @@ export function resize(){
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-pTrail,pDown,pBlur,pFinal,pCopy;
-try{
-  pTrail=link(FS_TRAIL,TRAIL_U);
-  pDown=link(FS_DOWN,["uT","uPx"]);
-  pBlur=link(FS_BLUR,["uT","uDir"]);
-  pFinal=link(FS_FINAL,FINAL_U);pCopy=link(FS_COPY,["uT"]);
-}catch(e){errBox.textContent="The effects shaders did not compile on this device.\n"+e.message;return;}
 
 var buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
 gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
@@ -66,6 +57,5 @@ window.addEventListener("resize",resize);resize();
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
 export const __dbg={get di(){return di},set di(v){di=v}, get q(){return q},set q(v){q=v}, get acc(){return acc},set acc(v){acc=v}, get frames(){return frames},set frames(v){frames=v}, get qHold(){return qHold},set qHold(v){qHold=v}, get setDetail(){return setDetail},
-  get autoDetail(){return autoDetail}, get pTrail(){return pTrail},set pTrail(v){pTrail=v}, get pDown(){return pDown},set pDown(v){pDown=v}, get pBlur(){return pBlur},set pBlur(v){pBlur=v}, get pFinal(){return pFinal},set pFinal(v){pFinal=v}, get pCopy(){return pCopy},set pCopy(v){pCopy=v},
-  get tA(){return tA},set tA(v){tA=v}, get tF(){return tF},set tF(v){tF=v}, get target(){return target}, get freeT(){return freeT}, get tT(){return tT}, get tB(){return tB},
-  get DETAIL(){return DETAIL}, get resize(){return resize}};
+  get autoDetail(){return autoDetail}, get tA(){return tA},set tA(v){tA=v}, get tF(){return tF},set tF(v){tF=v}, get target(){return target}, get freeT(){return freeT}, get tT(){return tT},
+  get tB(){return tB}, get DETAIL(){return DETAIL}, get resize(){return resize}};

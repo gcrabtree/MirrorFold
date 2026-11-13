@@ -1,5 +1,4 @@
 import { fr, md, tile } from "./dom.js";
-export let unlocked=0,orbsFound=0; /* palettes unlocked by orbs, and orbs found; kept in this browser */
 
 /* ---------- the worlds ----------
    Each has a GLSL distance estimator (map), the same estimator in JS (de) for the
@@ -457,36 +456,11 @@ export const WORLDS=[
  de:function(){return .2}}
 ];
 
-/* cosine palettes: colour = a + b*cos(2pi*(c*x+d)) */
-export const PALETTES=[
- {name:"Spectrum",a:[.5,.5,.5],b:[.5,.5,.5],c:[1,1,1],d:[0,.33,.67]},
- {name:"Ember",a:[.5,.22,.08],b:[.5,.25,.1],c:[1,1,1],d:[0,.07,.15]},
- {name:"Abyss",a:[.1,.4,.5],b:[.12,.4,.5],c:[1,1,1],d:[.55,.15,0]},
- {name:"Sunset",a:[.5,.5,.5],b:[.5,.5,.5],c:[1,.7,.4],d:[0,.15,.2]},
- {name:"Acid",a:[.5,.5,.5],b:[.5,.5,.5],c:[2,1,0],d:[.5,.2,.25]},
- {name:"Orchid",a:[.55,.3,.6],b:[.45,.3,.4],c:[1,1,1],d:[0,.45,.15]},
- {name:"Bone",a:[.5,.48,.44],b:[.5,.48,.44],c:[1,1,1],d:[0,.02,.05]}
-,
- {name:"Aurora",a:[.2,.5,.4],b:[.2,.5,.4],c:[1,1,1],d:[.6,0,.3]},
- {name:"Infra",a:[.5,.1,.3],b:[.5,.1,.3],c:[1,1,1],d:[0,.5,.6]},
- {name:"Candy",a:[.7,.5,.6],b:[.3,.4,.4],c:[1,1,1],d:[0,.3,.6]},
- {name:"Toxic",a:[.3,.5,.05],b:[.3,.5,.05],c:[1,1,1],d:[.15,0,.5]},
- {name:"Gold",a:[.5,.4,.15],b:[.5,.4,.2],c:[1,1,1],d:[0,.05,.3]},
- {name:"Ultraviolet",a:[.35,.1,.55],b:[.35,.1,.45],c:[1,1,1],d:[.1,.5,0]}
-];
-export const BASE_PALS=7;
-export const NPAL=PALETTES.length;
-/* a built-in palette is open once its orb is found; palettes from a pack are always open */
-export function palOpen(i){return i<BASE_PALS+unlocked||i>=NPAL;}
 
-/* What this file does when the app starts. main.js calls each file's init in turn. */
-/* an orb was collected: count it, and unlock the next palette if any are left. True if one was unlocked. */
-export function orbCounted(){orbsFound++;if(unlocked<NPAL-BASE_PALS){unlocked++;return true;}return false;}
 
 export function init(){
-try{var sv=JSON.parse(localStorage.getItem("mirrorfold")||"{}");unlocked=Math.max(0,Math.min(NPAL-BASE_PALS,sv.u|0));orbsFound=sv.n|0;}catch(_){}
+
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get unlocked(){return unlocked},set unlocked(v){unlocked=v}, get orbsFound(){return orbsFound},set orbsFound(v){orbsFound=v}, get WORLDS(){return WORLDS}, get PALETTES(){return PALETTES}, get BASE_PALS(){return BASE_PALS}, get NPAL(){return NPAL},
-  get palOpen(){return palOpen}, get orbCounted(){return orbCounted}};
+export const __dbg={get WORLDS(){return WORLDS}};

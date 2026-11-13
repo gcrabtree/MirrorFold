@@ -1,11 +1,12 @@
 import { cam, userLook } from "./camera.js";
-import { requestWorld, scene, setMirrors, setPalette } from "./choose.js";
-import { $, canvas } from "./dom.js";
-import { doBoost, gest, lastTap, toast } from "./flight.js";
+import { requestWorld, scene, setMirrors } from "./choose.js";
+import { $, canvas, toast } from "./dom.js";
+import { doBoost } from "./flight.js";
 import { journey, setJourney } from "./journey.js";
 import { musicMode, setMusic, tap } from "./listen.js";
 import { started } from "./loop.js";
-import { look, mirrors, sel, stick } from "./state.js";
+import { setPalette } from "./palettes.js";
+import { mirrors, sel } from "./state.js";
 import { tr } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 export const keys={}; /* which keys are down, by code */
@@ -39,6 +40,9 @@ function stepWorld(stp){
 /* ---------- HUD ---------- */
 export function press(b,on){b.setAttribute("aria-pressed",on?"true":"false")}
 export function cycleMirrors(){setMirrors((sel.mi+1)%mirrors.length);}
+export const gest={id:null,x:0,y:0,d0:1,a:0,s0:1}, lastTap={t:0,x:0,y:0};
+export const stick={id:null,ox:0,oy:0,x:0,y:0};
+export const look={id:null,x:0,y:0};
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
@@ -111,4 +115,5 @@ window.addEventListener("blur",function(){keys={}});
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
 export const __dbg={get keys(){return keys}, get stickEl(){return stickEl},set stickEl(v){stickEl=v}, get knob(){return knob},set knob(v){knob=v}, get hud(){return hud},set hud(v){hud=v}, get hudTimer(){return hudTimer},set hudTimer(v){hudTimer=v}, get wakeHud(){return wakeHud},
-  get release(){return release}, get stepWorld(){return stepWorld}, get press(){return press}, get cycleMirrors(){return cycleMirrors}};
+  get release(){return release}, get stepWorld(){return stepWorld}, get press(){return press}, get cycleMirrors(){return cycleMirrors}, get gest(){return gest}, get lastTap(){return lastTap},
+  get stick(){return stick}, get look(){return look}};

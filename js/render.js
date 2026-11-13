@@ -3,26 +3,20 @@
 import { cam } from "./camera.js";
 import { scene } from "./choose.js";
 import { clock } from "./clock.js";
-import { updateWave, waveTex } from "./controls.js";
-import { calm, canvas, gl } from "./dom.js";
-import { toast } from "./flight.js";
+import { calm, canvas, gl, toast } from "./dom.js";
 import { landFx, landKind, landLayer, landMixed, landMode, landPass, pLand, pMix, tC, tL } from "./land.js";
 import { LK } from "./landscapes.js";
-import { bindTex, filterProg, overlayProg, passTo } from "./programs.js";
-import { palCur } from "./shaders.js";
+import { updateWave, waveTex } from "./listen.js";
+import { palCur } from "./palettes.js";
+import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
-import { pBlur, pCopy, pDown, pFinal, pTrail, tA, tB, tF, tT, target } from "./targets.js";
+import { tA, tB, tF, tT, target } from "./targets.js";
 import { stereo, vrEye, vrEyeStep } from "./vr.js";
 import { tr } from "./warp.js";
-import { PALETTES, WORLDS } from "./worlds.js";
+import { WORLDS } from "./worlds.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
 export const flip={cur:0,fcur:0};         /* which of each pair of pictures is being drawn into this frame: the trails, and the smoothed final picture */
 
-/* The palette in use eases toward the chosen one. */
-export function easePalette(dt){
-  var pl=PALETTES[sel.pi],pe=1-Math.exp(-dt*1.6),key,j;
-  for(key in palCur){for(j=0;j<3;j++)palCur[key][j]+=(pl[key][j]-palCur[key][j])*pe;}
-}
 
 /* Step 1: the land if it is on, then the world. Leaves in fr.src the picture the effects are to work on. */
 export function drawScene(fr){
@@ -142,5 +136,4 @@ export function drawFinal(fr){
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get camArr(){return camArr}, get flip(){return flip}, get easePalette(){return easePalette}, get drawScene(){return drawScene}, get drawTrails(){return drawTrails}, get drawBloom(){return drawBloom},
-  get drawFinal(){return drawFinal}};
+export const __dbg={get camArr(){return camArr}, get flip(){return flip}, get drawScene(){return drawScene}, get drawTrails(){return drawTrails}, get drawBloom(){return drawBloom}, get drawFinal(){return drawFinal}};

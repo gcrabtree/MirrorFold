@@ -1,6 +1,5 @@
 import { cam, cross, norm, rot } from "./camera.js";
-import { $, isTouch } from "./dom.js";
-import { toast } from "./flight.js";
+import { $, isTouch, toast } from "./dom.js";
 import { press, wakeHud } from "./input.js";
 import { journey } from "./journey.js";
 import { started } from "./loop.js";
