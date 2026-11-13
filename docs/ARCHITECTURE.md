@@ -2,7 +2,7 @@
 
 This document is written for an engineer (or a Claude Code session) picking the project up cold. It describes what the app does, how the code is laid out, the math behind each part, how to test it, and what is known to be weak.
 
-Everything lives in one file, `index.html` (about 2,150 lines, 109 KB): markup, CSS, GLSL and JavaScript. There is no build step and there are no dependencies apart from two Google Fonts.
+Everything lives in one file, `index.html` (about 2,480 lines, 126 KB): markup, CSS, GLSL and JavaScript. There is no build step and there are no dependencies apart from two Google Fonts.
 
 ## 1. What it is
 
@@ -42,7 +42,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | Device motion blocked | Look was touch or mouse only. | Done for the VR viewer (section 13). Gyroscope look outside that mode is still open. |
 | Only `#name` hashes passed through | Share spot packs all state into one token of letters, digits and a hyphen. | Query strings or richer hashes, if wanted. The current encoding still works. |
 | Scripts only from a short CDN list | No libraries are used. Apple's MusicKit could not load. | Any script. Note that Apple Music audio still cannot be analysed: it is DRM-protected and never reaches Web Audio. |
-| No downloads | Template backup is copy and paste of JSON text. | A real export and import of a `.json` file. |
+| No downloads | Packs can be copied and pasted as JSON text, as well as saved and loaded as files. | Nothing further. |
 | `alert`/`confirm` blocked | Delete uses a two-tap button. | Unchanged; the two-tap pattern is fine. |
 | Per-viewer `localStorage` only | Templates, orb progress and the orbs toggle live in `localStorage`. | Unchanged on Pages. |
 
@@ -301,7 +301,7 @@ A world change (and a journey mirror change) runs `warp` from 0 to 1 over 0.5 s,
 
 Cosine palettes: `colour(x) = a + b*cos(2π*(c*x + d))`, four `vec3` parameters per palette. The shader's `pal()` reads them from uniforms `uPa..uPd`. The live values `palCur` ease toward the selected palette at rate 1.6 per second, so palette changes are smooth. The phase `uHue` drifts slowly and faster with treble.
 
-The first seven palettes are always available. The other six are unlocked one at a time by collecting orbs; the count is stored under `localStorage["mirrorfold"]`.
+The first seven palettes are always available. The other six are unlocked one at a time by collecting orbs; the count is stored under `localStorage["mirrorfold"]`. Palettes added from packs follow the built-ins and are always available (see Packs in section 11).
 
 ## 10. Audio
 
@@ -397,7 +397,19 @@ Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, C
 
 ### Storage
 
-`localStorage["mirrorfold-journeys"]` holds `{ tpls, sets, sel }`, where `sel` is `"t:<name>"` or `"s:<name>"`. Built-ins are defined in code and never stored. `adopt(raw)` validates stored or pasted data and skips names that collide with built-ins. The setup panel's backup box copies and loads the same JSON.
+`localStorage["mirrorfold-journeys"]` holds `{ tpls, sets, sel }`, where `sel` is `"t:<name>"` or `"s:<name>"`. Built-ins are defined in code and never stored. `adopt(raw)` validates stored or loaded data and skips names that collide with built-ins. It reads templates from `raw.templates` (packs) or `raw.tpls` (storage and older backups).
+
+### Packs
+
+A pack is JSON: `{ mirrorfold: 1, name, author, palettes, motions, templates, sets }`. The format and ranges are documented for authors in `packs/README.md`. It is data only; nothing in a pack is evaluated.
+
+- **Cleaners.** `cleanName`, `cleanPalette` and `cleanMotion` are pure functions. They refuse a wrong shape (returning `null`), copy only known fields into a new object, and clamp every number. The motion ranges are what keeps a pack from breaking the no-strobe rule, so widen them only after looking at the result.
+- **Library.** Added palettes and motions are appended to `PALETTES` and `MOTIONS` after the built-ins (`NPAL` and `NMOT` are the built-in counts) and stored in `localStorage["mirrorfold-library"]`. They are loaded before the selects and `CATS` are built. `libAdd` refuses built-in names, replaces an earlier added item of the same name, and stops at `LIB_MAX` (16) per kind.
+- **Loading.** `loadPack(text)` is the one entry point for a file, pasted text and a published pack. It adds palettes and motions first, calls `refreshLists()` (which rebuilds the two selects and the palette and motion options in `CATS`), then adopts templates and sets, so a template can name items from its own pack.
+- **Published packs.** `loadSitePacks()` fetches `packs/index.json` from the same folder as the page, once, when the panel opens. File names must match `^[a-z0-9][a-z0-9_-]*\.json$`. Under `file:` it does nothing and the row stays hidden.
+- **Palette locks.** `palOpen(i)` says whether a palette may be used: built-ins up to the orb count, and every added palette. Use it instead of comparing against `BASE_PALS + unlocked`.
+- **Share links** store the palette by index in one base-36 digit. 13 built-ins plus 16 added fit. A link that names an added palette the receiver does not have keeps the receiver's current palette.
+- **`tools/pack.mjs`** extracts the cleaners by name and fails on any pack in `packs/` that would be refused or changed. It is meant to run on pull requests.
 
 ### Setup panel
 

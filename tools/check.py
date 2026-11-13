@@ -30,6 +30,19 @@ setTimeout(function(){
   $("bAdv").click();$("advDup").click();$("advClose").click();
   log("user templates="+store.tpls.length);
   store.tpls=[];saveStore();fillJT();
+  /* packs: a good one loads and is usable, bad parts are refused, and removing puts everything back */
+  var np=PALETTES.length,nm=MOTIONS.length;
+  var okp=loadPack(JSON.stringify({mirrorfold:1,palettes:[{name:"Test ice",a:[.4,.6,.7],b:[.3,.3,.3],c:[1,1,1],d:[.5,.5,.6]},{name:"Spectrum",a:[0,0,0],b:[0,0,0],c:[0,0,0],d:[0,0,0]},{name:"Broken",a:[1,2]}],
+    motions:[{name:"Test spin",decay:5,zoom:.998,rot:.006},{name:"none",zoom:1}],
+    templates:[{name:"Test tour",palette:{mode:"random",set:["Test ice","Nope"]},motion:{mode:"random",set:["Test spin"]}}]}));
+  var tt=findT("Test tour");
+  log("pack="+okp+" palettes+"+(PALETTES.length-np)+" motions+"+(MOTIONS.length-nm)+" decay="+MOTIONS[nm].decay+" tplset="+(tt?tt.palette.set.join("|")+"/"+tt.motion.set.join("|"):"none"));
+  setPalette(np);setMotion(nm);log("using="+PALETTES[pi].name+"/"+MOTIONS[moi].name+" options="+selPal.options.length+"/"+selMotion.options.length);
+  log("badpack="+loadPack("{not json")+","+loadPack("[1]")+","+loadPack(JSON.stringify({mirrorfold:2,palettes:[]})));
+  $("bLib").click();log("library rows="+$("advMine").children.length);$("advClose").click();
+  libRemove("p",np);libRemove("m",nm);store.tpls=[];saveStore();fillJT();
+  log("after remove="+PALETTES.length+"/"+MOTIONS.length+" pi="+pi+" moi="+moi);
+  setMotion(2);
 },500);
 setTimeout(function(){for(var k in J)J[k].t=999;},1200);
 setTimeout(function(){setMusic("tap");tap();},1600);

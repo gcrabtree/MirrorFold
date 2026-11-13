@@ -55,6 +55,8 @@ a.btn{text-decoration:none;display:inline-block}
 #adv{position:fixed;inset:0;z-index:7;background:rgba(5,3,11,.93);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px}
 #adv[hidden]{display:none}
 .advIn{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
+.advItem{font-size:13px;flex:1;min-width:120px}
+#advMine{display:flex;flex-direction:column;gap:6px}
 .advRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .advHead{justify-content:space-between}
 #adv h2{font:300 24px/1.1 var(--display);margin:0}
@@ -148,6 +150,7 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
     <button id="bShare" type="button">Share spot</button>
     <button id="bFull" type="button">Fullscreen</button>
     <button id="bVr" type="button" aria-pressed="false">VR viewer</button>
+    <button id="bLib" type="button">Library</button>
     <a id="aHelp" class="btn" href="https://github.com/gcrabtree/MirrorFold#readme" target="_blank" rel="noopener">Help and source</a>
   </div>
   <div class="row" id="rowJourney" hidden>
@@ -197,10 +200,14 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
     <div id="advSetBody"></div>
     <div class="advRow"><button id="advUseS" type="button" class="advGo">Use this set</button></div>
 
-    <h3>Backup</h3>
-    <p class="advNote">Your templates and sets are saved in this browser only. Copy them as text to keep a backup or move them to another device.</p>
-    <textarea id="advIO" rows="4" aria-label="Templates and sets as text" spellcheck="false"></textarea>
-    <div class="advRow"><button id="advCopy" type="button">Copy all as text</button><button id="advLoad" type="button">Load from text</button></div>
+    <h3 id="advLibHead">Library</h3>
+    <p class="advNote">A pack is a small file of palettes, motions, journey templates and sets. It holds names and numbers only, never program code. What you add is saved in this browser only.</p>
+    <div class="advRow" id="advSiteRow" hidden><select id="advSite" aria-label="Packs published with Mirrorfold"></select><button id="advSiteAdd" type="button">Add this pack</button></div>
+    <div class="advRow"><button id="advFile" type="button">Load a pack file</button><button id="advSave" type="button">Save mine as a pack file</button><input id="packIn" type="file" accept=".json,application/json" hidden></div>
+    <div id="advMine"></div>
+    <p class="advNote">Or move a pack as text: copy yours out of this box, or paste one in and load it.</p>
+    <textarea id="advIO" rows="4" aria-label="Pack as text" spellcheck="false"></textarea>
+    <div class="advRow"><button id="advCopy" type="button">Copy mine as text</button><button id="advLoad" type="button">Load from text</button></div>
   </div>
 </div>
 <div id="toast" role="status"></div>
@@ -699,7 +706,45 @@ var PALETTES=[
  {name:"Gold",a:[.5,.4,.15],b:[.5,.4,.2],c:[1,1,1],d:[0,.05,.3]},
  {name:"Ultraviolet",a:[.35,.1,.55],b:[.35,.1,.45],c:[1,1,1],d:[.1,.5,0]}
 ],pi=0,BASE_PALS=7,unlocked=0,orbsFound=0;
-try{var sv=JSON.parse(localStorage.getItem("mirrorfold")||"{}");unlocked=Math.max(0,Math.min(PALETTES.length-BASE_PALS,sv.u|0));orbsFound=sv.n|0;}catch(_){}
+var NPAL=PALETTES.length; /* built-in palettes; any after these came from a pack */
+try{var sv=JSON.parse(localStorage.getItem("mirrorfold")||"{}");unlocked=Math.max(0,Math.min(NPAL-BASE_PALS,sv.u|0));orbsFound=sv.n|0;}catch(_){}
+/* a built-in palette is open once its orb is found; palettes from a pack are always open */
+function palOpen(i){return i<BASE_PALS+unlocked||i>=NPAL;}
+
+/* ---------- packs ----------
+   A pack is a text file of palettes, motions, journey templates and sets: names and numbers only, never program code.
+   Everything read from a pack goes through these cleaners. A wrong shape is refused; a number out of range is pulled
+   back into a range that is known to look acceptable and cannot flash. */
+function cleanName(s){
+  if(typeof s!=="string")return "";
+  return s.replace(/[\u0000-\u001f\u007f]/g," ").replace(/\s+/g," ").trim().slice(0,28);
+}
+function cleanPalette(src){
+  if(!src||typeof src!=="object")return null;
+  var name=cleanName(src.name),lim={a:[0,1],b:[0,1],c:[0,3],d:[-2,2]},out={name:name},k,j,v;
+  if(!name)return null;
+  for(k in lim){
+    if(!Array.isArray(src[k])||src[k].length!==3)return null;
+    out[k]=[];
+    for(j=0;j<3;j++){
+      v=src[k][j];if(typeof v!=="number"||!isFinite(v))return null;
+      out[k].push(Math.max(lim[k][0],Math.min(lim[k][1],v)));
+    }
+  }
+  return out;
+}
+function cleanMotion(src){
+  if(!src||typeof src!=="object")return null;
+  var lim={decay:[0,0.98],zoom:[0.95,1.05],rot:[-0.025,0.025],swirl:[-0.08,0.08],wob:[0,0.006],rip:[0,0.03],dx:[-0.012,0.012],dy:[-0.012,0.012],kick:[-1,1]};
+  var name=cleanName(src.name),out={name:name},k,v;
+  if(!name)return null;
+  for(k in lim){
+    v=src[k];if(v===undefined||v===null)continue;
+    if(typeof v!=="number"||!isFinite(v))return null;
+    out[k]=Math.max(lim[k][0],Math.min(lim[k][1],v));
+  }
+  return out;
+}
 function saveProgress(){try{localStorage.setItem("mirrorfold",JSON.stringify({u:unlocked,n:orbsFound}))}catch(_){}}
 
 var palCur={a:PALETTES[0].a.slice(),b:PALETTES[0].b.slice(),c:PALETTES[0].c.slice(),d:PALETTES[0].d.slice()};
@@ -1059,6 +1104,23 @@ var LOOKS=[
 ],lki=0,OVS=[.15,.3,.5,.75,1],ovsi=2;
 var OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"}],ovi=0;
 var TRANSITIONS=8,trType=0;
+/* palettes and motions added from packs sit after the built-in ones and are saved in this browser */
+var NMOT=MOTIONS.length,LIB_MAX=16;
+function libAdd(list,nBuilt,item){ /* 1 if taken. A built-in name is refused; a name already added is replaced. */
+  if(!item)return 0;
+  for(var i=0;i<list.length;i++)if(list[i].name===item.name){if(i<nBuilt)return 0;list[i]=item;return 1;}
+  if(list.length-nBuilt>=LIB_MAX)return 0;
+  list.push(item);return 1;
+}
+function addToLibrary(raw){
+  var n={p:0,m:0};
+  if(!raw||typeof raw!=="object")return n;
+  (Array.isArray(raw.palettes)?raw.palettes:[]).forEach(function(x){n.p+=libAdd(PALETTES,NPAL,cleanPalette(x))});
+  (Array.isArray(raw.motions)?raw.motions:[]).forEach(function(x){n.m+=libAdd(MOTIONS,NMOT,cleanMotion(x))});
+  return n;
+}
+function saveLibrary(){try{localStorage.setItem("mirrorfold-library",JSON.stringify({palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT)}))}catch(_){}}
+try{addToLibrary(JSON.parse(localStorage.getItem("mirrorfold-library")||"{}"))}catch(_){}
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */
 var J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22}};
 function jReset(k){J[k].t=0;J[k].next=J[k].base*(0.8+0.4*Math.random());}
@@ -1108,7 +1170,12 @@ function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[
 
 /* ---------- choosing a world ---------- */
 var selWorld=$("selWorld"),selPal=$("selPal"),selMusic=$("selMusic"),selJT=$("selJT"),selOv=$("selOv"),selMotion=$("selMotion"),selLook=$("selLook");
-MOTIONS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Motion: "+o2.name;selMotion.appendChild(o);});
+function fillMotions(){
+  selMotion.textContent="";
+  MOTIONS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Motion: "+o2.name;selMotion.appendChild(o);});
+  selMotion.value=String(moi);
+}
+fillMotions();
 LOOKS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Filter: "+o2.name;selLook.appendChild(o);});
 OVERLAYS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Overlay: "+o2.name;selOv.appendChild(o);});
 function setOverlay(i){ovi=i;selOv.value=String(i);}
@@ -1119,13 +1186,17 @@ function setLook(i){lki=i;selLook.value=String(i);}
 selMotion.addEventListener("change",function(){setMotion(+this.value);wakeHud()});
 selLook.addEventListener("change",function(){setLook(+this.value);wakeHud()});
 WORLDS.forEach(function(w,i){var o=document.createElement("option");o.value=String(i);o.textContent=w.name;selWorld.appendChild(o);});
-PALETTES.forEach(function(p,i){var o=document.createElement("option");o.value=String(i);selPal.appendChild(o);});
+function fillPalettes(){
+  selPal.textContent="";
+  PALETTES.forEach(function(p,i){var o=document.createElement("option");o.value=String(i);selPal.appendChild(o);});
+  labelPalettes();selPal.value=String(pi);
+}
 function labelPalettes(){
   Array.prototype.forEach.call(selPal.options,function(o,i){
-    var locked=i>=BASE_PALS+unlocked;o.disabled=locked;o.textContent=PALETTES[i].name+(locked?" (find an orb)":"");
+    var locked=!palOpen(i);o.disabled=locked;o.textContent=PALETTES[i].name+(locked?" (find an orb)":"");
   });
 }
-labelPalettes();
+fillPalettes();
 function spawnOrb(){
   var w=world,m=morphValue(),per=w.period(m),sc=Math.min(per[0],per[1],per[2])/2,best=-1,bp=null,bd=0;
   for(var k=0;k<260;k++){
@@ -1142,7 +1213,7 @@ function chime(){
 }
 function collectOrb(){
   orbsFound++;bands.b.p=1;boost=Math.max(boost,0.5);chime();
-  if(unlocked<PALETTES.length-BASE_PALS){
+  if(unlocked<NPAL-BASE_PALS){
     unlocked++;labelPalettes();setPalette(BASE_PALS+unlocked-1);
     toast("Orb found. Palette unlocked: "+PALETTES[pi].name);
     spawnOrb();
@@ -1199,8 +1270,15 @@ function warpThen(fn){ /* the same twist, for changes that are not a new world *
   warpFn=fn;beginWarp();return true;
 }
 selWorld.addEventListener("change",function(){requestWorld(+this.value);wakeHud()});
-function setPalette(i){var n=BASE_PALS+unlocked;pi=((i%n)+n)%n;selPal.value=String(pi);}
-function randomPalette(){var n=BASE_PALS+unlocked;return (pi+1+Math.floor(Math.random()*(n-1)))%n;}
+function setPalette(i){ /* wraps round, and steps past palettes that are still locked */
+  var n=PALETTES.length;i=((i%n)+n)%n;
+  while(!palOpen(i))i=(i+1)%n;
+  pi=i;selPal.value=String(pi);
+}
+function randomPalette(){
+  var o=[],i;for(i=0;i<PALETTES.length;i++)if(i!==pi&&palOpen(i))o.push(i);
+  return o.length?o[Math.floor(Math.random()*o.length)]:pi;
+}
 /* a spot is world, palette, mirrors, position, heading and morph time packed into letters and digits */
 function b36(v,len){v=Math.max(0,Math.min(Math.pow(36,len)-1,Math.round(v)));var t=v.toString(36);while(t.length<len)t="0"+t;return t;}
 function encodeSpot(){
@@ -1213,7 +1291,7 @@ function encodeSpot(){
 function applySpot(t){
   var n=function(a,b){return parseInt(t.slice(a,b),36)};
   var p=n(0,1),k=n(1,2);
-  if(p<BASE_PALS+unlocked)setPalette(p);
+  if(p<PALETTES.length&&palOpen(p))setPalette(p);
   if(k<mirrors.length)setMirrors(k);
   morphT=n(12,16)/4;
   var per=world.period(morphValue()),i;
@@ -1380,7 +1458,8 @@ var BUILTIN_S=[normS({name:"Grand tour",order:"cycle",items:[{tpl:"Clean flight"
 var store={tpls:[],sets:[],sel:"t:Classic"};
 function adopt(raw){ /* take templates and sets from saved or pasted data, skipping names the built-ins use */
   var bt=BUILTIN_T.map(function(t){return t.name}),bs=BUILTIN_S.map(function(x){return x.name}),seen={};
-  var tp=(Array.isArray(raw.tpls)?raw.tpls:[]).map(function(t){return normT(t,false)}).filter(function(t){if(bt.indexOf(t.name)>=0||seen["t"+t.name])return false;seen["t"+t.name]=1;return true});
+  var rt=Array.isArray(raw.templates)?raw.templates:raw.tpls; /* packs say "templates"; older backups say "tpls" */
+  var tp=(Array.isArray(rt)?rt:[]).map(function(t){return normT(t,false)}).filter(function(t){if(bt.indexOf(t.name)>=0||seen["t"+t.name])return false;seen["t"+t.name]=1;return true});
   var st=(Array.isArray(raw.sets)?raw.sets:[]).map(function(x){return normS(x,false)}).filter(function(x){if(bs.indexOf(x.name)>=0||seen["s"+x.name])return false;seen["s"+x.name]=1;return true});
   return {tpls:tp,sets:st};
 }
@@ -1410,7 +1489,7 @@ function jPool(k,cfg){
   var out=[];
   catOf(k).opts.forEach(function(o,i){
     if(cfg.set&&cfg.set.indexOf(o[0])<0)return;
-    if(k==="palette"&&i>=BASE_PALS+unlocked)return;
+    if(k==="palette"&&!palOpen(i))return;
     out.push(o[0]);
   });
   return out;
@@ -1485,7 +1564,7 @@ function advFill(){
   advTpl.value=advT.name;
   advSet.textContent="";allS().forEach(function(x){advSet.appendChild(mk("option",{value:x.name,text:x.name+(x.builtin?" (built-in)":"")}))});
   advSet.value=advS.name;
-  advRenderT();advRenderS();
+  advRenderT();advRenderS();advRenderLib();
 }
 function advRenderT(){
   var t=advT,ro=t.builtin,box=$("advCats");
@@ -1604,26 +1683,102 @@ function useJourney(sel,label){
 }
 $("advUseT").addEventListener("click",function(){useJourney("t:"+advT.name,advT.name)});
 $("advUseS").addEventListener("click",function(){useJourney("s:"+advS.name,advS.name)});
-$("advCopy").addEventListener("click",function(){
-  var txt=JSON.stringify({tpls:store.tpls,sets:store.sets});$("advIO").value=txt;
-  var fail=function(){toast("Copy was blocked. Select the text in the box and copy it.")};
-  try{navigator.clipboard.writeText(txt).then(function(){toast("Copied "+store.tpls.length+" templates and "+store.sets.length+" sets.")},fail);}catch(_){fail();}
-});
-$("advLoad").addEventListener("click",function(){
-  var got;try{got=adopt(JSON.parse($("advIO").value))}catch(e){toast("That text is not a Mirrorfold backup.");return;}
-  if(!got.tpls.length&&!got.sets.length){toast("No templates or sets found in that text.");return;}
+/* ---------- packs: saving, loading and the library list ---------- */
+function refreshLists(){ /* after palettes or motions are added or removed */
+  catOf("palette").opts=PALETTES.map(function(q){return [q.name,q.name]});
+  catOf("motion").opts=MOTIONS.map(function(o){return [o.name,o.name]});
+  fillPalettes();fillMotions();
+}
+function count(n,word){return n+" "+word+(n===1?"":"s")}
+function packNow(){ /* everything of the user's own, as a pack */
+  var strip=function(list){return JSON.parse(JSON.stringify(list)).map(function(x){delete x.builtin;return x})};
+  return {mirrorfold:1,name:"My Mirrorfold pack",author:"",palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),templates:strip(store.tpls),sets:strip(store.sets)};
+}
+function packSummary(k){return count(k.palettes.length,"palette")+", "+count(k.motions.length,"motion")+", "+count(k.templates.length,"template")+" and "+count(k.sets.length,"set")}
+function loadPack(txt){
+  var raw=null;
+  if(typeof txt==="string"&&txt.length<=200000){try{raw=JSON.parse(txt)}catch(e){}}
+  if(!raw||typeof raw!=="object"||Array.isArray(raw)){toast("That is not a Mirrorfold pack.");return false;}
+  if(+raw.mirrorfold>1){toast("That pack was made for a newer Mirrorfold.");return false;}
+  var n=addToLibrary(raw);
+  if(n.p||n.m){saveLibrary();refreshLists();} /* before the templates, so they can name the new palettes and motions */
+  var got=adopt(raw);
+  if(!n.p&&!n.m&&!got.tpls.length&&!got.sets.length){toast("Nothing in that pack could be used.");return false;}
   var tn=got.tpls.map(function(q){return q.name}),sn=got.sets.map(function(q){return q.name});
   store.tpls=store.tpls.filter(function(q){return tn.indexOf(q.name)<0}).concat(got.tpls);
   store.sets=store.sets.filter(function(q){return sn.indexOf(q.name)<0}).concat(got.sets);
   advT=findT(advT.name)||BUILTIN_T[0];advS=findS(advS.name)||BUILTIN_S[0];
   if(journey)selectJourney(store.sel);
-  saveStore();fillJT();advFill();toast("Loaded "+got.tpls.length+" templates and "+got.sets.length+" sets.");
+  saveStore();fillJT();advFill();
+  toast("Loaded "+packSummary({palettes:{length:n.p},motions:{length:n.m},templates:got.tpls,sets:got.sets})+".");
+  return true;
+}
+function libRemove(kind,i){
+  if(kind==="p"){PALETTES.splice(i,1);if(pi===i)pi=0;else if(pi>i)pi--;}
+  else{MOTIONS.splice(i,1);if(moi===i)moi=0;else if(moi>i)moi--;}
+  saveLibrary();refreshLists();advFill();
+}
+function advRenderLib(){ /* the palettes and motions that came from packs, each with a Remove button */
+  var box=$("advMine");box.textContent="";
+  var row=function(kind,label,i){
+    var rm=mk("button",{type:"button",text:"Remove"});
+    rm.addEventListener("click",function(){libRemove(kind,i)});
+    box.appendChild(mk("div",{"class":"advRow"},[mk("span",{"class":"advItem",text:label}),rm]));
+  };
+  PALETTES.forEach(function(q,i){if(i>=NPAL)row("p","Palette: "+q.name,i)});
+  MOTIONS.forEach(function(o,i){if(i>=NMOT)row("m","Motion: "+o.name,i)});
+  if(!box.firstChild)box.appendChild(mk("p",{"class":"advNote",text:"No added palettes or motions yet."}));
+}
+$("advCopy").addEventListener("click",function(){
+  var k=packNow(),txt=JSON.stringify(k);$("advIO").value=txt;
+  var fail=function(){toast("Copy was blocked. Select the text in the box and copy it.")};
+  try{navigator.clipboard.writeText(txt).then(function(){toast("Copied "+packSummary(k)+".")},fail);}catch(_){fail();}
 });
-$("bAdv").addEventListener("click",function(){
+$("advLoad").addEventListener("click",function(){loadPack($("advIO").value)});
+$("advSave").addEventListener("click",function(){
+  var k=packNow(),a=document.createElement("a"),url=URL.createObjectURL(new Blob([JSON.stringify(k,null,1)],{type:"application/json"}));
+  a.href=url;a.download="mirrorfold-pack.json";document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url)},2000);
+  toast("Saved "+packSummary(k)+".");
+});
+$("advFile").addEventListener("click",function(){$("packIn").click()});
+$("packIn").addEventListener("change",function(){
+  var f=this.files&&this.files[0];this.value="";
+  if(!f)return;
+  if(f.size>200000){toast("That file is too big to be a Mirrorfold pack.");return;}
+  var rd=new FileReader();
+  rd.onload=function(){loadPack(String(rd.result))};
+  rd.onerror=function(){toast("That file could not be read.")};
+  rd.readAsText(f);
+});
+/* packs published with the site, listed in packs/index.json. Not there when the page is opened straight from a file. */
+var sitePacks=null;
+function fetchText(url){return fetch(url,{cache:"no-cache"}).then(function(r){if(!r.ok)throw new Error("missing");return r.text()})}
+function loadSitePacks(){
+  if(sitePacks||typeof fetch!=="function"||location.protocol==="file:")return;
+  sitePacks=[];
+  fetchText("packs/index.json").then(function(t){
+    var list=JSON.parse(t),sel=$("advSite");
+    (Array.isArray(list)?list:[]).slice(0,200).forEach(function(e){
+      var file=e&&String(e.file||""),name=cleanName(e&&e.name),by=cleanName(e&&e.author);
+      if(!/^[a-z0-9][a-z0-9_-]*\.json$/.test(file)||!name)return; /* a plain file name in the packs folder, nothing else */
+      sitePacks.push(file);sel.appendChild(mk("option",{value:file,text:name+(by?" by "+by:"")}));
+    });
+    $("advSiteRow").hidden=!sitePacks.length;
+  }).catch(function(){sitePacks=null});
+}
+$("advSiteAdd").addEventListener("click",function(){
+  var file=$("advSite").value;
+  if(!sitePacks||sitePacks.indexOf(file)<0)return;
+  fetchText("packs/"+file).then(loadPack,function(){toast("That pack could not be fetched.")});
+});
+function openAdv(toLibrary){
   var cur=store.sel.charAt(0)==="t"?findT(store.sel.slice(2)):null,cs=store.sel.charAt(0)==="s"?findS(store.sel.slice(2)):null;
   if(cur)advT=cur;if(cs)advS=cs;
-  advFill();adv.hidden=false;adv.scrollTop=0;
-});
+  advFill();loadSitePacks();adv.hidden=false;adv.scrollTop=toLibrary?$("advLibHead").offsetTop-12:0;
+}
+$("bAdv").addEventListener("click",function(){openAdv(false)});
+$("bLib").addEventListener("click",function(){openAdv(true)});
 $("advClose").addEventListener("click",function(){adv.hidden=true;wakeHud()});
 $("bOrbs").addEventListener("click",function(){
   orbsOn=!orbsOn;press(this,orbsOn);try{localStorage.setItem("mirrorfold-orbs",orbsOn?"on":"off")}catch(_){}

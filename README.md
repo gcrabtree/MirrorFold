@@ -77,7 +77,7 @@ On the start card, choose **Enter with music** or **Enter silent**.
 
 On a desktop, Android or iPad, press the **Fullscreen** button.
 
-Safari on iPhone does not let a web page go full screen, so the button is hidden there. Instead, add Mirrorfold to your home screen: open the site in Safari, press the Share button, then **Add to Home Screen**. Opening it from the new icon runs it without Safari's bars. The home-screen copy keeps its own saved templates and orb progress, separate from Safari's; use the Backup box in the journey editor to move templates across.
+Safari on iPhone does not let a web page go full screen, so the button is hidden there. Instead, add Mirrorfold to your home screen: open the site in Safari, press the Share button, then **Add to Home Screen**. Opening it from the new icon runs it without Safari's bars. The home-screen copy keeps its own saved templates and orb progress, separate from Safari's; save a pack file from the Library to move templates across.
 
 ## Controls
 
@@ -222,7 +222,25 @@ A **set** plays several templates in turn, each for a number of minutes.
 
 Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, Calm, Follow the music. Built-in set: Grand tour.
 
-Turn Journey on and press **Edit journeys** to make your own. Built-in templates cannot be edited; use **Duplicate** to start from one. Your templates and sets are saved in your browser only. The **Backup** box in the editor copies them out as text and loads them back in, which is how you move them to another device.
+Turn Journey on and press **Edit journeys** to make your own. Built-in templates cannot be edited; use **Duplicate** to start from one. Your templates and sets are saved in your browser only. To keep a copy or move them to another device, save them as a pack; see [Library and packs](#library-and-packs).
+
+## Library and packs
+
+A **pack** is a small file of palettes, motions, Journey templates and sets. It holds names and numbers only. Mirrorfold never runs anything from a pack as program code, checks every value, and pulls numbers that are out of range back into range.
+
+Press **Library** to open the library section of the setup panel:
+
+| Control | What it does |
+|---|---|
+| **Add this pack** | Adds the chosen pack from the ones published with Mirrorfold. This list is missing when the page is opened straight from a file. |
+| **Load a pack file** | Adds a pack from a file on your device. |
+| **Save mine as a pack file** | Saves everything you have added or made as one pack file, to keep or to share. |
+| **Remove** | Removes one added palette or motion. |
+| **Copy mine as text**, **Load from text** | The same as saving and loading a file, through the text box. |
+
+Added palettes and motions appear at the end of the Palette and Motion lists and in the Journey template editor. They are saved in your browser only.
+
+Worlds, filters and overlays cannot be put in a pack yet. The file format, the allowed ranges and how to offer a pack for inclusion are in [packs/README.md](packs/README.md).
 
 ## Orbs and share links
 
@@ -271,11 +289,13 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 
 | Path | What it is |
 |---|---|
-| `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,150 lines |
+| `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,480 lines |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 17 worlds |
-| `tools/unit.mjs` | Tests for the change detector, the weighted picker, the head-turn math and the steering handoff |
+| `packs/` | Packs published with the site, the list of them (`index.json`) and the pack format (`README.md`) |
+| `tools/unit.mjs` | Tests for the change detector, the weighted picker, the head-turn math, the steering handoff and the pack cleaners |
+| `tools/pack.mjs` | Checks pack files with the same code the app uses |
 | `tools/check.py` | Headless smoke test |
 | `tools/render.py` | Headless screenshots |
 | `tools/harness.py` | Shared code for the two Python tools |
@@ -287,6 +307,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 
 ```
 node tools/unit.mjs                     # pure-logic tests
+node tools/pack.mjs                     # check every pack in packs/
 python3 tools/check.py                  # all shaders compile, no script or WebGL errors
 python3 tools/render.py --world julia -o out.png          # screenshot one world
 python3 tools/render.py --all -o sheet.jpg                # contact sheet of every world
