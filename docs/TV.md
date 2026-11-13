@@ -41,9 +41,11 @@ The controls fade from the screen, and from the TV, after five seconds. Tap the 
 ### To an Apple TV
 
 1. Open Control Center: swipe down from the top right corner of the screen. On an iPhone with a Home button, swipe up from the bottom edge.
-2. Tap **Screen Mirroring**. The button shows two overlapping rectangles.
+2. Tap the **Screen Mirroring** button. It has no words on it, only a picture of two overlapping rectangles. If it is not there, add it: touch and hold an empty part of Control Center, tap **Add a Control**, search for "Screen Mirroring", and tap it.
 3. Choose your Apple TV.
 4. If a code appears on the TV, type it into the phone.
+
+The AirPlay button in the music player part of Control Center (a triangle with rings) is a different thing. It sends sound only, and it does not work for Mirrorfold's picture.
 
 To stop: open Control Center, tap **Screen Mirroring**, then **Stop Mirroring**.
 
