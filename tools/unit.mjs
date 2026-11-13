@@ -16,8 +16,8 @@ function grab(name) {
   if (!m) throw new Error("could not find function " + name + " in index.html");
   return m[0];
 }
-const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter"];
-const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter } = new Function(
+const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter", "cleanOverlay"];
+const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter, cleanOverlay } = new Function(
   NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
 
 let failed = 0;
@@ -146,6 +146,13 @@ const refused = {
   "something that is not text": 7,
 };
 for (const [what, code] of Object.entries(refused)) expect("filter code is refused for: " + what, cleanCode(code) === null);
+const ovCode = "ln=1.0-smoothstep(0.0,0.01,abs(length(p)-0.2-0.1*beat-0.05*sound(0.3)));hue=0.4+0.1*sin(time);";
+c = cleanOverlay({ name: "Loop", sound: "bands", code: ovCode, reviewed: true });
+expect("a good overlay passes, and cannot mark itself reviewed", JSON.stringify(c) === JSON.stringify({ name: "Loop", sound: "bands", code: ovCode }));
+expect("an overlay without code is refused", cleanOverlay({ name: "x" }) === null);
+expect("an overlay with an unknown sound source is refused", cleanOverlay({ name: "x", sound: "mic", code: ovCode }) === null);
+expect("overlay code is held to the same rules", cleanOverlay({ name: "x", code: "ln=step(0.5,fract(uTime*9.0));" }) === null);
+expect("sound reads in loops are counted", cleanCode("for(int i=0;i<40;i++){ln+=sound(0.1)+sound(0.2);}") === null && cleanCode("for(int i=0;i<16;i++){ln+=sound(float(i)/16.0);}") !== null);
 expect("a filter with refused code is refused whole", cleanFilter({ name: "x", edge: 0.5, code: "col*=uTime;" }) === null);
 
 console.log(failed ? failed + " failed" : "all passed");

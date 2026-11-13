@@ -56,6 +56,19 @@ a.btn{text-decoration:none;display:inline-block}
 #adv[hidden]{display:none}
 .advIn{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
 .advItem{font-size:13px;flex:1;min-width:120px}
+/* the editor is a sheet along the bottom, so the picture stays in view above it while the sliders move */
+#ed{position:fixed;left:0;right:0;bottom:0;z-index:7;max-height:48vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:rgba(5,3,11,.8);
+  border-top:1px solid var(--edge);padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+#ed[hidden]{display:none}
+#ed label,#ed .edVal{font-size:12px;color:var(--ink-dim)}
+#ed input[type=text]{flex:1;min-width:120px;font:500 13px/1.3 var(--body);color:var(--ink);background:var(--glass);border:1px solid var(--edge);border-radius:10px;padding:7px 10px}
+#ed input[type=range]{flex:1;min-width:70px;accent-color:var(--cool)}
+#ed .edLab{width:112px;flex:none}
+#ed .edVal{width:46px;flex:none;text-align:right}
+#edRows{display:flex;flex-direction:column;gap:6px}
+#edSwatch{position:static;width:100%;height:14px;flex:none;border-radius:7px;display:block}
+#edSwatch[hidden]{display:none}
+#ed .edHead{flex:1;min-width:70px;margin-right:54px;font-size:12px;color:var(--ink-dim)}
 #advMine{display:flex;flex-direction:column;gap:6px}
 .advRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .advHead{justify-content:space-between}
@@ -110,6 +123,7 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
 /* the picture runs under the status bar, notch and home bar; keep controls and panels inside the safe area */
 @supports(padding:max(0px)){
 #hud{top:max(12px,calc(env(safe-area-inset-top) + 6px));left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right))}
+#ed{padding:10px max(14px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
 #adv{padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 #start{padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 #err{bottom:max(16px,env(safe-area-inset-bottom))}
@@ -201,14 +215,21 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
     <div class="advRow"><button id="advUseS" type="button" class="advGo">Use this set</button></div>
 
     <h3 id="advLibHead">Library</h3>
-    <p class="advNote">A pack is a small file of palettes, motions, filters, journey templates and sets. Nothing in a pack can reach the page or your data. A filter may hold a short picture program, which is checked before use. What you add is saved in this browser only.</p>
+    <p class="advNote">A pack is a small file of palettes, motions, filters, overlays, journey templates and sets. Nothing in a pack can reach the page or your data. Filters and overlays may hold a short picture program, which is checked before use. What you add is saved in this browser only.</p>
     <div class="advRow" id="advSiteRow" hidden><select id="advSite" aria-label="Packs published with Mirrorfold"></select><button id="advSiteAdd" type="button">Add this pack</button></div>
     <div class="advRow"><button id="advFile" type="button">Load a pack file</button><button id="advSave" type="button">Save mine as a pack file</button><input id="packIn" type="file" accept=".json,application/json" hidden></div>
+    <div class="advRow"><button id="advNewP" type="button">New palette</button><button id="advNewM" type="button">New motion</button><button id="advNewF" type="button">New filter</button></div>
+    <p class="advNote">New starts from a copy of what is showing now, and opens sliders so you can change it while you watch.</p>
     <div id="advMine"></div>
     <p class="advNote">Or move a pack as text: copy yours out of this box, or paste one in and load it.</p>
     <textarea id="advIO" rows="4" aria-label="Pack as text" spellcheck="false"></textarea>
     <div class="advRow"><button id="advCopy" type="button">Copy mine as text</button><button id="advLoad" type="button">Load from text</button></div>
   </div>
+</div>
+<div id="ed" hidden>
+  <div class="advRow"><label for="edName" id="edKind">Palette</label><input id="edName" type="text" maxlength="28" autocomplete="off"><button id="edDone" type="button" class="advGo">Done</button></div>
+  <canvas id="edSwatch" width="256" height="1" aria-hidden="true"></canvas>
+  <div id="edRows"></div>
 </div>
 <div id="toast" role="status"></div>
 <div id="err"></div>
@@ -747,9 +768,9 @@ function cleanCode(src){
   if(depth!==0)return null;
   for(i=0;i<ids.length;i++){
     if(ids[i]==="gl_FragCoord")continue;
-    if(/^(u[A-Z0-9_].*|gl_.*|.*__.*|v|while|do|discard|main|look|texture2D.*|textureCube.*)$/.test(ids[i]))return null;
+    if(/^(u[A-Z0-9_].*|gl_.*|.*__.*|v|while|do|discard|main|look|mark|texture2D.*|textureCube.*)$/.test(ids[i]))return null;
     if(ids[i]==="for")loops++;
-    if(ids[i]==="scene")scenes++;
+    if(ids[i]==="scene"||ids[i]==="sound")scenes++;
   }
   var re=/\bfor\s*\(\s*int\s+[A-Za-z_]\w*\s*=\s*0\s*;\s*[A-Za-z_]\w*\s*<\s*(\d{1,3})\s*;\s*[A-Za-z_]\w*\s*\+\+\s*\)/g;
   while((m=re.exec(src))){loops--;cost*=Math.max(1,+m[1]);}
@@ -770,6 +791,18 @@ function cleanFilter(src){
     out.code=cleanCode(src.code);if(!out.code)return null;
   }
   return out;
+}
+/* An overlay from a pack is shader code that says how bright the overlay is at each point. It may use the clock and the sound. */
+function cleanOverlay(src){
+  if(!src||typeof src!=="object")return null;
+  var name=cleanName(src.name),out={name:name};
+  if(!name)return null;
+  if(src.sound!==undefined&&src.sound!==null){
+    if(src.sound!=="wave"&&src.sound!=="bands")return null;
+    out.sound=src.sound;
+  }
+  out.code=cleanCode(src.code);
+  return out.code?out:null;
 }
 function cleanMotion(src){
   if(!src||typeof src!=="object")return null;
@@ -960,6 +993,7 @@ var FS_BLUR=[
 var FS_FINAL=[
 "precision highp float;varying vec2 v;uniform sampler2D uT,uB;uniform float uWarp,uCA,uBloom,uTime,uAsp;uniform vec3 uTint;uniform vec2 uPx;",
 "uniform float uLiq,uMos,uEcho,uEdge,uPost,uSolar,uInv,uHueRot,uTr,uFx,uHue,uVr;uniform vec3 uPa,uPb,uPc,uPd;",
+"uniform sampler2D uPrev;uniform float uKeep;", /* the last finished picture and how much of it to keep: the flash limiter for unreviewed pack code */
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "const vec3 LW=vec3(0.299,0.587,0.114);",
 "void main(){",
@@ -1027,20 +1061,31 @@ var FS_FINAL=[
 "  }",
 "  col+=texture2D(uB,0.5+cw).rgb*uBloom;",
 "  col=mix(col,uTint,max(tintAmt,diss))*mask;",
+"  if(uKeep>0.0)col=mix(col,texture2D(uPrev,v).rgb,uKeep);",
 "  gl_FragColor=vec4(col,1.0);",
 "}"].join("\n");
 
 /* the final pass with a pack filter's code in it. The code sees the picture and the palette, and nothing that changes with time. */
 function finalSource(code){
   return FS_FINAL
-   .replace("void main(){","uniform sampler2D uPrev;uniform float uKeep;float aspect;vec2 pixel;\nvec3 scene(vec2 uv){return texture2D(uT,uv).rgb;}\nfloat luma(vec3 c){return dot(c,LW);}\nvoid look(vec2 uv,inout vec3 col){\n"+code+"\n}\nvoid main(){")
-   .replace("  col+=texture2D(uB,0.5+cw).rgb*uBloom;","  aspect=uAsp;pixel=uPx;look(0.5+cw,col);col=clamp(col,0.0,1.0);\n  col+=texture2D(uB,0.5+cw).rgb*uBloom;")
-   .replace("  gl_FragColor=vec4(col,1.0);","  if(uKeep>0.0)col=mix(col,texture2D(uPrev,v).rgb,uKeep);\n  gl_FragColor=vec4(col,1.0);");
+   .replace("void main(){","float aspect;vec2 pixel;\nvec3 scene(vec2 uv){return texture2D(uT,uv).rgb;}\nfloat luma(vec3 c){return dot(c,LW);}\nvoid look(vec2 uv,inout vec3 col){\n"+code+"\n}\nvoid main(){")
+   .replace("  col+=texture2D(uB,0.5+cw).rgb*uBloom;","  aspect=uAsp;pixel=uPx;look(0.5+cw,col);col=clamp(col,0.0,1.0);\n  col+=texture2D(uB,0.5+cw).rgb*uBloom;");
+}
+/* the feedback pass with a pack overlay's code in it. The code sets how bright the overlay is at a point, and where in the palette its colour comes from. */
+function trailSource(code){
+  return FS_TRAIL
+   .replace("void main(){","float time,beat,mid,hi,aspect;\nfloat sound(float x){return texture2D(uWv,vec2(clamp(x,0.0,1.0)*0.98+0.01,0.5)).r;}\nvoid mark(vec2 p,inout float ln,inout float hue){\n"+code+"\n}\nvoid main(){")
+   .replace("    vec3 oc=pal(uHue+0.3+rr*0.45);","    float hq=0.3+rr*0.45;\n    if(uOv>98.5){ln=0.0;time=uTime;beat=uOvBeat;mid=uOvMid;hi=uOvHi;aspect=uAsp;mark(d/m,ln,hq);ln=clamp(ln,0.0,1.0);}\n    vec3 oc=pal(uHue+hq);");
+}
+var TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uPa","uPb","uPc","uPd"];
+function overlayProg(ov){ /* null if this overlay's code does not compile on this device */
+  if(ov.prog===undefined){try{ov.prog=link(trailSource(ov.code),TRAIL_U)}catch(e){ov.prog=null;}}
+  return ov.prog;
 }
 var FS_COPY="precision mediump float;varying vec2 v;uniform sampler2D uT;void main(){gl_FragColor=texture2D(uT,v);}";
-var FINAL_U=["uT","uB","uWarp","uCA","uBloom","uTint","uTime","uAsp","uPx","uLiq","uMos","uEcho","uEdge","uPost","uSolar","uInv","uHueRot","uTr","uFx","uHue","uVr","uPa","uPb","uPc","uPd"];
+var FINAL_U=["uPrev","uKeep","uT","uB","uWarp","uCA","uBloom","uTint","uTime","uAsp","uPx","uLiq","uMos","uEcho","uEdge","uPost","uSolar","uInv","uHueRot","uTr","uFx","uHue","uVr","uPa","uPb","uPc","uPd"];
 function filterProg(lk){ /* null if this filter's code does not compile on this device */
-  if(lk.prog===undefined){try{lk.prog=link(finalSource(lk.code),FINAL_U.concat(["uPrev","uKeep"]))}catch(e){lk.prog=null;}}
+  if(lk.prog===undefined){try{lk.prog=link(finalSource(lk.code),FINAL_U)}catch(e){lk.prog=null;}}
   return lk.prog;
 }
 function sh(type,src){
@@ -1077,7 +1122,7 @@ function hybProg(a,b){
 }
 var pTrail,pDown,pBlur,pFinal,pCopy;
 try{
-  pTrail=link(FS_TRAIL,["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uPa","uPb","uPc","uPd"]);
+  pTrail=link(FS_TRAIL,TRAIL_U);
   pDown=link(FS_DOWN,["uT","uPx"]);
   pBlur=link(FS_BLUR,["uT","uDir"]);
   pFinal=link(FS_FINAL,FINAL_U);pCopy=link(FS_COPY,["uT"]);
@@ -1157,7 +1202,7 @@ var LOOKS=[
 var OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"}],ovi=0;
 var TRANSITIONS=8,trType=0;
 /* palettes and motions added from packs sit after the built-in ones and are saved in this browser */
-var NMOT=MOTIONS.length,NLOOK=LOOKS.length,LIB_MAX=16;
+var NMOT=MOTIONS.length,NLOOK=LOOKS.length,NOV=OVERLAYS.length,LIB_MAX=16;
 function libAdd(list,nBuilt,item){ /* 1 if taken. A built-in name is refused; a name already added is replaced. */
   if(!item)return 0;
   for(var i=0;i<list.length;i++)if(list[i].name===item.name){
@@ -1171,8 +1216,14 @@ function libAdd(list,nBuilt,item){ /* 1 if taken. A built-in name is refused; a 
 /* from: "stored" for what this browser saved earlier, "site" for a pack published with the page, nothing for a file or pasted text.
    Filter code from the site's own packs has been reviewed. Any other filter code is shown smoothed over time, so it cannot flash. */
 function addToLibrary(raw,from){
-  var n={p:0,m:0,f:0};
+  var n={p:0,m:0,f:0,o:0};
   if(!raw||typeof raw!=="object")return n;
+  (Array.isArray(raw.overlays)?raw.overlays:[]).forEach(function(x){
+    var o=cleanOverlay(x);
+    if(o&&(from==="site"||(from==="stored"&&x.reviewed===true)))o.reviewed=true;
+    if(o&&from!=="stored"&&!overlayProg(o))o=null;
+    n.o+=libAdd(OVERLAYS,NOV,o);
+  });
   (Array.isArray(raw.filters)?raw.filters:[]).forEach(function(x){
     var f=cleanFilter(x);
     if(f&&(from==="site"||(from==="stored"&&x.reviewed===true)))f.reviewed=true;
@@ -1184,7 +1235,8 @@ function addToLibrary(raw,from){
   return n;
 }
 function myFilters(keepReviewed){return LOOKS.slice(NLOOK).map(function(f){var o=cleanFilter(f);if(keepReviewed&&f.reviewed)o.reviewed=true;return o})}
-function saveLibrary(){try{localStorage.setItem("mirrorfold-library",JSON.stringify({palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(true)}))}catch(_){}}
+function myOverlays(keepReviewed){return OVERLAYS.slice(NOV).map(function(f){var o=cleanOverlay(f);if(keepReviewed&&f.reviewed)o.reviewed=true;return o})}
+function saveLibrary(){try{localStorage.setItem("mirrorfold-library",JSON.stringify({palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(true),overlays:myOverlays(true)}))}catch(_){}}
 try{addToLibrary(JSON.parse(localStorage.getItem("mirrorfold-library")||"{}"),"stored")}catch(_){}
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */
 var J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22}};
@@ -1247,7 +1299,12 @@ function fillLooks(){
   selLook.value=String(lki);
 }
 fillLooks();
-OVERLAYS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Overlay: "+o2.name;selOv.appendChild(o);});
+function fillOverlays(){
+  selOv.textContent="";
+  OVERLAYS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Overlay: "+o2.name;selOv.appendChild(o);});
+  selOv.value=String(ovi);
+}
+fillOverlays();
 function setOverlay(i){ovi=i;selOv.value=String(i);}
 selOv.addEventListener("change",function(){setOverlay(+this.value);wakeHud()});
 $("bOvS").addEventListener("click",function(){ovsi=(ovsi+1)%OVS.length;this.textContent="Overlay "+Math.round(OVS[ovsi]*100)+"%";wakeHud()});
@@ -1758,50 +1815,145 @@ function refreshLists(){ /* after palettes or motions are added or removed */
   catOf("palette").opts=PALETTES.map(function(q){return [q.name,q.name]});
   catOf("motion").opts=MOTIONS.map(function(o){return [o.name,o.name]});
   catOf("filter").opts=LOOKS.map(function(o){return [o.name,o.name]});
-  fillPalettes();fillMotions();fillLooks();
+  catOf("overlay").opts=OVERLAYS.map(function(o){return [o.name,o.name]});
+  fillPalettes();fillMotions();fillLooks();fillOverlays();
 }
 function count(n,word){return n+" "+word+(n===1?"":"s")}
 function packNow(){ /* everything of the user's own, as a pack */
   var strip=function(list){return JSON.parse(JSON.stringify(list)).map(function(x){delete x.builtin;return x})};
-  return {mirrorfold:1,name:"My Mirrorfold pack",author:"",palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(false),templates:strip(store.tpls),sets:strip(store.sets)};
+  return {mirrorfold:1,name:"My Mirrorfold pack",author:"",palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(false),overlays:myOverlays(false),templates:strip(store.tpls),sets:strip(store.sets)};
 }
-function packSummary(k){return count(k.palettes.length,"palette")+", "+count(k.motions.length,"motion")+", "+count(k.filters.length,"filter")+", "+count(k.templates.length,"template")+" and "+count(k.sets.length,"set")}
+function packSummary(k){ /* "2 palettes, 1 filter and 3 templates": only what is there */
+  var parts=[["palettes","palette"],["motions","motion"],["filters","filter"],["overlays","overlay"],["templates","template"],["sets","set"]]
+    .filter(function(x){return k[x[0]].length>0}).map(function(x){return count(k[x[0]].length,x[1])});
+  if(!parts.length)return "nothing";
+  var last=parts.pop();
+  return parts.length?parts.join(", ")+" and "+last:last;
+}
 function loadPack(txt,from){
   var raw=null;
   if(typeof txt==="string"&&txt.length<=200000){try{raw=JSON.parse(txt)}catch(e){}}
   if(!raw||typeof raw!=="object"||Array.isArray(raw)){toast("That is not a Mirrorfold pack.");return false;}
   if(+raw.mirrorfold>1){toast("That pack was made for a newer Mirrorfold.");return false;}
   var n=addToLibrary(raw,from==="site"?"site":undefined);
-  if(n.p||n.m||n.f){saveLibrary();refreshLists();} /* before the templates, so they can name what was just added */
+  if(n.p||n.m||n.f||n.o){saveLibrary();refreshLists();} /* before the templates, so they can name what was just added */
   var got=adopt(raw);
-  if(!n.p&&!n.m&&!n.f&&!got.tpls.length&&!got.sets.length){toast("Nothing in that pack could be used.");return false;}
+  if(!n.p&&!n.m&&!n.f&&!n.o&&!got.tpls.length&&!got.sets.length){toast("Nothing in that pack could be used.");return false;}
   var tn=got.tpls.map(function(q){return q.name}),sn=got.sets.map(function(q){return q.name});
   store.tpls=store.tpls.filter(function(q){return tn.indexOf(q.name)<0}).concat(got.tpls);
   store.sets=store.sets.filter(function(q){return sn.indexOf(q.name)<0}).concat(got.sets);
   advT=findT(advT.name)||BUILTIN_T[0];advS=findS(advS.name)||BUILTIN_S[0];
   if(journey)selectJourney(store.sel);
   saveStore();fillJT();advFill();
-  toast("Loaded "+packSummary({palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},templates:got.tpls,sets:got.sets})+".");
+  toast("Loaded "+packSummary({palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},overlays:{length:n.o},templates:got.tpls,sets:got.sets})+".");
   return true;
 }
 function libRemove(kind,i){
   if(kind==="p"){PALETTES.splice(i,1);if(pi===i)pi=0;else if(pi>i)pi--;}
   else if(kind==="m"){MOTIONS.splice(i,1);if(moi===i)moi=0;else if(moi>i)moi--;}
-  else{if(LOOKS[i].prog)gl.deleteProgram(LOOKS[i].prog.prog);LOOKS.splice(i,1);if(lki===i)lki=0;else if(lki>i)lki--;}
+  else if(kind==="f"){if(LOOKS[i].prog)gl.deleteProgram(LOOKS[i].prog.prog);LOOKS.splice(i,1);if(lki===i)lki=0;else if(lki>i)lki--;}
+  else{if(OVERLAYS[i].prog)gl.deleteProgram(OVERLAYS[i].prog.prog);OVERLAYS.splice(i,1);if(ovi===i)ovi=0;else if(ovi>i)ovi--;}
   saveLibrary();refreshLists();advFill();
 }
 function advRenderLib(){ /* the palettes and motions that came from packs, each with a Remove button */
   var box=$("advMine");box.textContent="";
   var row=function(kind,label,i){
-    var rm=mk("button",{type:"button",text:"Remove"});
+    var rm=mk("button",{type:"button",text:"Remove"}),kids=[mk("span",{"class":"advItem",text:label})];
     rm.addEventListener("click",function(){libRemove(kind,i)});
-    box.appendChild(mk("div",{"class":"advRow"},[mk("span",{"class":"advItem",text:label}),rm]));
+    if(ED[kind]){var eb=mk("button",{type:"button",text:"Edit"});eb.addEventListener("click",function(){edOpen(kind,i)});kids.push(eb);}
+    kids.push(rm);
+    box.appendChild(mk("div",{"class":"advRow"},kids));
   };
   PALETTES.forEach(function(q,i){if(i>=NPAL)row("p","Palette: "+q.name,i)});
   MOTIONS.forEach(function(o,i){if(i>=NMOT)row("m","Motion: "+o.name,i)});
   LOOKS.forEach(function(o,i){if(i>=NLOOK)row("f","Filter: "+o.name+(o.code&&!o.reviewed?" (not reviewed, so shown smoothed)":""),i)});
-  if(!box.firstChild)box.appendChild(mk("p",{"class":"advNote",text:"No added palettes, motions or filters yet."}));
+  OVERLAYS.forEach(function(o,i){if(i>=NOV)row("o","Overlay: "+o.name+(o.reviewed?"":" (not reviewed, so shown smoothed)"),i)});
+  if(!box.firstChild)box.appendChild(mk("p",{"class":"advNote",text:"Nothing added yet."}));
 }
+/* ---------- the editor: sliders for an added palette, motion or filter ----------
+   Each slider row is [field, label, lowest, highest, step]. What the sliders say goes through the same cleaners as a pack. */
+var ED={
+ p:{word:"palette",cat:"palette",list:PALETTES,built:NPAL,clean:cleanPalette,rgb:true,
+    rows:[["a","Middle",0,1,0.01],["b","Swing",0,1,0.01],["c","Repeats",0,3,0.05],["d","Start",-2,2,0.01]]},
+ m:{word:"motion",cat:"motion",list:MOTIONS,built:NMOT,clean:cleanMotion,
+    rows:[["decay","Trail length",0,0.98,0.005],["zoom","Zoom",0.95,1.05,0.001],["rot","Turn",-0.025,0.025,0.0005],["swirl","Swirl",-0.08,0.08,0.002],
+          ["wob","Wobble",0,0.006,0.0002],["rip","Ripple",0,0.03,0.001],["dx","Slide sideways",-0.012,0.012,0.0005],["dy","Slide up or down",-0.012,0.012,0.0005],["kick","Beat push",-1,1,0.05]]},
+ f:{word:"filter",cat:"filter",list:LOOKS,built:NLOOK,clean:cleanFilter,
+    rows:[["edge","Outlines",0,1,0.01],["post","Brightness steps",0,16,1],["solar","Solarise",0,1,0.01],["inv","Negative",0,1,0.01],["echo","Echo",0,1,0.01],
+          ["mos","Mosaic blocks",0,400,4],["liq","Liquid",0,0.03,0.001],["hue","Colour turn",0,1,0.01],["ca","Colour fringing",0,0.04,0.001],["fx","Built-in effect",0,9,1]]}
+};
+var FX_NAMES=["none","Quad","Tiles","Bulge","Twirl","Thermal","CRT","Halftone","Contour","Noir"];
+var ed=null; /* {kind, item} while the editor is open */
+function edShow(v,row){return row[0]==="fx"?FX_NAMES[v|0]:String(+(+v).toFixed(row[4]<0.001?4:row[4]<0.01?3:2));}
+function edSwatch(){ /* the palette from one end to the other */
+  var cv=$("edSwatch");cv.hidden=ed.kind!=="p";if(cv.hidden)return;
+  var x2=cv.getContext("2d"),q=ed.item,im=x2.createImageData(256,1),i,j;
+  for(i=0;i<256;i++){for(j=0;j<3;j++)im.data[i*4+j]=255*Math.min(1,Math.max(0,q.a[j]+q.b[j]*Math.cos(6.28318*(q.c[j]*i/255+q.d[j]))));im.data[i*4+3]=255;}
+  x2.putImageData(im,0,0);
+}
+function edRead(){ /* sliders to the item, by way of the cleaner */
+  var E=ED[ed.kind],src={name:ed.item.name},k;
+  if(ed.item.code)src.code=ed.item.code;
+  E.rows.forEach(function(r){
+    if(E.rgb)src[r[0]]=[0,1,2].map(function(j){return +$("ed_"+r[0]+j).value});
+    else src[r[0]]=+$("ed_"+r[0]).value;
+  });
+  var out=E.clean(src);if(!out)return;
+  for(k in out)if(out[k]===0)delete out[k]; /* a control at nothing is left out, as in a hand-written pack */
+  E.rows.forEach(function(r){delete ed.item[r[0]]});
+  for(k in out)ed.item[k]=out[k];
+  E.rows.forEach(function(r){ /* show what was kept, which can differ from where the slider sits */
+    var v=ed.item[r[0]];
+    if(E.rgb)[0,1,2].forEach(function(j){$("ev_"+r[0]+j).textContent=edShow(v[j],r)});
+    else $("ev_"+r[0]).textContent=edShow(v||0,r);
+  });
+  edSwatch();saveLibrary();
+}
+function edOpen(kind,i){
+  var E=ED[kind],item=E.list[i],box=$("edRows");
+  if(!item||i<E.built)return;
+  ed={kind:kind,item:item};
+  if(kind==="p")setPalette(i);else if(kind==="m")setMotion(i);else setLook(i);
+  $("edKind").textContent=E.word.charAt(0).toUpperCase()+E.word.slice(1);$("edName").value=item.name;
+  box.textContent="";
+  if(E.rgb)box.appendChild(mk("div",{"class":"advRow"},[mk("span",{"class":"edLab"}),mk("span",{"class":"edHead",text:"Red"}),mk("span",{"class":"edHead",text:"Green"}),mk("span",{"class":"edHead",text:"Blue"})]));
+  E.rows.forEach(function(r){
+    var kids=[mk("span",{"class":"edLab advItem",text:r[1]})];
+    var slider=function(id,val,label){
+      var sl=mk("input",{type:"range",id:"ed_"+id,min:String(r[2]),max:String(r[3]),step:String(r[4]),"aria-label":label});
+      sl.value=String(val);sl.addEventListener("input",edRead);
+      kids.push(sl,mk("span",{"class":"edVal",id:"ev_"+id}));
+    };
+    if(E.rgb)["red","green","blue"].forEach(function(c,j){slider(r[0]+j,item[r[0]][j],r[1]+", "+c)});
+    else slider(r[0],item[r[0]]!==undefined?item[r[0]]:(r[0]==="zoom"?0.994:0),r[1]);
+    box.appendChild(mk("div",{"class":"advRow"},kids));
+  });
+  adv.hidden=true;$("ed").hidden=false;$("ed").scrollTop=0;edRead();
+}
+function edNew(kind){
+  var E=ED[kind],cur=kind==="p"?PALETTES[pi]:kind==="m"?MOTIONS[moi]:LOOKS[lki],src=JSON.parse(JSON.stringify(cur,function(k,v){return k==="prog"?undefined:v}));
+  if(E.list.length-E.built>=LIB_MAX){toast("You have "+LIB_MAX+" added "+E.word+"s. Remove one first.");return;}
+  delete src.code; /* a copy takes the slider settings, not the program */
+  if(kind==="m"&&moi===0)src={decay:0.96,zoom:0.998};
+  if(kind==="f"){src.name="x";var mix=cleanFilter(src);src=mix&&Object.keys(mix).length>1?mix:{edge:0.5};}
+  src.name=uniqueName("My "+E.word,E.list.map(function(q){return q.name}));
+  var item=E.clean(src);if(!item)return;
+  E.list.push(item);saveLibrary();refreshLists();
+  edOpen(kind,E.list.length-1);
+  toast("Made "+item.name+". Move the sliders and watch.");
+}
+$("edName").addEventListener("change",function(){
+  var E=ED[ed.kind],old=ed.item.name,nn=uniqueName(cleanName(this.value)||"My "+E.word,E.list.filter(function(q){return q!==ed.item}).map(function(q){return q.name}));
+  ed.item.name=nn;this.value=nn;
+  store.tpls.forEach(function(t){var st=t[E.cat].set;if(st){var ix=st.indexOf(old);if(ix>=0)st[ix]=nn;}}); /* templates keep pointing at it */
+  saveLibrary();saveStore();refreshLists();
+});
+$("edDone").addEventListener("click",function(){
+  var nm=ed.item.name;ed=null;$("ed").hidden=true;advFill();toast("Saved "+nm+".");wakeHud();
+});
+$("advNewP").addEventListener("click",function(){edNew("p")});
+$("advNewM").addEventListener("click",function(){edNew("m")});
+$("advNewF").addEventListener("click",function(){edNew("f")});
 $("advCopy").addEventListener("click",function(){
   var k=packNow(),txt=JSON.stringify(k);$("advIO").value=txt;
   var fail=function(){toast("Copy was blocked. Select the text in the box and copy it.")};
@@ -1848,6 +2000,7 @@ $("advSiteAdd").addEventListener("click",function(){
 function openAdv(toLibrary){
   var cur=store.sel.charAt(0)==="t"?findT(store.sel.slice(2)):null,cs=store.sel.charAt(0)==="s"?findS(store.sel.slice(2)):null;
   if(cur)advT=cur;if(cs)advS=cs;
+  ed=null;$("ed").hidden=true;
   advFill();loadSitePacks();adv.hidden=false;adv.scrollTop=toLibrary?$("advLibHead").offsetTop-12:0;
 }
 $("bAdv").addEventListener("click",function(){openAdv(false)});
@@ -1860,7 +2013,7 @@ $("bOrbs").addEventListener("click",function(){
 press($("bOrbs"),orbsOn);
 function updateWave(){
   var i,live=liveAudio();
-  if(OVERLAYS[ovi].spec){ /* frequency bands, low to high */
+  if(OVERLAYS[ovi].spec||OVERLAYS[ovi].sound==="bands"){ /* frequency bands, low to high */
     if(live){for(i=0;i<128;i++)waveBuf[i]=fbins[1+i*2];}
     else{for(i=0;i<128;i++)waveBuf[i]=255*(0.18+0.6*beat)*Math.abs(Math.sin(i*0.21+time*1.3)*Math.sin(i*0.047-time*0.6));}
   }else if(live){
@@ -2506,8 +2659,12 @@ function frame(now){
   var tx=hueT+wHue+0.2,tint=[0,0,0];
   for(j=0;j<3;j++)tint[j]=Math.min(1,Math.max(0,palCur.a[j]+palCur.b[j]*Math.cos(6.28318*(palCur.c[j]*tx+palCur.d[j]))));
   var tc=tT[cur],tp=tT[1-cur];
+  /* a pack overlay has its own copy of this pass with its code in it */
+  var ov=OVERLAYS[ovi],op=ov.code&&!stereo?overlayProg(ov):null;
+  if(ov.code&&!op&&!stereo&&!ov.told){ov.told=1;toast("Overlay "+ov.name+" does not work on this device.");}
+  if(op)TU=op.U;
   if(ovi>0)updateWave();
-  passTo(tc,pTrail);bindTex(2,ovi>0?waveTex:tA.t);bindTex(1,tp.t);bindTex(0,tA.t);
+  passTo(tc,op||pTrail);bindTex(2,ovi>0?waveTex:tA.t);bindTex(1,tp.t);bindTex(0,tA.t);
   gl.uniform1i(TU.uA,0);gl.uniform1i(TU.uB,1);gl.uniform1i(TU.uWv,2);
   gl.uniform1f(TU.uDecay,stereo?0:Math.pow(Math.max(fx.decay,mo.decay||0,warp>0?0.9:0),k60)); /* no trails in the VR viewer: they are warped about the middle of the screen */
   gl.uniform1f(TU.uZoom,Math.pow(mo.zoom||0.994,k60)-0.02*warp-0.012*bt*(mo.kick||0));
@@ -2517,7 +2674,7 @@ function frame(now){
   gl.uniform1f(TU.uRip,(mo.rip||0)*k60*(1+1.5*bt));
   gl.uniform2f(TU.uDrift,(mo.dx||0)*k60,(mo.dy||0)*k60);
   gl.uniform1f(TU.uTime,time);gl.uniform1f(TU.uAsp,tc.w/tc.h);
-  gl.uniform1f(TU.uOv,stereo?0:ovi);gl.uniform1f(TU.uOvBeat,bt);gl.uniform1f(TU.uOvMid,mp);gl.uniform1f(TU.uOvHi,hp);
+  gl.uniform1f(TU.uOv,stereo?0:ov.code?(op?99:0):ovi);gl.uniform1f(TU.uOvBeat,bt);gl.uniform1f(TU.uOvMid,mp);gl.uniform1f(TU.uOvHi,hp);
   gl.uniform1f(TU.uShift,moi>0?Math.min(0.3,(0.05+0.1*hp)*k60):0); /* trails drift through the colour channels so they read apart from the scene */
   gl.uniform1f(TU.uOvAmt,OVS[ovsi]);gl.uniform1f(TU.uHue,hueT+wHue);
   gl.uniform3fv(TU.uPa,palCur.a);gl.uniform3fv(TU.uPb,palCur.b);gl.uniform3fv(TU.uPc,palCur.c);gl.uniform3fv(TU.uPd,palCur.d);
@@ -2532,14 +2689,15 @@ function frame(now){
   }
 
   /* 4. to the screen: the chosen filter, colour fringing at the edges, bloom, and the warp twist */
-  /* a pack filter with code has its own copy of this pass. Unreviewed code is blended with the last finished picture,
-     so whatever it does, it cannot flash: a change takes about a quarter of a second to come through. */
+  /* a pack filter with code has its own copy of this pass. While unreviewed code is in use, in a filter or an overlay,
+     the picture is blended with the last finished one, so whatever the code does, it cannot flash:
+     a change takes about a quarter of a second to come through. */
   var lp=lk.code?filterProg(lk):null;
   if(lk.code&&!lp&&!lk.told){lk.told=1;toast("Filter "+lk.name+" does not work on this device.");}
-  var slow=!!lp&&!lk.reviewed,PF=lp||pFinal,FU=PF.U;
+  var slow=(!!lp&&!lk.reviewed)||(!!op&&!ov.reviewed),PF=lp||pFinal,FU=PF.U;
   if(slow&&!tF[0]){tF[0]=target(canvas.width,canvas.height);tF[1]=target(canvas.width,canvas.height);}
   passTo(slow?tF[fcur]:null,PF);bindTex(0,tc.t);bindTex(1,tB[0].t);
-  if(lp){bindTex(3,slow?tF[1-fcur].t:tc.t);gl.uniform1i(FU.uPrev,3);gl.uniform1f(FU.uKeep,slow?Math.exp(-dt/0.25):0);}
+  bindTex(3,slow?tF[1-fcur].t:tc.t);gl.uniform1i(FU.uPrev,3);gl.uniform1f(FU.uKeep,slow?Math.exp(-dt/0.25):0);
   gl.uniform1i(FU.uT,0);gl.uniform1i(FU.uB,1);
   gl.uniform1f(FU.uWarp,warp);gl.uniform1f(FU.uTr,stereo?5:trType);gl.uniform1f(FU.uVr,stereo?1:0); /* VR viewer always uses the blink transition */
   gl.uniform1f(FU.uCA,stereo?0:fx.ca*(1+1.5*spN)+0.012*boost+(lk.ca||0)+(fi===2?0:0.006*hp));
