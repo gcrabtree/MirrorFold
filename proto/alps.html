@@ -167,14 +167,15 @@ var FS=[
 "float pre(){",
 "  vec2 g=floor(gl_FragCoord.xy/uK-0.5);float m=1e3;",
 "  for(int j=0;j<4;j++){vec2 o=vec2(mod(float(j),2.0),floor(float(j)/2.0));m=min(m,dot(texture2D(uPre,(g+o+0.5)/uPreRes).rgb,vec3(1.0,1.0/255.0,1.0/65025.0))*80.0);}",
-"  return max(0.02,m*0.985-0.003);",
+"  return max(0.02,m*0.97-0.006);",
 "}",
 /* walk the ray until it meets the ground or something standing on it; -1 means it reached the sky.
    Things are added only within "reach" of the start, so a mirrored ray can leave them out. */
-"float march(vec3 ro,vec3 rd,float far,float reach,float t){",
-"  float h=1.0;",
+"float march(vec3 ro,vec3 rd,float far,float reach,float t,float rough){",
+"  float h=1.0,tp=t;",
 "  for(int i=0;i<200;i++){",
 "    vec3 p=ro+rd*t;float lim=1e3;",
+"    if(i<5&&t>0.03&&p.y<terrM(p.xz)){t*=0.6;h=1.0;continue;}", /* began inside the land: back toward the camera and try again */
 "    if(h>0.5){h=p.y-terrL(p.xz)-0.14;if(h<0.3)h=p.y-terrM(p.xz);}", /* high up, a rough height with a safe margin costs less */
 "    else if(t<reach&&h<0.08){", /* low enough to meet a tree or a rock: add them, and take short steps so none is stepped over */
 "      vec3 G=terrG(p.xz);float yv;h=p.y-G.z;",
@@ -184,9 +185,13 @@ var FS=[
 "        if(h<0.0006*t+0.00005)return t;",
 "      }",
 "    }else h=p.y-terrM(p.xz);",
-"    if(h<0.0012*t){for(int j=0;j<4;j++){p=ro+rd*t;t+=0.6*(p.y-terrM(p.xz));}return t;}",
+"    if(h<0.0012*t*rough){", /* met the land. If the step went in deep, as it can through a cliff, search back for where it went in. */
+"      if(h<-0.002*t)for(int j=0;j<7;j++){float tm=0.5*(tp+t);p=ro+rd*tm;if(p.y>terrM(p.xz))tp=tm;else t=tm;}",
+"      else for(int j=0;j<3;j++){p=ro+rd*t;t+=0.6*(p.y-terrM(p.xz));}",
+"      return t;",
+"    }",
 "    if(t>far||(p.y>HMAX&&rd.y>0.0))return -1.0;",
-"    t+=min(0.42*h+0.0006*t,lim);",
+"    tp=t;t+=min(0.42*h+0.0006*t*rough,lim);",
 "  }",
 "  return h<0.03?t:-1.0;", /* out of steps while skimming the ground: call it a hit, so no holes open in the land */
 "}",
@@ -201,9 +206,10 @@ var FS=[
 "  return clamp(res,0.0,1.0);",
 "}",
 /* the colour of the ground at p: rock, meadow, forest, glacier, snow, streams and waterfalls, the things standing on it, then sunlight */
-"vec3 ground(vec3 p,float t,vec3 rd){",
+"vec3 ground(vec3 p,float tr,vec3 rd,float mir){",
+"  float t=tr+100.0*mir;", /* a mirrored view (mir 1) is drawn as if far away: no close-up detail, no stream, no cast shadow */
 "  float det=smoothstep(1.6,0.25,t),det2=smoothstep(0.22,0.05,t);", /* how much close-up detail to draw: none far off, all of it near */
-"  float e=max(0.00025,0.0011*t),yv;vec3 G=terrG(p.xz);float gM=G.z;",
+"  float e=max(0.00025,0.0011*tr),yv;vec3 G=terrG(p.xz);float gM=G.z;",
 "  vec3 Z=zone(p.xz,G,yv);",
 "  float h0=terrD(p.xz,det),hx=terrD(p.xz+vec2(e,0.0),det),hz=terrD(p.xz+vec2(0.0,e),det);",
 "  vec3 nT=normalize(vec3(h0-hx,e,h0-hz));", /* the slope of the bare land, which decides what grows or lies there */
@@ -259,7 +265,7 @@ var FS=[
 /* one stream to each square of a coarse grid. It runs straight downhill from a point in the square:
    white and falling where the ground is steep, a blue thread where it is gentle. */
 "  float wet=0.0,foam=0.0;",
-"  {",
+"  if(mir<0.5){",
 "    const float G=1.3;vec2 ci=floor(W/G);",
 "    float hs=hash(ci+vec2(17.0,5.0));",
 "    vec2 c=(ci+0.5+0.24*(vec2(hash(ci),hash(ci+vec2(41.0,3.0)))-0.5))*G-uPos.xz;",
@@ -279,11 +285,11 @@ var FS=[
 "  }",
 "  col=mix(col,vec3(0.10,0.30,0.42),wet);col=mix(col,vec3(0.95,0.97,1.0),foam);",
 "  if(uTint>1.5){float lu=dot(col,vec3(0.3,0.59,0.11));col=mix(col,pal(uHue+0.25+1.1*lu+0.25*p.y)*(0.22+1.4*lu),0.9);}", /* tint everything: the land takes its colours from the palette too */
-"  float dif=clamp(dot(n,uSun),0.0,1.0),sh=dif>0.001?shadow(p+nT*0.004+vec3(0.0,0.002,0.0)):0.0;",
+"  float dif=clamp(dot(n,uSun),0.0,1.0),sh=dif<=0.001?0.0:mir>0.5?1.0:shadow(p+nT*0.004+vec3(0.0,0.002,0.0));",
 "  vec3 lin=dif*sh*gSun*1.4+(0.45+0.55*n.y)*gAmb*0.75+clamp(dot(n,normalize(vec3(-uSun.x,0.0,-uSun.z))),0.0,1.0)*vec3(0.20,0.17,0.12)*0.35;",
 "  col*=lin*(0.45+0.55*cav);",
 "  col+=gSun*sh*pow(max(dot(reflect(rd,n),uSun),0.0),24.0)*(0.25*sn+0.5*gl*cr+0.5*wet);",
-"  return haze(col,t,rd);",
+"  return haze(col,tr,rd);",
 "}",
 "void main(){",
 "  vec2 uv=(gl_FragCoord.xy*2.0-uRes)/uRes.y;",
@@ -297,7 +303,7 @@ var FS=[
    One loop means the marching and the land colouring are each built into the program once. */
 "  vec3 col=vec3(0.0),wgt=vec3(1.0);",
 "  for(int b=0;b<2;b++){",
-"    float t=march(ro,rd,70.0,b==0?2.2:0.0,b==0?pre():0.02),tw=(b==0&&rd.y<0.0)?(WATER-ro.y)/rd.y:-1.0;",
+"    float t=march(ro,rd,b==0?70.0:35.0,b==0?2.2:0.0,b==0?pre():0.02,b==0?1.0:4.0),tw=(b==0&&rd.y<0.0)?(WATER-ro.y)/rd.y:-1.0;",
 "    if(tw>0.0&&(t<0.0||tw<t)){", /* a lake: its bed seen through the water, and the mountains mirrored on it */
 "      vec3 p=ro+rd*tw;",
 "      vec2 W=p.xz+uPos.xz,g=noised(vec2(0.0),W*42.0+uTime*vec2(0.5,0.3)).yz+0.6*noised(vec2(0.0),W*97.0-uTime*vec2(0.4,0.7)).yz;",
@@ -313,7 +319,7 @@ var FS=[
 "      wgt=vec3(k*fr*(1.0-fo));",
 "      ro=p+vec3(0.0,0.002,0.0);rd=rr;",
 "    }else{",
-"      col+=wgt*(t>0.0?ground(ro+rd*t,b==0?t:t+10.0,rd):haze(sky(rd),90.0*(1.0-smoothstep(0.0,0.12,rd.y)),rd));",
+"      col+=wgt*(t>0.0?ground(ro+rd*t,t,rd,float(b)):haze(sky(rd),90.0*(1.0-smoothstep(0.0,0.12,rd.y)),rd));",
 "      break;",
 "    }",
 "  }",
@@ -330,14 +336,16 @@ var FS_PRE=FS.slice(0,FS.indexOf('vec3 sky(vec3 rd){'))+[
 "void main(){",
 "  vec2 uv=(gl_FragCoord.xy*uK*2.0-uRes)/uRes.y;",
 "  vec3 ro=vec3(0.0,uPos.y,0.0),rd=uCam*normalize(vec3(uv,1.5));",
-"  float r=uK*1.9/(uRes.y*1.5),t=0.02,h=1.0;", /* the cone's half-width for each unit of distance */
+"  float r=uK*1.9/(uRes.y*1.5),t=0.02,tp=0.02,h=1.0;", /* the cone's half-width for each unit of distance */
 "  for(int i=0;i<90;i++){",
 "    vec3 p=ro+rd*t;",
-"    if(h>0.5){h=p.y-terrL(p.xz)-0.14;if(h<0.3)h=p.y-terrM(p.xz);}else h=p.y-terrM(p.xz);",
-"    float s=0.42*(h-(t<2.4?0.036:0.0))-r*t;", /* near the camera the land is treated as higher, to clear the trees */
-"    if(s<=0.0)break;",
+"    float ny=0.45;", /* how much of the height above the land counts as clear distance: less where the land is steep */
+"    if(h>0.5){h=p.y-terrL(p.xz)-0.14;if(h<0.3)h=p.y-terrM(p.xz);}",
+"    else{vec3 G=terrG(p.xz);h=p.y-G.z;ny=0.6*inversesqrt(1.0+dot(G.xy,G.xy));}",
+"    float s=min(ny,0.42)*(h-(t<2.4?0.036:0.0))-r*t;", /* near the camera the land is treated as higher, to clear the trees */
+"    if(s<=0.0){if(h<0.0)t=tp;break;}", /* a step that landed inside a cliff does not count */
 "    if(t>70.0||(p.y>HMAX&&rd.y>0.0)){t=79.0;break;}",
-"    t+=s;",
+"    tp=t;t+=s;",
 "  }",
 "  vec3 e=fract(clamp(t/80.0,0.0,0.99999)*vec3(1.0,255.0,65025.0));e.xy-=e.yz/255.0;", /* the distance, spread over three colour channels */
 "  gl_FragColor=vec4(e,1.0);",
