@@ -51,6 +51,9 @@ setTimeout(function(){
   var sl=$("ed_a0");sl.value="0.9";sl.dispatchEvent(new Event("input"));
   $("edName").value="Test made";$("edName").dispatchEvent(new Event("change"));
   log("editor open="+!$("ed").hidden+" made="+PALETTES[pi].name+" a0="+PALETTES[pi].a[0]+" shown="+$("ev_a0").textContent);
+  $("es_one").value="#ff0000";$("es_two").value="#0000ff";$("es_changes").value="1";$("es_slide").value="0";$("es_rainbow").value="0";$("es_one").dispatchEvent(new Event("input"));
+  $("edHelpBtn").click();
+  log("two colours="+JSON.stringify([PALETTES[pi].a,PALETTES[pi].b,PALETTES[pi].c,PALETTES[pi].d])+" help lines="+$("edHelp").children.length+" note hidden="+$("edNote").hidden);
   $("edDone").click();$("bLib").click();$("advNewM").click();
   sl=$("ed_rot");sl.value="0.02";sl.dispatchEvent(new Event("input"));
   log("motion made="+MOTIONS[moi].name+" "+JSON.stringify(MOTIONS[moi]));
