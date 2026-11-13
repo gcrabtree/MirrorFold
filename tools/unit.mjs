@@ -2,6 +2,7 @@
 //   makeChangeDetector  decides when the music has changed enough to trigger a world change
 //   jPick               picks a journey's next option, including the weighted mirror choice
 //   devMat, gyroTurn    turn the phone's orientation angles into a head turn for the VR viewer
+//   userActive          decides how much the user is steering, so the autopilot can stand back
 //
 //   node tools/unit.mjs
 import { readFileSync } from "node:fs";
@@ -14,9 +15,9 @@ function grab(name) {
   if (!m) throw new Error("could not find function " + name + " in index.html");
   return m[0];
 }
-const { makeChangeDetector, jPick, devMat, gyroTurn } = new Function(
-  grab("makeChangeDetector") + "\n" + grab("jPick") + "\n" + grab("devMat") + "\n" + grab("gyroTurn") +
-  "\nreturn {makeChangeDetector,jPick,devMat,gyroTurn};")();
+const { makeChangeDetector, jPick, devMat, gyroTurn, userActive } = new Function(
+  grab("makeChangeDetector") + "\n" + grab("jPick") + "\n" + grab("devMat") + "\n" + grab("gyroTurn") + "\n" + grab("userActive") +
+  "\nreturn {makeChangeDetector,jPick,devMat,gyroTurn,userActive};")();
 
 let failed = 0;
 function expect(label, ok, detail) {
@@ -79,6 +80,19 @@ w = turn([20, 50, 10, -90], [20, 50, 20, -90]); expect("other landscape: the lon
 w = turn([20, 50, 0, 90], [20, 60, 0, 90]);   expect("landscape: the short axis is now screen y", near(w, [0, 10, 0]), show(w));
 w = turn([0, 0, -89, 0], [180, 180, 89, 0]);  expect("no jump where gamma wraps at 90 degrees", near(w, [0, -2, 0]), show(w));
 w = turn([33, -20, 70, 90], [33, -20, 70, 90]); expect("no movement gives no turn", near(w, [0, 0, 0]), show(w));
+
+// ---- user steering: feed a turn rate (radians a second) at 60 fps and read the level
+function steer(rateAt, secs) {
+  let a = 0; const out = [];
+  for (let i = 0; i < secs * 60; i++) { a = userActive(a, rateAt(i / 60), 1 / 60); out.push(a); }
+  return out;
+}
+let u;
+u = steer(() => 0.05, 5);                expect("a small tremor does not count as steering", Math.max(...u) === 0);
+u = steer(() => 1.0, 1);                 expect("a real turn takes over within a quarter second", u[14] > 0.9, u[14].toFixed(2));
+u = steer(t => (t < 1 ? 1.0 : 0), 4);    expect("control comes back gently: half back after about half a second", u[89] > 0.35 && u[89] < 0.65, u[89].toFixed(2));
+expect("and nearly all back after three seconds", u[239] < 0.03, u[239].toFixed(3));
+u = steer(() => 0.29, 3);                expect("a slow turn counts for half", Math.abs(u[179] - 0.5) < 0.02, u[179].toFixed(2));
 
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

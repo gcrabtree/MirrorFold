@@ -25,6 +25,7 @@ setTimeout(function(){
   for(i=0;i<mirrors.length;i++)setMirrors(i);
   setMotion(2);setLook(5);setOverlay(3);
   $("bJourney").click();pick("selJT","t:Everything");
+  $("bJMove").click();log("movement="+jMove);$("bJMove").click();log("movement="+jMove+" help="+$("aHelp").getAttribute("href"));
   log("journey="+journey+" template="+jt.name);
   $("bAdv").click();$("advDup").click();$("advClose").click();
   log("user templates="+store.tpls.length);

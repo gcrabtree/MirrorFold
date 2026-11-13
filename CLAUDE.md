@@ -22,10 +22,11 @@ The Python tools need `google-chrome` or `chromium` on PATH (they run it headles
 - **Every world has its distance estimator twice**: GLSL in `glsl` (`map`) and JavaScript in `de`. They must match. JavaScript uses it for flight speed, autopilot steering and orb placement.
 - **Every world's field must be exactly periodic** with its `period`. The camera position is wrapped by that period every frame.
 - **`tools/harness.py` depends on the first and last lines of the script** (`<script>\n(function(){` and `requestAnimationFrame(frame);\n})();`). It asserts on them. If you restructure the script, update the harness in the same change.
-- **`tools/unit.mjs` extracts `makeChangeDetector`, `jPick`, `devMat` and `gyroTurn` by name** with a regex that expects the function to end with a `}` at the start of a line.
+- **`tools/unit.mjs` extracts `makeChangeDetector`, `jPick`, `devMat`, `gyroTurn` and `userActive` by name** with a regex that expects the function to end with a `}` at the start of a line.
 - **Journey templates are keyed by option name**, not index (`"Melt"`, `"julia"`, `"6"`). Renaming a world id, motion, filter, overlay or palette silently drops it from users' saved templates.
 - **Motion parameters are per frame at 60 fps** and are corrected for frame time where they are applied in `frame()`. Keep new ones consistent.
 - **The VR viewer draws one picture per eye.** Anything centred on the screen (a feedback warp, an overlay, a filter that moves pixels, zoom blur, fringing) shows each eye something different and must be switched off while `stereo` is true. `frame()` does this in one place per pass; new effects need the same treatment.
+- **User look input goes through `userLook(dx, dy)`**, not straight into `lookX`/`lookY`. That is how the autopilot knows to stand back while the user steers. The autopilot itself still writes `lookX`/`lookY` directly.
 - **Nothing may strobe.** Pulses are soft and slow by design (tap tempo above about 165 BPM is halved). Respect `calm` (`prefers-reduced-motion`).
 
 ## Conventions

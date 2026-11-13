@@ -244,7 +244,8 @@ The camera is three orthonormal vectors `R`, `Up`, `F` (right, up, forward) and 
 - **Roll.** Q and E keys, a slow automatic roll while drifting, and the two-finger twist gesture.
 - **Speed.** `sp = min(world.speed, max(0.012, 2.6*dist)) * baseSpeed * (1 + 0.25*bass) * (1 + 3*boost)`, where `dist = |de(pos)|`. Velocity eases toward the target with rate 3.5 per second. Because speed is proportional to distance, the camera approaches surfaces asymptotically.
 - **Wrap.** After moving, each coordinate is wrapped into one period of the current world.
-- **Journey autopilot.** Probes `de` at four directions tilted from forward (right, left, up, down) at a distance proportional to `dist`, and steers toward the more open side: `lookX += (dR - dL)/(dR + dL) * 1.1 * dt`, plus a slow sum-of-sines wander. Forward thrust is 0.5 (drift is 0.3).
+- **Journey autopilot.** Runs when Journey is on and its movement setting `jMove` is `"travel"`. Probes `de` at four directions tilted from forward (right, left, up, down) at a distance proportional to `dist`, and steers toward the more open side: `lookX += (dR - dL)/(dR + dL) * 1.1 * dt`, plus a slow sum-of-sines wander. Forward thrust is 0.5 (drift is 0.3). With `jMove` set to `"drift"` none of this runs: Journey's clocks still change the scenery, and movement is whatever the user and the Drift toggle give. `jMove` is stored in `localStorage["mirrorfold-move"]`.
+- **Handing control to the user.** All user look input (mouse, touch drag, arrow keys) goes through `userLook(dx, dy)`, which also adds the size of the turn to `userTurn`; the VR viewer's head turns add to it in `onGyro`. Each frame `userTurn / dt` is a turn rate in radians a second, and `userActive(act, rate, dt)` turns it into `lookAct` in 0..1: zero below 0.08 rad/s so tremor is ignored, full at 0.5 rad/s, rising in under a tenth of a second and fading with a time constant of about 0.7 s. The autopilot's steering and the idle roll are multiplied by `1 - lookAct`, and the automatic forward thrust (travel and drift) by `1 - 0.85*lookAct`. This applies in the VR viewer and in normal use alike.
 
 ## 8. Feedback, overlays, filters and transitions
 
@@ -425,7 +426,7 @@ Roll is not stored. `applySpot()` restores morph time first, because some period
 
 **Mouse and keyboard.** Click captures the pointer where allowed, otherwise drag to look. W A S D, Space and Shift (up and down), Q and E (roll), arrows (look), wheel (speed), `[` and `]` (world), 1–9 (world), P (palette), M (mirrors), J (journey), T (tap tempo), B or double-click (boost). Key handling is skipped while focus is in a select, input or textarea.
 
-The HUD fades after 5 seconds without interaction and returns on any touch.
+The HUD fades after 5 seconds without interaction and returns on any touch. Its last button, **Help and source**, is a link to the repository's README; on a copy served from `<user>.github.io/<name>` it is rewritten to point at `github.com/<user>/<name>`.
 
 ### VR viewer
 
@@ -451,7 +452,7 @@ There is no test framework. `tools/` holds what was used during development:
 
 | Command | What it does |
 |---|---|
-| `node tools/unit.mjs` | Extracts `makeChangeDetector`, `jPick`, `devMat` and `gyroTurn` from `index.html` by name and tests them |
+| `node tools/unit.mjs` | Extracts `makeChangeDetector`, `jPick`, `devMat`, `gyroTurn` and `userActive` from `index.html` by name and tests them |
 | `python3 tools/check.py` | Headless smoke test: compiles all worlds, cycles every option, opens the setup panel, runs journey ticks, taps a tempo, starts audio; fails on any script or WebGL error |
 | `python3 tools/render.py ...` | Screenshot one world, or `--all` for a contact sheet; `--js` runs code inside the page |
 
@@ -479,6 +480,7 @@ Not verified, because they need a real device or a human:
 - Whether iOS keeps another app's music playing while the page is open in tap mode.
 - Text entry in the setup panel on iOS (`user-select: text` is set on inputs because the body disables selection).
 - Listening to a real Spotify or YouTube tab, and to a real microphone. Both paths were run in headless Chromium with simulated devices: the analyser received sound, the output stayed muted, and switching away released the stream. Whether Spotify's copy-protected audio reaches a shared tab stream, how strong the microphone gain of 3 should be, and what iOS does to another app's music when the microphone opens are unknown.
+- Whether the steering handoff thresholds (0.08 and 0.5 rad/s, 0.7 s fade) suit a real head in a viewer. A head is never quite still, and sensor noise on a real phone is unknown.
 - Whether the screen wake lock holds on a real phone with Journey or the VR viewer on, in Safari and as a home-screen web app.
 - Everything about the VR viewer on a real phone: whether the two pictures merge through real lenses, whether the assumed pixel size is close enough, whether head turns go the right way in both landscape directions, and whether the autopilot is comfortable. The head-turn math is unit tested but the sensor conventions were taken from the specification, not from a device.
 - The home-screen web app mode on iPhone (see section 2): that it opens without Safari's bars, and that the safe-area padding keeps the HUD clear of the notch and home bar.
