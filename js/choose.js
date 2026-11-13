@@ -2,6 +2,7 @@
 import { ac, pluck } from "./audio.js";
 import { cam, cross, norm } from "./camera.js";
 import { clock, morphValue } from "./clock.js";
+import { orbsOn } from "./controls.js";
 import { $, calm, errBox } from "./dom.js";
 import { toast } from "./flight.js";
 import { wakeHud } from "./input.js";
@@ -164,6 +165,35 @@ function fromHash(){
 }
 export function setMirrors(k){sel.mi=k;$("bMirror").textContent=mirrors[sel.mi]?("Mirrors "+mirrors[sel.mi]):"Mirrors off";}
 
+/* A second world mixed into this one: carry a journey across to it, or hold the mix and let it breathe. */
+export function stepHybrid(dt){
+  if(scene.hyb){ /* a second world mixed into this one, either held and breathing or carrying a journey across */
+    if(scene.hyb.mode==="trans"){scene.hyb.t+=dt/12;if(scene.hyb.t>=1)finishHybrid();}
+    else{
+      var ht=scene.hyb.exit?0:(0.5+0.38*Math.sin(clock.time*0.07));
+      scene.hyb.t+=(ht-scene.hyb.t)*(1-Math.exp(-dt*0.8));
+      if(scene.hyb.exit&&scene.hyb.t<0.02){scene.hyb=null;spawnOrb();}
+    }
+  }
+}
+
+/* The orb: drawn at its nearest copy, collected when you reach it, moved if the morph swallows it. Leaves where to draw it in fr.orbU. */
+export function stepOrb(fr){
+  var dt=fr.dt,m=fr.m,w=fr.w,per=fr.per,i;
+  var orbU=[0,0,0,0];
+  if(scene.orb&&orbsOn&&!scene.hyb&&started){
+    var oq=[0,0,0],od=0;
+    for(i=0;i<3;i++){oq[i]=scene.orb.p[i]-cam.pos[i];oq[i]-=per[i]*Math.floor(oq[i]/per[i]+.5);od+=oq[i]*oq[i];}
+    if(Math.sqrt(od)<scene.orb.r*2.5&&tr.warpDir===0)collectOrb();
+    else{
+      orbU=[cam.pos[0]+oq[0],cam.pos[1]+oq[1],cam.pos[2]+oq[2],scene.orb.r];
+      scene.orbT+=dt;
+      if(scene.orbT>1.5){scene.orbT=0;if(!w.volume&&Math.abs(w.de(scene.orb.p[0],scene.orb.p[1],scene.orb.p[2],m))<scene.orb.r*0.6)spawnOrb();}
+    }
+  }
+  fr.orbU=orbU;
+}
+
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 /* ---------- choosing a world ---------- */
@@ -198,4 +228,4 @@ export const __dbg={get scene(){return scene}, get selMusic(){return selMusic},s
   get setMotion(){return setMotion}, get setLook(){return setLook}, get fillWorlds(){return fillWorlds}, get fillPalettes(){return fillPalettes}, get labelPalettes(){return labelPalettes}, get spawnOrb(){return spawnOrb},
   get chime(){return chime}, get collectOrb(){return collectOrb}, get startHybrid(){return startHybrid}, get finishHybrid(){return finishHybrid}, get setWorldNow(){return setWorldNow}, get requestWorld(){return requestWorld},
   get warpThen(){return warpThen}, get setPalette(){return setPalette}, get randomPalette(){return randomPalette}, get b36(){return b36}, get encodeSpot(){return encodeSpot}, get applySpot(){return applySpot},
-  get fromHash(){return fromHash}, get setMirrors(){return setMirrors}};
+  get fromHash(){return fromHash}, get setMirrors(){return setMirrors}, get stepHybrid(){return stepHybrid}, get stepOrb(){return stepOrb}};
