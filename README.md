@@ -2,6 +2,20 @@
 
 Fly through endless fractal worlds in your browser. Seventeen worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
 
+This project is inspired in part by the music visualizers from decades past… from Winamp plugins to the standalone visualizer MilkDrop. This has a familiar feel when in Journey mode (an autopilot that flies through the procedurally generated 3D worlds) while listening to music. 
+
+However, this is much more. Flying through fractal 3D landscapes, unlocking features by flying through Orbs, and tweaking so many settings is a relaxing and beautiful time sink, whether on your phone or PC. 
+
+Support for Google Cardboard like VR is also in development (very early stage) and full VR support for true VR headsets is on the way. 
+
+You can Cast or AirPlay your mobile device to your TV as well. 
+
+This is under active development so don’t be surprised if things change from underneath you when I get a hankering for new features. 
+
+Report bugs and discuss features and whatnot in GitHub issues. I’ll try to address them in a timely fashion but this is a small creative side project that itches a scratch for me and I just thought I’d share it with the world. 
+
+Relax, unwind, and enjoy!
+
 **Try it: https://gcrabtree.github.io/MirrorFold/**
 
 ![Contact sheet of all 17 worlds](docs/worlds.jpg)
