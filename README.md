@@ -14,6 +14,7 @@ The whole app is one file, `index.html`. There is no build step and no JavaScrip
 - [Run it](#run-it)
 - [Controls](#controls)
 - [The buttons](#the-buttons)
+- [On a TV](#on-a-tv)
 - [VR viewer](#vr-viewer)
 - [Music](#music)
 - [Journey](#journey)
@@ -125,6 +126,12 @@ The controls at the top of the screen fade after five seconds without input and 
 | Fullscreen | Fills the screen. |
 | VR viewer | Phones and tablets only. Draws a picture for each eye, for a phone in a viewer. See [VR viewer](#vr-viewer). |
 
+## On a TV
+
+Roku, Apple TV and other TV boxes cannot run Mirrorfold themselves, and there is no app or channel for them. You can still watch it on a TV by mirroring the screen of a phone, tablet or computer: AirPlay from an iPhone, iPad or Mac, and Cast or screen mirroring from Android.
+
+[`docs/TV.md`](docs/TV.md) has step-by-step instructions for Apple TV, Roku, Chromecast, Google TV, Fire TV and smart TVs, a table of which phone works with which device, and fixes for common problems.
+
 ## VR viewer
 
 This mode is for a phone in a Cardboard-style viewer: a holder with two lenses that you look into. It has not been tried on a real phone or viewer yet, so treat it as experimental.
@@ -223,6 +230,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 |---|---|
 | `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,150 lines |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
+| `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 17 worlds |
 | `tools/unit.mjs` | Tests for the change detector, the weighted picker and the head-turn math |
 | `tools/check.py` | Headless smoke test |
@@ -266,6 +274,7 @@ The app was developed against headless Chrome with software rendering. These hav
 - Whether iOS keeps another app's music playing in Tap tempo mode.
 - Typing in the journey editor on iOS.
 - The home-screen full-screen mode on iPhone, including whether the controls clear the notch.
+- The screen mirroring steps in `docs/TV.md`, on any TV device.
 - The VR viewer mode: whether the two pictures merge in a real viewer, whether head turning goes the right way, and whether it is comfortable.
 
 Known weak spots: Box and Fortress look grainy, and the controls cover a lot of a phone screen until they fade. Reports from real devices are welcome as issues.
