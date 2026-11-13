@@ -34,7 +34,9 @@ setTimeout(function(){for(var k in J)J[k].t=999;},1200);
 setTimeout(function(){setMusic("tap");tap();},1600);
 setTimeout(tap,2100);
 setTimeout(function(){tap();log("tap bpm="+(tapInt?Math.round(60/tapInt):0));setMusic("built");},2600);
+setTimeout(function(){setStereo(true);setMirrors(3);log("vr="+stereo);},2750);
 setTimeout(function(){stepWorld(1);},2900);
+setTimeout(function(){setStereo(false);setMirrors(0);},3500);
 setTimeout(function(){log("world="+world.id+" music="+musicMode+" audio="+(ac?ac.state:"none")+" glerr="+gl.getError()+" DONE")},3800);
 '''
 title, err, log = dump(INJECT, budget_ms=4500)
