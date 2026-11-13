@@ -10,6 +10,7 @@ Read `docs/ARCHITECTURE.md` before changing anything substantial. It covers the 
 node tools/unit.mjs                     # pure-logic tests (change detector, weighted picker, head-turn math, pack cleaners)
 node tools/pack.mjs                     # check every pack in packs/ with the app's own cleaners
 python3 tools/check.py                  # headless smoke test: all shaders compile, no script or GL errors
+python3 tools/probe.py                  # every world's GLSL map against its JavaScript de, through the distance probe
 python3 tools/render.py --world julia -o out.png          # screenshot one world
 python3 tools/render.py --all -o sheet.jpg                # contact sheet of every world
 python3 tools/render.py --world temple --js "setLook(2)" -o neon.png

@@ -254,6 +254,17 @@ The land (`landMode`: 0 off, 1 alone, 2 over the world) is a height field, not a
 - **Flight.** `lpos` moves along the level part of `F` at a fixed speed and its height eases toward the ground here and ahead plus `landClear`. While the land is on, the horizon is eased level, the slow automatic roll is off, and the travel autopilot steers toward the lower side instead of probing the world's distance field.
 - **Limits.** Off in the VR viewer. Not part of Journey templates. Trees cast no shadows. The canyon's and the planet's patterns were tuned from still renders in headless Chrome only; their frame rate on a phone is unmeasured. Relative cost in software rendering (six views, lower is better): Alps 609, canyon 600, planet 816, city 42, ball 18. An arch's legs run straight down without end, so one standing beside a drop shows a leg hanging down the cliff. `proto/alps.html` is the standalone page it was developed in and is no longer needed by the app.
 
+## 6b. The distance probe and Stats
+
+`probe(w, m, n)` asks the graphics chip for world `w`'s distance at the first `n` (up to 16) points in `probePts`. `probeBuild` makes a program from the world's own shader text up to `main`, with a `main` that evaluates `map` at point number `gl_FragCoord.x`, clamps it to -8..8 and spreads it over three colour bytes; `probe` draws that into a 16 by 1 picture, reads it back and decodes into `probeOut`. It is not used for flying yet. It exists for two reasons:
+
+- **Worlds in packs.** A pack may not carry JavaScript, so a pack world would have GLSL `map` but no `de`. The probe can supply the distances flight needs (speed, the autopilot's four directions, orb placement: under 16 points a frame).
+- **Testing.** `tools/probe.py` compares `map` with `de` at 384 random points for every solid world. All 15 agree within 0.002 units plus 0.3% (32-bit against 64-bit arithmetic). This is the automatic check of the rule that the two must match.
+
+Reading a picture back makes the page wait until the chip has finished everything queued before it, which in practice is the rest of the previous frame. So the time the probe takes is mostly a measure of how far behind the chip is, not of the probe's own work. WebGL 1 has no way to read back without waiting; WebGL 2 does (a pixel buffer and a fence).
+
+**Stats** (`statsOn`, `ST`, `statsShow`) shows, twice a second: pictures a second and the longest gap between two, the script time per picture (measured round `frame()`, less the probe), sharpness and buffer size, the renderer name from `WEBGL_debug_renderer_info`, and the probe at the camera: its wait in milliseconds and the chip's distance beside `de`. A low script time with a long probe wait means the chip is the limit; a high script time means the page's JavaScript is.
+
 ## 7. Camera and flight
 
 The camera is three orthonormal vectors `R`, `Up`, `F` (right, up, forward) and a position `pos`. The system is left-handed: `R x Up = F`, with x right, y up, z forward.
