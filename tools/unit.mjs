@@ -3,6 +3,7 @@
 //   jPick               picks a journey's next option, including the weighted mirror choice
 //   devMat, gyroTurn    turn the phone's orientation angles into a head turn for the VR viewer
 //   userActive          decides how much the user is steering, so the autopilot can stand back
+//   cleanName, cleanPalette, cleanMotion   check and limit everything read from a pack
 //
 //   node tools/unit.mjs
 import { readFileSync } from "node:fs";
@@ -15,9 +16,9 @@ function grab(name) {
   if (!m) throw new Error("could not find function " + name + " in index.html");
   return m[0];
 }
-const { makeChangeDetector, jPick, devMat, gyroTurn, userActive } = new Function(
-  grab("makeChangeDetector") + "\n" + grab("jPick") + "\n" + grab("devMat") + "\n" + grab("gyroTurn") + "\n" + grab("userActive") +
-  "\nreturn {makeChangeDetector,jPick,devMat,gyroTurn,userActive};")();
+const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion"];
+const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion } = new Function(
+  NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
 
 let failed = 0;
 function expect(label, ok, detail) {
@@ -93,6 +94,26 @@ u = steer(() => 1.0, 1);                 expect("a real turn takes over within a
 u = steer(t => (t < 1 ? 1.0 : 0), 4);    expect("control comes back gently: half back after about half a second", u[89] > 0.35 && u[89] < 0.65, u[89].toFixed(2));
 expect("and nearly all back after three seconds", u[239] < 0.03, u[239].toFixed(3));
 u = steer(() => 0.29, 3);                expect("a slow turn counts for half", Math.abs(u[179] - 0.5) < 0.02, u[179].toFixed(2));
+
+// ---- packs: what is read from a pack file is refused or pulled into range
+const okPal = { name: "Glacier", a: [0.45, 0.6, 0.7], b: [0.35, 0.35, 0.3], c: [1, 1, 1], d: [0.5, 0.55, 0.6] };
+let c;
+c = cleanPalette(okPal);                 expect("a good palette passes unchanged", JSON.stringify(c) === JSON.stringify(okPal));
+c = cleanPalette({ ...okPal, extra: "x", onload: "alert(1)" }); expect("unknown fields are dropped", Object.keys(c).join() === "name,a,b,c,d");
+c = cleanPalette({ ...okPal, a: [5, -5, 0.5], c: [99, 1, 1] }); expect("palette numbers are pulled into range", c.a.join() === "1,0,0.5" && c.c[0] === 3, JSON.stringify(c));
+expect("a palette with a missing part is refused", cleanPalette({ name: "x", a: [0, 0, 0], b: [0, 0, 0], c: [1, 1, 1] }) === null);
+expect("a palette with a wrong length is refused", cleanPalette({ ...okPal, d: [0, 0] }) === null);
+expect("a palette with text for a number is refused", cleanPalette({ ...okPal, a: ["1", 0, 0] }) === null);
+expect("a palette with NaN or Infinity is refused", cleanPalette({ ...okPal, b: [NaN, 0, 0] }) === null && cleanPalette({ ...okPal, b: [Infinity, 0, 0] }) === null);
+expect("a palette with no name is refused", cleanPalette({ ...okPal, name: "  " }) === null && cleanPalette({ ...okPal, name: 7 }) === null);
+expect("things that are not objects are refused", cleanPalette(null) === null && cleanPalette("x") === null && cleanMotion(3) === null);
+expect("names are trimmed, flattened and cut to 28", cleanName("  a\n\tb   c  ") === "a b c" && cleanName("x".repeat(99)).length === 28);
+c = cleanMotion({ name: "Slow spin", decay: 0.96, zoom: 0.998, rot: 0.006 });
+expect("a good motion passes unchanged", JSON.stringify(c) === JSON.stringify({ name: "Slow spin", decay: 0.96, zoom: 0.998, rot: 0.006 }));
+c = cleanMotion({ name: "Wild", decay: 1, zoom: 3, rot: 9, swirl: -9, wob: 1, rip: 1, dx: 1, dy: -1, kick: 50, code: "x" });
+expect("motion numbers are pulled into range", JSON.stringify(c) === JSON.stringify({ name: "Wild", decay: 0.98, zoom: 1.05, rot: 0.025, swirl: -0.08, wob: 0.006, rip: 0.03, dx: 0.012, dy: -0.012, kick: 1 }), JSON.stringify(c));
+expect("trails from a motion always fade", cleanMotion({ name: "x", decay: 1 }).decay < 1);
+expect("a motion with text for a number is refused", cleanMotion({ name: "x", zoom: "1" }) === null);
 
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

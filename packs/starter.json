@@ -1,0 +1,22 @@
+{
+ "mirrorfold": 1,
+ "name": "Starter pack",
+ "author": "gcrabtree",
+ "palettes": [
+  {"name": "Glacier", "a": [0.45, 0.6, 0.7], "b": [0.35, 0.35, 0.3], "c": [1, 1, 1], "d": [0.5, 0.55, 0.6]},
+  {"name": "Rust and teal", "a": [0.5, 0.4, 0.35], "b": [0.45, 0.3, 0.3], "c": [1, 1, 0.8], "d": [0, 0.35, 0.5]}
+ ],
+ "motions": [
+  {"name": "Slow spin", "decay": 0.96, "zoom": 0.998, "rot": 0.006},
+  {"name": "Updraft", "decay": 0.962, "zoom": 1.002, "dy": -0.005, "wob": 0.001}
+ ],
+ "templates": [
+  {"name": "Starter drift",
+   "palette": {"mode": "random", "every": 30, "set": ["Glacier", "Rust and teal"]},
+   "mirrors": {"mode": "off"},
+   "motion": {"mode": "random", "every": 40, "set": ["Slow spin", "Updraft"]},
+   "filter": {"mode": "off"},
+   "overlay": {"mode": "off"}}
+ ],
+ "sets": []
+}
