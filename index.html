@@ -126,6 +126,8 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
       <option value="built">Built-in music</option>
       <option value="file">My audio file</option>
       <option value="tap">Tap tempo</option>
+      <option value="tab">Listen to a tab</option>
+      <option value="mic">Microphone</option>
     </select>
   </div>
   <div class="row">
@@ -1606,7 +1608,7 @@ $("bOrbs").addEventListener("click",function(){
 });
 press($("bOrbs"),orbsOn);
 function updateWave(){
-  var i,live=(musicMode==="built"||musicMode==="file")&&analyser&&ac.state==="running";
+  var i,live=liveAudio();
   if(OVERLAYS[ovi].spec){ /* frequency bands, low to high */
     if(live){for(i=0;i<128;i++)waveBuf[i]=fbins[1+i*2];}
     else{for(i=0;i<128;i++)waveBuf[i]=255*(0.18+0.6*beat)*Math.abs(Math.sin(i*0.21+time*1.3)*Math.sin(i*0.047-time*0.6));}
@@ -1718,13 +1720,15 @@ document.addEventListener("visibilitychange",function(){gyroPrev=null;if(!docume
 
 /* ---------- music ----------
    Three sources feed one pair of numbers the visuals read: beat (a pulse that decays) and level (how loud the low end is).
-   built: a generative track made here. file: an audio file you pick. tap: no sound from this page, tempo from your taps. */
+   built: a generative track made here. file: an audio file you pick. tap: no sound from this page, tempo from your taps.
+   tab: the sound of another browser tab that you share. mic: the microphone. These two are only analysed, never played or kept. */
 var ac=null,master=null,bus=null,analyser=null,filt=null,droneGain=null,sendIn=null,noiseBuf=null,drones=[];
 var musicMode="off",beat=0,level=0,fbins=null,bmax=.08,bavg=0;
 var audioEl=null,elNode=null,objUrl=null;
 var seq={on:false,timer:0,next:0,step:0,idx:3,root:0};
 var PENT=[0,3,5,7,10],ROOTS=[0,-4,3,-2],BPM=92;
 var taps=[],tapInt=0,tapAt=0;
+var cap={stream:null,node:null,gain:null,tok:0};
 
 function ensureAudio(){
   if(ac)return true;
@@ -1951,13 +1955,56 @@ $("bPlay").addEventListener("click",function(){
   if(pIsPlaying())pPause();else pPlay();
   wakeHud();
 });
+/* ---------- listening: another tab's sound, or the microphone ----------
+   The sound goes into the analyser so the picture can react. The output is muted while listening, so it is never
+   played back: a shared tab keeps playing from its own tab, and a microphone would howl. */
+var canTab=!isTouch&&!!(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia);
+var canMic=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+(function(){
+  var o=selMusic.options,i;
+  for(i=o.length-1;i>=0;i--){if((o[i].value==="tab"&&!canTab)||(o[i].value==="mic"&&!canMic))selMusic.remove(i);}
+})();
+function stopListening(){
+  cap.tok++;
+  if(cap.node){try{cap.node.disconnect()}catch(_){}}
+  if(cap.stream){cap.stream.getTracks().forEach(function(t){t.onended=null;try{t.stop()}catch(_){}});}
+  cap.node=null;cap.stream=null;
+  if(master)master.gain.value=0.5;
+}
+function startListening(mode){
+  var tk=++cap.tok,plain={echoCancellation:false,noiseSuppression:false,autoGainControl:false},ask;
+  var fail=function(msg){if(tk!==cap.tok)return;setMusic("off");toast(msg);};
+  try{
+    if(mode==="tab")ask=navigator.mediaDevices.getDisplayMedia({video:{width:{max:320},height:{max:180},frameRate:{max:1}},audio:plain,systemAudio:"include",selfBrowserSurface:"exclude"});
+    else ask=navigator.mediaDevices.getUserMedia({audio:plain});
+  }catch(e){fail(mode==="tab"?"This browser cannot share a tab's sound.":"This browser cannot use the microphone here.");return;}
+  ask.then(function(stream){
+    if(tk!==cap.tok){stream.getTracks().forEach(function(t){t.stop()});return;} /* the music setting changed while the browser was asking */
+    if(!stream.getAudioTracks().length){
+      stream.getTracks().forEach(function(t){t.stop()});
+      fail("That share has no sound. Choose a tab and turn on \"Also share tab audio\".");return;
+    }
+    cap.stream=stream;
+    stream.getTracks().forEach(function(t){t.onended=function(){fail(mode==="tab"?"Stopped listening to the tab":"The microphone stopped")};});
+    if(!cap.gain){cap.gain=ac.createGain();cap.gain.connect(analyser);}
+    cap.gain.gain.value=mode==="mic"?3:1; /* a microphone across a room is much quieter than a tab */
+    master.gain.value=0;
+    cap.node=ac.createMediaStreamSource(stream);cap.node.connect(cap.gain);
+    try{ac.resume()}catch(_){}
+    toast(mode==="tab"?"Listening to the shared tab":"Listening to the microphone");
+  }).catch(function(){fail(mode==="tab"?"No tab was shared":"Microphone access was refused")});
+}
+function listening(){return (musicMode==="tab"||musicMode==="mic")&&!!cap.node;}
 function setMusic(mode){
-  if((mode==="built"||mode==="file")&&!ensureAudio()){mode="off";errBox.textContent="This browser cannot play audio here.";}
+  if((mode==="tab"&&!canTab)||(mode==="mic"&&!canMic))mode="off";
+  if(mode!=="off"&&mode!=="tap"&&!ensureAudio()){mode="off";errBox.textContent="This browser cannot play audio here.";}
+  if(cap.stream||musicMode==="tab"||musicMode==="mic")stopListening();
   musicMode=mode;selMusic.value=mode;
   $("rowTap").hidden=mode!=="tap";$("rowFile").hidden=mode!=="file";
   try{
     if(mode==="built"){pPause();ac.resume();startBuilt();}
     else if(mode==="file"){stopBuilt();ac.resume();if(player.mode)pPlay();}
+    else if(mode==="tab"||mode==="mic"){stopBuilt();pPause();ac.resume();startListening(mode);}
     else{ /* off and tap make no sound: release the audio session so music from another app keeps playing */
       if(ac){stopBuilt();pPause();ac.suspend();}
     }
@@ -1968,7 +2015,7 @@ function setMusic(mode){
 selMusic.addEventListener("change",function(){setMusic(this.value);wakeHud()});
 /* a dropdown change may not count as a tap for the browser's audio rules, so any later tap unlocks sound */
 document.addEventListener("pointerdown",function(){
-  if(ac&&ac.state==="suspended"&&(musicMode==="built"||musicMode==="file")){try{ac.resume()}catch(_){}}
+  if(ac&&ac.state==="suspended"&&musicMode!=="off"&&musicMode!=="tap"){try{ac.resume()}catch(_){}}
 },true);
 function tap(){
   var now=performance.now()/1000;
@@ -1993,7 +2040,7 @@ function bandStep(o,raw,dt,gain){
   o.lv+=(x-o.lv)*Math.min(1,dt*(x>o.lv?10:2));
 }
 function bandAvg(a,b){var t=0;for(var i=a;i<=b;i++)t+=fbins[i];return t/((b-a+1)*255);}
-function liveAudio(){return (musicMode==="built"||musicMode==="file")&&!!analyser&&!!ac&&ac.state==="running";}
+function liveAudio(){return (musicMode==="built"||musicMode==="file"||listening())&&!!analyser&&!!ac&&ac.state==="running";}
 /* A major change in the sound: the last second or so differs sharply from the last several, in loudness or in
    the balance of low to high. It fires once, then takes the new sound as normal. */
 function makeChangeDetector(){

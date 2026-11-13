@@ -34,7 +34,7 @@ The whole app is one file, `index.html`. There is no build step and no JavaScrip
 - **Kaleidoscope mirrors**: off, or 3, 4, 6, 8 or 12 segments.
 - **13 colour palettes.** Seven are available from the start. Six are unlocked by finding orbs.
 - **6 feedback motions, 17 filters, 7 overlays and 8 transitions**, in the style of the MilkDrop music visualiser.
-- **Music reactivity** from a built-in track, your own audio file, or a tapped tempo.
+- **Music reactivity** from a built-in track, your own audio file, another browser tab such as Spotify or YouTube, the microphone, or a tapped tempo.
 - **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter and overlay over time. You control what it may change with templates.
 - **Share spot** links that take someone to the exact place you are looking at.
 - **VR viewer** mode for a phone in a Cardboard-style holder: a picture for each eye, and you look around by turning your head.
@@ -164,9 +164,29 @@ Three bands of the sound drive different parts of the picture. Bass drives zoom 
 | Built-in music | A generated track at 92 beats per minute. It is made in the browser, not a recording. |
 | My audio file | Plays a file you choose, with pause and a scrubber. Files longer than 15 minutes or larger than 80 MB are streamed instead of loaded whole. |
 | Tap tempo | Makes no sound. Use it when music is playing in another app, such as Apple Music or Spotify: enter silent, start your song there, choose Tap tempo and tap the beat. |
+| Listen to a tab | Reacts to the sound of another browser tab, such as Spotify's web player or YouTube. Chrome and Edge on a computer only. |
+| Microphone | Reacts to whatever the microphone hears in the room. |
 | Music off | The worlds still move, without reacting to sound. |
 
-Mirrorfold does not listen to the microphone and cannot hear other apps. Tap tempo is the way to follow music it cannot hear.
+### Music from Spotify, YouTube or another tab
+
+This works in Chrome and Edge on a computer. Other browsers do not show the option.
+
+1. Start the music in another tab of the same browser.
+2. In Mirrorfold, set Music to **Listen to a tab**.
+3. The browser asks what to share. Choose the tab with the music, and turn on **Also share tab audio**.
+
+The music keeps playing from its own tab, and Mirrorfold only listens. To stop, change the Music setting or press the browser's **Stop sharing** button. The browser asks again each time.
+
+The source has to be a browser tab, so use Spotify's web player, not the Spotify app. On Windows you can choose **Entire screen** with system audio to hear any app. It has been tested with a simulated share only; if Spotify's web player gives no reaction, please open an issue.
+
+### Microphone
+
+Set Music to **Microphone** and allow access when the browser asks. Mirrorfold reacts to what the microphone hears: speakers in the room, the Spotify app, an instrument. It works in any browser that has a microphone, but the signal is rougher than a shared tab and it also reacts to talking. On a phone, the browser may quieten or stop music playing from another app while the microphone is in use; if it does, use Tap tempo.
+
+While listening to a tab or the microphone, Mirrorfold plays no sound of its own. The sound is analysed in your browser as it arrives. It is not recorded, stored or sent anywhere.
+
+For music Mirrorfold cannot hear at all, use Tap tempo.
 
 ## Journey
 
@@ -204,7 +224,7 @@ Bulbs, Julia, Box and Fortress are the heaviest worlds. If the picture stutters,
 
 **Motion.** Colour and motion shift constantly. Pulses are soft and slow by design and nothing strobes; a tapped tempo above about 165 beats per minute is halved. If your device is set to reduce motion, all reactions to sound are cut to a quarter and several motions are disabled.
 
-**Privacy.** Mirrorfold makes no network requests of its own. The page loads two fonts from Google Fonts, and that is all. The VR viewer reads the phone's motion sensor to follow your head; the readings stay on the phone. An audio file you choose is read by your browser and is not uploaded. Templates, orb progress and the orbs setting are kept in your browser's local storage.
+**Privacy.** Mirrorfold makes no network requests of its own. The page loads two fonts from Google Fonts, and that is all. The VR viewer reads the phone's motion sensor to follow your head; the readings stay on the phone. **Listen to a tab** and **Microphone** only run when you choose them and the browser's permission prompt is accepted; the sound is analysed in the browser and never recorded or sent. An audio file you choose is read by your browser and is not uploaded. Templates, orb progress and the orbs setting are kept in your browser's local storage.
 
 ## How it works
 
@@ -275,6 +295,7 @@ The app was developed against headless Chrome with software rendering. These hav
 - The home-screen full-screen mode on iPhone, including whether the controls clear the notch.
 - The screen mirroring steps in `docs/TV.md`, on any TV device.
 - Whether the screen really stays awake with Journey or the VR viewer on, in Safari and from the home-screen icon.
+- **Listen to a tab** with real Spotify and YouTube tabs, and **Microphone** with a real microphone. Both were tested with simulated devices only.
 - The VR viewer mode: whether the two pictures merge in a real viewer, whether head turning goes the right way, and whether it is comfortable.
 
 Known weak spots: Box and Fortress look grainy, and the controls cover a lot of a phone screen until they fade. Reports from real devices are welcome as issues.
