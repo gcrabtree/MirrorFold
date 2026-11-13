@@ -1,10 +1,12 @@
 # Mirrorfold packs
 
-A pack is one JSON file of palettes, motions, filters, Journey templates and sets. Almost all of it is names and numbers. The one exception is a filter, which may hold a short picture program for the graphics chip. Nothing in a pack is ever run as JavaScript, so a pack cannot reach the page, your files or the network.
+A pack is one JSON file of palettes, motions, filters, overlays, Journey templates and sets. Almost all of it is names and numbers. The exceptions are filters and overlays, which may hold a short picture program for the graphics chip. Nothing in a pack is ever run as JavaScript, so a pack cannot reach the page, your files or the network.
 
 Packs in this folder are offered to everyone in the app: press **Library**, choose a pack, and press **Add this pack**. Anyone can also load a pack file from their own device with **Load a pack file**, without it being in this folder.
 
-Worlds and overlays cannot be put in a pack yet.
+Worlds cannot be put in a pack yet.
+
+Palettes, motions and filter mixes can be made in the app without writing anything: press **Library**, then **New palette**, **New motion** or **New filter**, and move the sliders. **Save mine as a pack file** then writes them in the format below.
 
 ## Format
 
@@ -22,6 +24,9 @@ Worlds and overlays cannot be put in a pack yet.
  "filters": [
   {"name": "Inked", "edge": 0.6, "post": 6},
   {"name": "Duotone", "code": "float l=luma(col);col=mix(pal(0.15),pal(0.65),l);"}
+ ],
+ "overlays": [
+  {"name": "Ring", "code": "ln=1.0-smoothstep(0.0,0.012,abs(length(p)-0.22-0.08*beat));"}
  ],
  "templates": [
   {"name": "Starter drift",
@@ -103,22 +108,58 @@ Change `col` to change the pixel. This is what the code can use:
 
 There is no clock and no sound level. A filter is a function of the picture and nothing else. That is deliberate: it keeps a filter from flashing by itself.
 
-The app refuses code that breaks any of these rules:
+#### Rules for programs
+
+These rules apply to filter programs and to overlay programs. The app refuses code that breaks any of them:
 
 - **Plain characters only:** letters, digits, punctuation, spaces, tabs and new lines. No comments (`//` or `/*`), no `#` lines, no backslashes or quotes.
 - **One function:** braces must balance, so the code cannot end the function and start another.
-- **No reaching outside:** no name that starts with `u` followed by a capital letter, a digit or `_`, and no `gl_` name except `gl_FragCoord`. Also not `texture2D`, `main`, `look`, `v`, or any name containing `__`.
+- **No reaching outside:** no name that starts with `u` followed by a capital letter, a digit or `_`, and no `gl_` name except `gl_FragCoord`. Also not `texture2D`, `main`, `look`, `mark`, `v`, or any name containing `__`.
 - **No `while`, `do` or `discard`.**
-- **Loops are counted and small:** only the form `for(int i=0;i<8;i++)`. Multiply the counts of all loops together, then multiply by the number of times `scene` appears. The result must be 64 or less.
+- **Loops are counted and small:** only the form `for(int i=0;i<8;i++)`. Multiply the counts of all loops together, then multiply by the number of times `scene` or `sound` appears. The result must be 64 or less.
 - **It must compile** on the device that loads it.
 
 #### Reviewed and not reviewed
 
-Filter programs in this folder have been looked at by a person before being published, and are shown as written.
+Programs in this folder have been looked at by a person before being published, and are shown as written.
 
-A filter program loaded from a file or pasted as text has not been reviewed. Mirrorfold shows it **smoothed over time**: each frame is blended with the one before, so any change takes about a quarter of a second to come through. This makes it impossible for unreviewed code to flash the screen, at the cost of slightly soft motion. The Library list marks these filters "not reviewed, so shown smoothed".
+A program loaded from a file or pasted as text has not been reviewed. While one is in use, Mirrorfold shows the whole picture **smoothed over time**: each frame is blended with the one before, so any change takes about a quarter of a second to come through. This makes it impossible for unreviewed code to flash the screen, at the cost of slightly soft motion. The Library list marks these items "not reviewed, so shown smoothed".
 
-Filters with a program are switched off in the VR viewer, because they may move parts of the picture.
+Filters with a program, and all overlays, are switched off in the VR viewer, because they are drawn about the middle of the screen and not for each eye.
+
+### Overlays
+
+An overlay is a shape drawn over the picture that moves with the music, such as the built-in Ring and Spectrum. A pack overlay is always a program.
+
+| Field | Meaning |
+|---|---|
+| `name` | 1 to 28 characters |
+| `sound` | `"wave"` (the default) or `"bands"`: what `sound()` reads. See below. |
+| `code` | The program, at most 2,000 characters, under the [rules for programs](#rules-for-programs) |
+
+`code` is the inside of this function, which runs once for every pixel:
+
+```glsl
+void mark(vec2 p, inout float ln, inout float hue) {
+  // your code
+}
+```
+
+Set `ln` to how strongly the overlay shows at this pixel, from 0 (not at all) to 1. This is what the code can use:
+
+| Name | What it is |
+|---|---|
+| `p` | Where the pixel is. The middle of the screen is (0, 0), and the shorter side of the screen runs from -0.5 to 0.5. |
+| `ln` | Starts at 0. Set it. |
+| `hue` | Where in the current palette the overlay's colour comes from. It starts at a value that changes with distance from the middle. Change it or leave it. |
+| `time` | Seconds, counting up |
+| `beat`, `mid`, `hi` | How strong the bass, the middle and the treble are right now, each from 0 to 1. They rise and fall softly. |
+| `sound(float)` | The sound at a point from 0 to 1. With `"sound": "wave"` this is the waveform, left to right, where 0.5 is silence. With `"sound": "bands"` it is the loudness of each pitch, low to high, where 0 is silence. |
+| `aspect` | Screen width divided by height |
+
+The overlay is drawn into the trails, so it smears with the chosen motion, and the **Overlay** strength button scales it.
+
+### Templates and sets
 
 ### Templates and sets
 
@@ -128,24 +169,24 @@ A template has one entry for each of `world`, `palette`, `mirrors`, `motion`, `f
 
 ## What the app does with a pack
 
-- **Wrong shape is refused.** A palette, motion or filter with a missing part, text where a number belongs, or no name is skipped. A filter whose program breaks a rule or does not compile is skipped.
+- **Wrong shape is refused.** A palette, motion, filter or overlay with a missing part, text where a number belongs, or no name is skipped. A filter or overlay whose program breaks a rule or does not compile is skipped.
 - **Numbers are limited.** A value outside its range is pulled back to the nearest allowed value.
 - **Unknown fields are dropped.**
 - **Built-in names are kept.** An item with the same name as a built-in one is skipped. An item with the same name as one you added earlier replaces it.
-- **Sizes are limited.** A pack file may be at most 200,000 characters. A browser holds at most 16 added palettes, 16 added motions and 16 added filters.
+- **Sizes are limited.** A pack file may be at most 200,000 characters. A browser holds at most 16 added items of each kind.
 - **Names a template does not recognise are dropped** from its list of options.
 
 ## Adding a pack to this folder
 
-1. Make your palettes, motions, filters and templates. Check them in the app with **Load a pack file**.
+1. Make your palettes, motions, filters, overlays and templates. Check them in the app with **Load a pack file**.
 2. Name the file with lower-case letters, digits, `-` and `_`, ending in `.json`.
 3. Add a line for it to `index.json`.
 4. Run `node tools/pack.mjs`. It checks every pack with the same code the app uses, and fails if any value would be refused or changed. The same check runs automatically on every pull request.
-5. Run `python3 tools/check.py` if you can. It loads every pack in this folder in a headless browser and fails if a filter program does not compile.
+5. Run `python3 tools/check.py` if you can. It loads every pack in this folder in a headless browser and fails if a filter or overlay program does not compile.
 6. Open a pull request.
 
-### Reviewing a pack with filter programs
+### Reviewing a pack with programs
 
-Before merging, a maintainer should load the pack with **Load a pack file** and watch each filter on several worlds, with music playing and with a motion on. Refuse a filter that flashes, flickers in large areas, or makes the picture stutter. The automatic checks cannot judge these.
+Before merging, a maintainer should load the pack with **Load a pack file** and watch each filter and overlay on several worlds, with music playing and with a motion on. Loaded that way the picture is smoothed, so also read the code for anything that changes quickly with `time`, `beat` or `sound`. Refuse one that flashes, flickers in large areas, or makes the picture stutter. An overlay should pulse softly, not blink. The automatic checks cannot judge these.
 
 By adding a pack you agree to release it under the project's MIT licence.

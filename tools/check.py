@@ -41,9 +41,22 @@ setTimeout(function(){
   log("badpack="+loadPack("{not json")+","+loadPack("[1]")+","+loadPack(JSON.stringify({mirrorfold:2,palettes:[]})));
   $("bLib").click();log("library rows="+$("advMine").children.length);$("advClose").click();
   /* pack filters: every published pack loads whole, its filter code compiles, and bad code is refused */
-  var nl=LOOKS.length,sp=SITE_PACKS.map(function(t){var k=JSON.parse(t),b=LOOKS.length;var ok=loadPack(t,"site");return k.name+":"+ok+":"+(LOOKS.length-b)+"/"+(k.filters||[]).length}).join(",");
+  var nl=LOOKS.length,sp=SITE_PACKS.map(function(t){var k=JSON.parse(t),b=LOOKS.length+OVERLAYS.length;var ok=loadPack(t,"site");return k.name+":"+ok+":"+(LOOKS.length+OVERLAYS.length-b)+"/"+((k.filters||[]).length+(k.overlays||[]).length)}).join(",");
   log("site packs="+sp);
-  loadPack(JSON.stringify({mirrorfold:1,filters:[{name:"Test code",code:"col=col.gbr;"},{name:"Bad clock",code:"col*=uTime;"},{name:"Bad glsl",code:"col=nothing(col);"},{name:"Test mix",edge:.5,post:5}]}));
+  loadPack(JSON.stringify({mirrorfold:1,filters:[{name:"Test code",code:"col=col.gbr;"},{name:"Bad clock",code:"col*=uTime;"},{name:"Bad glsl",code:"col=nothing(col);"},{name:"Test mix",edge:.5,post:5}],
+    overlays:[{name:"Test ring",code:"ln=1.0-smoothstep(0.0,0.02,abs(length(p)-0.2-0.1*beat));"},{name:"Bad overlay",code:"ln=uOvBeat;"}]}));
+  log("overlays+"+(OVERLAYS.length-NOV)+" "+OVERLAYS.slice(NOV).map(function(f){return f.name+(f.reviewed?"":"*")}).join("|"));
+  /* the editor: a new palette from sliders, clamped by the cleaner, renamed, then removed */
+  $("bLib").click();$("advNewP").click();
+  var sl=$("ed_a0");sl.value="0.9";sl.dispatchEvent(new Event("input"));
+  $("edName").value="Test made";$("edName").dispatchEvent(new Event("change"));
+  log("editor open="+!$("ed").hidden+" made="+PALETTES[pi].name+" a0="+PALETTES[pi].a[0]+" shown="+$("ev_a0").textContent);
+  $("edDone").click();$("bLib").click();$("advNewM").click();
+  sl=$("ed_rot");sl.value="0.02";sl.dispatchEvent(new Event("input"));
+  log("motion made="+MOTIONS[moi].name+" "+JSON.stringify(MOTIONS[moi]));
+  $("edDone").click();$("bLib").click();$("advNewF").click();
+  sl=$("ed_post");sl.value="1";sl.dispatchEvent(new Event("input"));
+  log("filter made="+JSON.stringify(LOOKS[lki])+" editor closed="+($("edDone").click(),$("ed").hidden));
   var tc2=LOOKS.filter(function(f){return f.name==="Test code"})[0];
   log("filters+"+(LOOKS.length-nl)+" unreviewed="+(tc2&&!tc2.reviewed)+" names="+LOOKS.slice(nl).map(function(f){return f.name}).join("|"));
   window.__nl=nl;
@@ -51,8 +64,10 @@ setTimeout(function(){
   log("after remove="+PALETTES.length+"/"+MOTIONS.length+" pi="+pi+" moi="+moi);
   setMotion(2);
 },500);
-setTimeout(function(){setJourney(false);for(var i=window.__nl;i<LOOKS.length;i++)(function(i){setTimeout(function(){setLook(i)},(i-window.__nl)*80)})(i);},700);
-setTimeout(function(){log("code filters drawn="+LOOKS.slice(window.__nl).filter(function(f){return f.code&&f.prog}).length);
+setTimeout(function(){setJourney(false);for(var i=window.__nl;i<LOOKS.length;i++)(function(i){setTimeout(function(){setLook(i)},(i-window.__nl)*50)})(i);
+  for(i=NOV;i<OVERLAYS.length;i++)(function(i){setTimeout(function(){setOverlay(i)},(i-NOV)*110)})(i);},700);
+setTimeout(function(){log("code filters drawn="+LOOKS.slice(window.__nl).filter(function(f){return f.code&&f.prog}).length+" overlays drawn="+OVERLAYS.slice(NOV).filter(function(f){return f.prog}).length);
+  while(OVERLAYS.length>NOV)libRemove("o",NOV);
   while(LOOKS.length>window.__nl)libRemove("f",LOOKS.length-1);while(PALETTES.length>NPAL)libRemove("p",NPAL);while(MOTIONS.length>NMOT)libRemove("m",NMOT);
   store.tpls=[];saveStore();fillJT();setLook(5);setJourney(true);},1150);
 setTimeout(function(){for(var k in J)J[k].t=999;},1200);
@@ -74,7 +89,7 @@ print("errbox:", repr(err))
 for line in log.split(" ; "):
     if line.strip():
         print("  ", line)
-packs_ok = all(json.loads(t)["name"] + ":true:%d/%d" % ((len(json.loads(t).get("filters", [])),) * 2) in log for t in PACKS)
+packs_ok = all(json.loads(t)["name"] + ":true:%d/%d" % ((len(json.loads(t).get("filters", [])) + len(json.loads(t).get("overlays", [])),) * 2) in log for t in PACKS)
 if not packs_ok:
     print("   a published pack did not load whole, or one of its filters did not compile")
 ok = title == "Mirrorfold" and not err and "FAILED" not in log and "glerr=0" in log and "DONE" in log and packs_ok

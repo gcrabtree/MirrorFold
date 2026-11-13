@@ -226,9 +226,9 @@ Turn Journey on and press **Edit journeys** to make your own. Built-in templates
 
 ## Library and packs
 
-A **pack** is a small file of palettes, motions, filters, Journey templates and sets. Almost all of it is names and numbers, which Mirrorfold checks and pulls back into range. A filter may also hold a short picture program for the graphics chip. Such a program cannot reach the page, your files or the network, and Mirrorfold refuses it unless it keeps to a strict set of rules. Nothing in a pack is ever run as JavaScript.
+A **pack** is a small file of palettes, motions, filters, overlays, Journey templates and sets. Almost all of it is names and numbers, which Mirrorfold checks and pulls back into range. A filter or overlay may also hold a short picture program for the graphics chip. Such a program cannot reach the page, your files or the network, and Mirrorfold refuses it unless it keeps to a strict set of rules. Nothing in a pack is ever run as JavaScript.
 
-Filter programs in packs published with Mirrorfold have been reviewed. A filter program you load from a file or paste as text has not, so Mirrorfold shows it smoothed over time, which makes it impossible for it to flash the screen. The Library list marks those filters.
+Programs in packs published with Mirrorfold have been reviewed. A program you load from a file or paste as text has not, so while it is in use Mirrorfold shows the picture smoothed over time, which makes it impossible for it to flash the screen. The Library list marks those items.
 
 Press **Library** to open the library section of the setup panel:
 
@@ -237,12 +237,26 @@ Press **Library** to open the library section of the setup panel:
 | **Add this pack** | Adds the chosen pack from the ones published with Mirrorfold. This list is missing when the page is opened straight from a file. |
 | **Load a pack file** | Adds a pack from a file on your device. |
 | **Save mine as a pack file** | Saves everything you have added or made as one pack file, to keep or to share. |
-| **Remove** | Removes one added palette, motion or filter. |
+| **New palette**, **New motion**, **New filter** | Makes a copy of what is showing now and opens the editor on it. |
+| **Edit** | Opens the editor on one added palette, motion or filter. |
+| **Remove** | Removes one added item. |
 | **Copy mine as text**, **Load from text** | The same as saving and loading a file, through the text box. |
 
-Added palettes, motions and filters appear at the end of the Palette, Motion and Filter lists and in the Journey template editor. They are saved in your browser only.
+Added palettes, motions, filters and overlays appear at the end of their lists and in the Journey template editor. They are saved in your browser only.
 
-Worlds and overlays cannot be put in a pack yet. The file format, the allowed ranges and how to offer a pack for inclusion are in [packs/README.md](packs/README.md).
+### Making your own
+
+The editor is a sheet of sliders along the bottom of the screen. The picture stays in view above it and changes as you move a slider, and every change is saved at once. Type a name, and press **Done** to close it.
+
+| Editor | Sliders |
+|---|---|
+| Palette | Middle, Swing, Repeats and Start, each for red, green and blue. A strip shows the whole palette. |
+| Motion | Trail length, Zoom, Turn, Swirl, Wobble, Ripple, Slide sideways, Slide up or down, Beat push |
+| Filter | Outlines, Brightness steps, Solarise, Negative, Echo, Mosaic blocks, Liquid, Colour turn, Colour fringing, Built-in effect |
+
+Sliders stop at the same limits a pack is held to. Filter and overlay programs are written by hand; there is no editor for those.
+
+Worlds cannot be put in a pack yet. The file format, the allowed ranges and how to offer a pack for inclusion are in [packs/README.md](packs/README.md).
 
 ## Orbs and share links
 
@@ -291,7 +305,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 
 | Path | What it is |
 |---|---|
-| `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,560 lines |
+| `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,700 lines |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 17 worlds |
