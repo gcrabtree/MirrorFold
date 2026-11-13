@@ -1,14 +1,13 @@
-import { setLook, setMotion, setPalette } from "./choose.js";
-import { $ } from "./dom.js";
-import { toast } from "./flight.js";
+import { setLook, setMotion } from "./choose.js";
+import { $, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { adv, advFill, mk, uniqueName } from "./journey-panel.js";
 import { saveStore, store } from "./journey.js";
 import { LIB_MAX, NLOOK, NMOT, saveLibrary } from "./library.js";
 import { loadPack, packNow, packSummary, refreshLists } from "./pack-io.js";
 import { cleanFilter, cleanMotion, cleanName, cleanPalette } from "./packs.js";
+import { NPAL, PALETTES, setPalette } from "./palettes.js";
 import { LOOKS, MOTIONS, sel } from "./state.js";
-import { NPAL, PALETTES } from "./worlds.js";
 let ed=null; /* what the editor has open: {kind,item}, or null */
 export function edClose(){ed=null;$("ed").hidden=true;}
 export let ED;

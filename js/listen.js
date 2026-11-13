@@ -1,8 +1,9 @@
 import { ac, analyser, cap, ensureAudio, fbins, master, pPause, pPlay, player, startBuilt, stopBuilt } from "./audio.js";
 import { selMusic } from "./choose.js";
-import { $, calm, errBox, isTouch } from "./dom.js";
-import { toast } from "./flight.js";
+import { clock } from "./clock.js";
+import { $, calm, errBox, gl, isTouch, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
+import { OVERLAYS, sel } from "./state.js";
 export let musicMode="off",beat=0,level=0; /* where the sound comes from, and the two numbers the picture reads: a pulse that decays, and how loud the low end is */
 let taps=[],tapInt=0,tapAt=0;
 export let soundChanged;
@@ -119,6 +120,28 @@ export function soundFrame(fr){
   fr.bt=beat*react;fr.lv=level*react;
   fr.mp=bands.m.p*react;fr.mv=bands.m.lv*react;fr.hp=bands.t.p*react;fr.hv=bands.t.lv*react;
 }
+export let waveTex=null,tbins=null;        /* the sound's wave as a small picture for the overlays, and the samples it is made from */
+export const waveBuf=new Uint8Array(128);
+export function updateWave(){
+  var i,live=liveAudio();
+  if(OVERLAYS[sel.ovi].spec||OVERLAYS[sel.ovi].sound==="bands"){ /* frequency bands, low to high */
+    if(live){for(i=0;i<128;i++)waveBuf[i]=fbins[1+i*2];}
+    else{for(i=0;i<128;i++)waveBuf[i]=255*(0.18+0.6*beat)*Math.abs(Math.sin(i*0.21+clock.time*1.3)*Math.sin(i*0.047-clock.time*0.6));}
+  }else if(live){
+    if(!tbins)tbins=new Uint8Array(analyser.fftSize);
+    analyser.getByteTimeDomainData(tbins);
+    for(i=0;i<128;i++)waveBuf[i]=Math.max(0,Math.min(255,128+(tbins[i*4]-128)*2.2));
+  }else{ /* no sound to read: a soft shape that swells on the beat */
+    for(i=0;i<128;i++)waveBuf[i]=128+(18+80*beat)*Math.sin(i*0.33+clock.time*3.1)*Math.sin(i*0.05+clock.time*0.7);
+  }
+  if(!waveTex){
+    waveTex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,waveTex);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  }else gl.bindTexture(gl.TEXTURE_2D,waveTex);
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,128,1,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,waveBuf);
+}
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
@@ -144,4 +167,5 @@ soundChanged=false,detectChange=makeChangeDetector();
 export const __dbg={get musicMode(){return musicMode},set musicMode(v){musicMode=v}, get beat(){return beat},set beat(v){beat=v}, get level(){return level},set level(v){level=v}, get taps(){return taps},set taps(v){taps=v}, get tapInt(){return tapInt},set tapInt(v){tapInt=v}, get tapAt(){return tapAt},set tapAt(v){tapAt=v},
   get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get stopListening(){return stopListening}, get startListening(){return startListening},
   get listening(){return listening}, get setMusic(){return setMusic}, get tap(){return tap}, get bands(){return bands}, get bandStep(){return bandStep}, get bandAvg(){return bandAvg},
-  get liveAudio(){return liveAudio}, get makeChangeDetector(){return makeChangeDetector}, get readMusic(){return readMusic}, get soundFrame(){return soundFrame}};
+  get liveAudio(){return liveAudio}, get makeChangeDetector(){return makeChangeDetector}, get readMusic(){return readMusic}, get soundFrame(){return soundFrame}, get waveTex(){return waveTex},set waveTex(v){waveTex=v}, get tbins(){return tbins},set tbins(v){tbins=v},
+  get waveBuf(){return waveBuf}, get updateWave(){return updateWave}};

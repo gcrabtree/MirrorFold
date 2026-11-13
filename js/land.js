@@ -1,13 +1,12 @@
 /* The land at run time: its noise table, height, programs, drawing and controls. */
 import { cam } from "./camera.js";
 import { clock } from "./clock.js";
-import { $, gl } from "./dom.js";
-import { toast } from "./flight.js";
+import { $, gl, toast } from "./dom.js";
 import { LAND_PRE_MAIN, LFREQ, LPERIOD } from "./land-shader.js";
 import { LK, landSrc } from "./landscapes.js";
+import { palCur } from "./palettes.js";
 import { bindTex, link, passTo } from "./programs.js";
 import { camArr } from "./render.js";
-import { palCur } from "./shaders.js";
 import { mirrors, sel } from "./state.js";
 import { freeT, tA, target } from "./targets.js";
 export let tL=null,tC=null,tLP=null; /* the land's own picture when it is over a world, that picture laid over the world, and the coarse first pass */

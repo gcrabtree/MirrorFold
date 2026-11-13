@@ -1,9 +1,9 @@
-import { $ } from "./dom.js";
-import { toast } from "./flight.js";
+import { $, toast } from "./dom.js";
+import { edClose } from "./editor.js";
 import { wakeHud } from "./input.js";
 import { BUILTIN_S, BUILTIN_T, CATS, MODE_LABEL, allS, allT, applyTemplate, fillJT, findS, findT, journey, jt,
   jtReset, normS, normT, saveStore, selectJourney, setJourney, store } from "./journey.js";
-import { advRenderLib } from "./pack-io.js";
+import { advRenderLib, loadSitePacks } from "./pack-io.js";
 export let advT,advS; /* the template and the set the panel is showing */
 export function advPick(t,s){if(t)advT=t;if(s)advS=s;} /* choose which template and set the panel shows */
 export let adv;
@@ -96,6 +96,12 @@ function useJourney(sel,label){
   if(!journey)setJourney(true);else selectJourney(sel);
   adv.hidden=true;toast("Journey: "+label);wakeHud();
 }
+export function openAdv(toLibrary){
+  var cur=store.sel.charAt(0)==="t"?findT(store.sel.slice(2)):null,cs=store.sel.charAt(0)==="s"?findS(store.sel.slice(2)):null;
+  advPick(cur,cs);
+  edClose();
+  advFill();loadSitePacks();adv.hidden=false;adv.scrollTop=toLibrary?$("advLibHead").offsetTop-12:0;
+}
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
@@ -145,4 +151,4 @@ $("advUseS").addEventListener("click",function(){useJourney("s:"+advS.name,advS.
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
 export const __dbg={get advT(){return advT},set advT(v){advT=v}, get advS(){return advS},set advS(v){advS=v}, get advPick(){return advPick}, get adv(){return adv},set adv(v){adv=v}, get advTpl(){return advTpl},set advTpl(v){advTpl=v}, get advSet(){return advSet},set advSet(v){advSet=v},
   get mk(){return mk}, get uniqueName(){return uniqueName}, get advFill(){return advFill}, get advRenderT(){return advRenderT}, get advChanged(){return advChanged}, get advRenderS(){return advRenderS},
-  get twoTap(){return twoTap}, get useJourney(){return useJourney}};
+  get twoTap(){return twoTap}, get useJourney(){return useJourney}, get openAdv(){return openAdv}};

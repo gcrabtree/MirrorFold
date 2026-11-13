@@ -1,13 +1,14 @@
-import { fillLooks, fillMotions, fillOverlays, fillPalettes, fillWorlds } from "./choose.js";
-import { $, gl } from "./dom.js";
+import { fillLooks, fillMotions, fillOverlays, fillWorlds } from "./choose.js";
+import { $, gl, toast } from "./dom.js";
 import { ED, edOpen } from "./editor.js";
-import { toast } from "./flight.js";
 import { advFill, advPick, advS, advT, mk } from "./journey-panel.js";
 import { BUILTIN_S, BUILTIN_T, adopt, catOf, fillJT, findS, findT, journey, saveStore, selectJourney, store } from "./journey.js";
 import { NLOOK, NMOT, NOV, addToLibrary, myFilters, myOverlays, myWorlds, saveLibrary, worldDrop } from "./library.js";
-import { NWORLD } from "./probe.js";
+import { NWORLD } from "./pack-worlds.js";
+import { cleanName } from "./packs.js";
+import { NPAL, PALETTES, fillPalettes } from "./palettes.js";
 import { LOOKS, MOTIONS, OVERLAYS, sel } from "./state.js";
-import { NPAL, PALETTES, WORLDS } from "./worlds.js";
+import { WORLDS } from "./worlds.js";
 
 /* ---------- packs: saving, loading and the library list ---------- */
 export function refreshLists(){ /* after palettes or motions are added or removed */
@@ -73,6 +74,22 @@ export function advRenderLib(){ /* the palettes and motions that came from packs
   if(!box.firstChild)box.appendChild(mk("p",{"class":"advNote",text:"Nothing added yet."}));
 }
 
+export let sitePacks=null; /* the packs published with the site, once packs/index.json has been fetched */
+export function fetchText(url){return fetch(url,{cache:"no-cache"}).then(function(r){if(!r.ok)throw new Error("missing");return r.text()})}
+export function loadSitePacks(){
+  if(sitePacks||typeof fetch!=="function"||location.protocol==="file:")return;
+  sitePacks=[];
+  fetchText("packs/index.json").then(function(t){
+    var list=JSON.parse(t),sel=$("advSite");
+    (Array.isArray(list)?list:[]).slice(0,200).forEach(function(e){
+      var file=e&&String(e.file||""),name=cleanName(e&&e.name),by=cleanName(e&&e.author);
+      if(!/^[a-z0-9][a-z0-9_-]*\.json$/.test(file)||!name)return; /* a plain file name in the packs folder, nothing else */
+      sitePacks.push(file);sel.appendChild(mk("option",{value:file,text:name+(by?" by "+by:"")}));
+    });
+    $("advSiteRow").hidden=!sitePacks.length;
+  }).catch(function(){sitePacks=null});
+}
+
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
 export const __dbg={get refreshLists(){return refreshLists}, get count(){return count}, get packNow(){return packNow}, get packSummary(){return packSummary}, get loadPack(){return loadPack}, get libRemove(){return libRemove},
-  get advRenderLib(){return advRenderLib}};
+  get advRenderLib(){return advRenderLib}, get sitePacks(){return sitePacks},set sitePacks(v){sitePacks=v}, get fetchText(){return fetchText}, get loadSitePacks(){return loadSitePacks}};

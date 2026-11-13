@@ -1,11 +1,13 @@
 /* What packs have added: the lists and their storage. */
 import { scene, setWorldNow } from "./choose.js";
 import { gl } from "./dom.js";
+import { NWORLD, packWorld } from "./pack-worlds.js";
 import { cleanFilter, cleanMotion, cleanOverlay, cleanPalette, cleanWorld } from "./packs.js";
-import { NWORLD, packWorld, probeBuild } from "./probe.js";
+import { NPAL, PALETTES } from "./palettes.js";
+import { probeBuild } from "./probe.js";
 import { build, filterProg, overlayProg } from "./programs.js";
 import { LOOKS, MOTIONS, OVERLAYS } from "./state.js";
-import { NPAL, PALETTES, WORLDS } from "./worlds.js";
+import { WORLDS } from "./worlds.js";
 export let NMOT, NLOOK, NOV;
 
 export const LIB_MAX=16;

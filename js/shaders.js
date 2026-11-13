@@ -1,9 +1,6 @@
 /* The scene shader and the post-processing shaders. */
 import { STEPS, isTouch } from "./dom.js";
-import { PALETTES, orbsFound, unlocked } from "./worlds.js";
-export let palCur;
 
-export function saveProgress(){try{localStorage.setItem("mirrorfold",JSON.stringify({u:unlocked,n:orbsFound}))}catch(_){}}
 
 export const VS="attribute vec2 a;varying vec2 v;void main(){v=a*0.5+0.5;gl_Position=vec4(a,0.0,1.0);}";
 export function fragSource(w){
@@ -268,9 +265,8 @@ export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","u
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-palCur={a:PALETTES[0].a.slice(),b:PALETTES[0].b.slice(),c:PALETTES[0].c.slice(),d:PALETTES[0].d.slice()};
 }
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get palCur(){return palCur},set palCur(v){palCur=v}, get saveProgress(){return saveProgress}, get VS(){return VS}, get fragSource(){return fragSource}, get FS_TRAIL(){return FS_TRAIL}, get FS_DOWN(){return FS_DOWN},
-  get FS_BLUR(){return FS_BLUR}, get FS_FINAL(){return FS_FINAL}, get finalSource(){return finalSource}, get trailSource(){return trailSource}, get TRAIL_U(){return TRAIL_U}};
+export const __dbg={get VS(){return VS}, get fragSource(){return fragSource}, get FS_TRAIL(){return FS_TRAIL}, get FS_DOWN(){return FS_DOWN}, get FS_BLUR(){return FS_BLUR}, get FS_FINAL(){return FS_FINAL},
+  get finalSource(){return finalSource}, get trailSource(){return trailSource}, get TRAIL_U(){return TRAIL_U}};

@@ -11,7 +11,7 @@ import os, re, shutil, subprocess, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INDEX = os.path.join(ROOT, "index.html")
-WORLDS_JS = os.path.join(ROOT, "js", "worlds.js")
+WORLDS_JS = os.path.join(ROOT, "js", "worlds.js")  # where render.py reads the world ids from
 # The tag that loads the app. Test code is added just before it.
 MAIN = '<script type="module" src="js/main.js"></script>'
 

@@ -1,17 +1,18 @@
 import { cam, norm } from "./camera.js";
-import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay, setPalette, warpThen } from "./choose.js";
+import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay } from "./choose.js";
 import { clock } from "./clock.js";
-import { $ } from "./dom.js";
-import { J, deAt, jReset, toast } from "./flight.js";
+import { $, toast } from "./dom.js";
+import { deAt } from "./flight.js";
 import { press, wakeHud } from "./input.js";
 import { landH, landKind, landMode, lhead, lpos, setLand, setLandKind } from "./land.js";
 import { LK } from "./landscapes.js";
 import { liveAudio, soundChanged } from "./listen.js";
-import { packD } from "./probe.js";
+import { packD } from "./pack-worlds.js";
+import { PALETTES, palOpen, setPalette } from "./palettes.js";
 import { LOOKS, MOTIONS, OVERLAYS, mirrors, sel } from "./state.js";
 import { keepAwake } from "./vr.js";
-import { tr } from "./warp.js";
-import { PALETTES, WORLDS, palOpen } from "./worlds.js";
+import { tr, warpThen } from "./warp.js";
+import { WORLDS } from "./worlds.js";
 export let jt; /* the template in use */
 export let journey=false;   /* Journey is on */
 export let jMove="travel";  /* "travel" flies and steers for you; "drift" leaves the flying to you and only changes the scenery */
@@ -163,9 +164,14 @@ export function stepJourney(dt){
     if(due&&jApply(ck,jPick(ck,cf,jCur(ck),jPool(ck,cf))))jReset(ck);
   }
 }
+/* journey clocks: each change has a target interval and fires within a fifth either side of it */
+export const J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22},land:{base:80}};
+export function jReset(k){J[k].t=0;J[k].next=J[k].base*(0.8+0.4*Math.random());}
+function jResetAll(){for(var k in J)jReset(k);}
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
+jResetAll();
 /* ---------- journey templates ----------
    A template sets, for each of seven categories, whether a journey leaves it alone, forces it off, or changes it at random,
    how often, and from which options. A set plays several templates in turn. */
@@ -213,4 +219,4 @@ export const __dbg={get jt(){return jt},set jt(v){jt=v}, get journey(){return jo
   get store(){return store}, get adopt(){return adopt}, get saveStore(){return saveStore}, get allT(){return allT}, get allS(){return allS}, get findT(){return findT},
   get findS(){return findS}, get jCur(){return jCur}, get jNone(){return jNone}, get jIndex(){return jIndex}, get jApply(){return jApply}, get jPool(){return jPool},
   get jPick(){return jPick}, get applyTemplate(){return applyTemplate}, get advanceSet(){return advanceSet}, get selectJourney(){return selectJourney}, get fillJT(){return fillJT}, get setJMove(){return setJMove},
-  get setJourney(){return setJourney}, get autopilot(){return autopilot}, get stepJourney(){return stepJourney}};
+  get setJourney(){return setJourney}, get autopilot(){return autopilot}, get stepJourney(){return stepJourney}, get J(){return J}, get jReset(){return jReset}, get jResetAll(){return jResetAll}};

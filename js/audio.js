@@ -1,6 +1,5 @@
 import { clock } from "./clock.js";
-import { $, errBox } from "./dom.js";
-import { toast } from "./flight.js";
+import { $, errBox, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { musicMode } from "./listen.js";
 export let ac, master, analyser, filt, fbins, scrubbing;

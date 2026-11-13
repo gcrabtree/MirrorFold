@@ -2,10 +2,9 @@
 import { scene } from "./choose.js";
 import { drift } from "./controls.js";
 import { calm } from "./dom.js";
-import { keys } from "./input.js";
+import { keys, stick } from "./input.js";
 import { landMode } from "./land.js";
 import { started } from "./loop.js";
-import { stick } from "./state.js";
 import { stereo } from "./vr.js";
 import { WORLDS } from "./worlds.js";
 export const cam={

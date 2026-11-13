@@ -1,4 +1,6 @@
 /* The transition that covers a change of world, mirrors or land: it winds up, the change happens at its peak, it unwinds. */
+import { calm } from "./dom.js";
+import { started } from "./loop.js";
 import { TRANSITIONS } from "./state.js";
 export const tr={
   warp:0,          /* how far through, 0 to 1 */
@@ -21,6 +23,11 @@ export function stepWarp(dt){
     tr.warp-=dt/0.8;if(tr.warp<=0){tr.warp=0;tr.warpDir=0;}
   }
 }
+export function warpThen(fn){ /* the same twist, for changes that are not a new world */
+  if(!started||calm){fn();return true;}
+  if(tr.warpDir!==0)return false;
+  tr.warpFn=fn;beginWarp();return true;
+}
 
 /* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get tr(){return tr}, get beginWarp(){return beginWarp}, get stepWarp(){return stepWarp}};
+export const __dbg={get tr(){return tr}, get beginWarp(){return beginWarp}, get stepWarp(){return stepWarp}, get warpThen(){return warpThen}};
