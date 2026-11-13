@@ -56,6 +56,12 @@ Then open http://localhost:8000/.
 
 On the start card, choose **Enter with music** or **Enter silent**.
 
+### Full screen
+
+On a desktop, Android or iPad, press the **Fullscreen** button.
+
+Safari on iPhone does not let a web page go full screen, so the button is hidden there. Instead, add Mirrorfold to your home screen: open the site in Safari, press the Share button, then **Add to Home Screen**. Opening it from the new icon runs it without Safari's bars. The home-screen copy keeps its own saved templates and orb progress, separate from Safari's; use the Backup box in the journey editor to move templates across.
+
 ## Controls
 
 ### Phone or tablet
@@ -196,6 +202,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `tools/render.py` | Headless screenshots |
 | `tools/harness.py` | Shared code for the two Python tools |
 | `CLAUDE.md` | Working notes for Claude Code sessions |
+| `apple-touch-icon.png` | Icon used when the site is added to a phone's home screen |
 | `.nojekyll` | Stops GitHub Pages from running Jekyll |
 
 ### Tests and tools
@@ -231,6 +238,7 @@ The app was developed against headless Chrome with software rendering. These hav
 - Seeking in files over 15 minutes on iOS.
 - Whether iOS keeps another app's music playing in Tap tempo mode.
 - Typing in the journey editor on iOS.
+- The home-screen full-screen mode on iPhone, including whether the controls clear the notch.
 
 Known weak spots: Box and Fortress look grainy, and the controls cover a lot of a phone screen until they fade. Reports from real devices are welcome as issues.
 
