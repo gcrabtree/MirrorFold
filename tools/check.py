@@ -29,6 +29,9 @@ setTimeout(function(){
   /* every landscape compiles, and its JavaScript height and free-standing shapes give numbers */
   var lkLog=[];for(var lk=0;lk<LK.length;lk++){setLandKind(lk);lkLog.push($("bLandKind").textContent+":"+(landKind===lk&&!!pLandK[lk])+":"+landH(412,300,6).toFixed(3)+":"+(LK[lk].extra?LK[lk].extra(412,1,300).toFixed(2):"-"));}
   log("landscapes="+lkLog.join(" | "));
+  /* Stats can be turned on, and the probe gives a distance close to the JavaScript one */
+  $("bStats").click();probePts[0]=0.3;probePts[1]=0.2;probePts[2]=0.1;
+  log("stats="+statsOn+" probe="+probe(WORLDS[0],0,1)+" diff="+Math.abs(probeOut[0]-WORLDS[0].de(0.3,0.2,0.1,0)).toFixed(4));
   /* templates can name the land: unknown names are dropped, and applying one switches the land (calm skips the transition) */
   var wasCalm=calm;calm=true;jApply("land","city over");var jl=jCur("land");jApply("land","none");jl+=">"+jCur("land");jApply("land","canyon alone");jl+=">"+jCur("land");calm=wasCalm;
   log("template land="+jl+" options="+catOf("land").opts.length+" kept="+normT({name:"x",land:{mode:"random",set:["city over","bogus"]}}).land.set.join(",")+" old="+normT({name:"y"}).land.mode);

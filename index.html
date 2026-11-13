@@ -115,6 +115,7 @@ a.btn{text-decoration:none;display:inline-block}
 #scrub::before{content:"";position:absolute;left:0;right:0;top:14px;height:4px;border-radius:2px;background:var(--edge)}
 #scrubFill{position:absolute;left:0;top:14px;height:4px;width:0;border-radius:2px;background:var(--cool)}
 #scrubThumb{position:absolute;left:0;top:6px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:var(--cool)}
+#stats{position:fixed;left:max(8px,env(safe-area-inset-left));top:max(8px,env(safe-area-inset-top));z-index:6;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace;color:#fff;background:rgba(0,0,0,.6);padding:6px 9px;border-radius:6px;white-space:pre;pointer-events:none}
 #toast{position:fixed;left:16px;right:16px;bottom:18%;text-align:center;font-size:13px;color:var(--ink);pointer-events:none;
   opacity:0;transition:opacity .5s;z-index:4;text-shadow:0 0 12px var(--void),0 0 4px var(--void)}
 #toast.on{opacity:1}
@@ -178,6 +179,7 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
     <button id="bLandFx" type="button" hidden>Effects on everything</button>
     <button id="bFx" type="button">FX glow</button>
     <button id="bDetail" type="button">Detail auto</button>
+    <button id="bStats" type="button" aria-pressed="false">Stats</button>
     <button id="bMorph" type="button" aria-pressed="true">Morph</button>
     <button id="bDrift" type="button" aria-pressed="true">Drift</button>
     <button id="bOrbs" type="button" aria-pressed="true">Orbs</button>
@@ -267,6 +269,7 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
 </div>
 <div id="toast" role="status"></div>
 <div id="err"></div>
+<div id="stats" hidden></div>
 
 <script>
 (function(){
@@ -1155,6 +1158,36 @@ function hybProg(a,b){
     "float map(vec3 p){float a=mapA(p);vec4 oa=orb;float b=mapB(p+uOff);orb=mix(oa,orb,uMix);return mix(a,b,uMix);}"]);
   var o=link(fragSource({glsl:g,fog:(A.fog+B.fog)/2,maxd:Math.max(A.maxd,B.maxd)}),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr","uLandT","uLandOn"]);
   hybCache[k]=o;return o;
+}
+/* ---------- the distance probe ----------
+   Asks the graphics chip for a world's distance at up to 16 points, using the same GLSL "map" the picture is drawn with.
+   Each point is one pixel of a 16 by 1 picture; the distance, kept between -8 and 8, is spread over three colour bytes
+   and read back. This is how a world that has no JavaScript distance function (one from a pack) could still be flown
+   through. Reading a picture back makes the page wait for the chip, so it is timed (see Stats). */
+var probeT=null,probePts=new Float32Array(48),probePx=new Uint8Array(64),probeOut=new Float32Array(16);
+function probeBuild(w){
+  if(w.probe!==undefined)return w.probe;
+  var src=fragSource(w);
+  try{w.probe=link(src.slice(0,src.indexOf("void main(){"))+[
+"uniform vec3 uPts[16];",
+"void main(){",
+"  vec3 p=vec3(0.0);int k=int(gl_FragCoord.x);",
+"  for(int i=0;i<16;i++)if(i==k)p=uPts[i];",
+"  float v=clamp((map(p)+8.0)/16.0,0.0,0.999999);",
+"  vec3 e=fract(v*vec3(1.0,255.0,65025.0));e.xy-=e.yz/255.0;",
+"  gl_FragColor=vec4(e,1.0);",
+"}"].join("\n"),["uPts","uM","uTime"]);}catch(e){w.probe=null;}
+  return w.probe;
+}
+function probe(w,m,n){ /* the distances at the first n points in probePts go into probeOut; false if this world cannot be probed */
+  if(w.volume)return false;
+  var P=probeBuild(w),i;if(!P)return false;
+  if(!probeT)probeT=target(16,1);
+  passTo(probeT,P);gl.uniform3fv(P.U.uPts,probePts);gl.uniform1f(P.U.uM,m);gl.uniform1f(P.U.uTime,time);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.readPixels(0,0,16,1,gl.RGBA,gl.UNSIGNED_BYTE,probePx);
+  for(i=0;i<n;i++)probeOut[i]=(probePx[4*i]/255+probePx[4*i+1]/65025+probePx[4*i+2]/16581375)*16-8;
+  return true;
 }
 var pTrail,pDown,pBlur,pFinal,pCopy;
 try{
@@ -2110,11 +2143,12 @@ function landBuild(){ /* compiled the first time the land is turned on; false if
   return true;
 }
 /* draw the land into dst. "over" leaves the sky clear (alpha 0) and lets lakes mirror the world in tA. */
+var LP_CI=new Float32Array(26),LP_CF=new Float32Array(26),LP_LI=new Float32Array(12),LP_LF=new Float32Array(12);
 function landPass(dst,over,fov,hue){
   var pw=Math.ceil(tA.w/8),ph=Math.ceil(tA.h/8),k,tt,wrap=function(v){return v-256*Math.floor(v/256)};
   if(!tLP||tLP.w!==pw||tLP.h!==ph){freeT(tLP);tLP=target(pw,ph);}
   /* the camera's place in each noise layer and each grid of things, split into a whole number and a remainder so the shader loses nothing */
-  var ci=new Float32Array(26),cf=new Float32Array(26),li=new Float32Array(12),lf=new Float32Array(12),px=lpos[0]*LFREQ,pz=lpos[2]*LFREQ;
+  var ci=LP_CI,cf=LP_CF,li=LP_LI,lf=LP_LF,px=lpos[0]*LFREQ,pz=lpos[2]*LFREQ; /* kept between frames, so nothing is left for the browser to clear up */
   for(k=0;k<13;k++){px=wrap(px);pz=wrap(pz);ci[2*k]=Math.floor(px);ci[2*k+1]=Math.floor(pz);cf[2*k]=px-Math.floor(px);cf[2*k+1]=pz-Math.floor(pz);tt=2*px-pz;pz=px+2*pz;px=tt;}
   LAYERS.forEach(function(L,j){var ax=lpos[0]*LFREQ*L[0],az=lpos[2]*LFREQ*L[0],bx=wrap(L[1]?2*ax-az:ax),bz=wrap(L[1]?ax+2*az:az);
     li[2*j]=Math.floor(bx);li[2*j+1]=Math.floor(bz);lf[2*j]=bx-Math.floor(bx);lf[2*j+1]=bz-Math.floor(bz);});
@@ -3142,6 +3176,24 @@ $("bDetail").addEventListener("click",function(){
   di=(di+1)%DETAIL.length;q=DETAIL[di]==="fast"?0.5:(DETAIL[di]==="sharp"?1:0.85);
   this.textContent="Detail "+DETAIL[di];resize();wakeHud();
 });
+/* Stats: a readout of how fast the picture is drawn and what is drawing it, and a trial of the distance probe */
+var statsOn=false,ST={n:0,worst:0,js:0,pr:0,pn:0,gd:0,jd:0,t:0},gpuName="";
+$("bStats").addEventListener("click",function(){
+  statsOn=!statsOn;press(this,statsOn);$("stats").hidden=!statsOn;ST.n=0;ST.t=0;
+  if(statsOn&&!gpuName){var dx=gl.getExtension("WEBGL_debug_renderer_info");gpuName=String(dx?gl.getParameter(dx.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER));}
+  wakeHud();
+});
+function statsShow(){
+  var fps=ST.n/ST.t,lines=[
+    Math.round(fps)+" pictures a second, slowest "+Math.round(ST.worst*1000)+" ms",
+    "script "+(ST.js/ST.n).toFixed(1)+" ms a picture",
+    "sharpness "+Math.round(q*100)+"%, "+tA.w+" x "+tA.h+" points",
+    "drawn by: "+gpuName.slice(0,70)];
+  if(ST.pn)lines.push("distance probe, waiting for the chip "+(ST.pr/ST.pn).toFixed(2)+" ms: chip "+ST.gd.toFixed(4)+", script "+ST.jd.toFixed(4));
+  else lines.push("distance probe: not for this world");
+  $("stats").textContent=lines.join("\n");
+  ST.n=0;ST.t=0;ST.worst=0;ST.js=0;ST.pr=0;ST.pn=0;
+}
 $("bMorph").addEventListener("click",function(){morph=!morph;press(this,morph);wakeHud()});
 $("bDrift").addEventListener("click",function(){drift=!drift;press(this,drift);wakeHud()});
 var de0=document.documentElement;
@@ -3590,20 +3642,24 @@ $("enter").addEventListener("click",function(){begin(true)});
 $("enterQuiet").addEventListener("click",function(){begin(false)});
 
 /* ---------- loop ---------- */
-var last=performance.now(),acc=0,frames=0,camArr=new Float32Array(9);
+var last=performance.now(),acc=0,frames=0,qHold=0,camArr=new Float32Array(9);
 function bindTex(unit,t){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t);}
 function passTo(o,p){gl.bindFramebuffer(gl.FRAMEBUFFER,o?o.f:null);gl.viewport(0,0,o?o.w:canvas.width,o?o.h:canvas.height);gl.useProgram(p.prog);}
 function frame(now){
   requestAnimationFrame(frame);
   if(document.hidden){last=now;return;}
-  var dt=Math.min(0.05,(now-last)/1000);last=now;
+  var rawDt=(now-last)/1000,dt=Math.min(0.05,rawDt),sT0=statsOn?performance.now():0,sPr=0;last=now;
+  if(statsOn&&!hyb){ /* try the probe at the camera, and time it, before anything else is drawn */
+    probePts[0]=pos[0];probePts[1]=pos[1];probePts[2]=pos[2];
+    if(probe(world,morphValue(),1)){sPr=performance.now()-sT0;ST.pr+=sPr;ST.pn++;ST.gd=probeOut[0];ST.jd=world.de(pos[0],pos[1],pos[2],morphValue());}
+  }
 
   acc+=dt;frames++;
   if(frames>=30){
     var avg=acc/frames;acc=0;frames=0;
     if(DETAIL[di]==="auto"){ /* hold sharpness, give up frame rate first: only step down below about 28 fps */
-      if(avg>0.036&&q>(landMode?0.35:0.6)){q=Math.max(landMode?0.35:0.6,q*0.9);resize();} /* the land costs more, so it may give up more sharpness */
-      else if(avg<0.022&&q<1){q=Math.min(1,q*1.06);resize();}
+      if(avg>0.036&&q>(landMode?0.35:0.6)){q=Math.max(landMode?0.35:0.6,q*0.9);qHold=now+20000;resize();} /* the land costs more, so it may give up more sharpness */
+      else if(avg<0.022&&q<1&&now>qHold){q=Math.min(1,q*1.06);resize();} /* after stepping down, wait before trying to step up again: each change rebuilds every picture, which shows as a hitch */
     }
   }
 
@@ -3853,6 +3909,7 @@ function frame(now){
   gl.drawArrays(gl.TRIANGLES,0,3);
   if(slow){passTo(null,pCopy);bindTex(0,tF[fcur].t);gl.uniform1i(pCopy.U.uT,0);gl.drawArrays(gl.TRIANGLES,0,3);fcur=1-fcur;}
   cur=1-cur;
+  if(statsOn){ST.n++;ST.t+=rawDt;ST.worst=Math.max(ST.worst,rawDt);ST.js+=performance.now()-sT0-sPr;if(ST.t>=0.5)statsShow();}
 }
 canvas.addEventListener("webglcontextlost",function(e){e.preventDefault();errBox.textContent="The graphics context was lost. Reload the page to continue.";});
 requestAnimationFrame(frame);
