@@ -226,7 +226,9 @@ Turn Journey on and press **Edit journeys** to make your own. Built-in templates
 
 ## Library and packs
 
-A **pack** is a small file of palettes, motions, Journey templates and sets. It holds names and numbers only. Mirrorfold never runs anything from a pack as program code, checks every value, and pulls numbers that are out of range back into range.
+A **pack** is a small file of palettes, motions, filters, Journey templates and sets. Almost all of it is names and numbers, which Mirrorfold checks and pulls back into range. A filter may also hold a short picture program for the graphics chip. Such a program cannot reach the page, your files or the network, and Mirrorfold refuses it unless it keeps to a strict set of rules. Nothing in a pack is ever run as JavaScript.
+
+Filter programs in packs published with Mirrorfold have been reviewed. A filter program you load from a file or paste as text has not, so Mirrorfold shows it smoothed over time, which makes it impossible for it to flash the screen. The Library list marks those filters.
 
 Press **Library** to open the library section of the setup panel:
 
@@ -235,12 +237,12 @@ Press **Library** to open the library section of the setup panel:
 | **Add this pack** | Adds the chosen pack from the ones published with Mirrorfold. This list is missing when the page is opened straight from a file. |
 | **Load a pack file** | Adds a pack from a file on your device. |
 | **Save mine as a pack file** | Saves everything you have added or made as one pack file, to keep or to share. |
-| **Remove** | Removes one added palette or motion. |
+| **Remove** | Removes one added palette, motion or filter. |
 | **Copy mine as text**, **Load from text** | The same as saving and loading a file, through the text box. |
 
-Added palettes and motions appear at the end of the Palette and Motion lists and in the Journey template editor. They are saved in your browser only.
+Added palettes, motions and filters appear at the end of the Palette, Motion and Filter lists and in the Journey template editor. They are saved in your browser only.
 
-Worlds, filters and overlays cannot be put in a pack yet. The file format, the allowed ranges and how to offer a pack for inclusion are in [packs/README.md](packs/README.md).
+Worlds and overlays cannot be put in a pack yet. The file format, the allowed ranges and how to offer a pack for inclusion are in [packs/README.md](packs/README.md).
 
 ## Orbs and share links
 
@@ -289,7 +291,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 
 | Path | What it is |
 |---|---|
-| `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,480 lines |
+| `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,560 lines |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 17 worlds |
@@ -301,6 +303,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `tools/harness.py` | Shared code for the two Python tools |
 | `CLAUDE.md` | Working notes for Claude Code sessions |
 | `apple-touch-icon.png` | Icon used when the site is added to a phone's home screen |
+| `.github/workflows/check.yml` | Runs the Node checks on every push and pull request |
 | `.nojekyll` | Stops GitHub Pages from running Jekyll |
 
 ### Tests and tools
@@ -308,6 +311,11 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 ```
 node tools/unit.mjs                     # pure-logic tests
 node tools/pack.mjs                     # check every pack in packs/
+```
+
+GitHub runs `unit.mjs` and `pack.mjs` on every push and pull request (`.github/workflows/check.yml`). The browser tools below are run by hand:
+
+```
 python3 tools/check.py                  # all shaders compile, no script or WebGL errors
 python3 tools/render.py --world julia -o out.png          # screenshot one world
 python3 tools/render.py --all -o sheet.jpg                # contact sheet of every world
