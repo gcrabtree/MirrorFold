@@ -1,6 +1,6 @@
 # Mirrorfold
 
-A first-person fly-through of endless fractal worlds in the browser: WebGL 1 raymarching, a MilkDrop-style feedback and filter chain, music reactivity, and a templated autopilot ("Journey"). The whole app is `index.html`. No build step, no dependencies.
+A first-person fly-through of endless fractal worlds in the browser: WebGL 1 raymarching, a MilkDrop-style feedback and filter chain, music reactivity, and a templated autopilot ("Journey"). The app is `index.html` (markup), `css/app.css` and ES modules in `js/`. No build step, no dependencies.
 
 Read `docs/ARCHITECTURE.md` before changing anything substantial. It covers the render pipeline, the math of every world, the audio analysis, the journey engine, known weaknesses and a suggested refactor.
 
@@ -18,7 +18,7 @@ python3 tools/render.py --world sponge --js "setLand(2);setLandFx(1)" -o land.pn
 python3 tools/render.py --world sponge --size 852x393 --js "setStereo(true)" -o vr.png   # VR viewer picture
 ```
 
-The Python tools need `google-chrome` or `chromium` on PATH (they run it headless with software WebGL). `--all` also needs Pillow. To view the app, open `index.html` directly or serve the folder with `python3 -m http.server`.
+The Python tools need `google-chrome` or `chromium` on PATH (they run it headless with software WebGL). `--all` also needs Pillow. To view the app, serve the folder with `python3 -m http.server` (modules do not load from `file://`).
 
 ## Rules that are easy to break
 
@@ -26,8 +26,10 @@ The Python tools need `google-chrome` or `chromium` on PATH (they run it headles
 - **The land has its height twice too**: the noise sum in `terrL`/`terrM` (in `LAND_T`) and in `landH`, both reading the table `LTAB`, and each landscape's `shape` in its GLSL and in its `LK` entry. They must match. A landscape's free-standing shapes are twice too: `extra` in GLSL and in JavaScript. So are the city's blocks (`block` in `citySrc`, `cityBlock` in JavaScript). `shapeU` must never be below `shape` over a range of 0.047 either side. Its layers use the whole-number matrix `[2 -1; 1 2]` so that it repeats exactly every `LPERIOD`; do not replace it with an arbitrary rotation.
 - **The land shader measures from the camera.** World positions go in through `uCi`/`uCf` and the like, worked out in doubles in `landPass`. Do not add a pattern finer than about 1/50 unit that is computed from `uPos` in the shader: it will shake.
 - **Every world's field must be exactly periodic** with its `period`. The camera position is wrapped by that period every frame.
-- **`tools/harness.py` depends on the first and last lines of the script** (`<script>\n(function(){` and `requestAnimationFrame(frame);\n})();`). It asserts on them. If you restructure the script, update the harness in the same change.
-- **`tools/unit.mjs` extracts `makeChangeDetector`, `jPick`, `devMat`, `gyroTurn`, `userActive`, `cleanName`, `cleanPalette`, `cleanMotion`, `cleanCode`, `cleanFilter`, `cleanOverlay`, `cleanWorld`, `palFromSimple` and `palToSimple` by name** with a regex that expects the function to end with a `}` at the start of a line. `tools/pack.mjs` extracts the cleaners the same way. Extracted functions must not use anything outside themselves and each other.
+- **Start-up code goes in a file's `init()`, not at its top level.** `js/main.js` calls the `init()`s in a fixed order. A module's top level may hold only function declarations, `let` declarations, and constants built from literals and other constants of the same file. That keeps load order irrelevant and lets the Node tools import modules without a page.
+- **A module cannot assign to another module's variable.** A value set by more than one file lives on `G` (`js/shared.js`) and is written `G.name`. A value set only by its own file is `export let` there. If you start setting an imported value from a second file, move it to `G` and add it to the list in `shared.js`.
+- **Every file ends with `__dbg`**, a getter (and setter, if it changes) for each of its names; `main.js` merges them into `window.MF`, which is how `tools/harness.py` and `--js` reach internals. A new name that a test or `--js` uses must be added to its file's `__dbg`. The harness asserts on the exact `<script type="module" src="js/main.js">` tag.
+- **`tools/unit.mjs` and `tools/pack.mjs` import functions from the modules.** Those functions must stay free of the page: no `document`, no `gl`, nothing from `G`.
 - **Packs never carry JavaScript.** Everything read from a pack, pasted text or `localStorage["mirrorfold-library"]` goes through `loadPack` and the cleaners. Do not add a field that is evaluated as script, used as HTML, or used as a URL. New numeric fields need a range in the cleaner and in `packs/README.md`.
 - **A pack world has no JavaScript `de`.** Anything that needs a distance from `world` must work when `world.pack` is true: use `deMany` for many points and `packD` (filled by `packFrame`) inside `frame()`. `world.de` on a pack world is one probe, which makes the page wait for the graphics chip, so do not call it in a loop. Pack worlds are added and removed at run time after the built-ins (`NWORLD`); call `refreshLists()` afterwards.
 - **Pack filter, overlay and world code is GLSL, checked by `cleanCode`.** World code has no clock and no sound either, and is folded into its period before it runs. Filter code has no clock: do not give it any input that changes with time or sound. Overlay code has the clock and the sound. Do not loosen a rule in `cleanCode` without reading why it is there (architecture doc, section 11, Packs). While any code that is not `reviewed` is in use, the flash limiter in pass 4 of `frame()` must be on. Only `loadPack(text, "site")` may mark code reviewed.
@@ -41,7 +43,7 @@ The Python tools need `google-chrome` or `chromium` on PATH (they run it headles
 
 ## Conventions
 
-- ES5 style throughout: `var`, function declarations, one IIFE, closure state. Match it unless you are doing the module split described in the architecture doc.
+- Inside the files the style is still ES5: `var`, function declarations, no classes. Module syntax (`import`, `export`, `const`, `let`) is used only at the top level of a file.
 - Shaders are arrays of strings joined with newlines. GLSL ES 1.00 only: constant loop bounds, no dynamic indexing of uniform arrays, float literals need a decimal point.
 - Comments say what a block is for in plain words. Keep that.
 - User-facing text is plain and literal: a control says exactly what it does.
@@ -53,4 +55,4 @@ Everything was developed against headless Chrome with software rendering. Real-d
 
 ## Deploying
 
-GitHub Pages serves `index.html` as is. `.nojekyll` is there so Pages does not run Jekyll.
+GitHub Pages serves `index.html`, `css/` and `js/` as they are. `.nojekyll` is there so Pages does not run Jekyll.

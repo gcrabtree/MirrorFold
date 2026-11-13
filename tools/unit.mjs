@@ -1,4 +1,4 @@
-// Unit tests for the pieces of pure logic, extracted from index.html by name:
+// Unit tests for the pieces of pure logic:
 //   makeChangeDetector  decides when the music has changed enough to trigger a world change
 //   jPick               picks a journey's next option, including the weighted mirror choice
 //   devMat, gyroTurn    turn the phone's orientation angles into a head turn for the VR viewer
@@ -6,19 +6,16 @@
 //   cleanName, cleanPalette, cleanMotion, cleanFilter, cleanCode   check and limit everything read from a pack
 //
 //   node tools/unit.mjs
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "index.html"), "utf8");
-function grab(name) {
-  const m = src.match(new RegExp("function " + name + "\\([^)]*\\)\\{[\\s\\S]*?\\n\\}"));
-  if (!m) throw new Error("could not find function " + name + " in index.html");
-  return m[0];
-}
-const NAMES = ["makeChangeDetector", "jPick", "devMat", "gyroTurn", "userActive", "cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter", "cleanOverlay", "cleanWorld", "palFromSimple", "palToSimple"];
-const { makeChangeDetector, jPick, devMat, gyroTurn, userActive, cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter, cleanOverlay, cleanWorld, palFromSimple, palToSimple } = new Function(
-  NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
+// The functions come straight from the app's modules. A module does nothing when it is loaded (its start-up work is in
+// init(), which only main.js calls), so they can be loaded here without a page. __dbg is each module's list of every name in it.
+import { __dbg as listen } from "../js/listen.js";
+import { __dbg as journey } from "../js/journey.js";
+import { __dbg as vr } from "../js/vr.js";
+import { __dbg as flight } from "../js/flight.js";
+import { __dbg as packs } from "../js/packs.js";
+import { __dbg as editor } from "../js/editor.js";
+const { makeChangeDetector } = listen, { jPick } = journey, { devMat, gyroTurn } = vr, { userActive } = flight;
+const { cleanName, cleanPalette, cleanMotion, cleanCode, cleanFilter, cleanOverlay, cleanWorld } = packs, { palFromSimple, palToSimple } = editor;
 
 let failed = 0;
 function expect(label, ok, detail) {

@@ -20,7 +20,7 @@ Relax, unwind, and enjoy!
 
 ![Contact sheet of all 17 worlds](docs/worlds.jpg)
 
-The whole app is one file, `index.html`. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
+The app is one page, one stylesheet and a folder of JavaScript modules. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
 
 ## Contents
 
@@ -60,7 +60,7 @@ The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, S
 
 **Online:** open https://gcrabtree.github.io/MirrorFold/.
 
-**From a copy of this repository:** open `index.html` in a browser. It works straight from the file system.
+**From a copy of this repository:** run `python3 -m http.server` in the folder and open `http://localhost:8000`. Opening `index.html` straight from the file system no longer works, because browsers do not load JavaScript modules that way.
 
 **From a local web server:**
 
@@ -70,7 +70,7 @@ python3 -m http.server 8000
 
 Then open http://localhost:8000/.
 
-**Host your own copy:** put `index.html` on any static web host. For GitHub Pages, keep `index.html` at the root of the published branch and keep the empty `.nojekyll` file, which stops Pages from running Jekyll over the repository.
+**Host your own copy:** put `index.html`, `css/` and `js/` (and `packs/` if you want the starter pack offered) on any static web host. For GitHub Pages, keep them at the root of the published branch and keep the empty `.nojekyll` file, which stops Pages from running Jekyll over the repository.
 
 On the start card, choose **Enter with music** or **Enter silent**.
 
@@ -334,7 +334,9 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 
 | Path | What it is |
 |---|---|
-| `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,700 lines |
+| `index.html` | The page's markup |
+| `css/app.css` | The styling |
+| `js/` | The app, as about 25 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 17 worlds |
@@ -342,8 +344,9 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `tools/unit.mjs` | Tests for the change detector, the weighted picker, the head-turn math, the steering handoff and the pack cleaners |
 | `tools/pack.mjs` | Checks pack files with the same code the app uses |
 | `tools/check.py` | Headless smoke test |
+| `tools/probe.py` | Checks each world's two distance functions against each other |
 | `tools/render.py` | Headless screenshots |
-| `tools/harness.py` | Shared code for the two Python tools |
+| `tools/harness.py` | Shared code for the Python tools |
 | `CLAUDE.md` | Working notes for Claude Code sessions |
 | `apple-touch-icon.png` | Icon used when the site is added to a phone's home screen |
 | `.github/workflows/check.yml` | Runs the Node checks on every push and pull request |
@@ -372,10 +375,10 @@ python3 tools/render.py --world temple --js "setLook(2)" -o neon.png
 - A world's GLSL `map` and JavaScript `de` must compute the same distance. If they drift apart, the camera clips through walls or crawls in open space.
 - A world's field must repeat exactly at its `period`, or the camera wrap shows as a jump.
 - Journey templates store options by name. Renaming a world id, motion, filter, overlay or palette silently removes it from people's saved templates.
-- The tools find code in `index.html` by exact strings and by function name. If you restructure the script, update the tools in the same change.
+- Code that runs at start-up belongs in a file's `init()`, and a value set by more than one file belongs on `G` in `js/shared.js`. The architecture document, section 3, explains why.
 - After any shader change, run `check.py`, then render the affected world and look at it. Shaders can compile cleanly and still look wrong.
 
-The code is ES5 in one closure: `var`, function declarations, no modules. Shaders are GLSL ES 1.00. The architecture document has a checklist for adding a world.
+The code is ES modules, written in ES5 style inside each file: `var`, function declarations, no classes. Shaders are GLSL ES 1.00. The architecture document has a checklist for adding a world.
 
 ## What has not been tested
 

@@ -1,4 +1,4 @@
-// Checks pack files with the same cleaners the app uses (extracted from index.html by name).
+// Checks pack files with the same cleaners the app uses (imported from js/packs.js).
 //
 //   node tools/pack.mjs                  checks every pack in packs/ and packs/index.json
 //   node tools/pack.mjs my-pack.json     checks one file
@@ -10,14 +10,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, basename } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const src = readFileSync(join(root, "index.html"), "utf8");
-function grab(name) {
-  const m = src.match(new RegExp("function " + name + "\\([^)]*\\)\\{[\\s\\S]*?\\n\\}"));
-  if (!m) throw new Error("could not find function " + name + " in index.html");
-  return m[0];
-}
-const NAMES = ["cleanName", "cleanPalette", "cleanMotion", "cleanCode", "cleanFilter", "cleanOverlay", "cleanWorld"];
-const { cleanName, cleanPalette, cleanMotion, cleanFilter, cleanOverlay, cleanWorld } = new Function(NAMES.map(grab).join("\n") + "\nreturn {" + NAMES.join(",") + "};")();
+import { cleanName, cleanPalette, cleanMotion, cleanFilter, cleanOverlay, cleanWorld } from "../js/packs.js";
 
 const LIB_MAX = 16, MAX_BYTES = 200000;
 const KEYS = ["mirrorfold", "name", "author", "palettes", "motions", "filters", "overlays", "worlds", "templates", "sets"];
