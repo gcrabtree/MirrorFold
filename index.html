@@ -3737,6 +3737,14 @@ function frame(now){
   requestAnimationFrame(frame);
   if(document.hidden){last=now;return;}
   var rawDt=(now-last)/1000,dt=Math.min(0.05,rawDt),sT0=statsOn?performance.now():0,sPr=0;last=now;
+  /* Wait for the graphics chip before starting a new picture, by reading one point back from it. Without this the
+     browser may queue several pictures ahead of the chip and then stall while it catches up, which shows as stutter
+     even though the average rate is high. (Found by accident: with Stats on, whose probe does the same wait, a PC with a
+     144 Hz screen ran smoothly, and with it off it stuttered.) A pack world's own probe, later in the frame, does the same job. */
+  if(!(statsOn&&!hyb&&!world.volume)&&!world.pack){
+    if(!probeT)probeT=target(16,1);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,probeT.f);gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,probePx);
+  }
   if(statsOn&&!hyb){ /* try the probe at the camera, and time it, before anything else is drawn */
     probePts[0]=pos[0];probePts[1]=pos[1];probePts[2]=pos[2];
     if(probe(world,morphValue(),1)){sPr=performance.now()-sT0;ST.pr+=sPr;ST.pn++;ST.gd=probeOut[0];ST.jd=world.pack?NaN:world.de(pos[0],pos[1],pos[2],morphValue());}
