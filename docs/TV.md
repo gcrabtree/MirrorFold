@@ -20,11 +20,9 @@ AirPlay is Apple's system and only Apple devices can send with it. Android phone
 ## Before you start
 
 1. **Use the same Wi-Fi.** Put the phone and the TV device on the same Wi-Fi network.
-2. **Stop the phone from locking.** Mirroring ends when the phone's screen locks. Mirrorfold only keeps the screen awake in VR viewer mode, so change the phone's setting while you watch:
+2. **Keep the phone from locking.** Mirroring ends when the phone's screen locks. Mirrorfold keeps the screen awake while **Journey** is on, in browsers that allow it. If your phone locks anyway, change its setting while you watch, and set it back afterwards:
    - iPhone or iPad: Settings → Display & Brightness → Auto-Lock → Never.
    - Android: Settings → Display → Screen timeout, and choose the longest time.
-
-   Set it back afterwards.
 3. **Allow the screen to rotate.** Turn off the rotation lock, so the picture can turn sideways and fill the TV.
 4. **Plug the phone in.** Drawing the worlds and mirroring at the same time uses a lot of battery.
 
@@ -131,7 +129,7 @@ Mirroring sends the phone's sound to the TV along with the picture.
 | The picture is upright with black bars at the sides | Turn the phone sideways, and check that the rotation lock is off. |
 | There are thin black bars even when sideways | A phone screen is longer and narrower than a TV screen. This is normal. |
 | The picture stutters | Press **Detail** until it says **Detail fast**, or set **FX** to **clean**. Move the phone closer to the Wi-Fi router. Bulbs, Julia, Box and Fortress are the heaviest worlds. |
-| The picture stops after a few minutes | The phone locked. See step 2 of [Before you start](#before-you-start). |
+| The picture stops after a few minutes | The phone locked. Check that **Journey** is on, which keeps the screen awake. If it still locks, see step 2 of [Before you start](#before-you-start). |
 | There is no sound from the TV | Turn up the volume on the phone as well as the TV. On an iPhone, check the silent switch. |
 | The TV shows two pictures side by side | **VR viewer** is on. Tap the phone and press **VR viewer** to turn it off. |
 

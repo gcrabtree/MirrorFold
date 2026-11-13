@@ -1448,6 +1448,7 @@ selJT.addEventListener("change",function(){selectJourney(this.value);wakeHud()})
 function setJourney(on){
   journey=on;press($("bJourney"),on);$("rowJourney").hidden=!on;
   if(on)selectJourney(store.sel);
+  keepAwake();
 }
 
 /* ---------- journey setup panel ---------- */
@@ -1696,22 +1697,24 @@ function gyroStart(){
     }catch(_){}
   }else bind();
 }
-function keepAwake(on){
+/* the screen is kept awake while Journey or the VR viewer is on, because nobody is touching it then */
+function keepAwake(){
+  var on=journey||stereo;
   try{
-    if(on&&!wakeLock&&navigator.wakeLock){navigator.wakeLock.request("screen").then(function(l){wakeLock=l;l.addEventListener("release",function(){wakeLock=null});if(!stereo)l.release();}).catch(function(){});}
-    else if(!on&&wakeLock){wakeLock.release();wakeLock=null;}
+    if(on&&!wakeLock&&navigator.wakeLock){navigator.wakeLock.request("screen").then(function(l){wakeLock=l;l.addEventListener("release",function(){if(wakeLock===l)wakeLock=null});if(!(journey||stereo))keepAwake();}).catch(function(){});}
+    else if(!on&&wakeLock){var l0=wakeLock;wakeLock=null;l0.release();}
   }catch(_){}
 }
 function setStereo(on){
   stereo=!!on;gyroPrev=null;press($("bVr"),stereo);
-  keepAwake(stereo);
+  keepAwake();
   if(stereo){gyroStart();toast(window.innerWidth<window.innerHeight?"VR viewer on. Turn the phone sideways.":"VR viewer on");}
   else toast("VR viewer off");
 }
 if(!isTouch)$("bVr").style.display="none";
 $("bVr").addEventListener("click",function(){setStereo(!stereo);wakeHud()});
 window.addEventListener("orientationchange",function(){gyroPrev=null});
-document.addEventListener("visibilitychange",function(){gyroPrev=null;if(!document.hidden&&stereo)keepAwake(true)});
+document.addEventListener("visibilitychange",function(){gyroPrev=null;if(!document.hidden)keepAwake()}); /* the browser drops the wake lock when the page is hidden */
 
 /* ---------- music ----------
    Three sources feed one pair of numbers the visuals read: beat (a pulse that decays) and level (how loud the low end is).

@@ -438,7 +438,7 @@ The HUD fades after 5 seconds without interaction and returns on any touch.
 
 **What is switched off.** Everything centred on the screen would show each eye something different. In `frame()`: the feedback pass gets decay 0 and no overlay (so it passes the scene through); filters that move pixels (Echo, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl) are treated as none; `FS_FINAL` gets `uVr = 1`, which zeroes zoom blur and colour fringing; the transition type is forced to blink, the only one that is the same for both eyes; the idle roll is skipped. Field-of-view pulsing does not apply because the lens model fixes the field of view. Bloom is kept.
 
-**Screen wake.** `keepAwake` holds a screen wake lock while the mode is on and takes it again when the page becomes visible.
+**Screen wake.** `keepAwake()` holds a screen wake lock (`navigator.wakeLock`) while Journey or the VR viewer is on, since nobody touches the screen then. `setJourney` and `setStereo` call it. The browser drops the lock when the page is hidden, so it is taken again when the page becomes visible. Browsers without the API, and iOS before 16.4, fall back to the phone's own lock timer.
 
 ## 14. Testing
 
@@ -473,7 +473,8 @@ Not verified, because they need a real device or a human:
 - Seeking in the streaming fallback on iOS, used for files over 15 minutes.
 - Whether iOS keeps another app's music playing while the page is open in tap mode.
 - Text entry in the setup panel on iOS (`user-select: text` is set on inputs because the body disables selection).
-- Everything about the VR viewer on a real phone: whether the two pictures merge through real lenses, whether the assumed pixel size is close enough, whether head turns go the right way in both landscape directions, whether the autopilot is comfortable, and whether the wake lock holds. The head-turn math is unit tested but the sensor conventions were taken from the specification, not from a device.
+- Whether the screen wake lock holds on a real phone with Journey or the VR viewer on, in Safari and as a home-screen web app.
+- Everything about the VR viewer on a real phone: whether the two pictures merge through real lenses, whether the assumed pixel size is close enough, whether head turns go the right way in both landscape directions, and whether the autopilot is comfortable. The head-turn math is unit tested but the sensor conventions were taken from the specification, not from a device.
 - The home-screen web app mode on iPhone (see section 2): that it opens without Safari's bars, and that the safe-area padding keeps the HUD clear of the notch and home bar.
 
 ## 15. Known weaknesses

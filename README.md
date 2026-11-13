@@ -141,11 +141,10 @@ This mode is for a phone in a Cardboard-style viewer: a holder with two lenses t
 3. Press **VR viewer**. On iPhone, allow motion access when asked.
 4. Turn the phone sideways and put it in the viewer.
 
-Turning your head turns the view. With **Drift** on you fly toward wherever you look. With **Journey** on the autopilot also steers and changes worlds. Touch still works: tap the screen to bring the controls back, and press **VR viewer** again to leave.
+Turning your head turns the view. With **Drift** on you fly toward wherever you look. With **Journey** on the autopilot also steers and changes worlds. Touch still works: tap the screen to bring the controls back, and press **VR viewer** again to leave. The screen is kept awake while the mode is on, where the browser allows it.
 
 While the mode is on:
 
-- The screen is kept awake, where the browser allows it.
 - Feedback motions, trails and overlays are not drawn. They are centred on the screen, not on each eye.
 - These filters are not drawn, for the same reason: Echo, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl. The others work.
 - Changes of world always use the blink transition.
@@ -171,7 +170,7 @@ Mirrorfold does not listen to the microphone and cannot hear other apps. Tap tem
 
 ## Journey
 
-Journey flies for you. It steers toward open space and changes things on separate clocks, so no two minutes are the same.
+Journey flies for you. It steers toward open space and changes things on separate clocks, so no two minutes are the same. While Journey is on, the screen is kept awake, where the browser allows it.
 
 A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter and overlay you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes instead of on a clock.
 
@@ -275,6 +274,7 @@ The app was developed against headless Chrome with software rendering. These hav
 - Typing in the journey editor on iOS.
 - The home-screen full-screen mode on iPhone, including whether the controls clear the notch.
 - The screen mirroring steps in `docs/TV.md`, on any TV device.
+- Whether the screen really stays awake with Journey or the VR viewer on, in Safari and from the home-screen icon.
 - The VR viewer mode: whether the two pictures merge in a real viewer, whether head turning goes the right way, and whether it is comfortable.
 
 Known weak spots: Box and Fortress look grainy, and the controls cover a lot of a phone screen until they fade. Reports from real devices are welcome as issues.
