@@ -1,6 +1,7 @@
-// Unit tests for the two pieces of pure logic, extracted from index.html by name:
+// Unit tests for the pieces of pure logic, extracted from index.html by name:
 //   makeChangeDetector  decides when the music has changed enough to trigger a world change
 //   jPick               picks a journey's next option, including the weighted mirror choice
+//   devMat, gyroTurn    turn the phone's orientation angles into a head turn for the VR viewer
 //
 //   node tools/unit.mjs
 import { readFileSync } from "node:fs";
@@ -13,8 +14,9 @@ function grab(name) {
   if (!m) throw new Error("could not find function " + name + " in index.html");
   return m[0];
 }
-const { makeChangeDetector, jPick } = new Function(
-  grab("makeChangeDetector") + "\n" + grab("jPick") + "\nreturn {makeChangeDetector,jPick};")();
+const { makeChangeDetector, jPick, devMat, gyroTurn } = new Function(
+  grab("makeChangeDetector") + "\n" + grab("jPick") + "\n" + grab("devMat") + "\n" + grab("gyroTurn") +
+  "\nreturn {makeChangeDetector,jPick,devMat,gyroTurn};")();
 
 let failed = 0;
 function expect(label, ok, detail) {
@@ -60,6 +62,23 @@ for (let i = 0; i < 2000; i++) { const n = jPick("motion", {}, cur, ["a", "b", "
 expect("subset pick never repeats and reaches every option", !repeat && seen.size === 3);
 expect("single option stays put", jPick("motion", {}, "a", ["a"]) === "a");
 expect("empty option list changes nothing", jPick("motion", {}, "a", []) === "a");
+
+// ---- VR viewer head turn: angles are (alpha, beta, gamma, screen rotation) in degrees; the result is in
+// screen axes (x right, y up, z toward the viewer), in degrees here for reading
+function turn(a, b) {
+  return gyroTurn(devMat(...a), devMat(...b)).map(x => x * 180 / Math.PI);
+}
+function near(v, want) { return v.every((x, i) => Math.abs(x - want[i]) < 1e-6); }
+function show(v) { return v.map(x => x.toFixed(2)).join(","); }
+let w;
+w = turn([30, 0, 0, 0], [40, 0, 0, 0]);       expect("flat phone spun on the table turns about z", near(w, [0, 0, 10]), show(w));
+w = turn([20, 50, 0, 0], [20, 60, 0, 0]);     expect("portrait: tipping the top back turns about x", near(w, [10, 0, 0]), show(w));
+w = turn([20, 50, 10, 0], [20, 50, 20, 0]);   expect("portrait: turning about the long axis turns about y", near(w, [0, 10, 0]), show(w));
+w = turn([20, 50, 10, 90], [20, 50, 20, 90]); expect("landscape: the long axis is now screen x, reversed", near(w, [-10, 0, 0]), show(w));
+w = turn([20, 50, 10, -90], [20, 50, 20, -90]); expect("other landscape: the long axis is screen x", near(w, [10, 0, 0]), show(w));
+w = turn([20, 50, 0, 90], [20, 60, 0, 90]);   expect("landscape: the short axis is now screen y", near(w, [0, 10, 0]), show(w));
+w = turn([0, 0, -89, 0], [180, 180, 89, 0]);  expect("no jump where gamma wraps at 90 degrees", near(w, [0, -2, 0]), show(w));
+w = turn([33, -20, 70, 90], [33, -20, 70, 90]); expect("no movement gives no turn", near(w, [0, 0, 0]), show(w));
 
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

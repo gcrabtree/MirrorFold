@@ -14,6 +14,7 @@ The whole app is one file, `index.html`. There is no build step and no JavaScrip
 - [Run it](#run-it)
 - [Controls](#controls)
 - [The buttons](#the-buttons)
+- [VR viewer](#vr-viewer)
 - [Music](#music)
 - [Journey](#journey)
 - [Orbs and share links](#orbs-and-share-links)
@@ -35,6 +36,7 @@ The whole app is one file, `index.html`. There is no build step and no JavaScrip
 - **Music reactivity** from a built-in track, your own audio file, or a tapped tempo.
 - **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter and overlay over time. You control what it may change with templates.
 - **Share spot** links that take someone to the exact place you are looking at.
+- **VR viewer** mode for a phone in a Cardboard-style holder: a picture for each eye, and you look around by turning your head.
 
 The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, Shards, Crystal, Julia, Web, Temple, Nebula, Fortress, Hive, Gates, Aurora.
 
@@ -121,6 +123,31 @@ The controls at the top of the screen fade after five seconds without input and 
 | Orbs | Shows or hides the orbs. |
 | Share spot | Makes a link to where you are. |
 | Fullscreen | Fills the screen. |
+| VR viewer | Phones and tablets only. Draws a picture for each eye, for a phone in a viewer. See [VR viewer](#vr-viewer). |
+
+## VR viewer
+
+This mode is for a phone in a Cardboard-style viewer: a holder with two lenses that you look into. It has not been tried on a real phone or viewer yet, so treat it as experimental.
+
+1. Open Mirrorfold on the phone. On iPhone, open it from the home-screen icon so Safari's bars are out of the way (see [Full screen](#full-screen)).
+2. Choose what you want first: world, palette, music, and Journey or Drift.
+3. Press **VR viewer**. On iPhone, allow motion access when asked.
+4. Turn the phone sideways and put it in the viewer.
+
+Turning your head turns the view. With **Drift** on you fly toward wherever you look. With **Journey** on the autopilot also steers and changes worlds. Touch still works: tap the screen to bring the controls back, and press **VR viewer** again to leave.
+
+While the mode is on:
+
+- The screen is kept awake, where the browser allows it.
+- Feedback motions, trails and overlays are not drawn. They are centred on the screen, not on each eye.
+- These filters are not drawn, for the same reason: Echo, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl. The others work.
+- Changes of world always use the blink transition.
+- The slow automatic roll is off.
+- Mirrors work, and both eyes see the same mirrored scene.
+
+The picture is shaped for the lenses of a Google Cardboard viewer (lenses 64 mm apart, 39 mm from the screen). A browser cannot find out how big the screen is, so the size is estimated. If the two pictures do not merge into one, or the world looks stretched, please open an issue and say which phone and viewer you used.
+
+If moving through the world makes you feel unwell, stop. Turning Journey off and flying with Drift alone is gentler, because then the view only turns when your head does.
 
 ## Music
 
@@ -133,7 +160,7 @@ Three bands of the sound drive different parts of the picture. Bass drives zoom 
 | Tap tempo | Makes no sound. Use it when music is playing in another app, such as Apple Music or Spotify: enter silent, start your song there, choose Tap tempo and tap the beat. |
 | Music off | The worlds still move, without reacting to sound. |
 
-Mirrorfold cannot listen to the microphone or to other apps. Tap tempo is the way to follow music it cannot hear.
+Mirrorfold does not listen to the microphone and cannot hear other apps. Tap tempo is the way to follow music it cannot hear.
 
 ## Journey
 
@@ -171,7 +198,7 @@ Bulbs, Julia, Box and Fortress are the heaviest worlds. If the picture stutters,
 
 **Motion.** Colour and motion shift constantly. Pulses are soft and slow by design and nothing strobes; a tapped tempo above about 165 beats per minute is halved. If your device is set to reduce motion, all reactions to sound are cut to a quarter and several motions are disabled.
 
-**Privacy.** Mirrorfold makes no network requests of its own. The page loads two fonts from Google Fonts, and that is all. An audio file you choose is read by your browser and is not uploaded. Templates, orb progress and the orbs setting are kept in your browser's local storage.
+**Privacy.** Mirrorfold makes no network requests of its own. The page loads two fonts from Google Fonts, and that is all. The VR viewer reads the phone's motion sensor to follow your head; the readings stay on the phone. An audio file you choose is read by your browser and is not uploaded. Templates, orb progress and the orbs setting are kept in your browser's local storage.
 
 ## How it works
 
@@ -197,7 +224,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `index.html` | The app: markup, CSS, GLSL and JavaScript, about 2,150 lines |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/worlds.jpg` | Contact sheet of all 17 worlds |
-| `tools/unit.mjs` | Tests for the change detector and the weighted picker |
+| `tools/unit.mjs` | Tests for the change detector, the weighted picker and the head-turn math |
 | `tools/check.py` | Headless smoke test |
 | `tools/render.py` | Headless screenshots |
 | `tools/harness.py` | Shared code for the two Python tools |
@@ -239,6 +266,7 @@ The app was developed against headless Chrome with software rendering. These hav
 - Whether iOS keeps another app's music playing in Tap tempo mode.
 - Typing in the journey editor on iOS.
 - The home-screen full-screen mode on iPhone, including whether the controls clear the notch.
+- The VR viewer mode: whether the two pictures merge in a real viewer, whether head turning goes the right way, and whether it is comfortable.
 
 Known weak spots: Box and Fortress look grainy, and the controls cover a lot of a phone screen until they fade. Reports from real devices are welcome as issues.
 

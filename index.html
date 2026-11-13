@@ -144,6 +144,7 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
     <button id="bOrbs" type="button" aria-pressed="true">Orbs</button>
     <button id="bShare" type="button">Share spot</button>
     <button id="bFull" type="button">Fullscreen</button>
+    <button id="bVr" type="button" aria-pressed="false">VR viewer</button>
   </div>
   <div class="row" id="rowJourney" hidden>
     <select id="selJT" aria-label="Journey template or set"></select>
@@ -707,35 +708,47 @@ function fragSource(w){
 "#define FOG "+w.fog.toFixed(3),
 (w.volume?"#define VOLUME":"#define SURFACE"),
 "#define VSTEPS "+(isTouch?44:56),
-"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi,uMix;uniform vec3 uOff;uniform vec4 uOrb;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;",
+"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi,uMix;uniform vec3 uOff;uniform vec4 uOrb,uVr;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;",
 "vec4 orb;"
   ].concat(w.glsl,[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "void main(){",
 "  vec2 uv=(2.0*gl_FragCoord.xy-uRes)/sqrt(uRes.x*uRes.y);",
+"  vec2 eo=vec2(0.0);float fov=uFov;",
+"  if(uVr.x>0.5){", /* VR viewer: one picture per eye, side by side. uVr = on, lens centre offset in pixels, tangent per pixel, half the eye spacing */
+"    float sd=gl_FragCoord.x<0.5*uRes.x?-1.0:1.0;",
+"    vec2 q=(gl_FragCoord.xy-vec2(0.5*uRes.x+sd*uVr.y,0.5*uRes.y))*uVr.z;",
+"    float q2=dot(q,q);",
+"    uv=q*(1.0+0.34*q2+0.55*q2*q2);", /* bend each ray the way the viewer's lens will, so straight lines look straight through it */
+"    if(dot(uv,uv)>3.24){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* outside what the lens shows */
+"    eo=vec2(sd*uVr.w,0.0);fov=1.0;",
+"  }",
 "  float r=length(uv);",
 "  if(uSeg>0.5){",
 "    float seg=6.2831853/uSeg;",
-"    float a=mod(atan(uv.y,uv.x)+uSpin,seg);",
-"    a=abs(a-0.5*seg);",
+"    float a0=atan(uv.y,uv.x)+uSpin;float kq=floor(a0/seg);",
+"    float a=a0-kq*seg-0.5*seg;float ta=uSpin-kq*seg-0.5*seg;",
+"    if(a<0.0){ta=-ta;eo.y=-eo.y;}", /* the eye position gets the same turn or flip as the ray, so both eyes see one mirrored scene */
+"    eo=vec2(cos(ta)*eo.x-sin(ta)*eo.y,sin(ta)*eo.x+cos(ta)*eo.y);",
+"    a=abs(a);",
 "    uv=r*vec2(cos(a),sin(a));",
 "  }",
+"  vec3 ro=uPos+uCam*vec3(eo,0.0);",
 "  float tmax=1e9;",
 "#ifdef VOLUME",
-"  vec3 rd=normalize(uCam*vec3(uv,uFov));",
+"  vec3 rd=normalize(uCam*vec3(uv,fov));",
 "  vec3 col=vec3(0.0);",
 "  float t=0.04+0.05*fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);",
 "  float fall=1.0;",
 "  for(int i=0;i<VSTEPS;i++){",
-"    float a=dens(uPos+rd*t);",
+"    float a=dens(ro+rd*t);",
 "    a=VMAP(a);",
 "    col+=(pal(uHue+t*0.22+a*0.3)*a+vec3(0.0009)*fall)*fall;",
 "    fall*=0.93;t+=VSTEP;",
 "  }",
 "  col*=0.9+0.5*uBeat;",
 "#else",
-"  vec3 rd=normalize(uCam*vec3(uv,uFov));",
-"  vec3 ro=uPos;",
+"  vec3 rd=normalize(uCam*vec3(uv,fov));",
 "  float t=0.002;float d=0.0;float steps=0.0;float hit=0.0;",
 "  for(int i=0;i<STEPS;i++){",
 "    d=map(ro+rd*t);",
@@ -770,7 +783,7 @@ function fragSource(w){
 "  col+=pal(uHue+0.7+r*0.1)*gw*gw*gw*0.22;",
 "#endif",
 "  if(uOrb.w>0.0){",
-"    vec3 oc=uOrb.xyz-uPos;float tc=dot(oc,rd);",
+"    vec3 oc=uOrb.xyz-ro;float tc=dot(oc,rd);",
 "    if(tc>0.0&&tc<tmax){",
 "      float R2=uOrb.w*uOrb.w;float d2=max(dot(oc,oc)-tc*tc,0.0);",
 "      float core=1.0-smoothstep(R2*0.3,R2,d2);",
@@ -778,7 +791,7 @@ function fragSource(w){
 "      col+=(vec3(core)+mix(vec3(1.0),pal(uHue+0.15),0.6)*halo)*(0.85+0.15*sin(uTime*2.5));",
 "    }",
 "  }",
-"  col*=clamp(1.0-0.16*r*r,0.35,1.0);",
+"  col*=clamp(1.0-0.16*r*r,0.35,1.0)*(1.0-uVr.x*smoothstep(1.5,1.8,r));",
 "  col*=1.35;col=col/(1.0+0.2*col);",
 "  float lum=dot(col,vec3(0.299,0.587,0.114));",
 "  col=clamp(mix(vec3(lum),col,1.4),0.0,1.0);",
@@ -858,7 +871,7 @@ var FS_BLUR=[
 "}"].join("\n");
 var FS_FINAL=[
 "precision highp float;varying vec2 v;uniform sampler2D uT,uB;uniform float uWarp,uCA,uBloom,uTime,uAsp;uniform vec3 uTint;uniform vec2 uPx;",
-"uniform float uLiq,uMos,uEcho,uEdge,uPost,uSolar,uInv,uHueRot,uTr,uFx,uHue;uniform vec3 uPa,uPb,uPc,uPd;",
+"uniform float uLiq,uMos,uEcho,uEdge,uPost,uSolar,uInv,uHueRot,uTr,uFx,uHue,uVr;uniform vec3 uPa,uPb,uPc,uPd;",
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "const vec3 LW=vec3(0.299,0.587,0.114);",
 "void main(){",
@@ -886,7 +899,8 @@ var FS_FINAL=[
 "  }",
 "  if(uLiq>0.0)cw+=uLiq*vec2(sin(cw.y*14.0+uTime*1.3),cos(cw.x*12.0-uTime*1.1));",
 "  if(uMos>0.0){vec2 n=vec2(uMos*uAsp,uMos);cw=(floor(cw*n)+0.5)/n;}",
-"  float ca=(uCA+0.05*w2)*r*2.0;",
+"  if(uVr>0.5)zb=0.0;", /* VR viewer: no zoom streaks or fringing, they are centred on the screen and not on each eye */
+"  float ca=(uCA+0.05*w2)*r*2.0*(1.0-uVr);",
 "  vec3 col=vec3(0.0);",
 "  for(int i=0;i<4;i++){",
 "    float k=1.0-zb*uWarp*float(i);",
@@ -946,7 +960,7 @@ function link(fs,names){
 }
 function build(w){
   if(w.prog)return;
-  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb"]);
+  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr"]);
   w.prog=o.prog;w.U=o.U;
 }
 /* a hybrid is two worlds' distance fields mixed; the second is sampled at an offset so both can keep wrapping */
@@ -957,7 +971,7 @@ function hybProg(a,b){
   var g=A.glsl.map(function(l){return l.replace("float map(vec3 p)","float mapA(vec3 p)")}).concat(["#undef P"],
         B.glsl.map(function(l){return l.replace("float map(vec3 p)","float mapB(vec3 p)")}),["#undef P",
     "float map(vec3 p){float a=mapA(p);vec4 oa=orb;float b=mapB(p+uOff);orb=mix(oa,orb,uMix);return mix(a,b,uMix);}"]);
-  var o=link(fragSource({glsl:g,fog:(A.fog+B.fog)/2,maxd:Math.max(A.maxd,B.maxd)}),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb"]);
+  var o=link(fragSource({glsl:g,fog:(A.fog+B.fog)/2,maxd:Math.max(A.maxd,B.maxd)}),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr"]);
   hybCache[k]=o;return o;
 }
 var pTrail,pDown,pBlur,pFinal;
@@ -965,7 +979,7 @@ try{
   pTrail=link(FS_TRAIL,["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uPa","uPb","uPc","uPd"]);
   pDown=link(FS_DOWN,["uT","uPx"]);
   pBlur=link(FS_BLUR,["uT","uDir"]);
-  pFinal=link(FS_FINAL,["uT","uB","uWarp","uCA","uBloom","uTint","uTime","uAsp","uPx","uLiq","uMos","uEcho","uEdge","uPost","uSolar","uInv","uHueRot","uTr","uFx","uHue","uPa","uPb","uPc","uPd"]);
+  pFinal=link(FS_FINAL,["uT","uB","uWarp","uCA","uBloom","uTint","uTime","uAsp","uPx","uLiq","uMos","uEcho","uEdge","uPost","uSolar","uInv","uHueRot","uTr","uFx","uHue","uVr","uPa","uPb","uPc","uPd"]);
 }catch(e){errBox.textContent="The effects shaders did not compile on this device.\n"+e.message;return;}
 
 var buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
@@ -1056,6 +1070,7 @@ var morphT=0, time=0, hueT=0, spin=0, baseSpeed=1, curSpeed=0;
 var warp=0, warpDir=0, warpFn=null, pendingWorld=-1;
 var world=null, hyb=null, orb=null, orbT=0, boost=0, gRoll=0, lastHash="";
 var gest={id:null,x:0,y:0,d0:1,a:0,s0:1}, lastTap={t:0,x:0,y:0};
+var stereo=false, vrEye=0.004, gyroPrev=null, wakeLock=null;
 var toastEl=$("toast"),toastTimer=0;
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add("on");clearTimeout(toastTimer);toastTimer=setTimeout(function(){toastEl.classList.remove("on")},2600);}
 function doBoost(){boost=1;}
@@ -1636,6 +1651,68 @@ $("bFull").addEventListener("click",function(){
   wakeHud();
 });
 
+/* ---------- VR viewer ----------
+   For a phone in a Cardboard-style holder: the picture is drawn twice, side by side, and turning your head turns the view.
+   Effects that are centred on the screen (motions, overlays, some filters) are left out while it is on; see frame(). */
+/* which way the screen faces, as a 3x3 matrix (row by row) from screen axes to earth axes; angles in degrees, o is the screen rotation */
+function devMat(al,be,ga,o){
+  var k=Math.PI/180,cA=Math.cos(al*k),sA=Math.sin(al*k),cB=Math.cos(be*k),sB=Math.sin(be*k),cG=Math.cos(ga*k),sG=Math.sin(ga*k);
+  var m=[cA*cG-sA*sB*sG,-cB*sA,cG*sA*sB+cA*sG, cG*sA+cA*sB*sG,cA*cB,sA*sG-cA*cG*sB, -cB*sG,sB,cB*cG];
+  var c=Math.cos(o*k),s=Math.sin(o*k),x,y,i;
+  for(i=0;i<9;i+=3){x=m[i];y=m[i+1];m[i]=x*c-y*s;m[i+1]=x*s+y*c;}
+  return m;
+}
+/* the turn between two of those matrices, as a vector along its axis with the angle as its length, in screen axes (x right, y up, z toward you) */
+function gyroTurn(P,S){
+  var d=function(i,j){return P[i]*S[j]+P[3+i]*S[3+j]+P[6+i]*S[6+j]};
+  var v=[(d(2,1)-d(1,2))/2,(d(0,2)-d(2,0))/2,(d(1,0)-d(0,1))/2];
+  var l=Math.hypot(v[0],v[1],v[2]),th=Math.atan2(l,(d(0,0)+d(1,1)+d(2,2)-1)/2),f=l>1e-9?th/l:1;
+  return [v[0]*f,v[1]*f,v[2]*f];
+}
+function screenAngle(){
+  if(typeof window.orientation==="number")return window.orientation;
+  return (screen.orientation&&screen.orientation.angle)||0;
+}
+function onGyro(e){
+  if(!stereo||e.alpha===null||e.beta===null||e.gamma===null){gyroPrev=null;return;}
+  var S=devMat(e.alpha,e.beta,e.gamma,screenAngle()),P=gyroPrev;gyroPrev=S;
+  if(!P||!started)return;
+  var w=gyroTurn(P,S),an=Math.hypot(w[0],w[1],w[2]);
+  if(an<1e-6||an>0.6)return; /* a jump this large is the screen turning over, not a head */
+  /* the camera's forward axis points into the screen, so turns about right and up change sign */
+  var ax=[(-w[0]*R[0]-w[1]*Up[0]+w[2]*F[0])/an,(-w[0]*R[1]-w[1]*Up[1]+w[2]*F[1])/an,(-w[0]*R[2]-w[1]*Up[2]+w[2]*F[2])/an];
+  F=rot(F,ax,an);Up=rot(Up,ax,an);
+  F=norm(F);R=norm(cross(Up,F));Up=cross(F,R);
+}
+var gyroBound=false;
+function gyroStart(){
+  if(gyroBound||!window.DeviceOrientationEvent)return;
+  var bind=function(){gyroBound=true;window.addEventListener("deviceorientation",onGyro);};
+  if(typeof DeviceOrientationEvent.requestPermission==="function"){ /* iPhone asks the first time */
+    try{
+      DeviceOrientationEvent.requestPermission().then(function(r){
+        if(r==="granted")bind();else toast("Motion access was refused. Drag to look instead.");
+      }).catch(function(){toast("Motion access was refused. Drag to look instead.")});
+    }catch(_){}
+  }else bind();
+}
+function keepAwake(on){
+  try{
+    if(on&&!wakeLock&&navigator.wakeLock){navigator.wakeLock.request("screen").then(function(l){wakeLock=l;l.addEventListener("release",function(){wakeLock=null});if(!stereo)l.release();}).catch(function(){});}
+    else if(!on&&wakeLock){wakeLock.release();wakeLock=null;}
+  }catch(_){}
+}
+function setStereo(on){
+  stereo=!!on;gyroPrev=null;press($("bVr"),stereo);
+  keepAwake(stereo);
+  if(stereo){gyroStart();toast(window.innerWidth<window.innerHeight?"VR viewer on. Turn the phone sideways.":"VR viewer on");}
+  else toast("VR viewer off");
+}
+if(!isTouch)$("bVr").style.display="none";
+$("bVr").addEventListener("click",function(){setStereo(!stereo);wakeHud()});
+window.addEventListener("orientationchange",function(){gyroPrev=null});
+document.addEventListener("visibilitychange",function(){gyroPrev=null;if(!document.hidden&&stereo)keepAwake(true)});
+
 /* ---------- music ----------
    Three sources feed one pair of numbers the visuals read: beat (a pulse that decays) and level (how loud the low end is).
    built: a generative track made here. file: an audio file you pick. tap: no sound from this page, tempo from your taps. */
@@ -2038,7 +2115,7 @@ function frame(now){
   F=rot(F,Up,ax);F=rot(F,R,ay);Up=rot(Up,R,ay);
   var rollT=((keys.KeyE?1:0)-(keys.KeyQ?1:0))*1.2;
   var idle=stick.id===null&&!keys.KeyW&&!keys.KeyS&&!keys.KeyA&&!keys.KeyD;
-  if((drift||journey)&&idle&&!calm)rollT+=0.035;
+  if((drift||journey)&&idle&&!calm&&!stereo)rollT+=0.035; /* no automatic roll in the VR viewer */
   rollIn+=(rollT-rollIn)*(1-Math.exp(-dt*4));
   Up=rot(Up,F,-rollIn*dt);
   if(gRoll!==0){Up=rot(Up,F,gRoll);gRoll=0;}
@@ -2096,7 +2173,13 @@ function frame(now){
   gl.uniform1f(U.uHue,hueT+wHue);
   gl.uniform1f(U.uSpin,spin);
   gl.uniform1f(U.uFade,1);
-  gl.uniform1f(U.uPix,2/(Math.sqrt(tA.w*tA.h)*1.15));
+  /* VR viewer geometry, from the Cardboard viewer's published numbers: lenses 64 mm apart and 39 mm from the screen.
+     The browser does not report the screen's physical size, so one CSS pixel is taken as 0.162 mm, which is close on current phones.
+     Eye spacing follows the distance to the nearest surface, so the world always feels a similar size. */
+  var vrPx=0.000162*canvas.clientWidth/tA.w,vrTan=vrPx/0.039;
+  vrEye+=(Math.max(0.00002,dist*0.021)-vrEye)*(1-Math.exp(-dt*1.5));
+  gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrTan,vrEye);
+  gl.uniform1f(U.uPix,stereo?vrTan:2/(Math.sqrt(tA.w*tA.h)*1.15));
   gl.uniform1f(U.uFov,calm?1.15:(1.15-0.13*spN-0.05*bt-0.25*boost+0.025*Math.sin(time*0.4)));
   gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
   gl.uniform3fv(U.uPa,palCur.a);gl.uniform3fv(U.uPb,palCur.b);gl.uniform3fv(U.uPc,palCur.c);gl.uniform3fv(U.uPd,palCur.d);
@@ -2107,13 +2190,15 @@ function frame(now){
 
   /* 2. feedback: the last frame, warped by the chosen motion and fading, with this frame laid over it */
   var mo=MOTIONS[moi],lk=LOOKS[lki],k60=dt*60,TU=pTrail.U;
+  /* VR viewer: filters that move parts of the picture would show each eye something different, so they are left out */
+  if(stereo&&(lk.echo||lk.mos||lk.liq||lk.hue||(lk.fx>0&&lk.fx<5)))lk=LOOKS[0];
   var tx=hueT+wHue+0.2,tint=[0,0,0];
   for(j=0;j<3;j++)tint[j]=Math.min(1,Math.max(0,palCur.a[j]+palCur.b[j]*Math.cos(6.28318*(palCur.c[j]*tx+palCur.d[j]))));
   var tc=tT[cur],tp=tT[1-cur];
   if(ovi>0)updateWave();
   passTo(tc,pTrail);bindTex(2,ovi>0?waveTex:tA.t);bindTex(1,tp.t);bindTex(0,tA.t);
   gl.uniform1i(TU.uA,0);gl.uniform1i(TU.uB,1);gl.uniform1i(TU.uWv,2);
-  gl.uniform1f(TU.uDecay,Math.pow(Math.max(fx.decay,mo.decay||0,warp>0?0.9:0),k60));
+  gl.uniform1f(TU.uDecay,stereo?0:Math.pow(Math.max(fx.decay,mo.decay||0,warp>0?0.9:0),k60)); /* no trails in the VR viewer: they are warped about the middle of the screen */
   gl.uniform1f(TU.uZoom,Math.pow(mo.zoom||0.994,k60)-0.02*warp-0.012*bt*(mo.kick||0));
   gl.uniform1f(TU.uRot,(mo.rot||0)*k60*(1+1.2*mp));
   gl.uniform1f(TU.uSwirl,(mo.swirl||0)*k60);
@@ -2121,7 +2206,7 @@ function frame(now){
   gl.uniform1f(TU.uRip,(mo.rip||0)*k60*(1+1.5*bt));
   gl.uniform2f(TU.uDrift,(mo.dx||0)*k60,(mo.dy||0)*k60);
   gl.uniform1f(TU.uTime,time);gl.uniform1f(TU.uAsp,tc.w/tc.h);
-  gl.uniform1f(TU.uOv,ovi);gl.uniform1f(TU.uOvBeat,bt);gl.uniform1f(TU.uOvMid,mp);gl.uniform1f(TU.uOvHi,hp);
+  gl.uniform1f(TU.uOv,stereo?0:ovi);gl.uniform1f(TU.uOvBeat,bt);gl.uniform1f(TU.uOvMid,mp);gl.uniform1f(TU.uOvHi,hp);
   gl.uniform1f(TU.uShift,moi>0?Math.min(0.3,(0.05+0.1*hp)*k60):0); /* trails drift through the colour channels so they read apart from the scene */
   gl.uniform1f(TU.uOvAmt,OVS[ovsi]);gl.uniform1f(TU.uHue,hueT+wHue);
   gl.uniform3fv(TU.uPa,palCur.a);gl.uniform3fv(TU.uPb,palCur.b);gl.uniform3fv(TU.uPc,palCur.c);gl.uniform3fv(TU.uPd,palCur.d);
@@ -2139,8 +2224,8 @@ function frame(now){
   var FU=pFinal.U;
   passTo(null,pFinal);bindTex(0,tc.t);bindTex(1,tB[0].t);
   gl.uniform1i(FU.uT,0);gl.uniform1i(FU.uB,1);
-  gl.uniform1f(FU.uWarp,warp);gl.uniform1f(FU.uTr,trType);
-  gl.uniform1f(FU.uCA,fx.ca*(1+1.5*spN)+0.012*boost+(lk.ca||0)+(fi===2?0:0.006*hp));
+  gl.uniform1f(FU.uWarp,warp);gl.uniform1f(FU.uTr,stereo?5:trType);gl.uniform1f(FU.uVr,stereo?1:0); /* VR viewer always uses the blink transition */
+  gl.uniform1f(FU.uCA,stereo?0:fx.ca*(1+1.5*spN)+0.012*boost+(lk.ca||0)+(fi===2?0:0.006*hp));
   gl.uniform1f(FU.uBloom,bloom);
   gl.uniform1f(FU.uTime,time);gl.uniform1f(FU.uAsp,tc.w/tc.h);gl.uniform2f(FU.uPx,1/tc.w,1/tc.h);
   gl.uniform1f(FU.uLiq,(lk.liq||0)*(1+2*mv));gl.uniform1f(FU.uMos,lk.mos||0);gl.uniform1f(FU.uEcho,lk.echo||0);

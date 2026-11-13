@@ -18,6 +18,7 @@ Features, in the order a user meets them:
 - **Music**: a built-in generative track, a user's audio file with a scrubber, or tap tempo for music playing in another app. Three frequency bands drive different parts of the picture.
 - **Journey**: an autopilot that flies, and changes world, palette, mirrors, motion, filter and overlay on jittered clocks. What it may change is set by templates; sets play several templates in turn. Both are user-editable and stored in the browser.
 - **Orbs** to find, **Share spot** links, and a morphing parameter that makes every world breathe.
+- **VR viewer**: side-by-side stereo with gyroscope look, for a phone in a Cardboard-style holder (section 13).
 
 ## 2. Running and deploying
 
@@ -38,7 +39,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | Artifact constraint | Effect on the current code | Now possible |
 |---|---|---|
 | Microphone blocked | No live audio input. Tap tempo exists as the workaround for Apple Music and other apps. | `getUserMedia` to react to any sound in the room. Needs HTTPS, which Pages provides. |
-| Device motion blocked | Look is touch or mouse only. | Gyroscope look on phones (`DeviceOrientationEvent`, needs a permission prompt on iOS). |
+| Device motion blocked | Look was touch or mouse only. | Done for the VR viewer (section 13). Gyroscope look outside that mode is still open. |
 | Only `#name` hashes passed through | Share spot packs all state into one token of letters, digits and a hyphen. | Query strings or richer hashes, if wanted. The current encoding still works. |
 | Scripts only from a short CDN list | No libraries are used. Apple's MusicKit could not load. | Any script. Note that Apple Music audio still cannot be analysed: it is DRM-protected and never reaches Web Audio. |
 | No downloads | Template backup is copy and paste of JSON text. | A real export and import of a `.json` file. |
@@ -421,13 +422,31 @@ Roll is not stored. `applySpot()` restores morph time first, because some period
 
 The HUD fades after 5 seconds without interaction and returns on any touch.
 
+### VR viewer
+
+`setStereo(on)` switches a side-by-side stereo mode for a phone in a Cardboard-style viewer. The button is hidden on devices without touch; the harness can still call `setStereo(true)`.
+
+**Rays.** The scene shader takes `uVr = (on, lens centre offset in buffer pixels, tangent per buffer pixel, half the eye spacing in world units)`. A pixel in the left half of the buffer belongs to the left eye. Its position relative to that eye's lens centre, times the tangent per pixel, is `q`, the tangent of its angle as seen without a lens. The lens is modelled with Cardboard's radial polynomial, `uv = q * (1 + 0.34*|q|^2 + 0.55*|q|^4)`, and the ray is `normalize(uCam * vec3(uv, 1.0))`. Because each pixel's ray is bent the way the lens will bend its light, no separate distortion pass is needed. Pixels with `|uv| > 1.8` are black and are not marched. The ray origin is `uPos + uCam * vec3(eo, 0)` with `eo = (-half, 0)` or `(+half, 0)`.
+
+**Geometry.** Lens spacing is 64 mm and lens-to-screen distance 39 mm (Cardboard V2). The browser does not expose physical screen size, so one CSS pixel is assumed to be 0.162 mm. This is the main source of error and has no user adjustment yet. `uPix` is set to the tangent per pixel so the hit threshold still tracks pixel size.
+
+**Eye spacing.** `vrEye` eases toward `0.021 * dist`, where `dist` is the distance to the nearest surface. That is a 64 mm spacing in a world scaled so the nearest surface is about 1.5 m away. It follows the same idea as flight speed: the world keeps a similar apparent size however deep you fly. Volumetric worlds report a constant distance of 0.2.
+
+**Mirrors.** The fold acts on the ray direction, as in normal mode. For the angle `a0 = atan(uv) + uSpin`, the fold is either a rotation or a reflection of the plane, depending on the wedge. The same rotation or reflection is applied to `eo`. Both eyes' rays through one wedge are then moved by one rigid transform, so depth is consistent inside each wedge.
+
+**Head look.** `onGyro` handles `deviceorientation`. `devMat(alpha, beta, gamma, o)` builds the W3C rotation matrix `Rz(alpha) Rx(beta) Ry(gamma)` and multiplies it by `Rz(-o)`, where `o` is the screen rotation, giving screen axes in earth axes. Working with matrices avoids the jump in the angles when gamma passes 90 degrees, which is where a phone in a viewer sits. `gyroTurn(P, S)` returns the rotation between the previous and current matrix as an axis-angle vector in screen axes (x right, y up, z toward the viewer). That turn is applied to `R`, `Up` and `F` about `-x*R - y*Up + z*F`; the signs differ because the camera's forward axis points into the screen. Only the change between events is used, so the head turn adds to touch look and to the autopilot's steering, and the compass heading does not matter. Turns over 0.6 radians between events are dropped. iOS needs `DeviceOrientationEvent.requestPermission()` from a tap, which the button's click provides.
+
+**What is switched off.** Everything centred on the screen would show each eye something different. In `frame()`: the feedback pass gets decay 0 and no overlay (so it passes the scene through); filters that move pixels (Echo, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl) are treated as none; `FS_FINAL` gets `uVr = 1`, which zeroes zoom blur and colour fringing; the transition type is forced to blink, the only one that is the same for both eyes; the idle roll is skipped. Field-of-view pulsing does not apply because the lens model fixes the field of view. Bloom is kept.
+
+**Screen wake.** `keepAwake` holds a screen wake lock while the mode is on and takes it again when the page becomes visible.
+
 ## 14. Testing
 
 There is no test framework. `tools/` holds what was used during development:
 
 | Command | What it does |
 |---|---|
-| `node tools/unit.mjs` | Extracts `makeChangeDetector` and `jPick` from `index.html` by name and tests them |
+| `node tools/unit.mjs` | Extracts `makeChangeDetector`, `jPick`, `devMat` and `gyroTurn` from `index.html` by name and tests them |
 | `python3 tools/check.py` | Headless smoke test: compiles all worlds, cycles every option, opens the setup panel, runs journey ticks, taps a tempo, starts audio; fails on any script or WebGL error |
 | `python3 tools/render.py ...` | Screenshot one world, or `--all` for a contact sheet; `--js` runs code inside the page |
 
@@ -443,7 +462,7 @@ Things to know about the headless environment:
 
 ### What has and has not been verified
 
-Verified in headless Chrome: every shader compiles; every motion, filter, overlay and transition renders; the journey engine, setup panel, file player and scrubber (both playback paths), tap tempo and spot links work without errors.
+Verified in headless Chrome: the VR viewer renders two lens-shaped pictures with the expected offset between them, with and without mirrors; every shader compiles; every motion, filter, overlay and transition renders; the journey engine, setup panel, file player and scrubber (both playback paths), tap tempo and spot links work without errors.
 
 Not verified, because they need a real device or a human:
 
@@ -454,6 +473,7 @@ Not verified, because they need a real device or a human:
 - Seeking in the streaming fallback on iOS, used for files over 15 minutes.
 - Whether iOS keeps another app's music playing while the page is open in tap mode.
 - Text entry in the setup panel on iOS (`user-select: text` is set on inputs because the body disables selection).
+- Everything about the VR viewer on a real phone: whether the two pictures merge through real lenses, whether the assumed pixel size is close enough, whether head turns go the right way in both landscape directions, whether the autopilot is comfortable, and whether the wake lock holds. The head-turn math is unit tested but the sensor conventions were taken from the specification, not from a device.
 - The home-screen web app mode on iPhone (see section 2): that it opens without Safari's bars, and that the safe-area padding keeps the HUD clear of the notch and home bar.
 
 ## 15. Known weaknesses
@@ -468,7 +488,8 @@ Not verified, because they need a real device or a human:
 
 ## 16. Ideas not yet built
 
-- Microphone input and gyroscope look (both newly possible off the artifact sandbox; see section 2).
+- Microphone input (newly possible off the artifact sandbox; see section 2).
+- VR viewer: a way to set the screen size or lens spacing, comfort options for the autopilot (slower turns, a vignette while turning), trails and overlays redone per eye, and a WebXR mode for real headsets.
 - Export and import of templates as a file.
 - Saving the current look (palette, mirrors, motion, filter, overlay) as a one-tap preset, separate from journey templates.
 - Per-band reaction strength controls.
