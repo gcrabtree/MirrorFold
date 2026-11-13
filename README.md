@@ -133,6 +133,7 @@ The controls at the top of the screen fade after five seconds without input and 
 | Journey | Turns the autopilot on or off. |
 | Mirrors | Steps through off, 3, 4, 6, 8 and 12 segments. |
 | Land | Steps through **Land off**, **Land alone** and **Land over world**. See [The land](#the-land). |
+| Land is | Shown while the land is on. Steps through the landscapes: **the Alps**, **canyon country** and **a strange planet**. |
 | Land colours | Shown while the land is on. **Land colours natural**, **Palette on sky and light**, or **Palette on everything**. |
 | Effects on | Shown for **Land over world**. Whether motions, filters and overlays act on **everything**, **the sky** (the world behind) or **the land**. |
 | FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
@@ -147,12 +148,18 @@ The controls at the top of the screen fade after five seconds without input and 
 
 ## The land
 
-The land is an endless mountain range in the style of the Alps: snow peaks, glaciers, waterfalls and streams, lakes, meadows and conifer forest. From far off a forest is a dark patch. Close up it becomes separate trees, and meadows gain bushes and boulders.
+The land is an endless landscape you fly over. **Land is** chooses which one:
 
-- **Land alone** shows the mountains under a natural sky. No world is drawn.
-- **Land over world** shows the mountains with the current world as the sky. Lakes mirror the world, and far mountains thin into it. The world is only drawn where the land leaves it showing.
+- **The Alps**: snow peaks, glaciers, waterfalls and streams, lakes, meadows and conifer forest. From far off a forest is a dark patch. Close up it becomes separate trees, and meadows gain bushes and boulders.
+- **Canyon country**: a plateau of banded red rock cut by stepped gorges with a river at the bottom, with mesas and buttes standing on the plain, and rock arches and balanced rocks. You can fly under the arches.
+- **A strange planet**: sharp peaks over rippled plains, veins of light in the ground, glowing pools, glowing horns and bulbs, and crystals, rings and slabs that float and turn slowly in the air. Land alone gives it a dark sky with stars and a ringed planet.
 
-You fly over the land the same way as through a world: the stick, **W A S D**, **Drift** and **Journey** all move you forward the way you face, and the land keeps you clear of the ground. **Space** and **Shift** raise and lower how high you fly. With Journey movement set to travel, the autopilot follows the valleys. The horizon is kept level.
+Each landscape can be shown two ways:
+
+- **Land alone** shows the land under its own sky. No world is drawn.
+- **Land over world** shows the land with the current world as the sky. Water mirrors the world, and far land thins into it. The world is only drawn where the land leaves it showing.
+
+You fly over the land the same way as through a world: the stick, **W A S D**, **Drift** and **Journey** all move you forward the way you face, and the land keeps you clear of the ground. **Space** and **Shift** raise and lower how high you fly. With Journey movement set to travel, the autopilot follows the valleys. The horizon is kept level. You are pushed gently aside if you fly into an arch or a floating shape.
 
 **Land colours** decides what the palette does: nothing, tint the sky, sun and haze, or recolour the land and water as well. Mirrors apply to the land. **Effects on** decides what the motion, filter and overlay act on when the land is over a world.
 

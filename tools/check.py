@@ -26,6 +26,9 @@ setTimeout(function(){
   setMotion(2);setLook(5);setOverlay(3);
   /* the land: its shaders compile, each mode and effect target can be chosen, and the JavaScript height is sane */
   setLand(1);setLand(2);setLandTint(1);setLandFx(1);
+  /* every landscape compiles, and its JavaScript height and free-standing shapes give numbers */
+  var lkLog=[];for(var lk=0;lk<LK.length;lk++){setLandKind(lk);lkLog.push($("bLandKind").textContent+":"+(landKind===lk&&!!pLandK[lk])+":"+landH(412,300,6).toFixed(3)+":"+(LK[lk].extra?LK[lk].extra(412,1,300).toFixed(2):"-"));}
+  log("landscapes="+lkLog.join(" | "));
   log("land="+landMode+" built="+!!pLand+" height="+landH(412,300,6).toFixed(3)+" buttons="+$("bLand").textContent+"|"+$("bLandFx").textContent);
   $("bJourney").click();pick("selJT","t:Everything");
   $("bJMove").click();log("movement="+jMove);$("bJMove").click();log("movement="+jMove+" help="+$("aHelp").getAttribute("href"));
