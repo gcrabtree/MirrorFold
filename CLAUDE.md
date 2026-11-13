@@ -13,7 +13,7 @@ python3 tools/check.py                  # headless smoke test: all shaders compi
 python3 tools/render.py --world julia -o out.png          # screenshot one world
 python3 tools/render.py --all -o sheet.jpg                # contact sheet of every world
 python3 tools/render.py --world temple --js "setLook(2)" -o neon.png
-python3 tools/render.py --world sponge --js "setLand(2);setLandFx(1)" -o land.png   # the land over a world; setLand(1) is the land alone; setLandKind(1) canyon, (2) strange planet
+python3 tools/render.py --world sponge --js "setLand(2);setLandFx(1)" -o land.png   # the land over a world; setLand(1) is the land alone; setLandKind(1) canyon, (2) strange planet, (3) steel ball, (4) city
 python3 tools/render.py --world sponge --size 852x393 --js "setStereo(true)" -o vr.png   # VR viewer picture
 ```
 
@@ -22,7 +22,7 @@ The Python tools need `google-chrome` or `chromium` on PATH (they run it headles
 ## Rules that are easy to break
 
 - **Every world has its distance estimator twice**: GLSL in `glsl` (`map`) and JavaScript in `de`. They must match. JavaScript uses it for flight speed, autopilot steering and orb placement.
-- **The land has its height twice too**: the noise sum in `terrL`/`terrM` (in `LAND_T`) and in `landH`, both reading the table `LTAB`, and each landscape's `shape` in its GLSL and in its `LK` entry. They must match. A landscape's free-standing shapes are twice too: `extra` in GLSL and in JavaScript. Its layers use the whole-number matrix `[2 -1; 1 2]` so that it repeats exactly every `LPERIOD`; do not replace it with an arbitrary rotation.
+- **The land has its height twice too**: the noise sum in `terrL`/`terrM` (in `LAND_T`) and in `landH`, both reading the table `LTAB`, and each landscape's `shape` in its GLSL and in its `LK` entry. They must match. A landscape's free-standing shapes are twice too: `extra` in GLSL and in JavaScript. So are the city's blocks (`block` in `citySrc`, `cityBlock` in JavaScript). `shapeU` must never be below `shape` over a range of 0.047 either side. Its layers use the whole-number matrix `[2 -1; 1 2]` so that it repeats exactly every `LPERIOD`; do not replace it with an arbitrary rotation.
 - **The land shader measures from the camera.** World positions go in through `uCi`/`uCf` and the like, worked out in doubles in `landPass`. Do not add a pattern finer than about 1/50 unit that is computed from `uPos` in the shader: it will shake.
 - **Every world's field must be exactly periodic** with its `period`. The camera position is wrapped by that period every frame.
 - **`tools/harness.py` depends on the first and last lines of the script** (`<script>\n(function(){` and `requestAnimationFrame(frame);\n})();`). It asserts on them. If you restructure the script, update the harness in the same change.
