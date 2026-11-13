@@ -87,7 +87,7 @@ Click the picture to capture the mouse. Where the browser does not allow that, d
 | Journey on or off | `J` |
 | Tap tempo | `T` |
 
-The controls at the top of the screen fade after five seconds without input and come back on any touch or mouse movement.
+The controls at the top of the screen fade after five seconds without input and come back on any touch or click.
 
 ## The buttons
 
