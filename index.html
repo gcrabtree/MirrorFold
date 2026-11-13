@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- lets "Add to Home Screen" open the page full screen, without browser bars (iPhone has no fullscreen button) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mirrorfold">
+<meta name="theme-color" content="#05030b">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Mirrorfold</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -97,6 +104,13 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
 #knob{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;
   background:var(--glass);border:1px solid var(--cool)}
 #err{position:fixed;inset:auto 16px 16px 16px;font-size:12px;color:var(--hot);z-index:6;white-space:pre-wrap}
+/* the picture runs under the status bar, notch and home bar; keep controls and panels inside the safe area */
+@supports(padding:max(0px)){
+#hud{top:max(12px,calc(env(safe-area-inset-top) + 6px));left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right))}
+#adv{padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+#start{padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+#err{bottom:max(16px,env(safe-area-inset-bottom))}
+}
 </style>
 </head>
 <body>

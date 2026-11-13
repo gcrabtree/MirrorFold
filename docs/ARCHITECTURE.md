@@ -25,6 +25,10 @@ Open `index.html` in a browser. It works from `file://` and from any static host
 
 For GitHub Pages: put `index.html` at the root of the published branch (or in `/docs` if Pages is set to that folder). The empty `.nojekyll` file stops Pages from running Jekyll over the repo. No configuration is needed.
 
+### Full screen on iPhone
+
+Safari on iPhone has no Fullscreen API for pages, so the Fullscreen button hides itself there. The `<head>` carries `apple-mobile-web-app-capable` and related tags so that "Add to Home Screen" opens the page as a standalone web app without browser bars, with `apple-touch-icon.png` (a crop of `docs/worlds.jpg`) as its icon. The viewport uses `viewport-fit=cover` and the status bar style is `black-translucent`, so the canvas runs under the status bar and notch; a block at the end of the `<style>` pads `#hud`, `#adv`, `#start` and `#err` by `env(safe-area-inset-*)`. A home-screen web app has its own `localStorage`, separate from Safari's.
+
 ### What changed from the Claude artifact version
 
 The app was built as a Claude artifact, which runs in a sandboxed frame with a strict content security policy. The bundled `index.html` differs from the artifact in one place: **Share spot** now builds its link from `location.href` rather than a hard-coded artifact URL.
@@ -450,6 +454,7 @@ Not verified, because they need a real device or a human:
 - Seeking in the streaming fallback on iOS, used for files over 15 minutes.
 - Whether iOS keeps another app's music playing while the page is open in tap mode.
 - Text entry in the setup panel on iOS (`user-select: text` is set on inputs because the body disables selection).
+- The home-screen web app mode on iPhone (see section 2): that it opens without Safari's bars, and that the safe-area padding keeps the HUD clear of the notch and home bar.
 
 ## 15. Known weaknesses
 
