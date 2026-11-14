@@ -105,10 +105,13 @@ a.btn{text-decoration:none;display:inline-block}
 #toast.on{opacity:1}
 @media (max-width:480px){button,select,.btn{font-size:11px;padding:9px 11px}select{padding-right:26px;background-position:right 10px center}}
 .btn{position:relative;display:inline-block}
-#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px 16px;z-index:5;
-  background:radial-gradient(ellipse at center,rgba(5,3,11,.3),rgba(5,3,11,.85));transition:opacity .9s}
+/* the card is centred when it fits and scrolls from its top when it does not, so the warning and the buttons can always be reached.
+   The moving picture behind is dimmed until the visitor has read the warning and chosen to enter. */
+#start{position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;z-index:5;overflow-y:auto;
+  background:radial-gradient(ellipse at center,rgba(5,3,11,.8),rgba(5,3,11,.94));transition:opacity .9s}
 #start.gone{opacity:0;pointer-events:none}
-.card{max-width:420px;display:flex;flex-direction:column;gap:16px;text-align:left}
+.warn{color:var(--ink);border:1px solid var(--hot);border-radius:10px;padding:10px 12px}
+.card{margin:auto 0;max-width:420px;display:flex;flex-direction:column;gap:16px;text-align:left}
 h1{font:300 clamp(34px,11vw,56px)/1 var(--display);margin:0;letter-spacing:-.02em;text-wrap:balance;
   background:linear-gradient(100deg,var(--cool),var(--ink) 45%,var(--hot));-webkit-background-clip:text;background-clip:text;color:transparent}
 p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}

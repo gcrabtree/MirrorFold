@@ -21,7 +21,7 @@ export const VAMT=[.35,.6,.85,1];
 export let vidMode=0,vidAmt=2;   /* positions in VMODES and VAMT */
 export let vidOn=false;          /* a video is loaded and showing */
 let kind="";                     /* the chosen file's type, as the browser names it, for the message if it will not play */
-let sound=false,node=null;       /* the video's sound is wanted as the music, and its connection into the audio graph */
+let sound=false,node=null,musicBefore="off"; /* musicBefore: the music source to go back to when the video's sound is turned off */       /* the video's sound is wanted as the music, and its connection into the audio graph */
 let pScene=null;
 /* the video as the whole scene: fitted to the screen, folded by the mirrors as a world is, and swelling a little on the beat */
 const FS_SCENE=[
@@ -44,6 +44,7 @@ function label(){
   $("bVideo").textContent=vidOn?"Video on":"Video off";
   $("bVidMode").textContent="Video "+VMODES[vidMode].name;
   $("bVidAmt").textContent="Video strength "+Math.round(VAMT[vidAmt]*100)+"%";
+  $("bVidSnd").hidden=!vidFile();$("bVidSnd").textContent=musicMode==="video"?"Video sound on":"Video sound off";
   $("bVidPlay").hidden=!vidOn||!!stream;$("bVidPlay").textContent=el&&el.paused?"Play video":"Pause video";
 }
 export function setVidMode(i){vidMode=i%VMODES.length;label();}
@@ -54,7 +55,7 @@ export function vidAlone(){return vidOn&&!!tV[0]&&!!VMODES[vidMode].alone;} /* t
 export function videoSound(on){
   sound=!!on;if(!el)return;
   if(sound&&!node&&ac){try{node=ac.createMediaElementSource(el);node.connect(bus);}catch(e){}}
-  el.muted=!(sound&&node&&!stream);
+  el.muted=!(sound&&node&&!stream);label();
 }
 /* draw the video as the scene into the picture o */
 export function videoScene(o,seg,spin,bt){
@@ -160,9 +161,15 @@ $("bVideo").addEventListener("click",function(){
 $("vidIn").addEventListener("change",function(){
   var f=this.files&&this.files[0];if(!f)return;
   errBox.textContent="";kind=f.type;var u=URL.createObjectURL(f);videoFrom(u);url=u;
-  setMusic("video");toast("Music is now the video's sound. The Music list changes it.");wakeHud();
+  /* the video's sound becomes the music only if nothing else is playing; otherwise the music carries on and the video is silent */
+  if(musicMode==="off")setMusic("video");
+  toast(musicMode==="video"?"Playing the video with its sound":"Playing the video without its sound. Video sound turns it on.");wakeHud();
 });
 $("bVidCam").addEventListener("click",function(){useCamera();wakeHud()});
+$("bVidSnd").addEventListener("click",function(){
+  if(musicMode==="video")setMusic(musicBefore);else{musicBefore=musicMode;setMusic("video");}
+  wakeHud();
+});
 $("bVidMode").addEventListener("click",function(){setVidMode(vidMode+1);wakeHud()});
 $("bVidAmt").addEventListener("click",function(){setVidAmt(vidAmt+1);wakeHud()});
 $("bVidPlay").addEventListener("click",function(){if(el.paused){var p=el.play();if(p&&p.catch)p.catch(function(){});}else el.pause();wakeHud()});
@@ -172,6 +179,6 @@ label();
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={VMODES, VAMT, FS_SCENE, tV, mNew, mOut, FS_MEAN, VW, FS_VID, label,
   setVidMode, vidFile, vidAlone, videoSound, videoScene, setVidAmt, stopSource, videoOff, element, videoFrom,
-  useCamera, videoFrame, videoUniforms, get vidMode(){return vidMode},set vidMode(v){vidMode=v}, get vidAmt(){return vidAmt},set vidAmt(v){vidAmt=v}, get vidOn(){return vidOn},set vidOn(v){vidOn=v}, get kind(){return kind},set kind(v){kind=v}, get sound(){return sound},set sound(v){sound=v}, get node(){return node},set node(v){node=v}, get pScene(){return pScene},set pScene(v){pScene=v},
-  get el(){return el},set el(v){el=v}, get url(){return url},set url(v){url=v}, get stream(){return stream},set stream(v){stream=v}, get raw(){return raw},set raw(v){raw=v}, get blank(){return blank},set blank(v){blank=v}, get pVid(){return pVid},set pVid(v){pVid=v}, get cur(){return cur},set cur(v){cur=v}, get asp(){return asp},set asp(v){asp=v}, get lastT(){return lastT},set lastT(v){lastT=v}, get tM(){return tM},set tM(v){tM=v},
-  get pMean(){return pMean},set pMean(v){pMean=v}};
+  useCamera, videoFrame, videoUniforms, get vidMode(){return vidMode},set vidMode(v){vidMode=v}, get vidAmt(){return vidAmt},set vidAmt(v){vidAmt=v}, get vidOn(){return vidOn},set vidOn(v){vidOn=v}, get kind(){return kind},set kind(v){kind=v}, get sound(){return sound},set sound(v){sound=v}, get node(){return node},set node(v){node=v}, get musicBefore(){return musicBefore},set musicBefore(v){musicBefore=v},
+  get pScene(){return pScene},set pScene(v){pScene=v}, get el(){return el},set el(v){el=v}, get url(){return url},set url(v){url=v}, get stream(){return stream},set stream(v){stream=v}, get raw(){return raw},set raw(v){raw=v}, get blank(){return blank},set blank(v){blank=v}, get pVid(){return pVid},set pVid(v){pVid=v}, get cur(){return cur},set cur(v){cur=v}, get asp(){return asp},set asp(v){asp=v}, get lastT(){return lastT},set lastT(v){lastT=v},
+  get tM(){return tM},set tM(v){tM=v}, get pMean(){return pMean},set pMean(v){pMean=v}};
