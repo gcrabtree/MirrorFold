@@ -70,6 +70,11 @@ a.btn{text-decoration:none;display:inline-block}
 #ed:not([hidden])~#toast{right:min(360px,48vw)}
 }
 #advMine{display:flex;flex-direction:column;gap:6px}
+#advGal{display:flex;flex-direction:column;gap:8px}
+#advGal:empty{display:none}
+.gal{border:1px solid var(--edge);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.galName{font-size:14px}
+.galName span{color:var(--ink-dim);font-size:12px}
 .advRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .advHead{justify-content:space-between}
 #adv h2{font:300 24px/1.1 var(--display);margin:0}

@@ -4,6 +4,7 @@ import { calm } from "./dom.js";
 import { keys, stick } from "./input.js";
 import { landMode } from "./land.js";
 import { started } from "./loop.js";
+import { still } from "./still.js";
 import { stereo } from "./vr.js";
 export const cam={
   pos:[0,0,0],            /* place in the world, wrapped by the world's period every frame */
@@ -41,11 +42,13 @@ export function turn(fr){
   var kx=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0),ky=(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);
   userLook(kx*dt*1.2,ky*dt*1.2);
   var f=1-Math.exp(-dt*14),ax=cam.lookX*f,ay=cam.lookY*f;cam.lookX-=ax;cam.lookY-=ay;
+  if(still&&Math.abs(cam.lookX)+Math.abs(cam.lookY)<2e-4){ax+=cam.lookX;ay+=cam.lookY;cam.lookX=cam.lookY=0;} /* holding still: finish the turn, so the view comes to a full stop */
   cam.F=rot(cam.F,cam.Up,ax);cam.F=rot(cam.F,cam.R,ay);cam.Up=rot(cam.Up,cam.R,ay);
   var rollT=((keys.KeyE?1:0)-(keys.KeyQ?1:0))*1.2;
   var idle=stick.id===null&&!keys.KeyW&&!keys.KeyS&&!keys.KeyA&&!keys.KeyD;
-  if((drift||travel)&&idle&&!calm&&!stereo&&!landMode)rollT+=0.035*hands; /* no automatic roll in the VR viewer */
+  if((drift||travel)&&idle&&!calm&&!stereo&&!landMode&&!still)rollT+=0.035*hands; /* no automatic roll in the VR viewer */
   cam.rollIn+=(rollT-cam.rollIn)*(1-Math.exp(-dt*4));
+  if(still&&rollT===0&&Math.abs(cam.rollIn)<2e-3)cam.rollIn=0;
   cam.Up=rot(cam.Up,cam.F,-cam.rollIn*dt);
   if(cam.gRoll!==0){cam.Up=rot(cam.Up,cam.F,cam.gRoll);cam.gRoll=0;}
   cam.F=norm(cam.F);cam.R=norm(cross(cam.Up,cam.F));cam.Up=cross(cam.F,cam.R);
@@ -62,11 +65,13 @@ export function move(fr){
   var mx=(keys.KeyD?1:0)-(keys.KeyA?1:0)+stick.x;
   var mz=(keys.KeyW?1:0)-(keys.KeyS?1:0)-stick.y;
   var my=(keys.Space?1:0)-((keys.ShiftLeft||keys.ShiftRight)?1:0);
-  if(started&&idle&&my===0){if(travel)mz+=0.5*ease;else if(drift)mz+=0.3*ease;}
+  if(started&&idle&&my===0){if(travel)mz+=0.5*ease;else if(drift&&!still)mz+=0.3*ease;}
   if(!started){mz=0.18;mx=0;my=0;}
   var sp=Math.min(wSpeed,Math.max(0.012,dist*2.6))*cam.baseSpeed*(1+0.25*lv)*(1+3*cam.boost);
   var tv=[(cam.R[0]*mx+cam.Up[0]*my+cam.F[0]*mz)*sp,(cam.R[1]*mx+cam.Up[1]*my+cam.F[1]*mz)*sp,(cam.R[2]*mx+cam.Up[2]*my+cam.F[2]*mz)*sp];
-  var vf=1-Math.exp(-dt*3.5),per=w.period(m);
+  var rest=still&&mx===0&&my===0&&mz===0; /* holding still with no movement asked for: stop quickly, then fully */
+  var vf=1-Math.exp(-dt*(rest?10:3.5)),per=w.period(m);
+  if(rest&&Math.hypot(cam.vel[0],cam.vel[1],cam.vel[2])<0.002*sp)cam.vel=[0,0,0];
   for(var i=0;i<3;i++){
     cam.vel[i]+=(tv[i]-cam.vel[i])*vf;
     cam.pos[i]+=cam.vel[i]*dt;

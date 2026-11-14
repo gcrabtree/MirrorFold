@@ -10,11 +10,15 @@ import { wakeHud } from "./input.js";
 import { autopilot, jMove, journey, stepJourney } from "./journey.js";
 import { landMode, moveLand } from "./land.js";
 import { setMusic, soundFrame } from "./listen.js";
+import { midiFrame } from "./midi.js";
 import { musicFollowsSpeed } from "./music.js";
 import { stepOrb } from "./orbs.js";
 import { easePalette } from "./palettes.js";
+import { pictureFrame } from "./picture.js";
 import { chipWait } from "./probe.js";
 import { drawBloom, drawFinal, drawScene, drawTrails } from "./render.js";
+import { sparkFrame, stepSpark } from "./spark.js";
+import { still, stillAim, stillBlend } from "./still.js";
 import { statsBegin, statsEnd, statsOn } from "./stats.js";
 import { autoDetail } from "./targets.js";
 import { videoFrame } from "./video.js";
@@ -41,6 +45,7 @@ const notes={
   mx:0,my:0,mz:0,vf:0,         /* this frame's movement input (right, up, forward) and how quickly velocity follows it */
   per:null,spN:0,              /* the world's period, and speed as a part of the most the world allows */
   orbU:[0,0,0,0],              /* where to draw the orb, and its size (0 for none) */
+  sparkU:[0,0,0,0],            /* the same for the thrown light */
   fx:null,wHue:0,              /* the FX setting and the world's hue shift */
   landOn:false,landOver:false, /* the land is drawn; it is drawn over a world */
   src:null,                    /* the picture the effects work on */
@@ -59,15 +64,16 @@ function frame(now){
 
   /* what time it is, what the music is doing */
   soundFrame(notes);
-  tickClock(notes,morph);
+  if(!still)tickClock(notes,morph); /* Hold still stops the clocks, and with them the morph, the colour drift and the turning mirrors */
   stepWarp(dt);
   notes.m=morphValue();
 
   /* flying */
   measure(notes);
   scrubFollow();
-  steering(notes,journey&&jMove==="travel");
-  if(journey&&started){
+  midiFrame(notes);
+  steering(notes,journey&&jMove==="travel"&&!still);
+  if(journey&&started&&!still){
     if(notes.travel)autopilot(notes);
     stepJourney(dt);
   }
@@ -75,15 +81,19 @@ function frame(now){
   move(notes);
   if(landMode)moveLand(notes);
   stepOrb(notes);
+  sparkFrame(notes);stepSpark(notes);
   musicFollowsSpeed(notes.spN);
 
   /* drawing */
   easePalette(dt);
   videoFrame(notes);
+  stillAim(notes);
   drawScene(notes);
+  stillBlend();
   drawTrails(notes);
   drawBloom(notes);
   drawFinal(notes);
+  pictureFrame(); /* Save picture takes the frame now, while it is still on the canvas */
   statsEnd(rawDt);
 }
 

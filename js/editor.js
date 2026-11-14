@@ -6,8 +6,9 @@ import { adv, advFill, mk, uniqueName } from "./journey-panel.js";
 import { saveStore, store } from "./journey.js";
 import { LIB_MAX, NLOOK, NMOT, saveLibrary } from "./library.js";
 import { loadPack, packNow, packSummary, refreshLists } from "./pack-io.js";
-import { cleanFilter, cleanMotion, cleanName, cleanPalette } from "./packs.js";
+import { DRIVE_BY, DRIVE_TO, cleanFilter, cleanMotion, cleanName, cleanPalette } from "./packs.js";
 import { NPAL, PALETTES, setPalette } from "./palettes.js";
+import { loadFile } from "./picture.js";
 import { LOOKS, MOTIONS, sel } from "./state.js";
 let ed=null; /* what the editor has open: {kind,item}, or null */
 export function edClose(){ed=null;$("ed").hidden=true;}
@@ -65,9 +66,10 @@ function edRead(){ /* sliders to the item, by way of the cleaner */
     if(E.rgb)src[r[0]]=[0,1,2].map(function(j){return +$("ed_"+r[0]+j).value});
     else src[r[0]]=+$("ed_"+r[0]).value;
   });
+  if(ed.kind==="m")src.drive=edDriveRead();
   var out=E.clean(src);if(!out)return;
   for(k in out)if(out[k]===0)delete out[k]; /* a control at nothing is left out, as in a hand-written pack */
-  E.rows.forEach(function(r){delete ed.item[r[0]]});
+  E.rows.forEach(function(r){delete ed.item[r[0]]});delete ed.item.drive;
   for(k in out)ed.item[k]=out[k];
   E.rows.forEach(function(r){ /* show what was kept, which can differ from where the slider sits */
     var v=ed.item[r[0]];
@@ -75,6 +77,33 @@ function edRead(){ /* sliders to the item, by way of the cleaner */
     else $("ev_"+r[0]).textContent=edShow(v||0,r);
   });
   edSwatch();saveLibrary();
+}
+/* The motion editor's two drivers. Each is: which control, what drives it, how far, and for the slow wave how long a cycle takes. */
+const DRIVE_BY_LABEL={wave:"a slow wave",bass:"the bass",mid:"the middle notes",high:"the treble"};
+const DRIVE_ROWS=[["amount","How far",-1,1,0.05],["every","Seconds for one wave",8,120,1]];
+function edDriveRead(){
+  var out=[],j,to,by,amt;
+  for(j=0;j<2;j++){
+    to=$("ed_dto"+j).value;by=$("ed_dby"+j).value;amt=+$("ed_damount"+j).value;
+    $("ev_damount"+j).textContent=edShow(amt,DRIVE_ROWS[0]);$("ev_devery"+j).textContent=edShow($("ed_devery"+j).value,DRIVE_ROWS[1]);
+    $("ed_devery"+j).parentNode.hidden=by!=="wave";
+    if(to&&amt!==0)out.push(by==="wave"?{to:to,by:by,amount:amt,every:+$("ed_devery"+j).value}:{to:to,by:by,amount:amt});
+  }
+  return out;
+}
+function edDriveBuild(item){
+  var box=$("edDrive"),j;
+  box.textContent="";
+  for(j=0;j<2;j++)(function(j){
+    var d=(item.drive||[])[j]||{to:"",by:"wave",amount:0.5,every:20};
+    var to=mk("select",{id:"ed_dto"+j,"aria-label":"Driver "+(j+1)+": which control"},[mk("option",{value:"",text:"Nothing is driven"})]);
+    DRIVE_TO.forEach(function(f){var r=ED.m.rows.filter(function(x){return x[0]===f})[0];to.appendChild(mk("option",{value:f,text:"Drive: "+r[1]}))});
+    var by=mk("select",{id:"ed_dby"+j,"aria-label":"Driver "+(j+1)+": driven by"});
+    DRIVE_BY.forEach(function(b){by.appendChild(mk("option",{value:b,text:"by "+DRIVE_BY_LABEL[b]}))});
+    to.value=d.to;by.value=d.by;to.addEventListener("change",edRead);by.addEventListener("change",edRead);
+    box.appendChild(mk("div",{"class":"edGroup"},[mk("span",{"class":"edGroupName",text:"Driver "+(j+1)}),mk("div",{"class":"advRow"},[to,by]),
+      edSlider(DRIVE_ROWS[0],"damount"+j,d.amount,DRIVE_ROWS[0][1],edRead),edSlider(DRIVE_ROWS[1],"devery"+j,d.every||20,DRIVE_ROWS[1][1],edRead)]));
+  })(j);
 }
 function edSimpleShow(){ /* set the plain palette controls to match the palette, without changing it */
   var s=palToSimple(ed.item);
@@ -103,6 +132,11 @@ function edHelpFill(){ /* what each control does, in the order they appear */
     line("Fine tuning","Opens twelve more sliders, for people who want them. A palette is made of three waves, one each for red, green and blue, and these set each wave by itself. Moving one of the controls above sets all twelve again.");
   }
   E.rows.forEach(function(r){line(r[1],r[5])});
+  if(ed.kind==="m"){
+    line("Driver 1, Driver 2","Each can make one control move by itself. Choose the control, and what moves it: a slow wave, or the bass, the middle notes or the treble of the music.");
+    line("How far","How much the control is moved. At 1 a slow wave carries it half its whole range either side of where you set it; the music pushes it one way, by up to half its range. Below 0 it goes the other way. It never passes the ends of its slider.");
+    line("Seconds for one wave","How long the slow wave takes to go there and back. 8 seconds is the quickest.");
+  }
   if(ed.item.code)line("Program","This filter also has a program from its pack. The sliders are added to what the program does and do not change it.");
   box.appendChild(mk("p",{text:"Every change is saved as you make it. Sliders stop at the limits a pack is held to. Done closes the editor."}));
 }
@@ -123,6 +157,7 @@ export function edOpen(kind,i){
     $("edFineRows").appendChild(mk("div",{"class":"edGroup"},kids));
   });
   else E.rows.forEach(function(r){box.appendChild(edSlider(r,r[0],item[r[0]]!==undefined?item[r[0]]:(r[0]==="zoom"?0.994:0),r[1],edRead))});
+  $("edDrive").hidden=kind!=="m";if(kind==="m")edDriveBuild(item);else $("edDrive").textContent="";
   $("edHelp").hidden=true;$("edHelpBtn").setAttribute("aria-expanded","false");edHelpFill();
   adv.hidden=true;$("ed").hidden=false;$("ed").scrollTop=0;edRead();
   if(kind==="p")edSimpleShow();
@@ -209,15 +244,10 @@ $("advSave").addEventListener("click",function(){
 $("advFile").addEventListener("click",function(){$("packIn").click()});
 $("packIn").addEventListener("change",function(){
   var f=this.files&&this.files[0];this.value="";
-  if(!f)return;
-  if(f.size>200000){toast("That file is too big to be a Mirrorfold pack.");return;}
-  var rd=new FileReader();
-  rd.onload=function(){loadPack(String(rd.result))};
-  rd.onerror=function(){toast("That file could not be read.")};
-  rd.readAsText(f);
+  loadFile(f); /* a pack, or a picture saved with Save picture */
 });
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={edClose, ED_SIMPLE, FX_NAMES, palFromSimple, palToSimple, edShow, edHex, edRgb, edSwatch, edRead,
+export const __dbg={DRIVE_BY_LABEL, DRIVE_ROWS, edDriveRead, edDriveBuild, edClose, ED_SIMPLE, FX_NAMES, palFromSimple, palToSimple, edShow, edHex, edRgb, edSwatch, edRead,
   edSimpleShow, edSimpleRead, edSlider, edHelpFill, edOpen, edNew, get ed(){return ed},set ed(v){ed=v}, get ED(){return ED},set ED(v){ED=v}};

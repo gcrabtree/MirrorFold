@@ -1,0 +1,53 @@
+# The gallery's way in. When someone sends the "Offer a pack" issue form, tools/offer.mjs checks the pack with the
+# app's own cleaners. A pack that passes becomes a pull request that adds one file to packs/; one that does not gets
+# a comment saying why. Nothing is published until a maintainer merges the pull request.
+#
+# The issue is data from a stranger. No step puts any of its text into a command: the script reads it from the event
+# file, and the only values handed on are the issue number and a file name the script makes from letters, digits
+# and hyphens.
+#
+# Needs, once, in the repository's settings: a label named "pack", and under Actions > General,
+# "Allow GitHub Actions to create and approve pull requests".
+name: offer
+on:
+  issues:
+    types: [opened, edited]
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+concurrency:
+  group: offer-${{ github.event.issue.number }}
+jobs:
+  offer:
+    if: contains(github.event.issue.labels.*.name, 'pack') && github.event.issue.state == 'open'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: offer
+        run: node tools/offer.mjs
+      # a pull request opened by a workflow does not start the check workflow, so the checks run here
+      - if: steps.offer.outputs.ok == 'true'
+        run: node tools/unit.mjs && node tools/pack.mjs
+      - if: steps.offer.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number }}
+          SLUG: ${{ steps.offer.outputs.slug }}
+        run: |
+          case "$SLUG" in (*[!a-z0-9-]*|"") echo "unexpected file name"; exit 1;; esac
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "pack/$NUMBER"
+          git add packs
+          git commit -m "Gallery: add $SLUG (offered in #$NUMBER)" || echo "nothing new to commit"
+          git push --force origin "pack/$NUMBER"
+          gh pr view "pack/$NUMBER" --json number >/dev/null 2>&1 || gh pr create --base main --head "pack/$NUMBER" --title "Gallery: add $SLUG" --body-file offer-pr.md
+      - if: always() && hashFiles('offer-comment.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUMBER: ${{ github.event.issue.number }}
+        run: gh issue comment "$NUMBER" --body-file offer-comment.md

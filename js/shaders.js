@@ -10,7 +10,7 @@ export function fragSource(w){
 "#define FOG "+w.fog.toFixed(3),
 (w.volume?"#define VOLUME":"#define SURFACE"),
 "#define VSTEPS "+(isTouch?44:56),
-"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi;uniform vec4 uOrb,uVr;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;",
+"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi;uniform vec4 uOrb,uVr,uSpark;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;uniform vec2 uJit;",
 "uniform sampler2D uVid;uniform vec4 uVidK;uniform vec3 uVidS;", /* the video: uVidK = which way it is shown (0 for none), its strength, and the scale that fits it to the screen */
 "vec3 vidLin(vec2 q){vec3 c=texture2D(uVid,q).rgb;return c*c;}", /* the video is stored ready for a screen; the scene works in light, and is made ready for the screen at the end */
 "vec3 vidAt(vec2 q){return vidLin(abs(fract(q*0.5)*2.0-1.0));}", /* repeating, each copy the mirror of its neighbour */
@@ -18,13 +18,23 @@ export function fragSource(w){
 "vec4 orb;"
   ].concat(w.glsl,[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
+/* a glowing ball at o.xyz of size o.w, seen along the ray, if nothing is in front of it: a bright core and a soft halo in a palette colour */
+"vec3 ball(vec4 o,vec3 ro,vec3 rd,float tmax,float hue){",
+"  vec3 oc=o.xyz-ro;float tc=dot(oc,rd);",
+"  if(tc<=0.0||tc>=tmax)return vec3(0.0);",
+"  float R2=o.w*o.w;float d2=max(dot(oc,oc)-tc*tc,0.0);",
+"  float core=1.0-smoothstep(R2*0.3,R2,d2);",
+"  float halo=exp(-d2/(R2*14.0))*0.55+exp(-d2/(R2*120.0))*0.18;",
+"  return vec3(core)+mix(vec3(1.0),pal(uHue+hue),0.6)*halo;",
+"}",
 "void main(){",
 "  if(uLandOn>0.5&&texture2D(uLandT,gl_FragCoord.xy/uRes).a>0.995){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* the land covers this pixel: nothing to draw */
-"  vec2 uv=(2.0*gl_FragCoord.xy-uRes)/sqrt(uRes.x*uRes.y);",
+"  vec2 fc=gl_FragCoord.xy+uJit;", /* Hold still shifts the rays by part of a pixel, a different part each frame, and the frames are averaged */
+"  vec2 uv=(2.0*fc-uRes)/sqrt(uRes.x*uRes.y);",
 "  vec2 eo=vec2(0.0);float fov=uFov;",
 "  if(uVr.x>0.5){", /* VR viewer: one picture per eye, side by side. uVr = on, lens centre offset in pixels, tangent per pixel, half the eye spacing */
 "    float sd=gl_FragCoord.x<0.5*uRes.x?-1.0:1.0;",
-"    vec2 q=(gl_FragCoord.xy-vec2(0.5*uRes.x+sd*uVr.y,0.5*uRes.y))*uVr.z;",
+"    vec2 q=(fc-vec2(0.5*uRes.x+sd*uVr.y,0.5*uRes.y))*uVr.z;",
 "    float q2=dot(q,q);",
 "    uv=q*(1.0+0.34*q2+0.55*q2*q2);", /* bend each ray the way the viewer's lens will, so straight lines look straight through it */
 "    if(dot(uv,uv)>3.24){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* outside what the lens shows */
@@ -45,7 +55,7 @@ export function fragSource(w){
 "#ifdef VOLUME",
 "  vec3 rd=normalize(uCam*vec3(uv,fov));",
 "  vec3 col=vec3(0.0);",
-"  float t=0.04+0.05*fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);",
+"  float t=0.04+0.05*fract(sin(dot(fc,vec2(12.9898,78.233)))*43758.5453);",
 "  float fall=1.0;",
 "  for(int i=0;i<VSTEPS;i++){",
 "    float a=dens(ro+rd*t);",
@@ -98,15 +108,8 @@ export function fragSource(w){
 "  }",
 "  col+=pal(uHue+0.7+r*0.1)*gw*gw*gw*0.22;",
 "#endif",
-"  if(uOrb.w>0.0){",
-"    vec3 oc=uOrb.xyz-ro;float tc=dot(oc,rd);",
-"    if(tc>0.0&&tc<tmax){",
-"      float R2=uOrb.w*uOrb.w;float d2=max(dot(oc,oc)-tc*tc,0.0);",
-"      float core=1.0-smoothstep(R2*0.3,R2,d2);",
-"      float halo=exp(-d2/(R2*14.0))*0.55+exp(-d2/(R2*120.0))*0.18;",
-"      col+=(vec3(core)+mix(vec3(1.0),pal(uHue+0.15),0.6)*halo)*(0.85+0.15*sin(uTime*2.5));",
-"    }",
-"  }",
+"  if(uOrb.w>0.0)col+=ball(uOrb,ro,rd,tmax,0.15)*(0.85+0.15*sin(uTime*2.5));",
+"  if(uSpark.w>0.0)col+=ball(uSpark,ro,rd,tmax,0.6);", /* the thrown light, in another of the palette's colours */
 "  col*=clamp(1.0-0.16*r*r,0.35,1.0)*(1.0-uVr.x*smoothstep(1.5,1.8,r));",
 "  col*=1.35;col=col/(1.0+0.2*col);",
 "  float lum=dot(col,vec3(0.299,0.587,0.114));",

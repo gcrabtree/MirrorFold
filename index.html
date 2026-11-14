@@ -52,16 +52,23 @@
     <button id="bStats" type="button" aria-pressed="false">Stats</button>
     <button id="bMorph" type="button" aria-pressed="true">Morph</button>
     <button id="bDrift" type="button" aria-pressed="true">Drift</button>
+    <button id="bStill" type="button" aria-pressed="false">Hold still</button>
     <button id="bOrbs" type="button" aria-pressed="true">Orbs</button>
+    <button id="bSpark" type="button">Throw a light</button>
     <button id="bShare" type="button">Share spot</button>
+    <button id="bShot" type="button">Save picture</button>
+    <button id="bRec" type="button" aria-pressed="false">Record video</button>
     <button id="bFull" type="button">Fullscreen</button>
     <button id="bVr" type="button" aria-pressed="false">VR viewer</button>
-    <button id="bLib" type="button">Library</button>
+    <button id="bMidi" type="button" aria-pressed="false">Knobs</button>
+    <button id="bLib" type="button">Gallery and library</button>
     <a id="aHelp" class="btn" href="https://github.com/gcrabtree/MirrorFold#readme" target="_blank" rel="noopener">Help and source</a>
   </div>
   <div class="row" id="rowJourney" hidden>
     <select id="selJT" aria-label="Journey template or set"></select>
     <button id="bJMove" type="button">Movement travel</button>
+    <button id="bMore" type="button">More like this</button>
+    <button id="bLess" type="button">Less like this</button>
     <button id="bAdv" type="button">Edit journeys</button>
   </div>
   <div class="row" id="rowVideo" hidden>
@@ -108,16 +115,24 @@
     <div id="advCats"></div>
     <div class="advRow"><button id="advUseT" type="button" class="advGo">Use this template</button></div>
 
+    <p class="advNote">More like this and Less like this, beside the journey list, change how often Journey chooses each world, palette and the rest. Nothing is ever shut out.</p>
+    <div class="advRow"><button id="advForget" type="button">Forget what I liked</button></div>
+
     <h3>Sets</h3>
     <div class="advRow"><select id="advSet" aria-label="Set to edit"></select><button id="advSetNew" type="button">New set</button><button id="advSetDel" type="button">Delete</button></div>
     <p class="advNote" id="advSetLock"></p>
     <div id="advSetBody"></div>
     <div class="advRow"><button id="advUseS" type="button" class="advGo">Use this set</button></div>
 
+    <h3 id="advGalHead">Gallery</h3>
+    <p class="advNote" id="advGalNote">Journeys and packs that people have shared. They are kept with this site, and any picture programs in them have been looked at by a maintainer.</p>
+    <div id="advGal"></div>
+    <div class="advRow"><button id="advOffer" type="button">Offer mine to the gallery</button></div>
+    <p class="advNote">Offering opens a form on GitHub with everything in your library in it, so first remove anything there that is not your own. A check runs on GitHub, and a maintainer looks at the pack before it appears here.</p>
+
     <h3 id="advLibHead">Library</h3>
     <p class="advNote">A pack is a small file of worlds, palettes, motions, filters, overlays, journey templates and sets. Nothing in a pack can reach the page or your data. Worlds, filters and overlays may hold a short picture program, which is checked before use. What you add is saved in this browser only.</p>
-    <div class="advRow" id="advSiteRow" hidden><select id="advSite" aria-label="Packs published with Mirrorfold"></select><button id="advSiteAdd" type="button">Add this pack</button></div>
-    <div class="advRow"><button id="advFile" type="button">Load a pack file</button><button id="advSave" type="button">Save mine as a pack file</button><input id="packIn" type="file" accept=".json,application/json" hidden></div>
+    <div class="advRow"><button id="advFile" type="button">Load a pack file or a saved picture</button><button id="advSave" type="button">Save mine as a pack file</button><input id="packIn" type="file" accept=".json,.png,application/json,image/png" hidden></div>
     <div class="advRow"><button id="advNewP" type="button">New palette</button><button id="advNewM" type="button">New motion</button><button id="advNewF" type="button">New filter</button></div>
     <p class="advNote">New starts from a copy of what is showing now, and opens controls so you can change it while you watch. Each has a Help button.</p>
     <div id="advMine"></div>
@@ -142,6 +157,7 @@
     <p class="advNote" id="edNote" hidden>This palette was not made from two colours, so these controls show the nearest match. Moving one rebuilds the palette from them.</p>
   </div>
   <div id="edRows" class="edGrid"></div>
+  <div id="edDrive" class="edGrid" hidden></div>
   <button id="edFine" type="button" aria-expanded="false" aria-controls="edFineRows" hidden>Fine tuning</button>
   <div id="edFineRows" class="edGrid" hidden></div>
 </div>

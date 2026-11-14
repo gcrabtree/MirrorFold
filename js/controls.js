@@ -6,12 +6,12 @@ import { adv, openAdv } from "./journey-panel.js";
 import { journey, setJourney } from "./journey.js";
 import { landFx, landKind, landMode, landTint, setLand, setLandFx, setLandKind, setLandTint } from "./land.js";
 import { LK } from "./landscapes.js";
-import { fetchText, loadPack, sitePacks } from "./pack-io.js";
 import { encodeSpot } from "./spots.js";
 import { FX, sel } from "./state.js";
 import { DETAIL, di, resize, setDetail } from "./targets.js";
 export let orbsOn=true,morph=true,drift=true; /* the Orbs, Morph and Drift switches */
 let de0;
+export function setFx(i){sel.fi=FX[i]?i:0;$("bFx").textContent="FX "+FX[sel.fi].name;}
 
 
 
@@ -19,12 +19,6 @@ let de0;
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 try{orbsOn=localStorage.getItem("mirrorfold-orbs")!=="off"}catch(_){}
-/* packs published with the site, listed in packs/index.json. Not there when the page is opened straight from a file. */
-$("advSiteAdd").addEventListener("click",function(){
-  var file=$("advSite").value;
-  if(!sitePacks||sitePacks.indexOf(file)<0)return;
-  fetchText("packs/"+file).then(function(t){loadPack(t,"site")},function(){toast("That pack could not be fetched.")});
-});
 $("bAdv").addEventListener("click",function(){openAdv(false)});
 $("bLib").addEventListener("click",function(){openAdv(true)});
 $("advClose").addEventListener("click",function(){adv.hidden=true;wakeHud()});
@@ -46,8 +40,8 @@ $("bLand").addEventListener("click",function(){setLand((landMode+1)%3);wakeHud()
 $("bLandKind").addEventListener("click",function(){setLandKind((landKind+1)%LK.length);wakeHud()});
 $("bLandTint").addEventListener("click",function(){setLandTint((landTint+1)%3);wakeHud()});
 $("bLandFx").addEventListener("click",function(){setLandFx((landFx+1)%3);wakeHud()});
-$("bFx").addEventListener("click",function(){sel.fi=(sel.fi+1)%FX.length;this.textContent="FX "+FX[sel.fi].name;wakeHud()});
-$("bFx").textContent="FX "+FX[sel.fi].name;
+$("bFx").addEventListener("click",function(){setFx((sel.fi+1)%FX.length);wakeHud()});
+setFx(sel.fi);
 $("bDetail").addEventListener("click",function(){
   setDetail((di+1)%DETAIL.length);
   this.textContent="Detail "+DETAIL[di];resize();wakeHud();
@@ -66,4 +60,4 @@ $("bFull").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};
+export const __dbg={setFx, get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};

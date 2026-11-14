@@ -15,6 +15,7 @@ Palettes, motions and filter mixes can be made in the app without writing anythi
  "mirrorfold": 1,
  "name": "Starter pack",
  "author": "your name",
+ "about": "One sentence for the gallery.",
  "palettes": [
   {"name": "Glacier", "a": [0.45, 0.6, 0.7], "b": [0.35, 0.35, 0.3], "c": [1, 1, 1], "d": [0.5, 0.55, 0.6]}
  ],
@@ -37,7 +38,25 @@ Palettes, motions and filter mixes can be made in the app without writing anythi
 }
 ```
 
-`"mirrorfold": 1` is the format version. Every list is optional. Names are 1 to 28 characters.
+`"mirrorfold": 1` is the format version. Every list is optional. Names are 1 to 28 characters. `about` is one plain line of at most 160 characters, shown under the pack's name in the gallery.
+
+### Scene
+
+A pack may also hold one `scene`: a place and the look that goes with it. Loading the pack goes there. **Save picture** in the app writes a pack with a scene into the picture file, which is how a saved picture opens as the place it shows.
+
+```json
+"scene": {"spot": "julia-0123456789abcdef", "palette": "Glacier", "motion": "Slow spin", "filter": "none", "overlay": "none", "mirrors": 6, "fx": "glow", "land": "none"}
+```
+
+| Field | Meaning | Allowed |
+|---|---|---|
+| `spot` | The world and place, exactly as **Share spot** writes it after the `#` in a link | a world id of lower-case letters, a hyphen, then 16 letters and digits; required |
+| `palette`, `motion`, `filter`, `overlay` | Names of the ones to use | 1 to 28 plain characters each |
+| `mirrors` | Number of mirror segments | 0 to 12; only 0, 3, 4, 6, 8 and 12 exist |
+| `fx` | The FX setting | `"glow"`, `"trails"` or `"clean"` |
+| `land` | The land | `"none"`, or a landscape's id followed by ` alone` or ` over`, such as `"alps over"` |
+
+Everything but `spot` is optional. A name the app does not know is passed over, and a palette that is still locked is not used. If the world is not there (it was in a pack the reader does not have, and is not in this one), the scene is not used.
 
 ### Worlds
 
@@ -95,6 +114,24 @@ A motion moves the previous picture a little before the new one is drawn over it
 | `rip` | Rings spreading from the middle, stronger on the beat | 0 to 0.03 |
 | `dx`, `dy` | Steady slide sideways and vertically | -0.012 to 0.012 |
 | `kick` | How strongly the beat pushes the zoom | -1 to 1 |
+| `drive` | Up to two drivers, described next | a list of at most 2 |
+
+#### Drivers
+
+A driver makes one of the motion's numbers move by itself.
+
+```json
+{"name": "Tide", "decay": 0.962, "zoom": 1, "drive": [{"to": "zoom", "by": "wave", "amount": 0.25, "every": 24}, {"to": "rot", "by": "mid", "amount": 0.4}]}
+```
+
+| Field | Meaning | Allowed |
+|---|---|---|
+| `to` | Which number is driven | `"zoom"`, `"rot"`, `"swirl"`, `"wob"`, `"rip"`, `"dx"` or `"dy"` |
+| `by` | What drives it: a slow wave, or the bass, the middle or the treble of the sound | `"wave"`, `"bass"`, `"mid"` or `"high"` |
+| `amount` | How far. At 1 a wave carries the number half its whole range either side of its set value; the sound pushes it one way by up to half its range. Below 0 it goes the other way. | -1 to 1 |
+| `every` | Seconds for one cycle of the wave. Only for `"wave"`. | 8 to 120, 20 if left out |
+
+The driven number is held inside its own range from the table above, whatever the drivers ask for. `decay` and `kick` cannot be driven: trails that came and went with the sound would flicker. A motion with a driver of the wrong shape is refused whole.
 
 ### Filters
 
@@ -207,12 +244,21 @@ A template has one entry for each of `world`, `palette`, `mirrors`, `motion`, `f
 
 ## Adding a pack to this folder
 
+This folder is the gallery. The app lists what `index.json` names, with each pack's name, author, `about` and what it holds.
+
+**The short way.** In the app, open **Gallery and library** and press **Offer mine to the gallery**. It opens a form on GitHub with your pack in it. When you send the form, a check runs (`tools/offer.mjs`, the same cleaners the app uses). If the pack passes, a pull request is opened for you with the pack as one file; anything the app would refuse is left out and named in a comment. If nothing in it passes, the comment says why, and editing the issue tries again.
+
+**By hand.**
+
 1. Make your palettes, motions, filters, overlays and templates. Check them in the app with **Load a pack file**.
-2. Name the file with lower-case letters, digits, `-` and `_`, ending in `.json`.
-3. Add a line for it to `index.json`.
-4. Run `node tools/pack.mjs`. It checks every pack with the same code the app uses, and fails if any value would be refused or changed. The same check runs automatically on every pull request.
-5. Run `python3 tools/check.py` if you can. It loads every pack in this folder in a headless browser and fails if a filter or overlay program does not compile.
-6. Open a pull request.
+2. Give the pack a `name`, an `author` and, if you like, an `about`.
+3. Name the file with lower-case letters, digits, `-` and `_`, ending in `.json`.
+4. Run `node tools/gallery.mjs`. It writes `index.json` from the pack files; do not edit `index.json` by hand.
+5. Run `node tools/pack.mjs`. It checks every pack with the same code the app uses, and fails if any value would be refused or changed, or if `index.json` is out of date. The same check runs automatically on every pull request.
+6. Run `python3 tools/check.py` if you can. It loads every pack in this folder in a headless browser and fails if a filter or overlay program does not compile.
+7. Open a pull request.
+
+**For maintainers.** The offer workflow (`.github/workflows/offer.yml`) needs two things set once in the repository: a label named `pack`, and, under Settings, Actions, General, "Allow GitHub Actions to create and approve pull requests". A pull request it opens does not start the check workflow, so the offer workflow runs the same checks itself before it pushes. It never publishes anything: a pack is in the gallery only once its pull request is merged.
 
 ### Reviewing a pack with programs
 

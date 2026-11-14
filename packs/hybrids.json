@@ -1,0 +1,13 @@
+{
+ "mirrorfold": 1,
+ "name": "Hybrids",
+ "author": "gcrabtree",
+ "about": "Two worlds that mix two kinds of fold in one loop: tetrahedra strung with beads, and a cage of bubbles. With a journey through both.",
+ "worlds": [
+  {"name": "Tetra bulbs", "hue": 0.6, "fog": 0.1, "maxd": 14, "speed": 0.6, "period": [4, 4, 4], "code": "vec3 z=abs(p);float dr=1.0;float f=0.9+0.15*m;for(int i=0;i<5;i++){if(z.x+z.y<0.0)z.xy=-z.yx;if(z.x+z.z<0.0)z.xz=-z.zx;if(z.y+z.z<0.0)z.yz=-z.zy;z=z*2.0-vec3(1.0);dr*=2.0;float k=clamp(f/dot(z,z),1.0,3.0);z*=k;dr*=k;}orb=vec4(abs(z)*0.4,dot(z,z)*0.1);return (length(z)-1.2)/dr*0.6;"},
+  {"name": "Kleinian cage", "hue": 0.05, "fog": 0.16, "maxd": 12, "speed": 0.5, "period": [2, 2, 2], "code": "vec3 z=abs(p);float sc=1.0;float s=1.25+0.1*m;for(int i=0;i<6;i++){z=-1.0+2.0*fract(0.5*z+0.5);z=abs(z);if(z.x<z.y)z.xy=z.yx;if(z.x<z.z)z.xz=z.zx;float k=s/dot(z,z);z*=k;sc*=k;}orb=vec4(abs(z),sc*0.01);return 0.25*abs(z.y)/sc;"}
+ ],
+ "templates": [
+  {"name": "Hybrid tour", "world": {"mode": "random", "every": 70, "set": ["packtetrabulbs", "packkleiniancage"]}, "palette": {"mode": "random", "every": 30}, "mirrors": {"mode": "off"}, "motion": {"mode": "off"}, "filter": {"mode": "off"}, "overlay": {"mode": "off"}}
+ ]
+}

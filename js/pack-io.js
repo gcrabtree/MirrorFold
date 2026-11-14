@@ -1,14 +1,18 @@
 /* Packs in and out: loading a pack, saving your own, the packs published with the site, and the library list. */
-import { fillLooks, fillMotions, fillOverlays, fillWorlds } from "./choose.js";
+import { fillLooks, fillMotions, fillOverlays, fillWorlds, requestWorld, scene, setLook, setMirrors, setMotion, setOverlay } from "./choose.js";
+import { setFx } from "./controls.js";
 import { $, gl, toast } from "./dom.js";
 import { ED, edOpen } from "./editor.js";
 import { advFill, advPick, advS, advT, mk } from "./journey-panel.js";
-import { BUILTIN_S, BUILTIN_T, adopt, catOf, fillJT, findS, findT, journey, saveStore, selectJourney, store } from "./journey.js";
+import { BUILTIN_S, BUILTIN_T, adopt, catOf, fillJT, findS, findT, jCur, journey, saveStore, selectJourney, store } from "./journey.js";
+import { setLand, setLandKind } from "./land.js";
+import { LK } from "./landscapes.js";
 import { NLOOK, NMOT, NOV, addToLibrary, myFilters, myOverlays, myWorlds, saveLibrary, worldDrop } from "./library.js";
 import { NWORLD } from "./pack-worlds.js";
-import { cleanName } from "./packs.js";
-import { NPAL, PALETTES, fillPalettes } from "./palettes.js";
-import { LOOKS, MOTIONS, OVERLAYS, sel } from "./state.js";
+import { cleanFilter, cleanMotion, cleanName, cleanOverlay, cleanPalette, cleanScene, cleanWorld } from "./packs.js";
+import { NPAL, PALETTES, fillPalettes, palOpen, setPalette } from "./palettes.js";
+import { applySpot, encodeSpot } from "./spots.js";
+import { FX, LOOKS, MOTIONS, OVERLAYS, mirrors, sel } from "./state.js";
 import { WORLDS } from "./worlds.js";
 
 /* ---------- packs: saving, loading and the library list ---------- */
@@ -32,6 +36,45 @@ export function packSummary(k){ /* "2 palettes, 1 filter and 3 templates": only 
   var last=parts.pop();
   return parts.length?parts.join(", ")+" and "+last:last;
 }
+/* The scene showing now: the place, as Share spot writes it, and the look by name. */
+export function sceneNow(){
+  return {spot:encodeSpot(),palette:PALETTES[sel.pi].name,motion:MOTIONS[sel.moi].name,filter:LOOKS[sel.lki].name,overlay:OVERLAYS[sel.ovi].name,
+          mirrors:mirrors[sel.mi],fx:FX[sel.fi].name,land:jCur("land")};
+}
+/* A pack that holds the scene and whatever it uses that is not built in, so that someone else can open it. Save picture puts this in the file. */
+export function packOfScene(){
+  var k={mirrorfold:1,name:"Picture",scene:sceneNow()};
+  if(sel.pi>=NPAL)k.palettes=[cleanPalette(PALETTES[sel.pi])];
+  if(sel.moi>=NMOT)k.motions=[cleanMotion(MOTIONS[sel.moi])];
+  if(sel.lki>=NLOOK)k.filters=[cleanFilter(LOOKS[sel.lki])];
+  if(sel.ovi>=NOV)k.overlays=[cleanOverlay(OVERLAYS[sel.ovi])];
+  if(scene.world.pack)k.worlds=[cleanWorld(scene.world.src)];
+  return k;
+}
+/* Go to a scene that cleanScene has passed. False if its world is not here. */
+export function goScene(sc){
+  var id=sc.spot.split("-")[0],wi=-1,i;
+  var at=function(list,name){for(var j=0;j<list.length;j++)if(list[j].name===name)return j;return -1};
+  for(i=0;i<WORLDS.length;i++)if(WORLDS[i].id===id)wi=i;
+  if(wi<0)return false;
+  requestWorld(wi,true,function(){
+    var j,sp;
+    applySpot(sc.spot.split("-")[1]);
+    if(sc.palette&&(j=at(PALETTES,sc.palette))>=0&&palOpen(j))setPalette(j);
+    if(sc.motion&&(j=at(MOTIONS,sc.motion))>=0)setMotion(j);
+    if(sc.filter&&(j=at(LOOKS,sc.filter))>=0)setLook(j);
+    if(sc.overlay&&(j=at(OVERLAYS,sc.overlay))>=0)setOverlay(j);
+    if(sc.mirrors!==undefined&&(j=mirrors.indexOf(sc.mirrors))>=0)setMirrors(j);
+    if(sc.fx&&(j=at(FX,sc.fx))>=0)setFx(j);
+    if(sc.land){
+      sp=sc.land.split(" ");
+      if(sc.land==="none")setLand(0);
+      else for(j=0;j<LK.length;j++)if(LK[j].id===sp[0]){setLandKind(j);setLand(sp[1]==="over"?2:1);}
+    }
+    scene.lastHash=sc.spot;try{location.hash=sc.spot}catch(_){}
+  });
+  return true;
+}
 export function loadPack(txt,from){
   var raw=null;
   if(typeof txt==="string"&&txt.length<=200000){try{raw=JSON.parse(txt)}catch(e){}}
@@ -40,14 +83,17 @@ export function loadPack(txt,from){
   var n=addToLibrary(raw,from==="site"?"site":undefined);
   if(n.p||n.m||n.f||n.o||n.w){saveLibrary();refreshLists();} /* before the templates, so they can name what was just added */
   var got=adopt(raw);
-  if(!n.p&&!n.m&&!n.f&&!n.o&&!n.w&&!got.tpls.length&&!got.sets.length){toast("Nothing in that pack could be used.");return false;}
+  var sc=cleanScene(raw.scene),went=!!sc&&goScene(sc); /* after the library, so the scene can use what came with it */
+  if(!n.p&&!n.m&&!n.f&&!n.o&&!n.w&&!got.tpls.length&&!got.sets.length){
+    toast(went?"Going to that scene.":sc?"That scene is in a world this copy does not have.":"Nothing in that pack could be used.");return went;
+  }
   var tn=got.tpls.map(function(q){return q.name}),sn=got.sets.map(function(q){return q.name});
   store.tpls=store.tpls.filter(function(q){return tn.indexOf(q.name)<0}).concat(got.tpls);
   store.sets=store.sets.filter(function(q){return sn.indexOf(q.name)<0}).concat(got.sets);
   advPick(findT(advT.name)||BUILTIN_T[0],findS(advS.name)||BUILTIN_S[0]);
   if(journey)selectJourney(store.sel);
   saveStore();fillJT();advFill();
-  toast("Loaded "+packSummary({worlds:{length:n.w},palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},overlays:{length:n.o},templates:got.tpls,sets:got.sets})+".");
+  toast("Loaded "+packSummary({worlds:{length:n.w},palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},overlays:{length:n.o},templates:got.tpls,sets:got.sets})+(went?", and going to its scene.":"."));
   return true;
 }
 function libRemove(kind,i){
@@ -75,21 +121,5 @@ export function advRenderLib(){ /* the palettes and motions that came from packs
   if(!box.firstChild)box.appendChild(mk("p",{"class":"advNote",text:"Nothing added yet."}));
 }
 
-export let sitePacks=null; /* the packs published with the site, once packs/index.json has been fetched */
-export function fetchText(url){return fetch(url,{cache:"no-cache"}).then(function(r){if(!r.ok)throw new Error("missing");return r.text()})}
-export function loadSitePacks(){
-  if(sitePacks||typeof fetch!=="function"||location.protocol==="file:")return;
-  sitePacks=[];
-  fetchText("packs/index.json").then(function(t){
-    var list=JSON.parse(t),sel=$("advSite");
-    (Array.isArray(list)?list:[]).slice(0,200).forEach(function(e){
-      var file=e&&String(e.file||""),name=cleanName(e&&e.name),by=cleanName(e&&e.author);
-      if(!/^[a-z0-9][a-z0-9_-]*\.json$/.test(file)||!name)return; /* a plain file name in the packs folder, nothing else */
-      sitePacks.push(file);sel.appendChild(mk("option",{value:file,text:name+(by?" by "+by:"")}));
-    });
-    $("advSiteRow").hidden=!sitePacks.length;
-  }).catch(function(){sitePacks=null});
-}
-
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={refreshLists, count, packNow, packSummary, loadPack, libRemove, advRenderLib, fetchText, loadSitePacks, get sitePacks(){return sitePacks},set sitePacks(v){sitePacks=v}};
+export const __dbg={sceneNow, packOfScene, goScene, refreshLists, count, packNow, packSummary, loadPack, libRemove, advRenderLib};

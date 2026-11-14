@@ -8,6 +8,8 @@ import { musicMode, setMusic, tap } from "./listen.js";
 import { started } from "./loop.js";
 import { setPalette } from "./palettes.js";
 import { mirrors, sel } from "./state.js";
+import { askSpark } from "./spark.js";
+import { setStill, still } from "./still.js";
 import { tr } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 export const keys={}; /* which keys are down, by code */
@@ -33,7 +35,7 @@ function release(e){
     }
   }
 }
-function stepWorld(stp){
+export function stepWorld(stp){
   var n=WORLDS.length,c=(tr.pendingWorld>=0&&tr.warpDir>0)?tr.pendingWorld:WORLDS.indexOf(scene.world);
   requestWorld((c+stp+n)%n);
 }
@@ -101,6 +103,8 @@ window.addEventListener("keydown",function(e){
     if(e.code==="KeyP")setPalette(sel.pi+1);
     if(e.code==="KeyJ")setJourney(!journey);
     if(e.code==="KeyB")doBoost();
+    if(e.code==="KeyG")askSpark();
+    if(e.code==="KeyH"){setStill(!still);toast(still?"Holding still":"Moving again");}
     if(e.code==="KeyT"){if(musicMode!=="tap")setMusic("tap");tap();}
     if(/^Digit[1-9]$/.test(e.code))requestWorld(+e.code.slice(5)-1);
     if(e.code==="BracketRight")stepWorld(1);

@@ -11,11 +11,14 @@ import { liveAudio, soundChanged } from "./listen.js";
 import { packD } from "./pack-worlds.js";
 import { PALETTES, palOpen, setPalette } from "./palettes.js";
 import { LOOKS, MOTIONS, OVERLAYS, mirrors, sel } from "./state.js";
-import { keepAwake } from "./vr.js";
+import { setStill } from "./still.js";
+import { pickWeighted, saveTaste, taste, tasteClear, tasteCount, tasteNudge, tasteOf } from "./taste.js";
+import { keepAwake, stereo } from "./vr.js";
 import { tr, warpThen } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 export let jt; /* the template in use */
 export let journey=false;   /* Journey is on */
+export let jLast="";         /* the category Journey changed most recently, for Less like this */
 export let jMove="travel";  /* "travel" flies and steers for you; "drift" leaves the flying to you and only changes the scenery */
 export function jtReset(){jt=BUILTIN_T[0];}
 export let CATS, BUILTIN_T, BUILTIN_S, jset;
@@ -68,25 +71,48 @@ export function jApply(k,key){ /* false means it could not start yet (a transiti
   return true;
 }
 export function jPool(k,cfg){
-  var out=[];
+  var out=[],flat=[];
   catOf(k).opts.forEach(function(o,i){
     if(cfg.set&&cfg.set.indexOf(o[0])<0)return;
     if(k==="palette"&&!palOpen(i))return;
+    /* VR viewer: a cloud world has no surfaces for two eyes to place, so it looks flat. Journey passes over them, unless they are all the template allows. */
+    if(k==="world"&&stereo&&WORLDS[i]&&WORLDS[i].volume){flat.push(o[0]);return;}
     out.push(o[0]);
   });
-  return out;
+  return out.length?out:flat;
 }
 export function jPick(k,cfg,cur,pool){
   if(!pool.length)return cur;
   if(k==="mirrors"&&cfg.none!=="even"&&pool.indexOf("0")>=0){ /* weighted toward no mirrors */
     var rest=pool.filter(function(x){return x!=="0"});
     if(!rest.length||Math.random()<(cfg.none==="50"?0.5:0.75))return "0";
-    return rest[Math.floor(Math.random()*rest.length)];
+    return pickWeighted(rest,liked,Math.random());
   }
   var others=pool.filter(function(x){return x!==cur});
   if(!others.length)return pool[0];
-  return others[Math.floor(Math.random()*others.length)];
+  return pickWeighted(others,liked,Math.random()); /* an even chance each, unless More like this or Less like this has said otherwise */
+  function liked(x){return tasteOf(taste,k,x)}
 }
+/* More like this: everything Journey is choosing that is showing now becomes more likely to be chosen again. */
+export function jMore(){
+  var n=0;
+  CATS.forEach(function(c){if(jt[c.k].mode==="random"){tasteNudge(taste,c.k,jCur(c.k),1.4);n++;}});
+  saveTaste();
+  toast(n?"Journey will choose what is showing now more often.":"This journey chooses nothing, so there is nothing to like.");
+}
+/* Less like this: the last thing Journey changed becomes less likely, and is changed again now. */
+export function jLess(){
+  var k=jLast&&jt[jLast].mode==="random"?jLast:"",i,c;
+  for(i=0;i<CATS.length&&!k;i++)if(jt[CATS[i].k].mode==="random")k=CATS[i].k;
+  if(!k){toast("This journey chooses nothing, so there is nothing to change.");return;}
+  var cur=jCur(k),o=catOf(k).opts,name=cur;
+  for(i=0;i<o.length;i++)if(o[i][0]===cur)name=o[i][1];
+  tasteNudge(taste,k,cur,0.6);saveTaste();
+  c=jt[k];
+  if(jApply(k,jPick(k,c,cur,jPool(k,c))))jReset(k);else J[k].t=J[k].next+1; /* a transition is running: change as soon as it ends */
+  toast("Less of "+JNAME[k]+" "+name+".");
+}
+export const JNAME={world:"the world",palette:"the palette",mirrors:"mirrors",motion:"the motion",filter:"the filter",overlay:"the overlay",land:"the land"};
 export function applyTemplate(t,announce){
   jt=t;
   CATS.forEach(function(c){
@@ -126,13 +152,13 @@ function setJMove(mv){
 }
 export function setJourney(on){
   journey=on;press($("bJourney"),on);$("rowJourney").hidden=!on;
-  if(on)selectJourney(store.sel);
+  if(on){selectJourney(store.sel);setStill(false);} /* Journey cannot fly while held still, so turning it on lets go */
   keepAwake();
 }
 
 /* Travel: steer toward open space. Over land that means toward whichever side is lower, keeping to the valleys with the view a little below level; in a world it means comparing the distance to the right, left, up and down. */
 export function autopilot(fr){
-  var dt=fr.dt,hands=fr.hands,dist=fr.dist,pk=fr.pk,m=fr.m;
+  var dt=fr.dt,hands=fr.hands*(stereo?0.5:1),dist=fr.dist,pk=fr.pk,m=fr.m; /* VR viewer: the autopilot turns at half speed, which is easier on the stomach */
   if(landMode){ /* over land the autopilot turns toward whichever side is lower, so it keeps to the valleys, and holds the view a little below level */
     var lrx=lhead[1],lrz=-lhead[0],lc=Math.cos(0.55)*1.3,ls=Math.sin(0.55)*1.3;
     var hL=landH(lpos[0]+lhead[0]*lc-lrx*ls,lpos[2]+lhead[1]*lc-lrz*ls,4),hR=landH(lpos[0]+lhead[0]*lc+lrx*ls,lpos[2]+lhead[1]*lc+lrz*ls,4);
@@ -162,7 +188,7 @@ export function stepJourney(dt){
     if(ck==="world"&&cf.trigger==="sound"&&liveAudio()){ /* wait for the music to shift, but never forever */
       due=(soundChanged&&J.world.t>Math.max(10,cf.every*0.25))||J.world.t>cf.every*2.5;
     }
-    if(due&&jApply(ck,jPick(ck,cf,jCur(ck),jPool(ck,cf))))jReset(ck);
+    if(due&&jApply(ck,jPick(ck,cf,jCur(ck),jPool(ck,cf)))){jReset(ck);jLast=ck;}
   }
 }
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */
@@ -212,10 +238,13 @@ $("bJMove").addEventListener("click",function(){
   setJMove(jMove==="travel"?"drift":"travel");
   toast(jMove==="travel"?"Journey flies for you":"Journey leaves the flying to you");wakeHud();
 });
+$("bMore").addEventListener("click",function(){jMore();wakeHud()});
+$("bLess").addEventListener("click",function(){jLess();wakeHud()});
+$("advForget").addEventListener("click",function(){var n=tasteCount();tasteClear();toast(n?"Forgotten. Journey chooses evenly again.":"There was nothing to forget.")});
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
+export const __dbg={jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
   findT, findS, jCur, jNone, jIndex, jApply, jPool, jPick, applyTemplate, advanceSet,
   selectJourney, fillJT, setJMove, setJourney, autopilot, stepJourney, J, jReset, jResetAll, get jt(){return jt},set jt(v){jt=v},
   get journey(){return journey},set journey(v){journey=v}, get jMove(){return jMove},set jMove(v){jMove=v}, get CATS(){return CATS},set CATS(v){CATS=v}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v}, get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get jset(){return jset},set jset(v){jset=v}};
