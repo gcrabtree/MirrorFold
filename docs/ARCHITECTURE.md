@@ -354,7 +354,7 @@ A world change (and a journey mirror change) runs `warp` from 0 to 1 over 0.5 s,
 
 `js/video.js` shows a video file the user picks, or the camera, in the picture. Nothing is uploaded or kept, the video is muted, and a pack cannot name a video. The frame step `videoFrame` runs before the drawing steps; `videoUniforms` hands the result to the scene shader and the trails pass on texture unit 5 (`uVid`, `uVidK` = way, strength, fit to screen; `uVidS` = repeat scale on surfaces).
 
-Six ways (`VMODES`), chosen with the "Video …" button:
+Five ways (`VMODES`), chosen with the "Video …" button:
 
 | Way | Where | What it does |
 |---|---|---|
@@ -362,12 +362,11 @@ Six ways (`VMODES`), chosen with the "Video …" button:
 | through the shapes | scene shader | Flat on the screen, used as the surface colour and lit more evenly. The video stays recognisable with the world embossed into it. |
 | in the distance | scene shader | Takes the place of the fog colour, so far things fade into the video. Only shows on open worlds. |
 | in the overlay | trails pass | The overlay's shapes are drawn seven times wider (`wd`) and replace what is under them with the video. Works with pack overlays too. |
-| as trails | trails pass | Added to the dark parts of the scene before the feedback, so the motion smears it. |
 | as the colours | scene shader | The surface colour is read from the video at a point given by the orbit trap, so the fractal is striped with the video's colours. True 3D. |
 
 **The flash limit.** The shaders never read the video itself. They read `tV`, a 640-wide copy that `videoFrame` moves towards the newest frame. Each frame a 4 by 4 picture of the new frame's average colours (`pMean`, read back into `mNew`) is compared with the same averages of the copy (`mOut`, tracked in JavaScript, since the blend is linear). The blend amount is cut so that no sixteenth's average changes by more than 0.6 of full brightness a second (0.3 with reduced motion). Measured: a clip strobing black to white at 5 Hz comes through as a ripple of about 6%; ordinary footage is followed within a level or two; a hard cut becomes a fade of up to a second. Do not hand the raw texture to any shader.
 
-Not done: the video's sound, the land (it ignores the video; the two trails ways still work over it), cloud worlds (same), a journey category, remembering the choice, any test on a real phone. The smoke test does not cover it, because headless Chrome's virtual clock does not run a video; it was tried with Playwright and three made-up clips.
+Not done: the video's sound, the land (it ignores the video; only the overlay way works over it), cloud worlds (same), a journey category, remembering the choice, any test on a real phone. The smoke test does not cover it, because headless Chrome's virtual clock does not run a video; it was tried with Playwright and three made-up clips.
 
 ## 9. Palettes
 

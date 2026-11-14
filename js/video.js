@@ -12,7 +12,6 @@ export const VMODES=[
  {name:"through the shapes"},       /* flat on the screen, seen only where there is a surface, lit as the surface is */
  {name:"in the distance"},          /* flat on the screen, behind everything: the world fades into it with distance */
  {name:"in the overlay"},           /* the overlay's lines and shapes are windows onto it */
- {name:"as trails"},                /* laid into the trails, so the motion smears it */
  {name:"as the colours",d3:true}    /* the world's colouring reads its colours from the video */
 ];
 export const VAMT=[.35,.6,.85,1];

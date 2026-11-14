@@ -87,7 +87,7 @@ export function fragSource(w){
 "        vec3 q=p*uVidS;vec3 wt=pow(abs(n),vec3(6.0));wt/=wt.x+wt.y+wt.z;",
 "        base=mix(base,vidAt(q.zy)*wt.x+vidAt(q.xz)*wt.y+vidAt(q.xy)*wt.z,uVidK.y);",
 "      }else if(uVidK.x<2.5){vk=uVidK.y;lit=mix(lit,0.55+0.5*lit,vk);base=mix(base,vidScr(),vk);}", /* through the shapes: lit more evenly, so the video reads as one picture */
-"      else if(uVidK.x>5.5)base=mix(base,vidAt(vec2(tr.w*1.6+0.3*tr.x,tr.y*2.0+tr.z)),uVidK.y);", /* as the colours: where the fractal's own measures say */
+"      else if(uVidK.x>4.5)base=mix(base,vidAt(vec2(tr.w*1.6+0.3*tr.x,tr.y*2.0+tr.z)),uVidK.y);", /* as the colours: where the fractal's own measures say */
 "    }",
 "    float bands=smoothstep(0.75,1.0,0.5+0.5*sin(tr.w*24.0-uTime*1.2));",
 "    float ao=max(1.0-gw,0.0);ao*=sqrt(ao);",
@@ -124,8 +124,7 @@ export const FS_TRAIL=[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "void main(){",
 "  vec3 s=texture2D(uA,v).rgb;",
-"  vec3 vs=uVidK.x>3.5?texture2D(uVid,(v-0.5)*uVidK.zw+0.5).rgb:vec3(0.0);",
-"  if(uVidK.x>4.5&&uVidK.x<5.5)s+=vs*uVidK.y*(1.0-smoothstep(0.0,0.45,dot(s,vec3(0.299,0.587,0.114))));", /* video as trails: laid into the dark parts of the scene, so the world stays in front and the motion carries the video */
+"  vec3 vs=uVidK.x>3.5&&uVidK.x<4.5?texture2D(uVid,(v-0.5)*uVidK.zw+0.5).rgb:vec3(0.0);",
 "  vec2 c=v-0.5;c.x*=uAsp;float r=length(c);",
 "  float ang=uRot+uSwirl*(0.5-r);float cs=cos(ang),sn=sin(ang);",
 "  c=vec2(cs*c.x-sn*c.y,sn*c.x+cs*c.y)*uZoom;",
