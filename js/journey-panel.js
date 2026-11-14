@@ -4,7 +4,8 @@ import { edClose } from "./editor.js";
 import { wakeHud } from "./input.js";
 import { BUILTIN_S, BUILTIN_T, CATS, MODE_LABEL, allS, allT, applyTemplate, fillJT, findS, findT, journey, jt,
   jtReset, normS, normT, saveStore, selectJourney, setJourney, store } from "./journey.js";
-import { advRenderLib, loadSitePacks } from "./pack-io.js";
+import { loadGallery } from "./gallery.js";
+import { advRenderLib } from "./pack-io.js";
 export let advT,advS; /* the template and the set the panel is showing */
 export function advPick(t,s){if(t)advT=t;if(s)advS=s;} /* choose which template and set the panel shows */
 export let adv;
@@ -101,7 +102,7 @@ export function openAdv(toLibrary){
   var cur=store.sel.charAt(0)==="t"?findT(store.sel.slice(2)):null,cs=store.sel.charAt(0)==="s"?findS(store.sel.slice(2)):null;
   advPick(cur,cs);
   edClose();
-  advFill();loadSitePacks();adv.hidden=false;adv.scrollTop=toLibrary?$("advLibHead").offsetTop-12:0;
+  advFill();loadGallery();adv.hidden=false;adv.scrollTop=toLibrary?$("advGalHead").offsetTop-12:0;
 }
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */

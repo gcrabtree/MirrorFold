@@ -8,10 +8,12 @@ import { landFx, landKind, landLayer, landMixed, landMode, landPass, pLand, pMix
 import { LK } from "./landscapes.js";
 import { updateWave, waveTex } from "./listen.js";
 import { palCur, setPal } from "./palettes.js";
+import { driven } from "./packs.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
 import { tA, tB, tF, tT, target } from "./targets.js";
 import { vidAlone, videoScene, videoUniforms } from "./video.js";
+import { jit, stillN } from "./still.js";
 import { stereo, vrEye, vrEyeStep } from "./vr.js";
 import { tr } from "./warp.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
@@ -20,8 +22,9 @@ export const flip={cur:0,fcur:0};         /* which of each pair of pictures is b
 
 /* Step 1: the land if it is on, then the world. Leaves in fr.src the picture the effects are to work on. */
 export function drawScene(fr){
-  var dt=fr.dt,m=fr.m,w=fr.w,dist=fr.dist,bt=fr.bt,mp=fr.mp,hp=fr.hp,spN=fr.spN,orbU=fr.orbU;
+  var dt=fr.dt,m=fr.m,w=fr.w,dist=fr.dist,bt=fr.bt,mp=fr.mp,hp=fr.hp,spN=fr.spN,orbU=fr.orbU,sparkU=fr.sparkU;
   var fx=FX[sel.fi],U=w.U,wHue=w.hue;
+  if(stillN){bt=0;mp=0;hp=0;} /* while the picture is being sharpened the scene takes nothing from the sound, or the frames would not match */
   var fovNow=calm?1.15:(1.15-0.13*spN-0.05*bt-0.25*cam.boost+0.025*Math.sin(clock.time*0.4));
   /* 0. the land, if it is on. Alone, it is the whole scene. Over a world, it is drawn first into its own picture with a
      clear sky, so the world need only be drawn where the land leaves it showing. Not in the VR viewer. */
@@ -32,14 +35,14 @@ export function drawScene(fr){
   if((!landOn||landOver)&&vidAlone()&&!stereo)videoScene(tA,mirrors[sel.mi],clock.spin,bt);
   else if(!landOn||landOver){
   gl.bindFramebuffer(gl.FRAMEBUFFER,tA.f);gl.viewport(0,0,tA.w,tA.h);gl.useProgram(w.prog);
-  gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],orbU[3]);
+  gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],orbU[3]);gl.uniform4f(U.uSpark,sparkU[0],sparkU[1],sparkU[2],sparkU[3]);
   gl.uniform2f(U.uRes,tA.w,tA.h);
   gl.uniform1f(U.uTime,clock.time);
   gl.uniform1f(U.uSeg,mirrors[sel.mi]);
   gl.uniform1f(U.uM,m);
   gl.uniform1f(U.uHue,clock.hueT+wHue);
   gl.uniform1f(U.uSpin,clock.spin);
-  gl.uniform1f(U.uFade,1);
+  gl.uniform1f(U.uFade,1);gl.uniform2f(U.uJit,jit[0],jit[1]);
   /* VR viewer geometry, from the Cardboard viewer's published numbers: lenses 64 mm apart and 39 mm from the screen.
      The browser does not report the screen's physical size, so one CSS pixel is taken as 0.162 mm, which is close on current phones.
      Eye spacing follows the distance to the nearest surface, so the world always feels a similar size. */
@@ -80,12 +83,14 @@ export function drawTrails(fr){
   passTo(tc,op||pTrail);bindTex(2,sel.ovi>0?waveTex:src.t);bindTex(1,tp.t);bindTex(0,src.t);
   gl.uniform1i(TU.uA,0);gl.uniform1i(TU.uB,1);gl.uniform1i(TU.uWv,2);
   gl.uniform1f(TU.uDecay,stereo?0:Math.pow(Math.max(fx.decay,mo.decay||0,tr.warp>0?0.9:0),k60)); /* no trails in the VR viewer: they are warped about the middle of the screen */
-  gl.uniform1f(TU.uZoom,Math.pow(mo.zoom||0.994,k60)-0.02*tr.warp-0.012*bt*(mo.kick||0));
-  gl.uniform1f(TU.uRot,(mo.rot||0)*k60*(1+1.2*mp));
-  gl.uniform1f(TU.uSwirl,(mo.swirl||0)*k60);
-  gl.uniform1f(TU.uWob,(mo.wob||0)*k60*(1+1.5*mv));
-  gl.uniform1f(TU.uRip,(mo.rip||0)*k60*(1+1.5*bt));
-  gl.uniform2f(TU.uDrift,(mo.dx||0)*k60,(mo.dy||0)*k60);
+  /* each of the motion's numbers as it is this frame: a driver may move it with a slow wave or with the sound */
+  var dv=function(f,def){return driven(mo,f,def,clock.time,bt,mp,hp,calm?0.25:1)};
+  gl.uniform1f(TU.uZoom,Math.pow(dv("zoom",0.994),k60)-0.02*tr.warp-0.012*bt*(mo.kick||0));
+  gl.uniform1f(TU.uRot,dv("rot",0)*k60*(1+1.2*mp));
+  gl.uniform1f(TU.uSwirl,dv("swirl",0)*k60);
+  gl.uniform1f(TU.uWob,dv("wob",0)*k60*(1+1.5*mv));
+  gl.uniform1f(TU.uRip,dv("rip",0)*k60*(1+1.5*bt));
+  gl.uniform2f(TU.uDrift,dv("dx",0)*k60,dv("dy",0)*k60);
   gl.uniform1f(TU.uTime,clock.time);gl.uniform1f(TU.uAsp,tc.w/tc.h);
   gl.uniform1f(TU.uOv,stereo?0:ov.code?(op?99:0):sel.ovi);gl.uniform1f(TU.uOvBeat,bt);gl.uniform1f(TU.uOvMid,mp);gl.uniform1f(TU.uOvHi,hp);
   gl.uniform1f(TU.uShift,sel.moi>0?Math.min(0.3,(0.05+0.1*hp)*k60):0); /* trails drift through the colour channels so they read apart from the scene */

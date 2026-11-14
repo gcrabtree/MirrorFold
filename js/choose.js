@@ -35,6 +35,7 @@ export function fillOverlays(){
   OVERLAYS.forEach(function(o2,i){var o=document.createElement("option");o.value=String(i);o.textContent="Overlay: "+o2.name;selOv.appendChild(o);});
   selOv.value=String(sel.ovi);
 }
+export function setOvS(i){sel.ovsi=OVS[i]===undefined?2:i;$("bOvS").textContent="Overlay "+Math.round(OVS[sel.ovsi]*100)+"%";}
 export function setOverlay(i){if(!OVERLAYS[i])i=0;sel.ovi=i;selOv.value=String(i);}
 export function setMotion(i){if(!MOTIONS[i])i=0;sel.moi=i;selMotion.value=String(i);}
 export function setLook(i){if(!LOOKS[i])i=0;sel.lki=i;selLook.value=String(i);}
@@ -73,7 +74,7 @@ fillMotions();
 fillLooks();
 fillOverlays();
 selOv.addEventListener("change",function(){setOverlay(+this.value);wakeHud()});
-$("bOvS").addEventListener("click",function(){sel.ovsi=(sel.ovsi+1)%OVS.length;this.textContent="Overlay "+Math.round(OVS[sel.ovsi]*100)+"%";wakeHud()});
+$("bOvS").addEventListener("click",function(){setOvS((sel.ovsi+1)%OVS.length);wakeHud()});
 selMotion.addEventListener("change",function(){setMotion(+this.value);wakeHud()});
 selLook.addEventListener("change",function(){setLook(+this.value);wakeHud()});
 fillWorlds();
@@ -94,5 +95,5 @@ window.addEventListener("hashchange",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={scene, fillMotions, fillLooks, fillOverlays, setOverlay, setMotion, setLook, fillWorlds, setWorldNow, requestWorld,
+export const __dbg={setOvS, scene, fillMotions, fillLooks, fillOverlays, setOverlay, setMotion, setLook, fillWorlds, setWorldNow, requestWorld,
   setMirrors, get selMusic(){return selMusic},set selMusic(v){selMusic=v}, get selJT(){return selJT},set selJT(v){selJT=v}, get selWorld(){return selWorld},set selWorld(v){selWorld=v}, get selOv(){return selOv},set selOv(v){selOv=v}, get selMotion(){return selMotion},set selMotion(v){selMotion=v}, get selLook(){return selLook},set selLook(v){selLook=v}};

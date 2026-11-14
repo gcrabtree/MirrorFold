@@ -2,6 +2,7 @@
  "mirrorfold": 1,
  "name": "Starter pack",
  "author": "gcrabtree",
+ "about": "One of everything a pack can hold: two worlds, palettes, motions, filters, overlays and a journey that uses them.",
  "worlds": [
   {"name": "Column hall", "hue": 0.55, "fog": 0.13, "maxd": 22, "speed": 0.8, "period": [2, 4, 2], "code": "vec2 c=mod(p.xz+0.5,1.0)-0.5;float pil=length(c)-0.12-0.03*sin(p.y*12.0)-0.03*m;float slab=0.9-abs(p.y);orb=vec4(abs(c)*3.0,abs(p.y),dot(c,c)*6.0);return min(pil,slab)*0.8;"},
   {"name": "Bead curtain", "hue": 0.1, "fog": 0.12, "maxd": 22, "speed": 0.8, "period": [1, 2, 1], "code": "vec3 q=p;q.y=mod(q.y+0.25,0.5)-0.25;float bead=length(q)-0.16-0.04*m;float cord=length(p.xz)-0.03;orb=vec4(abs(q)*4.0,dot(q,q)*8.0);return min(bead,cord)*0.9;"}
@@ -12,7 +13,8 @@
  ],
  "motions": [
   {"name": "Slow spin", "decay": 0.96, "zoom": 0.998, "rot": 0.006},
-  {"name": "Updraft", "decay": 0.962, "zoom": 1.002, "dy": -0.005, "wob": 0.001}
+  {"name": "Updraft", "decay": 0.962, "zoom": 1.002, "dy": -0.005, "wob": 0.001},
+  {"name": "Tide", "decay": 0.962, "zoom": 1, "drive": [{"to": "zoom", "by": "wave", "amount": 0.25, "every": 24}, {"to": "rot", "by": "mid", "amount": 0.4}]}
  ],
  "filters": [
   {"name": "Inked", "edge": 0.6, "post": 6},
@@ -24,7 +26,7 @@
   {"name": "Horizon", "sound": "bands", "code": "float x=abs(p.x)*1.6;float h=0.28*sound(x*0.7);ln=step(x,0.98)*(1.0-smoothstep(0.0,0.01,abs(abs(p.y)-0.04-h)));hue=0.1+0.6*x;"}
  ],
  "templates": [
-  {"name": "Starter drift", "palette": {"mode": "random", "every": 30, "set": ["Glacier", "Rust and teal"]}, "mirrors": {"mode": "off"}, "motion": {"mode": "random", "every": 40, "set": ["Slow spin", "Updraft"]}, "filter": {"mode": "random", "every": 45, "set": ["none", "Duotone", "Soft focus"]}, "overlay": {"mode": "random", "every": 50, "set": ["none", "Petals", "Horizon"]}}
+  {"name": "Starter drift", "palette": {"mode": "random", "every": 30, "set": ["Glacier", "Rust and teal"]}, "mirrors": {"mode": "off"}, "motion": {"mode": "random", "every": 40, "set": ["Slow spin", "Updraft", "Tide"]}, "filter": {"mode": "random", "every": 45, "set": ["none", "Duotone", "Soft focus"]}, "overlay": {"mode": "random", "every": 50, "set": ["none", "Petals", "Horizon"]}}
  ],
  "sets": []
 }

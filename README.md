@@ -65,6 +65,9 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - **Music reactivity** from a built-in track, your own audio file, another browser tab such as Spotify or YouTube, the microphone, or a tapped tempo.
 - **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter, overlay and land over time. You control what it may change with templates.
 - **Share spot** links that take someone to the exact place you are looking at.
+- **Hold still**, a pause that sharpens the picture, **Save picture**, which saves a picture that opens again as the scene it shows, and **Record video**.
+- **A gallery** of journeys and packs that people have shared, and a way to offer your own.
+- **A light to throw**, which bounces off the surfaces of the world.
 - **VR viewer** mode for a phone in a Cardboard-style holder: a picture for each eye, and you look around by turning your head.
 
 The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, Shards, Crystal, Julia, Web, Temple, Nebula, Fortress, Hive, Gates, Aurora.
@@ -123,6 +126,8 @@ Click the picture to capture the mouse. Where the browser does not allow that, d
 | Next mirror setting | `M` |
 | Journey on or off | `J` |
 | Tap tempo | `T` |
+| Hold still | `H` |
+| Throw a light | `G` |
 
 The controls at the top of the screen fade after five seconds without input and come back on any touch or click.
 
@@ -155,8 +160,13 @@ The controls at the top of the screen fade after five seconds without input and 
 | Stats | Shows a readout in the top left corner: pictures drawn each second and the slowest one, how long the page's own script takes for each picture, the sharpness and size of the picture, the name of the graphics chip drawing it, and a trial of the distance probe (how long the page waits for the chip to answer one question, and the chip's answer beside the script's). Useful when the picture stutters. |
 | Morph | Turns the slow change of each world's shape on or off. |
 | Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
+| Hold still | Stops everything that moves by itself: the clocks, the breathing of the world, the drift and Journey. You can still look and fly by hand. Whenever you are not moving, the picture sharpens over about a second, because each frame looks through a different part of every pixel and the frames are averaged. Key **H**. Turning Journey on lets go. |
 | Orbs | Shows or hides the orbs. |
+| Throw a light | Sends a small glowing ball ahead of you. It flies straight, bounces off the surfaces, loses a fifth of its speed at each bounce and shrinks away after twenty seconds. Throwing again takes it back. Not in the two cloud worlds, in a world from a pack, or with the land alone. Key **G**. |
 | Share spot | Makes a link to where you are. |
+| Save picture | Saves the picture as a PNG file. The file also holds the place and the look, so loading it in Mirrorfold (**Gallery and library**, **Load a pack file or a saved picture**, or drop it on the page) comes back to the same scene, with any palette, motion, filter, overlay or world of your own that it uses. Many websites remove that part when a picture is uploaded; the picture is then only a picture. Use **Hold still** first for a clean frame. |
+| Record video | Records the picture as it plays, and saves it as a video file when you press the button again. The controls are not in the video. The sound is recorded when Mirrorfold itself is playing it (the built-in music, your audio file, your video's sound), and not when it is only listening (a tab, the microphone, tap tempo). It stops itself after five minutes. The video is as sharp and as smooth as the picture on your screen, no better. The button is missing in browsers that cannot record. |
+| Knobs | For a MIDI controller, in browsers that have Web MIDI (Chrome and Edge; the button is missing elsewhere). The browser asks for permission. The first four knobs you turn are given, in order: speed, overlay strength, look left and right, look up and down. A look knob turns the view steadily while it is away from its middle. Pads and keys change the world, palette, motion or filter, by turn. Nothing is sent to the controller. |
 | Fullscreen | Fills the screen. |
 | Help and source | Opens this page on GitHub in a new tab. |
 | VR viewer | Phones and tablets only. Draws a picture for each eye, for a phone in a viewer. See [VR viewer](#vr-viewer). |
@@ -257,6 +267,8 @@ With Journey on, a **Movement** button appears beside the template list:
 | Movement travel | Journey flies and steers for you. This is the default. |
 | Movement drift | Journey only changes the scenery: world, palette, mirrors, motion, filter and overlay. It does not move or turn you. You fly yourself, and the **Drift** button decides whether you glide slowly forward when you are not steering. |
 
+Two more buttons sit beside it. **More like this** makes Journey choose what is showing now more often. **Less like this** makes it choose the last thing it changed less often, and changes it again at once. Nothing is ever shut out: a disliked option still comes up now and then. Your likes are kept in this browser only; **Forget what I liked** in the journey setup panel clears them.
+
 In both settings you can take over at any moment. While you turn the view, by dragging, with the arrow keys, or by turning your head in the VR viewer, the autopilot stops steering and the automatic forward motion nearly stops. About a second after you stop turning, it carries on from where you are looking. The choice of travel or drift is remembered in your browser.
 
 A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter, overlay and land you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes instead of on a clock.
@@ -273,14 +285,15 @@ A **pack** is a small file of worlds, palettes, motions, filters, overlays, Jour
 
 Programs in packs published with Mirrorfold have been reviewed. A program you load from a file or paste as text has not, so while it is in use Mirrorfold shows the picture smoothed over time, which makes it impossible for it to flash the screen. The Library list marks those items.
 
-Press **Library** to open the library section of the setup panel:
+Press **Gallery and library** to open that part of the setup panel. The **gallery** comes first: journeys and packs that people have shared, each with **Add**. They are files in this project's `packs` folder, so the list is missing when the page is opened straight from a file. **Offer mine to the gallery** opens a form on GitHub with everything in your library in it (remove anything that is not your own first); you need a GitHub account to send it. A check runs there, and a maintainer looks at the pack before it appears in the gallery. See [packs/README.md](packs/README.md).
+
+The **library** is below it:
 
 | Control | What it does |
 |---|---|
-| **Add this pack** | Adds the chosen pack from the ones published with Mirrorfold. This list is missing when the page is opened straight from a file. |
-| **Load a pack file** | Adds a pack from a file on your device. |
+| **Load a pack file or a saved picture** | Adds a pack from a file on your device. A picture saved with **Save picture** also works: it goes to the place in the picture. You can also drop either kind of file on the page. |
 | **Save mine as a pack file** | Saves everything you have added or made as one pack file, to keep or to share. |
-| **New palette**, **New motion**, **New filter** | Makes a copy of what is showing now and opens the editor on it. |
+| **New palette**, **New motion**, **New filter** | Makes a copy of what is showing now and opens the editor on it. The motion editor also has two **drivers**: each can make one control move by itself, following a slow wave or the bass, middle notes or treble of the music. |
 | **Edit** | Opens the editor on one added palette, motion or filter. |
 | **Remove** | Removes one added item. |
 | **Copy mine as text**, **Load from text** | The same as saving and loading a file, through the text box. |
@@ -407,6 +420,7 @@ The app was developed against headless Chrome with software rendering. These hav
 - Typing in the journey editor on iOS.
 - The home-screen full-screen mode on iPhone, including whether the controls clear the notch.
 - The screen mirroring steps in `docs/TV.md`, on any TV device.
+- Everything added in November 2026 on anything but headless Chrome: **Hold still** (whether a phone keeps its frame rate while it sharpens), **Save picture** and **Record video** on a phone (a download link may open the file instead of saving it), the **gallery's** offer form and its GitHub workflow (never run), the two **hybrid worlds** in flight, the **VR comfort** rules in a viewer, and **Knobs** with a real MIDI controller (only made-up messages were tried).
 - Whether the screen really stays awake with Journey or the VR viewer on, in Safari and from the home-screen icon.
 - **Listen to a tab** with real Spotify and YouTube tabs, and **Microphone** with a real microphone. Both were tested with simulated devices only.
 - The VR viewer mode: whether the two pictures merge in a real viewer, whether head turning goes the right way, and whether it is comfortable.

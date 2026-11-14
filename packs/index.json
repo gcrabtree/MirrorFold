@@ -1,3 +1,5 @@
 [
- {"file": "starter.json", "name": "Starter pack", "author": "gcrabtree"}
+ {"file":"evenings.json","name":"Evenings","author":"gcrabtree","about":"Four slow journeys and a set that plays them in turn. Built-in worlds only, so it adds nothing but the journeys.","has":{"worlds":0,"palettes":0,"motions":0,"filters":0,"overlays":0,"templates":4,"sets":1,"scene":0}},
+ {"file":"hybrids.json","name":"Hybrids","author":"gcrabtree","about":"Two worlds that mix two kinds of fold in one loop: tetrahedra strung with beads, and a cage of bubbles. With a journey through both.","has":{"worlds":2,"palettes":0,"motions":0,"filters":0,"overlays":0,"templates":1,"sets":0,"scene":0}},
+ {"file":"starter.json","name":"Starter pack","author":"gcrabtree","about":"One of everything a pack can hold: two worlds, palettes, motions, filters, overlays and a journey that uses them.","has":{"worlds":2,"palettes":2,"motions":3,"filters":3,"overlays":2,"templates":1,"sets":0,"scene":0}}
 ]

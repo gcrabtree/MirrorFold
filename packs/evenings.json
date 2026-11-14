@@ -1,0 +1,15 @@
+{
+ "mirrorfold": 1,
+ "name": "Evenings",
+ "author": "gcrabtree",
+ "about": "Four slow journeys and a set that plays them in turn. Built-in worlds only, so it adds nothing but the journeys.",
+ "templates": [
+  {"name": "Cathedral tour", "world": {"mode": "random", "every": 80, "set": ["halls", "temple", "gates", "citadel", "fortress"]}, "palette": {"mode": "random", "every": 35}, "mirrors": {"mode": "off"}, "motion": {"mode": "off"}, "filter": {"mode": "off"}, "overlay": {"mode": "off"}},
+  {"name": "Deep and slow", "world": {"mode": "random", "every": 100, "set": ["coral", "julia", "bulbs", "nebula", "aurora"]}, "palette": {"mode": "random", "every": 45}, "mirrors": {"mode": "off"}, "motion": {"mode": "random", "every": 60, "set": ["none", "Melt", "Drift"]}, "filter": {"mode": "random", "every": 70, "set": ["none", "Liquid"]}, "overlay": {"mode": "off"}},
+  {"name": "Neon night", "world": {"mode": "random", "every": 60, "trigger": "sound"}, "palette": {"mode": "random", "every": 25}, "mirrors": {"mode": "random", "every": 40, "none": "50"}, "motion": {"mode": "random", "every": 30, "set": ["Vortex", "Tunnel", "Ripple"]}, "filter": {"mode": "random", "every": 35, "set": ["Neon", "Thermal", "Contour", "Two-tone"]}, "overlay": {"mode": "random", "every": 30, "set": ["none", "Ring", "Rings"]}},
+  {"name": "Kaleidoscope hour", "world": {"mode": "random", "every": 70, "set": ["shards", "crystal", "lattice", "web", "sponge"]}, "palette": {"mode": "random", "every": 30}, "mirrors": {"mode": "random", "every": 25, "set": ["6", "8", "12"]}, "motion": {"mode": "off"}, "filter": {"mode": "random", "every": 50, "set": ["none", "Prism", "Twirl"]}, "overlay": {"mode": "off"}}
+ ],
+ "sets": [
+  {"name": "An evening", "order": "cycle", "items": [{"tpl": "Cathedral tour", "min": 4}, {"tpl": "Deep and slow", "min": 4}, {"tpl": "Neon night", "min": 3}, {"tpl": "Kaleidoscope hour", "min": 3}]}
+ ]
+}

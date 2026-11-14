@@ -16,4 +16,4 @@ jobs:
         with:
           node-version: 22
       - run: node tools/unit.mjs
-      - run: node tools/pack.mjs
+      - run: node tools/pack.mjs   # also fails if packs/index.json is not what tools/gallery.mjs writes

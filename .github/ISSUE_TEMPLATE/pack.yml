@@ -1,0 +1,42 @@
+name: Offer a pack to the gallery
+description: Journeys, palettes, motions, filters, overlays or worlds you made in Mirrorfold, for everyone to use.
+title: "Pack: "
+labels: ["pack"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The app's **Offer mine to the gallery** button fills this form in for you. A check runs when you send it.
+        If your pack passes, a pull request is opened, and a maintainer looks at it before it joins the gallery.
+  - type: input
+    id: name
+    attributes:
+      label: Pack name
+      description: 1 to 28 characters. Shown in the gallery.
+    validations:
+      required: true
+  - type: input
+    id: author
+    attributes:
+      label: Your name
+      description: The name to show beside the pack, 1 to 28 characters. Left empty, your GitHub name is used.
+  - type: input
+    id: about
+    attributes:
+      label: About it
+      description: One sentence, at most 160 characters. Shown under the name.
+  - type: textarea
+    id: pack
+    attributes:
+      label: The pack
+      description: In the app, open Library, press "Copy mine as text", and paste here.
+      render: json
+    validations:
+      required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Before you send
+      options:
+        - label: I made this, and I offer it under this repository's licence.
+          required: true

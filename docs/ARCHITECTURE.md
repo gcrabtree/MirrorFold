@@ -73,11 +73,16 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/flight.js` | `measure` (distance to the nearest surface and the world's speed), `deAt`, `doBoost` |
 | `js/choose.js` | `scene`, what is showing; filling the lists; `setWorldNow`, `requestWorld`; the address hash; mirrors |
 | `js/orbs.js` | `spawnOrb`, `collectOrb`, `stepOrb` |
+| `js/spark.js` | The thrown light: `throwSpark`, `stepSpark`, `bounce`, `facing` |
+| `js/midi.js` | Knobs: a MIDI controller's knobs and pads |
 | `js/spots.js` | Share spots: `encodeSpot`, `applySpot`, `fromHash` |
 | `js/input.js` | Pointer, wheel and keyboard handlers, gestures, the fading controls |
+| `js/taste.js` | The weights behind More like this and Less like this: `taste`, `tasteNudge`, `pickWeighted` |
 | `js/journey.js` | `CATS`, built-in templates and sets, their storage, the clocks `J`, `autopilot`, `stepJourney` |
 | `js/journey-panel.js` | The setup panel for templates and sets |
-| `js/pack-io.js` | `refreshLists`, `packNow`, `loadPack`, site packs, the library list |
+| `js/pack-io.js` | `refreshLists`, `packNow`, `loadPack`, scenes (`sceneNow`, `goScene`), the library list |
+| `js/gallery.js` | The gallery: the list in `packs/index.json`, **Add**, and offering a pack through GitHub |
+| `js/picture.js` | Save picture: a PNG with the scene inside it, and loading a pack or picture file |
 | `js/editor.js` | The slider editor for palettes, motions and filters |
 | `js/controls.js` | The Orbs, Morph and Drift switches and the wiring of the remaining buttons |
 | `js/stats.js` | The Stats readout |
@@ -86,6 +91,8 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/music.js` | The built-in music: a dance track made up as it plays |
 | `js/video.js` | A video file or the camera shown in the picture: the element, the slowed copy the shaders read, its controls |
 | `js/listen.js` | Listening to a tab or the microphone, `setMusic`, tap tempo, the bands, the change detector, `soundFrame`, the wave picture |
+| `js/still.js` | Hold still: the pause, and averaging shifted frames into a sharp picture while nothing moves |
+| `js/record.js` | Record video: the canvas and the app's own sound into a video file |
 | `js/render.js` | Drawing a frame: `drawScene`, `drawTrails`, `drawBloom`, `drawFinal` |
 | `js/loop.js` | `begin` and `frame(now)`, which calls the steps of a frame in order |
 
@@ -93,7 +100,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 
 **Who owns a value.** Every value is set by exactly one file. Other files read it by importing it (`export let`: importers always see the current value) and change it only by calling that file's functions (`setDetail`, `setWorldNow`, `setPalette`, `landClimb` and so on). Five groups of values that many parts of a frame must change are small state objects, each defined in the file it belongs to: `cam` (camera.js), `tr` (warp.js), `clock` (clock.js), `scene` (choose.js) and `sel` (state.js). A module may not assign to a variable it imports, so this is enforced by the language, not by convention.
 
-**A frame.** `frame()` in `loop.js` is a list of calls: wait for the chip, read the sound, advance the clocks and the transition, measure the distance to the nearest surface, work out the steering, run the autopilot and Journey's clocks, turn and move the camera, move the land, update the orb, then draw (`drawScene`, `drawTrails`, `drawBloom`, `drawFinal`). Each step lives in the file that owns what it changes. The steps pass what they work out through one reused object, the frame's notes, called `fr` inside them; the comment above it in `loop.js` lists its fields.
+**A frame.** `frame()` in `loop.js` is a list of calls: wait for the chip, read the sound, advance the clocks and the transition, measure the distance to the nearest surface, work out the steering, run the autopilot and Journey's clocks, turn and move the camera, move the land, update the orb and the thrown light, then draw (with Hold still's two steps either side of the scene, and Save picture's after the last) (`drawScene`, `drawTrails`, `drawBloom`, `drawFinal`). Each step lives in the file that owns what it changes. The steps pass what they work out through one reused object, the frame's notes, called `fr` inside them; the comment above it in `loop.js` lists its fields.
 
 **`__dbg` and `window.MF`.** Every file ends with `__dbg`, an object holding every name in the file (with a getter and a setter for the ones that can change). `main.js` merges them into `window.MF`, and also offers each field of the five state objects by its bare name (`MF.pos` for `MF.cam.pos`). The test tools run their code inside `with(window.MF)`, so it can name any internal variable or function, and so can the browser console (`MF.setLand(1)`). When you add a top-level name to a file, add it to that file's `__dbg` if a test needs it.
 
@@ -186,6 +193,10 @@ A glowing sphere drawn analytically after the march. `uOrb` is `(position, radiu
 ### Volumetric worlds
 
 When `w.volume` is true the shader takes a different branch: a fixed-step march accumulating `pal(...) * VMAP(dens(p))` with a per-step falloff of 0.93 and a hash-jittered start to hide banding. `VMAP` and `VSTEP` are `#define`d by the world.
+
+### The thrown light
+
+`js/spark.js`. **Throw a light** (key G) sets `sparkAsk`; `sparkFrame` throws on the next frame, when the distance to the nearest surface is known. `throwSpark` starts the ball just ahead of the camera with the camera's velocity plus 1.6 times the speed the camera could fly at here, and a radius of a twentieth of the distance to the nearest surface (between 0.0015 and 0.03). `stepSpark` moves it; when `de` at its centre is less than its radius it is pushed back out along the surface's direction (`facing`: central differences of `de`, six calls) and its velocity is reflected and multiplied by `SPARK_KEEP`, 0.8 (`bounce`). It is wrapped by the world's period, drawn at its nearest copy, and shrinks over the last three of its `SPARK_LIFE` 20 seconds. It does not move while Hold still is on. The scene shader draws it with the same `ball()` function as the orb, from `uSpark`, in another palette colour. Because it asks `de` every frame it is refused in a pack world; a cloud world has nothing to bounce off; the land alone and the video filling the screen have no world. Measured in headless Chrome over 900 frames in Sponge, Julia and Box: 8, 1 and 6 bounces, never deeper into a surface than a tenth of its radius at the end of a step.
 
 ## 6. Worlds
 
@@ -324,6 +335,8 @@ The warp is applied to the UV used to sample the previous frame, in aspect-corre
 | Ripple | 0.955 | 0.996 | ripple 0.012 |
 | Drift | 0.96 | 0.999 | wobble 0.001, drift sideways 0.004 |
 
+**Drivers.** A motion from a pack or the editor may have `drive`, a list of up to two `{to, by, amount, every}`: one of `zoom`, `rot`, `swirl`, `wob`, `rip`, `dx`, `dy` follows a slow sine wave (`by: "wave"`, one cycle in `every` seconds, 8 at the least) or the pulse of the bass, mids or treble. `driven(mo, field, default, time, bass, mid, treble, scale)` in `js/packs.js` returns the number for this frame: the set value plus `amount * scale * half the field's range * signal`, then held inside `MOTION_LIM`, the same ranges `cleanMotion` uses. So a driven motion can never be outside what a plain one may be, and the quickest wave crosses a whole range in about 2.5 seconds at its fastest. `scale` is 0.25 under reduced motion. `decay` and `kick` cannot be driven, because trails that came and went with the sound would flicker. Filters have no drivers: a filter number following the beat (Negative, Solarise) would flash. The wave reads `clock.time`, so it stops under Hold still. The motion editor has two driver groups below its sliders (`edDriveBuild`, `edDriveRead`); what they say goes through `cleanMotion` with the rest. The built-in motions have none.
+
 The **FX** button sets the base: glow (decay 0.78, bloom 0.55, fringe 0.004), trails (0.93, 0.75, 0.008) or clean (all zero). The decay used is the larger of the FX and motion values.
 
 ### Overlays
@@ -349,6 +362,24 @@ Applied in this order. `LOOKS` entries set one or more of these uniforms.
 ### Transitions
 
 A world change (and a journey mirror change) runs `warp` from 0 to 1 over 0.5 s, performs the change at the peak, and returns to 0 over 0.8 s. `beginWarp()` picks one of eight types at random, never repeating the last: swirl, dive, blocks, fold, melt, blink, tear, dissolve. All but blink and dissolve finish in a wash of the current palette colour at the peak, which hides the swap and the shader-compile hitch. `requestWorld(i)` starts a transition to a world; `warpThen(fn)` runs any function at the peak.
+
+## 8b. Hold still
+
+`js/still.js`. The **Hold still** switch (`still`, `setStill`, key H) is a pause and a way to get a clean frame.
+
+**The pause.** In `frame()`, `tickClock`, the autopilot and `stepJourney` are skipped while `still` is true, so the time, the morph, the colour drift and the mirror spin stop, and Journey changes nothing. `turn` and `move` drop the automatic roll and the drift, bring the look, the roll and the velocity to an exact stop (they otherwise ease toward zero for ever), and still obey the stick, the keys and the pointer. The sound is still read, so the glow and the motions keep following the music. Turning Journey on calls `setStill(false)`.
+
+**The sharpening.** `stillAim(fr)` runs before `drawScene`. If the camera's position and directions and the morph are within 1e-9 of last frame's, and the world, picture size, mirrors, palette and VR setting are the same, it counts one more frame (`stillN`, up to `STILL_MAX` = 32); otherwise it starts again at 1. It also sets `jit`, a shift of up to half a pixel each way from the Halton sequence (bases 2 and 3, 64 places). The scene shader adds `uJit` to `gl_FragCoord` where it makes the ray (and where a cloud world picks its first step), so each frame looks through a different part of every pixel. While `stillN` is not zero `drawScene` passes no sound to the scene and the field of view does not pulse, so the frames match.
+
+`stillBlend()` runs after `drawScene`: `FS_ACC` moves the kept picture `tR` a share `1/stillN` of the way to the new frame in `tA`, then the kept picture is copied back into `tA`, so every later pass (the land laid over, trails, glow, filter) works on it unchanged. The pictures are 8 bits a colour, where a share of 1/32 of a small difference rounds to nothing; `FS_ACC` adds half a level of noise that differs every frame, so the rounding is right on average. Once `stillN` reaches 32 the share stays at 1/32, so a slow change (the palette easing to a new choice) is followed with a lag of about half a second.
+
+Not sharpened: the land alone, and anything with a video (the frames differ). The land laid over a world is not sharpened but the world behind it is. In the VR viewer it works as on a flat screen, because nothing in it is centred on the screen. Measured only in headless Chrome; whether a phone holds 60 frames a second while it runs (two extra full-size copies a frame) is untested.
+
+## 8c. Record video
+
+`js/record.js`. `recStart()` takes `canvas.captureStream(30)` and, if the audio context is running, adds the audio track of a `MediaStreamDestination` joined to `master`, so the recording has whatever the app itself is playing. While the app listens to a tab or the microphone `master.gain` is 0, so that sound is not recorded, which is as it should be: it is not the user's to republish through this page. A `MediaRecorder` gathers a part a second into memory; `recStop()` (or the limit `REC_MAX`, 300 seconds) joins them into a file and saves it through a download link. The file kind is the first of `REC_TYPES` the browser accepts (MP4 where it can, otherwise WebM). The button is hidden where `captureStream` or `MediaRecorder` is missing.
+
+It records what is drawn, at the size and rate it is drawn, so a phone that is struggling makes a struggling video. Checked in headless Chromium in real time (the recorder gives nothing under virtual time): four seconds gave a 1.7 MB WebM. Untested: any phone, Safari's MP4, whether the sound is in step with the picture.
 
 ## 8a. Video (an experiment)
 
@@ -463,6 +494,10 @@ A world with `trigger: "sound"` changes when the detector fires and at least `ma
 
 Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, Calm, Follow the music.
 
+### Likes
+
+`js/taste.js`. `taste` maps `"<category>:<option key>"` to a weight between `TASTE_MIN` (0.2) and `TASTE_MAX` (4); an option with no entry has weight 1. `jPick` chooses among the allowed options with `pickWeighted`, each in proportion to its weight (the weighted mirror choice still decides between none and some first). **More like this** (`jMore`) multiplies by 1.4 the weight of what is showing in every category the template sets to random. **Less like this** (`jLess`) multiplies by 0.6 the weight of what is showing in `jLast`, the category `stepJourney` changed most recently (or the first random category if it has changed nothing yet), and changes that category at once. A weight that returns to within 0.02 of 1 is dropped. The weights are in `localStorage["mirrorfold-taste"]`, read through `cleanTaste`; **Forget what I liked** in the setup panel empties them. They are not part of a pack. `tools/unit.mjs` checks the limits, the proportions and the cleaner.
+
 ### Sets
 
 ```js
@@ -478,12 +513,15 @@ Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, C
 
 ### Packs
 
-A pack is JSON: `{ mirrorfold: 1, name, author, palettes, motions, filters, overlays, templates, sets }`. The format and ranges are documented for authors in `packs/README.md`. Nothing in a pack is evaluated as JavaScript. The only code a pack can carry is the GLSL body of a filter or an overlay (below).
+A pack is JSON: `{ mirrorfold: 1, name, author, about, scene, palettes, motions, filters, overlays, worlds, templates, sets }`. The format and ranges are documented for authors in `packs/README.md`. Nothing in a pack is evaluated as JavaScript. The only code a pack can carry is the GLSL body of a filter or an overlay (below).
 
 - **Cleaners.** `cleanName`, `cleanPalette`, `cleanMotion`, `cleanFilter`, `cleanOverlay` and `cleanCode` are pure functions. They refuse a wrong shape (returning `null`), copy only known fields into a new object, and clamp every number. The motion ranges are what keeps a pack from breaking the no-strobe rule, so widen them only after looking at the result.
 - **Library.** Added palettes, motions, filters and overlays are appended to `PALETTES`, `MOTIONS`, `LOOKS` and `OVERLAYS` after the built-ins (`NPAL`, `NMOT`, `NLOOK` and `NOV` are the built-in counts) and stored in `localStorage["mirrorfold-library"]`. They are loaded before the selects and `CATS` are built. `libAdd` refuses built-in names, replaces an earlier added item of the same name, and stops at `LIB_MAX` (16) per kind.
 - **Loading.** `loadPack(text)` is the one entry point for a file, pasted text and a published pack. It adds palettes and motions first, calls `refreshLists()` (which rebuilds the two selects and the palette and motion options in `CATS`), then adopts templates and sets, so a template can name items from its own pack.
-- **Published packs.** `loadSitePacks()` fetches `packs/index.json` from the same folder as the page, once, when the panel opens. File names must match `^[a-z0-9][a-z0-9_-]*\.json$`. Under `file:` it does nothing and the row stays hidden.
+- **The gallery** (`js/gallery.js`). `loadGallery()` fetches `packs/index.json` from the same folder as the page, once, when the panel opens, passes each line through `cleanEntry` (a file name matching `^[a-z0-9][a-z0-9_-]{0,60}\.json$`, a name, and optionally an author, a sentence and counts, all as plain text and small numbers) and shows a card for each with **Add**, which fetches the file and calls `loadPack(text, "site")`. Under `file:` it only says so. `packs/index.json` is written by `tools/gallery.mjs` from the pack files, and `tools/pack.mjs` fails if it is out of date.
+- **Offering a pack.** **Offer mine to the gallery** builds `packNow()` and opens the repository's issue form (`.github/ISSUE_TEMPLATE/pack.yml`) with the pack in the address (`offerUrl`); past 6,000 characters the pack is left out of the address, copied, and the user pastes it. The repository is taken from the Help link, which `vr.js` already points at the right fork. On GitHub, `.github/workflows/offer.yml` runs `tools/offer.mjs` when an issue with the `pack` label is opened or edited: it reads the issue from the event file, runs every item through the cleaners (`tidy` in `tools/packlib.mjs`), and for a pack with anything left writes `packs/<name made here>.json` and the index, pushes the branch `pack/<issue number>` and opens a pull request. It comments on the issue either way. No step puts issue text into a command; the only values that reach the shell are the issue number and a file name of lower-case letters, digits and hyphens, which the shell step checks again. Nothing is in the gallery until a maintainer merges, and merging is what makes code `reviewed`. Untested on GitHub itself: the script was run by hand against made-up issues, and the workflow file has only been read.
+- **A scene in a pack.** `cleanScene` checks an optional `scene`: a spot as Share spot writes it, the look by name, mirrors, FX and land. `loadPack` adds the library items first and then calls `goScene`, which looks each name up and passes over any it does not know. `sceneNow()` reads the current scene and `packOfScene()` wraps it with whichever of the palette, motion, filter, overlay and world in use are not built in.
+- **Save picture** (`js/picture.js`). `pictureMake(fn)` asks for the next frame; `pictureFrame()`, the last step of `frame()`, calls `canvas.toBlob` while the frame is still on the canvas, and `pngPut` adds a `tEXt` part named `mirrorfold` holding `packOfScene()` as ASCII JSON (`asciiJson` writes every other character as `\uXXXX`). `loadFile` is the one way in for a file the user picks or drops: a PNG goes through `pngGet`, which checks every length against the file and stops at 200,000 characters, and then `loadPack` like any pack, so a picture can never mark code reviewed. Checked in headless Chrome: the file opens in other software with its text part, and loading it returns to the same scene. Untested: saving a file on a phone, where the download link may open the picture instead.
 - **Palette locks.** `palOpen(i)` says whether a palette may be used: built-ins up to the orb count, and every added palette. Use it instead of comparing against `BASE_PALS + unlocked`.
 - **Share links** store the palette by index in one base-36 digit. 13 built-ins plus 16 added fit. A link that names an added palette the receiver does not have keeps the receiver's current palette.
 - **Filters.** A pack filter is a `LOOKS` entry: the same control fields the built-ins use (`edge`, `post`, `fx` and so on, clamped by `cleanFilter`) and optionally `code`.
@@ -518,6 +556,8 @@ Roll is not stored. `applySpot()` restores morph time first, because some period
 
 ## 13. Input
 
+**Knobs** (`js/midi.js`). Where `navigator.requestMIDIAccess` exists, the Knobs button asks for access and listens to every input; nothing is sent. `midiRead` turns a message into a knob (a controller change, on any channel, as 0 to 1) or a pad (a note pressed). `knobSlot` gives the first four different knobs turned the four jobs in `KNOBS`: speed (`0.2 * 20^v`, the same 0.2 to 4 as the wheel), overlay strength, and the two look axes. A look knob is a rate, not a position: `knobRate` is zero within 12% of the middle, and `midiFrame`, a step of `frame()`, turns the view through `userLook` at up to 1.2 radians a second, so the autopilot stands back as it does for a hand. A pad's note number, modulo four, steps the world, palette, motion or filter. Tried only with made-up messages; no controller has been connected.
+
 **Touch.** A touch that starts in the left 45% of the screen is the move stick (a ring appears under the finger; deflection gives strafe and forward). A touch elsewhere is look. A second finger on the look side starts a gesture: the change in distance between the two fingers scales `baseSpeed`, and the change in angle rolls the camera. Two quick taps on the look side set `boost = 1`, which decays at 1.2 per second and multiplies speed by up to 4.
 
 **Mouse and keyboard.** Click captures the pointer where allowed, otherwise drag to look. W A S D, Space and Shift (up and down), Q and E (roll), arrows (look), wheel (speed), `[` and `]` (world), 1–9 (world), P (palette), M (mirrors), J (journey), T (tap tempo), B or double-click (boost). Key handling is skipped while focus is in a select, input or textarea.
@@ -538,6 +578,8 @@ The HUD fades after 5 seconds without interaction and returns on any touch. Its 
 
 **Head look.** `onGyro` handles `deviceorientation`. `devMat(alpha, beta, gamma, o)` builds the W3C rotation matrix `Rz(alpha) Rx(beta) Ry(gamma)` and multiplies it by `Rz(-o)`, where `o` is the screen rotation, giving screen axes in earth axes. Working with matrices avoids the jump in the angles when gamma passes 90 degrees, which is where a phone in a viewer sits. `gyroTurn(P, S)` returns the rotation between the previous and current matrix as an axis-angle vector in screen axes (x right, y up, z toward the viewer). That turn is applied to `R`, `Up` and `F` about `-x*R - y*Up + z*F`; the signs differ because the camera's forward axis points into the screen. Only the change between events is used, so the head turn adds to touch look and to the autopilot's steering, and the compass heading does not matter. Turns over 0.6 radians between events are dropped. iOS needs `DeviceOrientationEvent.requestPermission()` from a tap, which the button's click provides.
 
+**Comfort.** While `stereo` is true `jPool` leaves the cloud worlds out of Journey's choice of world (they have no surfaces, so both eyes see the same flat glow), unless a template allows nothing else, and `autopilot` turns at half its usual rate. Both were chosen by reasoning; neither has been tried in a viewer.
+
 **What is switched off.** Everything centred on the screen would show each eye something different. In `frame()`: the feedback pass gets decay 0 and no overlay (so it passes the scene through); filters that move pixels (Echo, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl) are treated as none; `FS_FINAL` gets `uVr = 1`, which zeroes zoom blur and colour fringing; the transition type is forced to blink, the only one that is the same for both eyes; the idle roll is skipped. Field-of-view pulsing does not apply because the lens model fixes the field of view. Bloom is kept.
 
 **Screen wake.** `keepAwake()` holds a screen wake lock (`navigator.wakeLock`) while Journey or the VR viewer is on, since nobody touches the screen then. `setJourney` and `setStereo` call it. The browser drops the lock when the page is hidden, so it is taken again when the page becomes visible. Browsers without the API, and iOS before 16.4, fall back to the phone's own lock timer.
@@ -549,7 +591,9 @@ There is no test framework. `tools/` holds what was used during development:
 | Command | What it does |
 |---|---|
 | `node tools/unit.mjs` | Imports the pure functions (change detector, picker, head-turn math, steering handoff, cleaners, palette conversions) from the modules and tests them |
-| `node tools/pack.mjs` | Checks every pack with the app's own cleaners |
+| `node tools/pack.mjs` | Checks every pack with the app's own cleaners, and that `packs/index.json` is up to date |
+| `node tools/gallery.mjs` | Writes `packs/index.json` from the pack files |
+| `node tools/offer.mjs event.json --dry` | Runs the gallery's offer check on a saved issue event |
 | `python3 tools/probe.py` | Compares every world's GLSL `map` with its JavaScript `de` through the distance probe |
 | `python3 tools/check.py` | Headless smoke test: compiles all worlds, cycles every option, opens the setup panel, runs journey ticks, taps a tempo, starts audio; fails on any script or WebGL error |
 | `python3 tools/render.py ...` | Screenshot one world, or `--all` for a contact sheet; `--js` runs code inside the page |
@@ -585,19 +629,19 @@ Not verified, because they need a real device or a human:
 
 ## 15. Known weaknesses
 
-- **Box and Fortress are grainy.** Mandelbox detail is finer than the pixel-footprint threshold can tame. Fewer iterations or a larger hit threshold for these two would help.
-- **The HUD is large.** With Journey on and a file loaded it covers about a third of a phone screen until it fades. It is four to six wrapping rows of pills. A collapsible menu or tabs would be better.
+- **Box and Fortress are grainy in flight.** Mandelbox detail is finer than the pixel-footprint threshold can tame. Hold still (section 8b) cleans a frame that is not moving; fewer iterations or a larger hit threshold for these two would help while flying.
+- **The HUD is very large.** The November 2026 work added seven buttons (Hold still, Throw a light, Save picture, Record video, Knobs, More like this, Less like this). With Journey on it now covers about half of a phone screen until it fades: ten wrapping rows of pills. A collapsible menu or tabs would be better.
 - **Motion strengths were tuned from stills.** Some are probably too strong or too subtle in motion.
 - **Bulge is subtle; Scope and Orbit overlays can be faint** against bright worlds.
 
 ## 16. Ideas not yet built
 
 - VR viewer: a way to set the screen size or lens spacing, comfort options for the autopilot (slower turns, a vignette while turning), trails and overlays redone per eye, and a WebXR mode for real headsets.
-- Export and import of templates as a file.
-- Saving the current look (palette, mirrors, motion, filter, overlay) as a one-tap preset, separate from journey templates.
+- A list of saved scenes in the app. A scene can be kept as a picture (Save picture) or in a pack, but there is no list of them to tap.
 - Per-band reaction strength controls.
 - A proper MilkDrop-style per-pixel equation system, if the fixed motion list feels limiting.
-- Temporal anti-aliasing or jittered supersampling over the feedback buffer to tame fractal speckle.
+- Jittered supersampling while flying (Hold still, section 8b, does it only while nothing moves). It needs each pixel's place in the last frame, which the scene shader does not work out.
+- The rest of `docs/ROADMAP.md`.
 
 ## 17. How the code came to be laid out this way
 

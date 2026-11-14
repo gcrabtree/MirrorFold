@@ -20,7 +20,7 @@ isTouch=("ontouchstart" in window)||navigator.maxTouchPoints>0;
 calm=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 $("how").textContent=isTouch
   ? "Left thumb moves. Right thumb looks. Two fingers on the right: pinch for speed, twist to roll. Double-tap for a burst."
-  : "Click to capture the mouse. WASD to fly, Space and Shift for up and down, Q and E to roll, wheel for speed. [ and ] change world, P palette, M mirrors, J journey, T tap tempo, B or double-click for a burst.";
+  : "Click to capture the mouse. WASD to fly, Space and Shift for up and down, Q and E to roll, wheel for speed. [ and ] change world, P palette, M mirrors, J journey, H hold still, G throw a light, T tap tempo, B or double-click for a burst.";
 
 gl=canvas.getContext("webgl",{antialias:false,alpha:false,powerPreference:"high-performance"})
      ||canvas.getContext("experimental-webgl");
