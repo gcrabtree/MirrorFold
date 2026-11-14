@@ -1,13 +1,12 @@
 /* The zoom worlds: the Mandelbrot set and Julia sets seen flat, from above, zooming in on a point and out again. */
 import { cam } from "./camera.js";
 import { drift } from "./controls.js";
-import { calm, canvas, gl, isTouch } from "./dom.js";
+import { $, calm, canvas, gl, isTouch, toast } from "./dom.js";
+import { wakeHud } from "./input.js";
 import { started } from "./loop.js";
-import { setPal } from "./palettes.js";
-import { bindTex, link, passTo } from "./programs.js";
+import { bindTex } from "./programs.js";
 import { b36 } from "./spots.js";
 import { still } from "./still.js";
-import { freeT, tA, target } from "./targets.js";
 
 /* Where the view is: its middle (x, y), the distance s from the middle to the top of a square picture, how far it is
    turned, and the Julia set's constant (jx, jy). The middle is held as exactly as JavaScript can, about 16 digits, which
@@ -18,9 +17,14 @@ export const zm={x:-0.6,y:0,s:1.5,rot:0,jx:-0.8,jy:0.156,ox:0,oy:0,wx:0,wy:0};
 /* where the busy part of the picture was when last measured (in the shader's units from the middle of the picture, and
    how busy), a count of frames between measurements, and the low end of the sound, smoothed */
 export const zi={u:0,v:0,k:0,n:0,low:0};
+/* The patterns in the open parts of the picture. The Pattern button: "changes" lets the tour pick a new one at each
+   place it goes to; the others hold one. zw is how much of cells and of stripes is showing now (c, s) and what that is
+   easing toward (tc, ts), so that a change fades over a few seconds. */
+export const PATTERNS=["changes","cells","stripes","none"];
+export let zpat=0;
+export const zw={c:1,s:0,tc:1,ts:0};
 export const IGRID=12;    /* the picture is measured at this many points across and down */
 export const ISTEP=12;    /* a jump in step count between neighbours counts no more than this */
-export const RELIEF=0.26; /* how tall the plateau stands, in units of the view's size */
 export const JPUSH=0.02;  /* the most the sound pushes the Julia constant, with the whole set in view */
 /* the tour: which target, mirrored top to bottom or not, what it is doing, and its clocks */
 export const zp={ti:-1,flip:1,phase:0,hold:0,ji:0,turn:0,fx:0,fy:0};
@@ -63,70 +67,6 @@ export const JULIAS=[[-0.8,0.156],[-0.4,0.6],[0.285,0.01],[-0.7269,0.1889],[-0.8
   [0.3,0.5],[-0.12,-0.77],[-0.79,0.15],[0.37,0.1],[-1.25,0.02]];
 export const JDEPTH=1e-7;
 let refTex=null,refBuf=null,refKey="",refLen=[2,2],floatOk=false;
-let tZ=null,pRelief=null; /* the picture a zoom world's heights and palette places are drawn into, and the program that lights it */
-
-/* Lighting the relief. A zoom world draws a height and a place in the palette for each pixel (zoomData in shaders.js);
-   this turns them into the picture: the slope from the heights either side, a shadow by walking toward the light and
-   seeing whether anything along the way stands higher than the ray, a darker tone in hollows, a highlight, and a little
-   of a made-up sky reflected in the slopes. The light is fixed on the screen, upper left. uK = how deep the relief is,
-   the beat and the mids. */
-export const FS_RELIEF=[
-"precision highp float;uniform sampler2D uT;uniform vec2 uRes;uniform float uHue;uniform vec3 uK;uniform vec3 uPa,uPb,uPc,uPd;",
-"vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
-"float hAt(vec2 p){vec4 d=texture2D(uT,(floor(p)+0.5)/uRes);return (d.r*65280.0+d.g*255.0)/65535.0;}", /* always the middle of a pixel: the two halves of a number must not be blended with a neighbour's */
-"void main(){",
-"  vec2 p=gl_FragCoord.xy;vec4 d=texture2D(uT,p/uRes);",
-"  float h=(d.r*65280.0+d.g*255.0)/65535.0,x=(d.b*65280.0+d.a*255.0)/65535.0*16.0;",
-"  float sc=0.5*sqrt(uRes.x*uRes.y),e=max(1.0,floor(sc/380.0)),H=uK.x;", /* sc: pixels to one unit of the picture, so the relief looks the same at any sharpness */
-"  vec2 g=vec2(hAt(p+vec2(e,0.0))-hAt(p-vec2(e,0.0)),hAt(p+vec2(0.0,e))-hAt(p-vec2(0.0,e)))*sc/(2.0*e);",
-"  vec3 n=normalize(vec3(-g*H,1.0)),lt=normalize(vec3(-0.52,0.62,0.48));",
-"  vec2 l2=normalize(lt.xy);float rise=lt.z/length(lt.xy);",
-/* the shadow: 22 steps toward the light, each a fifth longer than the last, started at a different point in each pixel so no bands show */
-"  float sh=1.0,t=0.005*(1.0+0.22*fract(52.9829189*fract(dot(p,vec2(0.06711056,0.00583715)))));",
-"  for(int i=0;i<22;i++){",
-"    float hs=hAt(p+l2*t*sc);",
-"    sh=min(sh,clamp(((h-hs)*H+t*rise+0.004)/(0.35*t),0.0,1.0));",
-"    t*=1.22;",
-"  }",
-/* hollows: how much higher the ground stands a short way off, on four sides */
-"  float r1=0.035*sc,oc=0.0;",
-"  oc+=max(hAt(p+vec2(r1,0.0))-h,0.0)+max(hAt(p-vec2(r1,0.0))-h,0.0)+max(hAt(p+vec2(0.0,r1))-h,0.0)+max(hAt(p-vec2(0.0,r1))-h,0.0);",
-"  float ao=1.0/(1.0+2.2*oc);",
-"  bool top=h>0.9995;",
-"  vec3 base=pal(uHue+x)*(0.62+0.38*cos(6.2831853*(x*3.0+0.25)));", /* the palette, with a finer band of light and dark across it */
-"  base=base*(0.25+0.75*base);",
-"  if(top)base=pal(uHue+0.6)*0.10;", /* the plateau: dark and polished */
-"  float dif=max(dot(n,lt),0.0);",
-"  float sp=pow(max(dot(n,normalize(lt+vec3(0.0,0.0,1.0))),0.0),48.0);",
-"  vec3 rf=reflect(vec3(0.0,0.0,-1.0),n);float fres=pow(1.0-n.z,2.0);",
-"  vec3 sky=mix(pal(uHue+0.55)*0.25,mix(pal(uHue+0.15),vec3(1.0),0.5),smoothstep(-0.1,0.9,dot(rf.xy,l2)));", /* brighter toward the light */
-"  vec3 col=base*(0.08+1.15*dif*sh+0.22*n.z)*ao+vec3(0.75)*sp*sh+sky*(0.06+0.6*fres)*ao*(0.4+0.6*sh);",
-"  col*=1.0+0.5*uK.y;",
-"  col+=pal(uHue+0.3)*0.12*uK.z*(1.0-n.z);", /* the mids glow on the slopes */
-"  vec2 uv=(2.0*p-uRes)/sqrt(uRes.x*uRes.y);",
-/* from here on, what the scene shader does to every world's colour */
-"  col*=clamp(1.0-0.16*dot(uv,uv),0.35,1.0);",
-"  col*=1.35;col=col/(1.0+0.2*col);",
-"  float lum=dot(col,vec3(0.299,0.587,0.114));",
-"  col=clamp(mix(vec3(lum),col,1.4),0.0,1.0);",
-"  col=col*col*(3.0-2.0*col);",
-"  col=pow(col,vec3(1.15));",
-"  gl_FragColor=vec4(pow(col,vec3(0.4545)),1.0);",
-"}"].join("\n");
-/* the picture a zoom world's shader draws its heights into: the same size as the scene's */
-export function zoomData(){
-  if(!tZ||tZ.w!==tA.w||tZ.h!==tA.h){freeT(tZ);tZ=target(tA.w,tA.h);}
-  return tZ;
-}
-/* after a zoom world has drawn its heights: light them into dst. bt and mp are the beat and the mids. */
-export function zoomLight(dst,hue,bt,mp){
-  var U=pRelief.U;
-  passTo(dst,pRelief);bindTex(0,tZ.t);gl.uniform1i(U.uT,0);
-  gl.uniform2f(U.uRes,dst.w,dst.h);gl.uniform1f(U.uHue,hue);
-  gl.uniform3f(U.uK,RELIEF*(1+0.3*mp),bt,mp);
-  setPal(U);
-  gl.drawArrays(gl.TRIANGLES,0,3);
-}
 
 /* The path of one point: z, then z*z + c, and so on, written into out as (x, y, 0, 0) for each step of one row of the
    reference picture. It stops after the first step that has left for good, or at REF_W steps. Returns how many it wrote. */
@@ -210,7 +150,16 @@ export function pilotTo(z,tx,ty,d,dt,rate){
   if(dist<=0.6*z.s&&z.s>d)z.s=Math.max(d,z.s*Math.exp(-rate*dt));
   return z.s<=d&&z.x===tx&&z.y===ty;
 }
+/* which pattern a number from 0 to 1 picks: cells a little under half the time, stripes a third, none a fifth */
+export function patternPick(r){return r<0.45?1:(r<0.8?2:3);}
+function patternAim(k){zw.tc=k===1?1:0;zw.ts=k===2?1:0;}
+export function setPattern(i){
+  zpat=((i%PATTERNS.length)+PATTERNS.length)%PATTERNS.length;
+  if(zpat)patternAim(zpat);
+  $("bPattern").textContent="Pattern "+PATTERNS[zpat];
+}
 function nextTarget(){
+  if(zpat===0)patternAim(patternPick(Math.random()));
   var i=Math.floor(Math.random()*(ZTARGETS.length-1));
   zp.ti=i>=zp.ti?i+1:i;if(zp.ti>=ZTARGETS.length)zp.ti=0;
   zp.flip=Math.random()<0.5?1:-1;zp.hold=0;
@@ -233,7 +182,7 @@ function tour(julia,dt,rate){
   }else if(zp.phase===1){
     zm.s=Math.min(ZTOP,zm.s*Math.exp(1.6*rate*dt));
     if(zm.s>0.4){k=1-Math.exp(-2*dt);zm.x-=zm.x*k;zm.y-=zm.y*k;}
-    if(zm.s>=ZTOP){zp.phase=2;zp.turn=0;zp.fx=zm.jx;zp.fy=zm.jy;zp.ji=(zp.ji+1)%JULIAS.length;}
+    if(zm.s>=ZTOP){zp.phase=2;zp.turn=0;if(zpat===0)patternAim(patternPick(Math.random()));zp.fx=zm.jx;zp.fy=zm.jy;zp.ji=(zp.ji+1)%JULIAS.length;}
   }else{
     zp.turn=Math.min(1,zp.turn+dt/6);k=zp.turn*zp.turn*(3-2*zp.turn);
     zm.jx=zp.fx+(JULIAS[zp.ji][0]-zp.fx)*k;zm.jy=zp.fy+(JULIAS[zp.ji][1]-zp.fy)*k;
@@ -267,6 +216,10 @@ export function stepZoom(fr){
   var rate=0.45*cam.baseSpeed*(1+3*cam.boost),own=fr.idle&&fr.mx===0&&fr.my===0&&fr.uz===0&&fr.lx===0&&fr.ly===0;
   var ax=Math.sqrt((canvas.width||1)/(canvas.height||1)),ay=1/ax,auto=own&&started&&!still&&(fr.travel||drift),c;
   if(w.julia&&!still)juliaPush(fr);
+  if(!still){ /* a change of pattern fades in over a few seconds, and then sits exactly on its value */
+    c=1-Math.exp(-dt/1.2);zw.c+=(zw.tc-zw.c)*c;zw.s+=(zw.ts-zw.s)*c;
+    if(Math.abs(zw.tc-zw.c)<0.004)zw.c=zw.tc;if(Math.abs(zw.ts-zw.s)<0.004)zw.s=zw.ts;
+  }
   if(!own&&(zm.ox!==0||zm.oy!==0)){zm.x+=zm.ox*zm.s;zm.y+=zm.oy*zm.s;zm.ox=zm.oy=0;} /* the user has the picture: its middle is the point again */
   if(auto){
     if(zi.n--<=0){ /* measured every fourth frame; the view moves toward it every frame */
@@ -286,7 +239,7 @@ export function stepZoom(fr){
   zm.x=Math.max(-3,Math.min(3,zm.x));zm.y=Math.max(-3,Math.min(3,zm.y));
 }
 /* everything that decides the picture, as one string: Hold still compares it from frame to frame */
-export function zoomKey(){return zm.x+","+zm.y+","+zm.s+","+zm.rot+","+zm.jx+","+zm.jy+","+zm.ox+","+zm.oy+","+zm.wx+","+zm.wy;}
+export function zoomKey(){return zm.x+","+zm.y+","+zm.s+","+zm.rot+","+zm.jx+","+zm.jy+","+zm.ox+","+zm.oy+","+zm.wx+","+zm.wy+","+zw.c+","+zw.s;}
 
 /* Before a zoom world is drawn: work out the reference paths for the middle of the view and hand them to the shader.
    The shader follows each pixel only as its difference from a reference path, which stays small enough for its numbers.
@@ -311,7 +264,7 @@ export function zoomUniforms(U,w){
   }
   gl.uniform1i(U.uRef,2);
   gl.uniform4f(U.uZ,zm.s,Math.cos(zm.rot),Math.sin(zm.rot),jul?1:0);
-  gl.uniform2f(U.uZo,zm.ox,zm.oy);
+  gl.uniform2f(U.uZo,zm.ox,zm.oy);gl.uniform2f(U.uZs,zw.c,zw.s);
   gl.uniform3f(U.uZn,refLen[0],refLen[1],zoomIter(zm.s,zoomCap(),jul));
 }
 /* Whether this device can hold the reference paths (a picture of real numbers). Without it the zoom worlds are skipped. */
@@ -354,12 +307,14 @@ export function zoomFromSpot(w,t){
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 floatOk=!!gl.getExtension("OES_texture_float");
-pRelief=link(FS_RELIEF,["uT","uRes","uHue","uK","uPa","uPb","uPc","uPd"]);
+$("bPattern").addEventListener("click",function(){
+  setPattern(zpat+1);
+  toast(zpat?"Zoom worlds: the pattern is "+PATTERNS[zpat]:"Zoom worlds: Journey changes the pattern at each new place");wakeHud();
+});
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={zm, zp, zi, IGRID, ISTEP, JPUSH, fixedFirst, interest, centreOn, juliaPush, ZTOP, ZMIN, ZBAIL, REF_W, ZHOLD, ZTURN, ZTARGETS, JULIAS, JDEPTH, refOrbit, fixedPoint, zoomIter, targetDepth, zoomCap, pilotTo, nextTarget, tour,
-  FS_RELIEF, RELIEF, zoomData, zoomLight, get tZ(){return tZ},set tZ(v){tZ=v}, get pRelief(){return pRelief},set pRelief(v){pRelief=v},
+export const __dbg={zm, zp, zi, zw, PATTERNS, patternPick, patternAim, setPattern, get zpat(){return zpat},set zpat(v){zpat=v}, IGRID, ISTEP, JPUSH, fixedFirst, interest, centreOn, juliaPush, ZTOP, ZMIN, ZBAIL, REF_W, ZHOLD, ZTURN, ZTARGETS, JULIAS, JDEPTH, refOrbit, fixedPoint, zoomIter, targetDepth, zoomCap, pilotTo, nextTarget, tour,
   zoomEnter, stepZoom, zoomKey, zoomUniforms, zoomOk, zoomSpot, zoomFromSpot, refLen,
   get refTex(){return refTex},set refTex(v){refTex=v}, get refBuf(){return refBuf},set refBuf(v){refBuf=v}, get refKey(){return refKey},set refKey(v){refKey=v},
   get floatOk(){return floatOk},set floatOk(v){floatOk=v}};

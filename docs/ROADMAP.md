@@ -108,5 +108,6 @@ The survey looked at MilkDrop descendants (Butterchurn, projectM, NestDrop), fra
 
 ## Left out on purpose
 
+- **A lit relief for the zoom worlds.** Built on 14 November 2026 (heights from the distance to the set, lit in a second pass with cast shadows) and taken out the same day: it turned the fine detail into noise until the view was zoomed in. It is in the history at commit `2ea0a86`.
 - **MilkDrop `.milk` presets.** They are programs. Packs never carry JavaScript, and a per-pixel equation system would be a second language to keep safe.
 - **Multiplayer, and a gallery with its own server.** Both need something running that is not a folder of files.

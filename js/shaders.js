@@ -34,35 +34,48 @@ export function fragSource(w){
    thousand times in. uZ = the view's size, the cosine and sine of its turn, and 1 for a Julia set. uZn = how long the
    two reference paths are, and how many steps to take. When a pixel comes nearer to zero than its own difference, or
    its path runs out, it carries on against the path that starts from zero (row 1), where the difference is the point itself. */
-"uniform sampler2D uRef;uniform vec4 uZ;uniform vec3 uZn;uniform vec2 uZo;",
+"uniform sampler2D uRef;uniform vec4 uZ;uniform vec3 uZn;uniform vec2 uZo,uZs;",
 "vec2 refAt(float i,float row){return texture2D(uRef,vec2((i+0.5)/"+REF_W.toFixed(1)+",0.25+0.5*row)).xy;}",
-/* What a zoom world draws is not a colour but two numbers for each pixel, each spread over two of the four channels so
-   that it has 65,536 levels: the height of the relief, and the place in the palette. zoomLight in js/zoom.js lights it. */
-"vec2 pk(float v){float t=floor(v*65535.0+0.5);float hi=floor(t/256.0);return vec2(hi,t-hi*256.0)/255.0;}",
-"vec4 zoomData(vec2 uv){",
+"vec3 zoomCol(vec2 uv){",
 "  vec2 d0=(vec2(uZ.y*uv.x-uZ.z*uv.y,uZ.z*uv.x+uZ.y*uv.y)+uZo)*uZ.x;", /* uZo: how far the picture's middle is from the reference point, in units of the view's size */
 "  vec2 dz=uZ.w>0.5?d0:vec2(0.0),dc=uZ.w>0.5?vec2(0.0):d0;",
-"  float ri=0.0,row=0.0,len=uZn.x,n=0.0,m=0.0,esc=0.0,near=1e9;",
+"  float ri=0.0,row=0.0,len=uZn.x,n=0.0,m=0.0,esc=0.0,near=1e9,nearI=0.0,sa=0.0,sl=0.0;",
 "  vec2 Z=refAt(0.0,0.0),w=Z+dz;",
-/* dr is how fast the point's value changes as the pixel moves, in units of the view's size: it gives the distance to
-   the set, which the height of the relief is made from */
+/* dr is how fast the point's value changes as the pixel moves, in units of the view's size. It gives the distance to
+   the set, which is used to fade the patterns out where they would be finer than a pixel. */
 "  vec2 dr=uZ.w>0.5?vec2(uZ.x,0.0):vec2(0.0),ds=uZ.w>0.5?vec2(0.0):vec2(uZ.x,0.0);",
 "  for(int i=0;i<"+(isTouch?384:REF_W)+";i++){",
 "    if(float(i)>=uZn.z)break;",
 "    if(dot(w,w)<dot(dz,dz)||ri>=len-1.0){dz=w;ri=0.0;row=1.0;len=uZn.y;Z=vec2(0.0);}",
 "    if(dot(dr,dr)<1e30)dr=2.0*vec2(w.x*dr.x-w.y*dr.y,w.x*dr.y+w.y*dr.x)+ds;",
 "    dz=2.0*vec2(Z.x*dz.x-Z.y*dz.y,Z.x*dz.y+Z.y*dz.x)+vec2(dz.x*dz.x-dz.y*dz.y,2.0*dz.x*dz.y)+dc;",
-"    ri+=1.0;Z=refAt(ri,row);w=Z+dz;m=dot(w,w);n+=1.0;near=min(near,m);",
+"    ri+=1.0;Z=refAt(ri,row);w=Z+dz;m=dot(w,w);n+=1.0;",
+"    if(m<near){near=m;nearI=n;}", /* the nearest the path comes to zero, and at which step */
+"    sl=0.5+2.0*w.x*w.y*(w.x*w.x-w.y*w.y)/max(m*m,1e-30);sa+=sl;", /* sin of four times the path's angle, without working out the angle */
 "    if(m>"+ZBAIL.toFixed(1)+"){esc=1.0;break;}",
 "  }",
-"  if(esc<0.5)return vec4(1.0,1.0,0.0,0.0);", /* never left: inside the set, the top of the plateau */
-"  float sn=n+1.0-log2(0.5*log2(m));", /* the step count, made smooth between one step and the next */
-"  float x=0.30*sqrt(sn)+0.06*uM;", /* where in the palette */
-/* The height. The set is a plateau; the ground falls away from it, steeply at its edge and gently further out. de is
-   the distance to the set in units of the view's size, so the relief looks the same at every depth. */
-"  float de=0.5*sqrt(m/max(dot(dr,dr),1e-30))*log(m);",
-"  float h=0.998*(0.50*exp(-5.0*de)+0.32*exp(-28.0*de)+0.18*exp(-0.9*de));",
-"  return vec4(pk(h),pk(clamp(x/16.0,0.0,1.0)));",
+/* uZs is how much of each pattern to show: cells, stripes. Both are read off the path the point took. */
+"  float wc=uZs.x,ws=uZs.y;",
+"  if(esc<0.5){", /* never left: inside the set. Coloured by which step came nearest zero (it follows the period of each bulb) and ringed by how near it came. */
+"    float q=sqrt(min(near,1.0));",
+"    return pal(uHue+0.6+0.13*nearI)*(0.10+0.30*(0.5+0.5*cos(18.0*q))*q);",
+"  }",
+"  float f=1.0-log2(log2(m)/"+Math.log2(ZBAIL).toFixed(1)+");", /* how far between one step count and the next, 0 to 1 */
+"  float sn=n+f-1.0;", /* the step count, made smooth between one step and the next */
+"  float x=0.30*sqrt(max(sn,0.0))+0.06*uM;",
+"  vec3 c=pal(uHue+x)*(0.62+0.38*cos(6.2831853*(x*3.0+0.25)));", /* the palette, with a finer band of light and dark across it */
+"  c=c*(0.20+0.55*c);",
+"  float de=0.5*sqrt(m/max(dot(dr,dr),1e-30))*log(m);", /* distance to the set, in units of the view's size */
+"  float k=smoothstep(0.004,0.045,de);", /* the patterns fade out near the set, where they would be finer than a pixel */
+/* cells: each step count is a ring, and each ring is cut where the path ended above or below the axis. The cells halve in width with every ring. */
+"  float th=atan(w.y,w.x);",
+"  float edge=min(abs(sin(th))*1.6,min(f,1.0-f)*2.0);",
+"  float cell=(w.y>0.0?1.0:0.72)*(0.55+0.45*smoothstep(0.0,0.14,edge));",
+"  c*=mix(1.0,cell*1.15,k*wc);",
+/* stripes: the average over the whole path of a wave of its angle, smoothed between step counts. It runs along the lines a point would follow out from the set. */
+"  float av=mix((sa-sl)/max(n-1.0,1.0),sa/n,f);",
+"  c*=mix(1.0,0.35+1.5*smoothstep(0.25,0.75,av),k*ws);",
+"  return c*(1.0+0.5*uBeat)+pal(uHue+0.3)*0.2*uMid*exp(-0.02*sn);",
 "}"]:[],[
 "void main(){",
 "  if(uLandOn>0.5&&texture2D(uLandT,gl_FragCoord.xy/uRes).a>0.995){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* the land covers this pixel: nothing to draw */
@@ -90,7 +103,7 @@ export function fragSource(w){
 "  vec3 ro=uPos+uCam*vec3(eo,0.0);",
 "  float tmax=1e9;",
 "#ifdef FLAT",
-"  vec3 col=vec3(0.0);gl_FragColor=zoomData(uv);return;",
+"  vec3 col=zoomCol(uv);",
 "#else",
 "#ifdef VOLUME",
 "  vec3 rd=normalize(uCam*vec3(uv,fov));",

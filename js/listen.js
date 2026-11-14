@@ -65,6 +65,7 @@ export function setMusic(mode){
 }
 export function tap(){
   var now=performance.now()/1000;
+  if(taps.length&&now-taps[taps.length-1]<0.05)return; /* two taps in the same instant are one tap. Counted as two, the time between them is nothing, and the halving below would never end. */
   if(taps.length&&now-taps[taps.length-1]>2.2)taps=[];
   taps.push(now);if(taps.length>6)taps.shift();
   tapAt=now;bands.b.p=1;

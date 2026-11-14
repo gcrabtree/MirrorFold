@@ -158,6 +158,7 @@ The controls fade after five seconds and come back when you touch the picture.
 | Mirrors | Steps through off, 3, 4, 6, 8 and 12 segments. |
 | FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
 | Morph | Turns the slow change of each world's shape on or off. |
+| Pattern | For the two zoom worlds: the pattern in the open parts of the picture. Changes (Journey picks one at each new place), cells, stripes or none. |
 | Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
 
 **Land and video**
@@ -354,9 +355,9 @@ How deep it goes depends on the device. A computer takes up to 1,024 steps for e
 
 **The picture stays on its busy part.** A zoom goes in on one exact point, and at many of them all the detail is to one side. So while the tour or Drift is running, the app keeps measuring where the detail in the picture is and slides the picture until that is in the middle. The point being zoomed on stays in view, off to one side if need be. As soon as you move the picture yourself, it is yours.
 
-**It is lit as a relief.** The picture is treated as a landscape seen from straight above: the set is a raised plateau, dark and polished, and the ground falls away from it, steeply at its edge. A light at the upper left of the screen lights the slopes that face it, the plateau and its arms throw shadows across the ground, hollows are darker, and steep edges catch a highlight and a little reflected sky. The middle of the sound makes the relief a little taller.
+**Patterns in the open parts.** The smooth colour around the set is filled with a pattern read off the path each point takes. **Cells** is a tiled grid that wraps round the set: each ring is one step count, cut where the path ended above or below the axis, so the tiles halve in width with every ring. **Stripes** is soft fins running out from the set: the average, over the whole path, of a wave of its angle. Both fade out close to the set, where they would be finer than a pixel. The **Pattern** button (in **Look**) holds cells, stripes or none; left on **changes**, Journey picks a new one at each place it goes to, and the change fades in. Inside the set, each bulb has its own colour (by which step of the path came nearest zero, which follows the bulb's period) with rings by how near it came.
 
-**The Julia set follows the music.** The low end of the sound, smoothed over about a third of a second, and the **Morph** push the set's constant a little, which changes the whole shape. The push is largest with the whole set in view and shrinks as the view gets deeper, because deep in a small push already turns the whole picture. The Mandelbrot set's shape is fixed; there the sound changes only the light and the colour.
+**The Julia set follows the music.** The low end of the sound, smoothed over about a third of a second, and the **Morph** push the set's constant a little, which changes the whole shape. The push is largest with the whole set in view and shrinks as the view gets deeper, because deep in a small push already turns the whole picture. The Mandelbrot set's shape is fixed; there the sound changes only the colour.
 
 Mirrors, motions, filters, overlays, the land and **Hold still** all work on the zoom worlds. There is no orb in them and no light to throw, and Journey leaves them out in the VR viewer. **Share spot** keeps a place the tour has centred exactly; any other view comes back right only while it is magnified less than about a thousand times.
 

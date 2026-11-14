@@ -16,7 +16,7 @@ import { vidAlone, videoScene, videoUniforms } from "./video.js";
 import { jit, stillN } from "./still.js";
 import { stereo, vrEye, vrEyeStep } from "./vr.js";
 import { tr } from "./warp.js";
-import { zoomData, zoomLight, zoomUniforms } from "./zoom.js";
+import { zoomUniforms } from "./zoom.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
 export const flip={cur:0,fcur:0};         /* which of each pair of pictures is being drawn into this frame: the trails, and the smoothed final picture */
 
@@ -39,7 +39,7 @@ export function drawScene(fr){
   /* the video filling the screen takes the world's place (not in the VR viewer, where a flat picture would not sit right for each eye) */
   if((!landOn||landOver)&&vidAlone()&&!stereo)videoScene(tA,mirrors[sel.mi],clock.spin,bt);
   else if(!landOn||landOver){
-  gl.bindFramebuffer(gl.FRAMEBUFFER,w.flat?zoomData().f:tA.f);gl.viewport(0,0,tA.w,tA.h);gl.useProgram(w.prog); /* a zoom world draws heights into a picture of its own, which is then lit into tA */
+  gl.bindFramebuffer(gl.FRAMEBUFFER,tA.f);gl.viewport(0,0,tA.w,tA.h);gl.useProgram(w.prog);
   gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],orbU[3]);gl.uniform4f(U.uSpark,sparkU[0],sparkU[1],sparkU[2],sparkU[3]);
   gl.uniform2f(U.uRes,tA.w,tA.h);
   gl.uniform1f(U.uTime,clock.time);
@@ -65,7 +65,6 @@ export function drawScene(fr){
   gl.uniformMatrix3fv(U.uCam,false,camArr);
   if(w.flat)zoomUniforms(U,w);
   gl.drawArrays(gl.TRIANGLES,0,3);
-  if(w.flat)zoomLight(tA,clock.hueT+wHue,bt,mp);
   }
   /* which picture the effects work on: the land laid over the world, the world alone, or the land alone */
   if(landOver&&landFx===0){passTo(landMixed(),pMix);bindTex(0,tA.t);bindTex(1,tL.t);gl.uniform1i(pMix.U.uT,0);gl.uniform1i(pMix.U.uL,1);gl.drawArrays(gl.TRIANGLES,0,3);src=tC;}

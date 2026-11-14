@@ -284,7 +284,8 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   zoomEnter(mw); zoomFromSpot(mw, "k" + sp.slice(1, 13) + "0");
   expect("a link of the first form, which marked a mirrored target by adding 18, still opens", zm.x === ZTARGETS[1].x && zm.y === -ZTARGETS[1].y, JSON.stringify(zm));
   {
-    const { interest, centreOn } = zoomM;
+    const { interest, centreOn, patternPick, PATTERNS } = zoomM;
+    expect("the tour picks cells, stripes or none, and never the setting that means it picks", [0, 0.44, 0.46, 0.79, 0.81, 0.999].map(patternPick).join() === "1,1,2,2,3,3" && PATTERNS[1] === "cells" && PATTERNS[2] === "stripes" && PATTERNS[3] === "none");
     const c = interest(0.9, 0, 0.8, 0, 1, 1, false, 0, 0, 200), flat = interest(1.5, 1.5, 1e-3, 0, 1, 1, false, 0, 0, 200);
     expect("the busy part of a view with the set on its left is to the left, and a view of plain colour is not busy", c[0] < -0.2 && Math.abs(c[1]) < 0.05 && c[2] > flat[2] * 20, JSON.stringify([c, flat]));
     const turned = interest(0.9, 0, 0.8, Math.PI / 2, 1, 1, false, 0, 0, 200);
