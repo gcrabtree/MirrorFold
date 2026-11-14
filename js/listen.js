@@ -6,6 +6,7 @@ import { $, calm, errBox, gl, isTouch, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { startBuilt, stopBuilt } from "./music.js";
 import { OVERLAYS, sel } from "./state.js";
+import { vidFile, videoSound } from "./video.js";
 export let musicMode="off",beat=0,level=0; /* where the sound comes from, and the two numbers the picture reads: a pulse that decays, and how loud the low end is */
 let taps=[],tapInt=0,tapAt=0;
 export let soundChanged;
@@ -44,6 +45,7 @@ function startListening(mode){
 function listening(){return (musicMode==="tab"||musicMode==="mic")&&!!cap.node;}
 export function setMusic(mode){
   if((mode==="tab"&&!canTab)||(mode==="mic"&&!canMic))mode="off";
+  if(mode==="video"&&!vidFile()){mode="off";$("rowVideo").hidden=false;toast("Choose a video file first.");}
   if(mode!=="off"&&mode!=="tap"&&!ensureAudio()){mode="off";errBox.textContent="This browser cannot play audio here.";}
   if(cap.stream||musicMode==="tab"||musicMode==="mic")stopListening();
   musicMode=mode;selMusic.value=mode;
@@ -51,11 +53,13 @@ export function setMusic(mode){
   try{
     if(mode==="built"){pPause();ac.resume();startBuilt();}
     else if(mode==="file"){stopBuilt();ac.resume();if(player.mode)pPlay();}
+    else if(mode==="video"){stopBuilt();pPause();ac.resume();}
     else if(mode==="tab"||mode==="mic"){stopBuilt();pPause();ac.resume();startListening(mode);}
     else{ /* off and tap make no sound: release the audio session so music from another app keeps playing */
       if(ac){stopBuilt();pPause();ac.suspend();}
     }
   }catch(_){}
+  videoSound(mode==="video");
   if(mode!=="tap"){taps=[];tapInt=0;$("bTap").textContent="Tap the beat";}
   beat=0;level=0;
 }
@@ -81,7 +85,7 @@ function bandStep(o,raw,dt,gain){
   o.lv+=(x-o.lv)*Math.min(1,dt*(x>o.lv?10:2));
 }
 function bandAvg(a,b){var t=0;for(var i=a;i<=b;i++)t+=fbins[i];return t/((b-a+1)*255);}
-export function liveAudio(){return (musicMode==="built"||musicMode==="file"||listening())&&!!analyser&&!!ac&&ac.state==="running";}
+export function liveAudio(){return (musicMode==="built"||musicMode==="file"||musicMode==="video"||listening())&&!!analyser&&!!ac&&ac.state==="running";}
 /* A major change in the sound: the last second or so differs sharply from the last several, in loudness or in
    the balance of low to high. It fires once, then takes the new sound as normal. */
 function makeChangeDetector(){

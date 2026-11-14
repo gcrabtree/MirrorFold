@@ -215,6 +215,7 @@ export const FS_FINAL=[
 "    else if(uFx<3.5)cw*=mix(0.5,1.0,smoothstep(0.0,0.5,length(cw)));", /* bulge: the middle swells */
 "    else{float ta=2.0*sin(uTime*0.25)*max(0.6-length(cw),0.0);float tcs=cos(ta),tsn=sin(ta);cw=vec2(tcs*cw.x-tsn*cw.y,tsn*cw.x+tcs*cw.y);}", /* twirl: winds and unwinds */
 "  }",
+"  if(uFx>14.5){vec2 gt=fract(cw*vec2(uAsp,1.0)*9.0)-0.5;cw+=gt*0.035;}", /* glass: a grid of small lenses */
 "  if(uLiq>0.0)cw+=uLiq*vec2(sin(cw.y*14.0+uTime*1.3),cos(cw.x*12.0-uTime*1.1));",
 "  if(uMos>0.0){vec2 n=vec2(uMos*uAsp,uMos);cw=(floor(cw*n)+0.5)/n;}",
 "  if(uVr>0.5)zb=0.0;", /* VR viewer: no zoom streaks or fringing, they are centred on the screen and not on each eye */
@@ -253,7 +254,25 @@ export const FS_FINAL=[
 "      vec2 g=(gl_FragCoord.xy*mat2(0.7071,-0.7071,0.7071,0.7071))/7.0;float rad=sqrt(clamp(lum,0.0,1.0))*0.72;",
 "      col=clamp(col/max(lum,0.08)*0.75,0.0,1.0)*(1.0-smoothstep(rad-0.1,rad+0.1,length(fract(g)-0.5)));",
 "    }else if(uFx<8.5){float bd=abs(fract(lum*9.0-uTime*0.15)-0.5);col=mix(col*0.22,clamp(col*1.9+0.08,0.0,1.0),1.0-smoothstep(0.03,0.1,bd));}", /* contour: drifting bands of equal brightness */
-"    else{float l2=smoothstep(0.06,0.7,lum);col=mix(vec3(l2),uTint*l2*1.5,smoothstep(0.5,0.95,l2)*0.65);}", /* noir: black and white, highlights in the palette colour */
+"    else if(uFx<9.5){float l2=smoothstep(0.06,0.7,lum);col=mix(vec3(l2),uTint*l2*1.5,smoothstep(0.5,0.95,l2)*0.65);}", /* noir: black and white, highlights in the palette colour */
+"    else if(uFx<10.5||(uFx>13.5&&uFx<14.5)){", /* comic and emboss both read the brightness either side */
+"      vec2 px=uPx*1.5;",
+"      float l0=dot(texture2D(uT,0.5+cw-px).rgb,LW),l1=dot(texture2D(uT,0.5+cw+px).rgb,LW);",
+"      float l2=dot(texture2D(uT,0.5+cw+vec2(px.x,-px.y)).rgb,LW),l3=dot(texture2D(uT,0.5+cw+vec2(-px.x,px.y)).rgb,LW);",
+"      if(uFx<10.5){", /* comic: a few flat colours, made stronger, with dark outlines */
+"        vec3 q=floor(col*4.0+0.5)/4.0;q=clamp(mix(vec3(dot(q,LW)),q,1.5),0.0,1.0);",
+"        col=q*(1.0-0.9*smoothstep(0.06,0.2,length(vec2(l1-l0,l3-l2))));",
+"      }else{float g=clamp(0.5+(l1-l0)*3.5,0.0,1.0);col=mix(vec3(g),col*g*2.0,0.3);}", /* emboss: grey relief, lit from one corner, with a little of the colour left */
+"    }else if(uFx<11.5)col=mix(pal(uHue+0.5)*0.1,mix(pal(uHue),vec3(1.0),0.35),smoothstep(0.04,0.8,lum));", /* duotone: dark parts one palette colour, bright parts another */
+"    else if(uFx<12.5){", /* tape: lines shifted sideways a little, colours out of register, a soft band rolling up, faint lines and grain */
+"      float row=floor(v.y*200.0);",
+"      float sh=(fract(sin(row*91.7+floor(uTime*10.0)*7.3)*43758.5453)-0.5)*0.003+0.012*exp(-pow((fract(v.y-uTime*0.06)-0.5)*16.0,2.0));",
+"      vec3 t=vec3(texture2D(uT,0.5+cw+vec2(sh+0.004,0.0)).r,texture2D(uT,0.5+cw+vec2(sh,0.0)).g,texture2D(uT,0.5+cw+vec2(sh-0.004,0.0)).b);",
+"      t=mix(vec3(dot(t,LW)),t,0.8)*(0.93+0.07*cos(gl_FragCoord.y*3.14159));",
+"      col=clamp(t*0.94+0.03+0.03*(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233))+floor(uTime*10.0))*43758.5453)-0.5),0.0,1.0);",
+"    }else if(uFx<13.5){", /* streaks: the bright parts run down the picture */
+"      for(int i=1;i<9;i++){vec3 s=texture2D(uT,0.5+cw+vec2(0.0,float(i)*uPx.y*7.0)).rgb;col=max(col,s*smoothstep(0.45,0.8,dot(s,LW))*(1.0-float(i)/9.0));}",
+"    }",
 "  }",
 "  col+=texture2D(uB,0.5+cw).rgb*uBloom;",
 "  col=mix(col,uTint,max(tintAmt,diss))*mask;",

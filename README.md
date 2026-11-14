@@ -122,7 +122,7 @@ The controls at the top of the screen fade after five seconds without input and 
 | Control | Options |
 |---|---|
 | Feedback motion | none, Melt, Vortex, Tunnel, Implode, Ripple, Drift. Each one smears the previous frame in a different way. |
-| Filter | none, Echo, Neon, Solar, Negative, Poster, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl, Thermal, CRT, Halftone, Contour, Noir. |
+| Filter | none, Echo, Neon, Solar, Negative, Poster, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl, Thermal, CRT, Halftone, Contour, Noir, Comic, Two-tone, Tape, Streaks, Emboss, Glass. The last six were made with video in mind. |
 | Overlay | none, Ring, Scope, Spectrum, Spokes, Rings, Spiral, Orbit. These draw the sound on top of the picture. |
 | Overlay strength | 15%, 30%, 50%, 75% or 100%. |
 
@@ -138,7 +138,7 @@ The controls at the top of the screen fade after five seconds without input and 
 | Effects on | Shown for **Land over world**. Whether motions, filters and overlays act on **everything**, **the sky** (the world behind) or **the land**. |
 | FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
 | Detail | Steps through auto, sharp and fast. See [Performance](#performance). |
-| Video off / on | An experiment. Opens a row of controls for showing a video in the picture: choose a video file from this device or use the camera, pick where it shows (on the surfaces, through the shapes, in the distance, in the overlay, as the colours), how strongly, and pause it. The video is played without its sound, is never uploaded, and is slowed where needed so that it cannot make the screen flash. Pressing the button again turns the video off. |
+| Video off / on | An experiment. Opens a row of controls for showing a video in the picture: choose a video file from this device or use the camera, pick where it shows (on the surfaces, through the shapes, in the distance, in the overlay, as the colours, or filling the screen with no world at all, where the mirrors, motions, filters and overlays all work on the video and the land can stand in front), how strongly, and pause it. Choosing a video file also makes its sound the music (Music: My video's sound), so the picture pulses to it; pick another music source to silence the video. The video is never uploaded, and is slowed where needed so that it cannot make the screen flash. Pressing the button again turns the video off. |
 | Stats | Shows a readout in the top left corner: pictures drawn each second and the slowest one, how long the page's own script takes for each picture, the sharpness and size of the picture, the name of the graphics chip drawing it, and a trial of the distance probe (how long the page waits for the chip to answer one question, and the chip's answer beside the script's). Useful when the picture stutters. |
 | Morph | Turns the slow change of each world's shape on or off. |
 | Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
