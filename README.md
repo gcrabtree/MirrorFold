@@ -205,7 +205,7 @@ Three bands of the sound drive different parts of the picture. Bass drives zoom 
 
 | Setting | What it does |
 |---|---|
-| Built-in music | A generated track at 92 beats per minute. It is made in the browser, not a recording. |
+| Built-in music | A dance track at 126 beats per minute, made up in the browser as it plays, not a recording: kick, pumping bass, claps, hats, chords, an arpeggio and a tune, moving through intro, build, drop and breakdown. After 72 bars it starts a new song in another key. |
 | My audio file | Plays a file you choose, with pause and a scrubber. Files longer than 15 minutes or larger than 80 MB are streamed instead of loaded whole. |
 | Tap tempo | Makes no sound. Use it when music is playing in another app, such as Apple Music or Spotify: enter silent, start your song there, choose Tap tempo and tap the beat. |
 | Listen to a tab | Reacts to the sound of another browser tab, such as Spotify's web player or YouTube. Chrome and Edge on a computer only. |
