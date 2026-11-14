@@ -1,3 +1,7 @@
+/* Asks the graphics chip for a world's distance at up to 16 points, using the same GLSL "map" the picture is drawn with.
+   Each point is one pixel of a 16 by 1 picture; the distance, kept between -8 and 8, is spread over three colour bytes
+   and read back. This is how a world that has no JavaScript distance function (one from a pack) could still be flown
+   through. Reading a picture back makes the page wait for the chip, so it is timed (see Stats). */
 import { scene } from "./choose.js";
 import { clock, morphValue } from "./clock.js";
 import { gl } from "./dom.js";
@@ -39,23 +43,12 @@ export function probe(w,m,n){ /* the distances at the first n points in probePts
    even though the average rate is high. (Found by accident: with Stats on, whose probe does the same wait, a PC with a
    144 Hz screen ran smoothly, and with it off it stuttered.) A pack world's own probe, later in the frame, does the same job. */
 export function chipWait(){
-  if(scene.world.volume||scene.hyb||!probe(scene.world,morphValue(),1)){ /* done the way Stats does it: draw into the small picture, then read from it */
+  if(scene.world.volume||!probe(scene.world,morphValue(),1)){ /* done the way Stats does it: draw into the small picture, then read from it */
     if(!probeT)probeT=target(16,1);
     passTo(probeT,pCopy);bindTex(0,tA.t);gl.uniform1i(pCopy.U.uT,0);gl.drawArrays(gl.TRIANGLES,0,3);
     gl.readPixels(0,0,1,1,gl.RGBA,gl.UNSIGNED_BYTE,probePx);
   }
 }
 
-/* What this file does when the app starts. main.js calls each file's init in turn. */
-export function init(){
-/* ---------- the distance probe ----------
-   Asks the graphics chip for a world's distance at up to 16 points, using the same GLSL "map" the picture is drawn with.
-   Each point is one pixel of a 16 by 1 picture; the distance, kept between -8 and 8, is spread over three colour bytes
-   and read back. This is how a world that has no JavaScript distance function (one from a pack) could still be flown
-   through. Reading a picture back makes the page wait for the chip, so it is timed (see Stats). */
-
-}
-
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get probeT(){return probeT},set probeT(v){probeT=v}, get probePts(){return probePts}, get probePx(){return probePx}, get probeOut(){return probeOut}, get probeBuild(){return probeBuild}, get probe(){return probe},
-  get chipWait(){return chipWait}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={probePts, probePx, probeOut, probeBuild, probe, chipWait, get probeT(){return probeT},set probeT(v){probeT=v}};

@@ -1,3 +1,4 @@
+/* The land's shader, as a template each landscape fills in, and the Alps' own pieces of it. */
 
 
 /* ---------- the land: an endless mountain range, drawn alone or laid over a world ----------
@@ -361,6 +362,5 @@ export const LAND_PRE_MAIN=[
 "  gl_FragColor=vec4(e,1.0);",
 "}"].join("\n");
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get LFREQ(){return LFREQ}, get LPERIOD(){return LPERIOD}, get LAND_T(){return LAND_T}, get ALPS_SHAPE(){return ALPS_SHAPE}, get ALPS_SKY(){return ALPS_SKY}, get ALPS_ZONE(){return ALPS_ZONE},
-  get ALPS_SHAPES(){return ALPS_SHAPES}, get ALPS_GROUND(){return ALPS_GROUND}, get ALPS_COLS(){return ALPS_COLS}, get LAND_PRE_MAIN(){return LAND_PRE_MAIN}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={LFREQ, LPERIOD, LAND_T, ALPS_SHAPE, ALPS_SKY, ALPS_ZONE, ALPS_SHAPES, ALPS_GROUND, ALPS_COLS, LAND_PRE_MAIN};

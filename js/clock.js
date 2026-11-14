@@ -16,5 +16,5 @@ export function tickClock(fr,morphOn){
   if(!calm)clock.spin+=dt*0.045;
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get clock(){return clock}, get morphValue(){return morphValue}, get tickClock(){return tickClock}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={clock, morphValue, tickClock};

@@ -1,9 +1,11 @@
+/* Sound out: the audio graph, the built-in music, and the player and scrubber for a file of your own. */
 import { clock } from "./clock.js";
 import { $, errBox, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { musicMode } from "./listen.js";
-export let ac, master, analyser, filt, fbins, scrubbing;
-let bus, droneGain, sendIn, noiseBuf, audioEl, elNode, objUrl, scrub, scrubFill, scrubThumb, tLabel, scrubFr, lastSeek, elErr;
+export let ac=null, master=null, analyser=null, filt=null, fbins=null, scrubbing;
+let bus=null, droneGain=null, sendIn=null, noiseBuf=null, audioEl=null, elNode=null, objUrl=null, scrub, scrubFill, scrubThumb,
+  tLabel, scrubFr, lastSeek, elErr=false;
 
 const drones=[];
 const seq={on:false,timer:0,next:0,step:0,idx:3,root:0};
@@ -199,6 +201,7 @@ export function musicFollowsSpeed(spN){
   }
 }
 
+
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
  /* the browser drops the wake lock when the page is hidden */
@@ -207,18 +210,7 @@ export function init(){
    Three sources feed one pair of numbers the visuals read: beat (a pulse that decays) and level (how loud the low end is).
    built: a generative track made here. file: an audio file you pick. tap: no sound from this page, tempo from your taps.
    tab: the sound of another browser tab that you share. mic: the microphone. These two are only analysed, never played or kept. */
-ac=null;
-master=null;
-bus=null;
-analyser=null;
-filt=null;
-droneGain=null;
-sendIn=null;
-noiseBuf=null;
-fbins=null;
-var bmax=.08;
-var bavg=0;
-audioEl=null,elNode=null,objUrl=null;
+
 scrub=$("scrub"),scrubFill=$("scrubFill"),scrubThumb=$("scrubThumb"),tLabel=$("tLabel"),scrubbing=false,scrubFr=0,lastSeek=0;
 scrub.addEventListener("pointerdown",function(e){
   if(!(pDur()>0))return;
@@ -240,7 +232,6 @@ scrub.addEventListener("keydown",function(e){
   if(!stp)return;
   e.preventDefault();e.stopPropagation();pSeek(pPos()+stp);wakeHud();
 });
-elErr=false;
 $("fileIn").addEventListener("change",function(){
   var f=this.files&&this.files[0];if(!f)return;
   if(!ensureAudio()){errBox.textContent="This browser cannot play audio here.";return;}
@@ -270,14 +261,10 @@ $("bPlay").addEventListener("click",function(){
 });
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get ac(){return ac},set ac(v){ac=v}, get master(){return master},set master(v){master=v}, get analyser(){return analyser},set analyser(v){analyser=v}, get filt(){return filt},set filt(v){filt=v}, get fbins(){return fbins},set fbins(v){fbins=v}, get scrubbing(){return scrubbing},set scrubbing(v){scrubbing=v},
-  get bus(){return bus},set bus(v){bus=v}, get droneGain(){return droneGain},set droneGain(v){droneGain=v}, get sendIn(){return sendIn},set sendIn(v){sendIn=v}, get noiseBuf(){return noiseBuf},set noiseBuf(v){noiseBuf=v}, get audioEl(){return audioEl},set audioEl(v){audioEl=v}, get elNode(){return elNode},set elNode(v){elNode=v},
-  get objUrl(){return objUrl},set objUrl(v){objUrl=v}, get scrub(){return scrub},set scrub(v){scrub=v}, get scrubFill(){return scrubFill},set scrubFill(v){scrubFill=v}, get scrubThumb(){return scrubThumb},set scrubThumb(v){scrubThumb=v}, get tLabel(){return tLabel},set tLabel(v){tLabel=v}, get scrubFr(){return scrubFr},set scrubFr(v){scrubFr=v},
-  get lastSeek(){return lastSeek},set lastSeek(v){lastSeek=v}, get elErr(){return elErr},set elErr(v){elErr=v}, get drones(){return drones}, get seq(){return seq}, get PENT(){return PENT}, get ROOTS(){return ROOTS},
-  get BPM(){return BPM}, get cap(){return cap}, get ensureAudio(){return ensureAudio}, get env(){return env}, get kick(){return kick}, get bass(){return bass},
-  get pluck(){return pluck}, get hat(){return hat}, get playStep(){return playStep}, get tick(){return tick}, get startBuilt(){return startBuilt}, get stopBuilt(){return stopBuilt},
-  get player(){return player}, get mmss(){return mmss}, get pDur(){return pDur}, get pPos(){return pPos}, get pIsPlaying(){return pIsPlaying}, get pPlay(){return pPlay},
-  get pPause(){return pPause}, get pSeek(){return pSeek}, get syncPlayBtn(){return syncPlayBtn}, get showScrub(){return showScrub}, get scrubAt(){return scrubAt}, get scrubEnd(){return scrubEnd},
-  get fileReady(){return fileReady}, get prepElement(){return prepElement}, get showElError(){return showElError}, get useElement(){return useElement}, get DECODE_MAX_SEC(){return DECODE_MAX_SEC}, get DECODE_MAX_BYTES(){return DECODE_MAX_BYTES},
-  get decodeFile(){return decodeFile}, get showScrubIdle(){return showScrubIdle}, get scrubFollow(){return scrubFollow}, get musicFollowsSpeed(){return musicFollowsSpeed}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={drones, seq, PENT, ROOTS, BPM, cap, ensureAudio, env, kick, bass,
+  pluck, hat, playStep, tick, startBuilt, stopBuilt, player, mmss, pDur, pPos,
+  pIsPlaying, pPlay, pPause, pSeek, syncPlayBtn, showScrub, scrubAt, scrubEnd, fileReady, prepElement,
+  showElError, useElement, DECODE_MAX_SEC, DECODE_MAX_BYTES, decodeFile, showScrubIdle, scrubFollow, musicFollowsSpeed, get ac(){return ac},set ac(v){ac=v}, get master(){return master},set master(v){master=v},
+  get analyser(){return analyser},set analyser(v){analyser=v}, get filt(){return filt},set filt(v){filt=v}, get fbins(){return fbins},set fbins(v){fbins=v}, get scrubbing(){return scrubbing},set scrubbing(v){scrubbing=v}, get bus(){return bus},set bus(v){bus=v}, get droneGain(){return droneGain},set droneGain(v){droneGain=v}, get sendIn(){return sendIn},set sendIn(v){sendIn=v}, get noiseBuf(){return noiseBuf},set noiseBuf(v){noiseBuf=v}, get audioEl(){return audioEl},set audioEl(v){audioEl=v}, get elNode(){return elNode},set elNode(v){elNode=v},
+  get objUrl(){return objUrl},set objUrl(v){objUrl=v}, get scrub(){return scrub},set scrub(v){scrub=v}, get scrubFill(){return scrubFill},set scrubFill(v){scrubFill=v}, get scrubThumb(){return scrubThumb},set scrubThumb(v){scrubThumb=v}, get tLabel(){return tLabel},set tLabel(v){tLabel=v}, get scrubFr(){return scrubFr},set scrubFr(v){scrubFr=v}, get lastSeek(){return lastSeek},set lastSeek(v){lastSeek=v}, get elErr(){return elErr},set elErr(v){elErr=v}};

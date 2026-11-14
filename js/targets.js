@@ -13,9 +13,8 @@ export function autoDetail(now,dt){
   if(avg>0.036&&q>(landMode?0.35:0.6)){q=Math.max(landMode?0.35:0.6,q*0.9);qHold=now+20000;resize();} /* the land costs more, so it may give up more sharpness */
   else if(avg<0.022&&q<1&&now>qHold){q=Math.min(1,q*1.06);resize();} /* after stepping down, wait before trying to step up again: each change rebuilds every picture, which shows as a hitch */
 }
-export let tA, tF;
+export let tA=null, tF=[null,null];
 
-/* ---------- render targets ---------- */
 export function target(w,h){
   var t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
@@ -30,7 +29,6 @@ export function freeT(o){if(o){gl.deleteTexture(o.t);gl.deleteFramebuffer(o.f);}
 export const tT=[null,null];
 export const tB=[null,null]; /* the last two finished pictures, kept only while an unreviewed pack filter is being smoothed */
 
-/* ---------- resolution, adapts to frame time ---------- */
 export const DETAIL=["auto","sharp","fast"];
 export function resize(){
   var dpr=Math.min(window.devicePixelRatio||1,DETAIL[di]==="sharp"?3:2)*q;
@@ -46,16 +44,12 @@ export function resize(){
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-
 var buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
 gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
-tA=null;
-tF=[null,null];
 window.addEventListener("resize",resize);resize();
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get di(){return di},set di(v){di=v}, get q(){return q},set q(v){q=v}, get acc(){return acc},set acc(v){acc=v}, get frames(){return frames},set frames(v){frames=v}, get qHold(){return qHold},set qHold(v){qHold=v}, get setDetail(){return setDetail},
-  get autoDetail(){return autoDetail}, get tA(){return tA},set tA(v){tA=v}, get tF(){return tF},set tF(v){tF=v}, get target(){return target}, get freeT(){return freeT}, get tT(){return tT},
-  get tB(){return tB}, get DETAIL(){return DETAIL}, get resize(){return resize}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={setDetail, autoDetail, target, freeT, tT, tB, DETAIL, resize, get di(){return di},set di(v){di=v}, get q(){return q},set q(v){q=v},
+  get acc(){return acc},set acc(v){acc=v}, get frames(){return frames},set frames(v){frames=v}, get qHold(){return qHold},set qHold(v){qHold=v}, get tA(){return tA},set tA(v){tA=v}, get tF(){return tF},set tF(v){tF=v}};

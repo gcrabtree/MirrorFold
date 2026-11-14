@@ -55,10 +55,10 @@ export function addToLibrary(raw,from){
   return n;
 }
 export function worldDrop(i){ /* take an added world out; if it is showing, go to the first world */
-  var w=WORLDS[i],was=scene.world===w||(scene.hyb&&WORLDS[scene.hyb.b]===w);
+  var w=WORLDS[i],was=scene.world===w;
   if(w.prog)gl.deleteProgram(w.prog);if(w.probe)gl.deleteProgram(w.probe.prog);
   WORLDS.splice(i,1);
-  if(was){scene.hyb=null;setWorldNow(0);}
+  if(was)setWorldNow(0);
 }
 export function myWorlds(keepReviewed){return WORLDS.slice(NWORLD).map(function(w){var o=cleanWorld(w.src);if(keepReviewed&&w.reviewed)o.reviewed=true;return o})}
 export function myFilters(keepReviewed){return LOOKS.slice(NLOOK).map(function(f){var o=cleanFilter(f);if(keepReviewed&&f.reviewed)o.reviewed=true;return o})}
@@ -74,6 +74,6 @@ NOV=OVERLAYS.length;
 try{addToLibrary(JSON.parse(localStorage.getItem("mirrorfold-library")||"{}"),"stored")}catch(_){}
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get NMOT(){return NMOT},set NMOT(v){NMOT=v}, get NLOOK(){return NLOOK},set NLOOK(v){NLOOK=v}, get NOV(){return NOV},set NOV(v){NOV=v}, get LIB_MAX(){return LIB_MAX}, get libAdd(){return libAdd}, get addToLibrary(){return addToLibrary},
-  get worldDrop(){return worldDrop}, get myWorlds(){return myWorlds}, get myFilters(){return myFilters}, get myOverlays(){return myOverlays}, get saveLibrary(){return saveLibrary}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={LIB_MAX, libAdd, addToLibrary, worldDrop, myWorlds, myFilters, myOverlays, saveLibrary, get NMOT(){return NMOT},set NMOT(v){NMOT=v}, get NLOOK(){return NLOOK},set NLOOK(v){NLOOK=v},
+  get NOV(){return NOV},set NOV(v){NOV=v}};

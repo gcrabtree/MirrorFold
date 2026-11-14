@@ -29,6 +29,6 @@ if(!gl){errBox.textContent="This browser has WebGL turned off, so the fractals c
 STEPS=isTouch?96:120;
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get canvas(){return canvas},set canvas(v){canvas=v}, get errBox(){return errBox},set errBox(v){errBox=v}, get isTouch(){return isTouch},set isTouch(v){isTouch=v}, get calm(){return calm},set calm(v){calm=v}, get gl(){return gl},set gl(v){gl=v}, get STEPS(){return STEPS},set STEPS(v){STEPS=v},
-  get $(){return $}, get fr(){return fr}, get md(){return md}, get tile(){return tile}, get toastTimer(){return toastTimer},set toastTimer(v){toastTimer=v}, get toast(){return toast}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={$, fr, md, tile, toast, get canvas(){return canvas},set canvas(v){canvas=v}, get errBox(){return errBox},set errBox(v){errBox=v}, get isTouch(){return isTouch},set isTouch(v){isTouch=v}, get calm(){return calm},set calm(v){calm=v}, get gl(){return gl},set gl(v){gl=v},
+  get STEPS(){return STEPS},set STEPS(v){STEPS=v}, get toastTimer(){return toastTimer},set toastTimer(v){toastTimer=v}};

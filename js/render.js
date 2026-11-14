@@ -7,21 +7,20 @@ import { calm, canvas, gl, toast } from "./dom.js";
 import { landFx, landKind, landLayer, landMixed, landMode, landPass, pLand, pMix, tC, tL } from "./land.js";
 import { LK } from "./landscapes.js";
 import { updateWave, waveTex } from "./listen.js";
-import { palCur } from "./palettes.js";
+import { palCur, setPal } from "./palettes.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
 import { tA, tB, tF, tT, target } from "./targets.js";
 import { stereo, vrEye, vrEyeStep } from "./vr.js";
 import { tr } from "./warp.js";
-import { WORLDS } from "./worlds.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
 export const flip={cur:0,fcur:0};         /* which of each pair of pictures is being drawn into this frame: the trails, and the smoothed final picture */
 
 
 /* Step 1: the land if it is on, then the world. Leaves in fr.src the picture the effects are to work on. */
 export function drawScene(fr){
-  var dt=fr.dt,m=fr.m,w=fr.w,dist=fr.dist,bt=fr.bt,mp=fr.mp,hp=fr.hp,spN=fr.spN,orbU=fr.orbU,wB=scene.hyb?WORLDS[scene.hyb.b]:null;
-  var fx=FX[sel.fi],sc=scene.hyb?scene.hyb:w,U=sc.U,wHue=scene.hyb?(w.hue+(wB.hue-w.hue)*scene.hyb.t):w.hue;
+  var dt=fr.dt,m=fr.m,w=fr.w,dist=fr.dist,bt=fr.bt,mp=fr.mp,hp=fr.hp,spN=fr.spN,orbU=fr.orbU;
+  var fx=FX[sel.fi],U=w.U,wHue=w.hue;
   var fovNow=calm?1.15:(1.15-0.13*spN-0.05*bt-0.25*cam.boost+0.025*Math.sin(clock.time*0.4));
   /* 0. the land, if it is on. Alone, it is the whole scene. Over a world, it is drawn first into its own picture with a
      clear sky, so the world need only be drawn where the land leaves it showing. Not in the VR viewer. */
@@ -29,9 +28,8 @@ export function drawScene(fr){
   if(landOver){landPass(landLayer(),true,fovNow,clock.hueT+wHue);}
   else if(landOn)landPass(tA,false,fovNow,clock.hueT+wHue);
   if(!landOn||landOver){
-  gl.bindFramebuffer(gl.FRAMEBUFFER,tA.f);gl.viewport(0,0,tA.w,tA.h);gl.useProgram(sc.prog);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,tA.f);gl.viewport(0,0,tA.w,tA.h);gl.useProgram(w.prog);
   gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],orbU[3]);
-  if(scene.hyb){gl.uniform1f(U.uMix,scene.hyb.t);gl.uniform3f(U.uOff,scene.hyb.off[0],scene.hyb.off[1],scene.hyb.off[2]);}
   gl.uniform2f(U.uRes,tA.w,tA.h);
   gl.uniform1f(U.uTime,clock.time);
   gl.uniform1f(U.uSeg,mirrors[sel.mi]);
@@ -49,7 +47,7 @@ export function drawScene(fr){
   gl.uniform1f(U.uFov,fovNow);
   gl.uniform1f(U.uLandOn,landOver&&!LK[landKind].mirror?1:0);if(landOver){bindTex(6,tL.t);gl.uniform1i(U.uLandT,6);}
   gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
-  gl.uniform3fv(U.uPa,palCur.a);gl.uniform3fv(U.uPb,palCur.b);gl.uniform3fv(U.uPc,palCur.c);gl.uniform3fv(U.uPd,palCur.d);
+  setPal(U);
   gl.uniform3f(U.uPos,cam.pos[0],cam.pos[1],cam.pos[2]);
   camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];
   gl.uniformMatrix3fv(U.uCam,false,camArr);
@@ -67,7 +65,7 @@ export function drawTrails(fr){
   var mo=MOTIONS[sel.moi],lk=LOOKS[sel.lki],k60=dt*60,TU=pTrail.U;
   /* VR viewer: filters that move parts of the picture would show each eye something different, so they are left out */
   if(stereo&&(lk.echo||lk.mos||lk.liq||lk.hue||lk.code||(lk.fx>0&&lk.fx<5)))lk=LOOKS[0];
-  var tx=clock.hueT+wHue+0.2,tint=[0,0,0];
+  var tx=clock.hueT+wHue+0.2,tint=fr.tint;
   for(j=0;j<3;j++)tint[j]=Math.min(1,Math.max(0,palCur.a[j]+palCur.b[j]*Math.cos(6.28318*(palCur.c[j]*tx+palCur.d[j]))));
   var tc=tT[flip.cur],tp=tT[1-flip.cur];
   /* a pack overlay has its own copy of this pass with its code in it */
@@ -88,9 +86,9 @@ export function drawTrails(fr){
   gl.uniform1f(TU.uOv,stereo?0:ov.code?(op?99:0):sel.ovi);gl.uniform1f(TU.uOvBeat,bt);gl.uniform1f(TU.uOvMid,mp);gl.uniform1f(TU.uOvHi,hp);
   gl.uniform1f(TU.uShift,sel.moi>0?Math.min(0.3,(0.05+0.1*hp)*k60):0); /* trails drift through the colour channels so they read apart from the scene */
   gl.uniform1f(TU.uOvAmt,OVS[sel.ovsi]);gl.uniform1f(TU.uHue,clock.hueT+wHue);
-  gl.uniform3fv(TU.uPa,palCur.a);gl.uniform3fv(TU.uPb,palCur.b);gl.uniform3fv(TU.uPc,palCur.c);gl.uniform3fv(TU.uPd,palCur.d);
+  setPal(TU);
   gl.drawArrays(gl.TRIANGLES,0,3);
-  fr.lk=lk;fr.ov=ov;fr.op=op;fr.tint=tint;fr.tc=tc;
+  fr.lk=lk;fr.ov=ov;fr.op=op;fr.tc=tc;
 }
 
 /* Step 3, bloom: the bright parts, shrunk and blurred. */
@@ -128,12 +126,12 @@ export function drawFinal(fr){
   gl.uniform1f(FU.uEdge,lk.edge||0);gl.uniform1f(FU.uPost,lk.post||0);gl.uniform1f(FU.uSolar,lk.solar||0);
   gl.uniform1f(FU.uInv,lk.inv||0);gl.uniform1f(FU.uHueRot,lk.hue||0);
   gl.uniform1f(FU.uFx,lk.fx||0);gl.uniform1f(FU.uHue,clock.hueT+wHue);
-  gl.uniform3fv(FU.uPa,palCur.a);gl.uniform3fv(FU.uPb,palCur.b);gl.uniform3fv(FU.uPc,palCur.c);gl.uniform3fv(FU.uPd,palCur.d);
+  setPal(FU);
   gl.uniform3f(FU.uTint,tint[0],tint[1],tint[2]);
   gl.drawArrays(gl.TRIANGLES,0,3);
   if(slow){passTo(null,pCopy);bindTex(0,tF[flip.fcur].t);gl.uniform1i(pCopy.U.uT,0);gl.drawArrays(gl.TRIANGLES,0,3);flip.fcur=1-flip.fcur;}
   flip.cur=1-flip.cur;
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get camArr(){return camArr}, get flip(){return flip}, get drawScene(){return drawScene}, get drawTrails(){return drawTrails}, get drawBloom(){return drawBloom}, get drawFinal(){return drawFinal}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={camArr, flip, drawScene, drawTrails, drawBloom, drawFinal};

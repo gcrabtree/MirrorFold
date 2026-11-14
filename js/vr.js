@@ -1,3 +1,4 @@
+/* The VR viewer: one picture for each eye, turned by the phone's own movement. */
 import { cam, cross, norm, rot } from "./camera.js";
 import { $, isTouch, toast } from "./dom.js";
 import { press, wakeHud } from "./input.js";
@@ -7,7 +8,7 @@ export let stereo=false;        /* the VR viewer is on */
 export let vrEye=0.004;         /* half the distance between the two eyes, in world units; follows the distance to the nearest surface */
 let gyroPrev=null,wakeLock=null;
 export function vrEyeStep(dist,dt){vrEye+=(Math.max(0.00002,dist*0.021)-vrEye)*(1-Math.exp(-dt*1.5));}
-let gyroBound;
+let gyroBound=false;
 
 /* ---------- VR viewer ----------
    For a phone in a Cardboard-style holder: the picture is drawn twice, side by side, and turning your head turns the view.
@@ -70,7 +71,6 @@ function setStereo(on){
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-gyroBound=false;
 /* on a copy hosted at someone.github.io/name, the help link points at that copy's own repository */
 (function(){
   var h=/^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname),seg=location.pathname.split("/")[1];
@@ -82,7 +82,6 @@ window.addEventListener("orientationchange",function(){gyroPrev=null});
 document.addEventListener("visibilitychange",function(){gyroPrev=null;if(!document.hidden)keepAwake()});
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get stereo(){return stereo},set stereo(v){stereo=v}, get vrEye(){return vrEye},set vrEye(v){vrEye=v}, get gyroPrev(){return gyroPrev},set gyroPrev(v){gyroPrev=v}, get wakeLock(){return wakeLock},set wakeLock(v){wakeLock=v}, get vrEyeStep(){return vrEyeStep}, get gyroBound(){return gyroBound},set gyroBound(v){gyroBound=v},
-  get devMat(){return devMat}, get gyroTurn(){return gyroTurn}, get screenAngle(){return screenAngle}, get onGyro(){return onGyro}, get gyroStart(){return gyroStart}, get keepAwake(){return keepAwake},
-  get setStereo(){return setStereo}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={vrEyeStep, devMat, gyroTurn, screenAngle, onGyro, gyroStart, keepAwake, setStereo, get stereo(){return stereo},set stereo(v){stereo=v}, get vrEye(){return vrEye},set vrEye(v){vrEye=v},
+  get gyroPrev(){return gyroPrev},set gyroPrev(v){gyroPrev=v}, get wakeLock(){return wakeLock},set wakeLock(v){wakeLock=v}, get gyroBound(){return gyroBound},set gyroBound(v){gyroBound=v}};

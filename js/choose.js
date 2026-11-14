@@ -1,20 +1,19 @@
 /* what is showing */
 import { cam } from "./camera.js";
-import { clock, morphValue } from "./clock.js";
-import { $, calm, errBox, toast } from "./dom.js";
+import { morphValue } from "./clock.js";
+import { $, calm, errBox } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { started } from "./loop.js";
 import { spawnOrb } from "./orbs.js";
 import { deMany } from "./pack-worlds.js";
 import { fillPalettes, setPalette } from "./palettes.js";
-import { build, hybProg } from "./programs.js";
+import { build } from "./programs.js";
 import { applySpot, fromHash } from "./spots.js";
 import { LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
 import { beginWarp, tr } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 export const scene={
   world:null,   /* the current entry of WORLDS */
-  hyb:null,     /* a second world being mixed in, or null */
   orb:null,orbT:0, /* the orb's place and size, and a timer for checking it is still in open space */
   lastHash:""   /* the address hash last written, so our own change is not read back as a request */
 };
@@ -40,20 +39,6 @@ export function setOverlay(i){if(!OVERLAYS[i])i=0;sel.ovi=i;selOv.value=String(i
 export function setMotion(i){if(!MOTIONS[i])i=0;sel.moi=i;selMotion.value=String(i);}
 export function setLook(i){if(!LOOKS[i])i=0;sel.lki=i;selLook.value=String(i);}
 export function fillWorlds(){selWorld.textContent="";WORLDS.forEach(function(w,i){var o=document.createElement("option");o.value=String(i);o.textContent=w.name;selWorld.appendChild(o);});if(scene.world)selWorld.value=String(WORLDS.indexOf(scene.world));}
-function startHybrid(b,mode){
-  var a=WORLDS.indexOf(scene.world);
-  if(a===b||scene.world.volume||WORLDS[b].volume||scene.world.pack||WORLDS[b].pack){toast("That pair cannot blend.");return false;}
-  var o;try{build(WORLDS[b]);o=hybProg(a,b)}catch(e){toast("That blend did not compile on this device.");return false;}
-  scene.hyb={b:b,prog:o.prog,U:o.U,t:(scene.hyb&&scene.hyb.b===b)?scene.hyb.t:0,mode:mode,exit:false,off:(scene.hyb&&scene.hyb.b===b)?scene.hyb.off:[0,0,0]};
-  return true;
-}
-export function finishHybrid(){
-  var B=WORLDS[scene.hyb.b],per=B.period(morphValue());
-  for(var i=0;i<3;i++){cam.pos[i]+=scene.hyb.off[i];cam.pos[i]-=per[i]*Math.floor(cam.pos[i]/per[i]+.5);}
-  scene.world=B;scene.hyb=null;selWorld.value=String(WORLDS.indexOf(B));
-  scene.lastHash=B.id;try{location.hash=B.id}catch(_){}
-  spawnOrb();
-}
 export function setWorldNow(i,quiet){
   var w=WORLDS[i];
   try{build(w)}catch(e){errBox.textContent=w.name+" did not compile on this device, so it is skipped.\n"+e.message;selWorld.value=String(WORLDS.indexOf(scene.world));return false;}
@@ -67,36 +52,22 @@ export function setWorldNow(i,quiet){
     var sd=deMany(w,sc,ns,m);
     for(k=0;k<ns;k++)if(sd[k]>best){best=sd[k];cam.pos=[sc[3*k],sc[3*k+1],sc[3*k+2]];}
   }
-  selWorld.value=String(i);scene.hyb=null;
+  selWorld.value=String(i);
   spawnOrb();
   if(!quiet){scene.lastHash=w.id;try{location.hash=w.id}catch(_){}}
   return true;
 }
 export function requestWorld(i,quiet,after){
   if(i<0||i>=WORLDS.length)return;
-  if(WORLDS[i]===scene.world&&!scene.hyb&&!after)return;
+  if(WORLDS[i]===scene.world&&!after)return;
   var fn=function(){if(setWorldNow(i,quiet)&&after)after();};
   if(!started||calm){fn();return;}
   tr.pendingWorld=i;tr.warpFn=fn;beginWarp(); /* transition out, swap at the peak, transition back in */
 }
 export function setMirrors(k){sel.mi=k;$("bMirror").textContent=mirrors[sel.mi]?("Mirrors "+mirrors[sel.mi]):"Mirrors off";}
 
-/* A second world mixed into this one: carry a journey across to it, or hold the mix and let it breathe. */
-export function stepHybrid(dt){
-  if(scene.hyb){ /* a second world mixed into this one, either held and breathing or carrying a journey across */
-    if(scene.hyb.mode==="trans"){scene.hyb.t+=dt/12;if(scene.hyb.t>=1)finishHybrid();}
-    else{
-      var ht=scene.hyb.exit?0:(0.5+0.38*Math.sin(clock.time*0.07));
-      scene.hyb.t+=(ht-scene.hyb.t)*(1-Math.exp(-dt*0.8));
-      if(scene.hyb.exit&&scene.hyb.t<0.02){scene.hyb=null;spawnOrb();}
-    }
-  }
-}
-
-
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-/* ---------- choosing a world ---------- */
 selWorld=$("selWorld"),selMusic=$("selMusic"),selJT=$("selJT"),selOv=$("selOv"),selMotion=$("selMotion"),selLook=$("selLook");
 fillMotions();
 fillLooks();
@@ -122,8 +93,6 @@ window.addEventListener("hashchange",function(){
 });
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get scene(){return scene}, get selMusic(){return selMusic},set selMusic(v){selMusic=v}, get selJT(){return selJT},set selJT(v){selJT=v}, get selWorld(){return selWorld},set selWorld(v){selWorld=v}, get selOv(){return selOv},set selOv(v){selOv=v}, get selMotion(){return selMotion},set selMotion(v){selMotion=v},
-  get selLook(){return selLook},set selLook(v){selLook=v}, get fillMotions(){return fillMotions}, get fillLooks(){return fillLooks}, get fillOverlays(){return fillOverlays}, get setOverlay(){return setOverlay}, get setMotion(){return setMotion},
-  get setLook(){return setLook}, get fillWorlds(){return fillWorlds}, get startHybrid(){return startHybrid}, get finishHybrid(){return finishHybrid}, get setWorldNow(){return setWorldNow}, get requestWorld(){return requestWorld},
-  get setMirrors(){return setMirrors}, get stepHybrid(){return stepHybrid}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={scene, fillMotions, fillLooks, fillOverlays, setOverlay, setMotion, setLook, fillWorlds, setWorldNow, requestWorld,
+  setMirrors, get selMusic(){return selMusic},set selMusic(v){selMusic=v}, get selJT(){return selJT},set selJT(v){selJT=v}, get selWorld(){return selWorld},set selWorld(v){selWorld=v}, get selOv(){return selOv},set selOv(v){selOv=v}, get selMotion(){return selMotion},set selMotion(v){selMotion=v}, get selLook(){return selLook},set selLook(v){selLook=v}};

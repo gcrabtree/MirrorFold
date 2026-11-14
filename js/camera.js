@@ -1,12 +1,10 @@
 /* The camera: where it is, which way it faces, how fast it is going, and how much the user is steering. */
-import { scene } from "./choose.js";
 import { drift } from "./controls.js";
 import { calm } from "./dom.js";
 import { keys, stick } from "./input.js";
 import { landMode } from "./land.js";
 import { started } from "./loop.js";
 import { stereo } from "./vr.js";
-import { WORLDS } from "./worlds.js";
 export const cam={
   pos:[0,0,0],            /* place in the world, wrapped by the world's period every frame */
   R:[1,0,0],Up:[0,1,0],F:[0,0,1], /* right, up and forward: three unit vectors at right angles */
@@ -60,7 +58,7 @@ export function turn(fr){
 
 /* Move the camera. Speed scales with the distance to the nearest surface; the position is wrapped by the world's period, which is invisible because every world repeats. */
 export function move(fr){
-  var dt=fr.dt,m=fr.m,w=fr.w,wSpeed=fr.wSpeed,dist=fr.dist,lv=fr.lv,idle=fr.idle,travel=fr.travel,ease=fr.ease,wB=scene.hyb?WORLDS[scene.hyb.b]:null;
+  var dt=fr.dt,m=fr.m,w=fr.w,wSpeed=fr.wSpeed,dist=fr.dist,lv=fr.lv,idle=fr.idle,travel=fr.travel,ease=fr.ease;
   var mx=(keys.KeyD?1:0)-(keys.KeyA?1:0)+stick.x;
   var mz=(keys.KeyW?1:0)-(keys.KeyS?1:0)-stick.y;
   var my=(keys.Space?1:0)-((keys.ShiftLeft||keys.ShiftRight)?1:0);
@@ -68,19 +66,17 @@ export function move(fr){
   if(!started){mz=0.18;mx=0;my=0;}
   var sp=Math.min(wSpeed,Math.max(0.012,dist*2.6))*cam.baseSpeed*(1+0.25*lv)*(1+3*cam.boost);
   var tv=[(cam.R[0]*mx+cam.Up[0]*my+cam.F[0]*mz)*sp,(cam.R[1]*mx+cam.Up[1]*my+cam.F[1]*mz)*sp,(cam.R[2]*mx+cam.Up[2]*my+cam.F[2]*mz)*sp];
-  var vf=1-Math.exp(-dt*3.5),per=w.period(m),perB=scene.hyb?wB.period(m):null;
+  var vf=1-Math.exp(-dt*3.5),per=w.period(m);
   for(var i=0;i<3;i++){
     cam.vel[i]+=(tv[i]-cam.vel[i])*vf;
     cam.pos[i]+=cam.vel[i]*dt;
     var dl=per[i]*Math.floor(cam.pos[i]/per[i]+.5); /* every world repeats, so wrapping by one period is invisible */
     cam.pos[i]-=dl;
-    if(scene.hyb&&dl!==0){scene.hyb.off[i]+=dl;scene.hyb.off[i]-=perB[i]*Math.floor(scene.hyb.off[i]/perB[i]+.5);}
   }
   cam.curSpeed=Math.hypot(cam.vel[0],cam.vel[1],cam.vel[2]);
   fr.mx=mx;fr.my=my;fr.mz=mz;fr.vf=vf;fr.per=per;
   fr.spN=Math.min(1,cam.curSpeed/(wSpeed*cam.baseSpeed+1e-6)); /* speed as a part of the most this world allows */
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get cam(){return cam}, get userLook(){return userLook}, get userActive(){return userActive}, get rot(){return rot}, get norm(){return norm}, get cross(){return cross},
-  get steering(){return steering}, get turn(){return turn}, get move(){return move}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={cam, userLook, userActive, rot, norm, cross, steering, turn, move};

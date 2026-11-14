@@ -1,3 +1,4 @@
+/* Sound in: choosing where the music comes from, listening to a tab or the microphone, tap tempo, and reading the sound each frame. */
 import { ac, analyser, cap, ensureAudio, fbins, master, pPause, pPlay, player, startBuilt, stopBuilt } from "./audio.js";
 import { selMusic } from "./choose.js";
 import { clock } from "./clock.js";
@@ -163,9 +164,7 @@ $("bTap").addEventListener("pointerdown",function(e){e.preventDefault();tap();wa
 soundChanged=false,detectChange=makeChangeDetector();
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get musicMode(){return musicMode},set musicMode(v){musicMode=v}, get beat(){return beat},set beat(v){beat=v}, get level(){return level},set level(v){level=v}, get taps(){return taps},set taps(v){taps=v}, get tapInt(){return tapInt},set tapInt(v){tapInt=v}, get tapAt(){return tapAt},set tapAt(v){tapAt=v},
-  get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get stopListening(){return stopListening}, get startListening(){return startListening},
-  get listening(){return listening}, get setMusic(){return setMusic}, get tap(){return tap}, get bands(){return bands}, get bandStep(){return bandStep}, get bandAvg(){return bandAvg},
-  get liveAudio(){return liveAudio}, get makeChangeDetector(){return makeChangeDetector}, get readMusic(){return readMusic}, get soundFrame(){return soundFrame}, get waveTex(){return waveTex},set waveTex(v){waveTex=v}, get tbins(){return tbins},set tbins(v){tbins=v},
-  get waveBuf(){return waveBuf}, get updateWave(){return updateWave}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={stopListening, startListening, listening, setMusic, tap, bands, bandStep, bandAvg, liveAudio, makeChangeDetector,
+  readMusic, soundFrame, waveBuf, updateWave, get musicMode(){return musicMode},set musicMode(v){musicMode=v}, get beat(){return beat},set beat(v){beat=v}, get level(){return level},set level(v){level=v}, get taps(){return taps},set taps(v){taps=v}, get tapInt(){return tapInt},set tapInt(v){tapInt=v}, get tapAt(){return tapAt},set tapAt(v){tapAt=v},
+  get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get waveTex(){return waveTex},set waveTex(v){waveTex=v}, get tbins(){return tbins},set tbins(v){tbins=v}};

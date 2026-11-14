@@ -41,10 +41,8 @@ export const TRANSITIONS=8;
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-/* ---------- state ---------- */
 sel.fi=calm?2:0; /* with reduced motion asked for, start with the clean look */
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get sel(){return sel}, get mirrors(){return mirrors}, get FX(){return FX}, get MOTIONS(){return MOTIONS}, get LOOKS(){return LOOKS}, get OVS(){return OVS},
-  get OVERLAYS(){return OVERLAYS}, get TRANSITIONS(){return TRANSITIONS}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={sel, mirrors, FX, MOTIONS, LOOKS, OVS, OVERLAYS, TRANSITIONS};

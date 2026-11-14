@@ -68,7 +68,7 @@ What the code is given, and what it must do:
 
 The rules for the code are the ones for filter code (below), with these differences: there is no `scene`, `col`, `time`, `beat` or `sound`, and the loops may run at most 16 times in all, because the code runs at every step of every ray.
 
-Because a pack carries no JavaScript, the app cannot work the distance out itself. It asks the graphics chip, once for each picture, how far the camera and four points ahead of it are from the world, and flies by the answers. Worlds from packs cannot take part in a blend with another world.
+Because a pack carries no JavaScript, the app cannot work the distance out itself. It asks the graphics chip, once for each picture, how far the camera and four points ahead of it are from the world, and flies by the answers.
 
 ### Palettes
 

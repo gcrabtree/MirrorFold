@@ -65,5 +65,5 @@ $("bFull").addEventListener("click",function(){
 });
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};

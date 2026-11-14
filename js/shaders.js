@@ -1,7 +1,6 @@
 /* The scene shader and the post-processing shaders. */
 import { STEPS, isTouch } from "./dom.js";
 
-
 export const VS="attribute vec2 a;varying vec2 v;void main(){v=a*0.5+0.5;gl_Position=vec4(a,0.0,1.0);}";
 export function fragSource(w){
   return [
@@ -11,7 +10,7 @@ export function fragSource(w){
 "#define FOG "+w.fog.toFixed(3),
 (w.volume?"#define VOLUME":"#define SURFACE"),
 "#define VSTEPS "+(isTouch?44:56),
-"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi,uMix;uniform vec3 uOff;uniform vec4 uOrb,uVr;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;",
+"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi;uniform vec4 uOrb,uVr;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;",
 "vec4 orb;"
   ].concat(w.glsl,[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
@@ -106,8 +105,6 @@ export function fragSource(w){
 "}"]).join("\n");
 }
 
-
-/* ---------- post-processing shaders: trails, bloom, lens ---------- */
 export const FS_TRAIL=[
 "precision highp float;varying vec2 v;uniform sampler2D uA,uB,uWv;",
 "uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue;uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;",
@@ -263,10 +260,5 @@ export function trailSource(code){
 }
 export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uPa","uPb","uPc","uPd"];
 
-/* What this file does when the app starts. main.js calls each file's init in turn. */
-export function init(){
-}
-
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get VS(){return VS}, get fragSource(){return fragSource}, get FS_TRAIL(){return FS_TRAIL}, get FS_DOWN(){return FS_DOWN}, get FS_BLUR(){return FS_BLUR}, get FS_FINAL(){return FS_FINAL},
-  get finalSource(){return finalSource}, get trailSource(){return trailSource}, get TRAIL_U(){return TRAIL_U}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={VS, fragSource, FS_TRAIL, FS_DOWN, FS_BLUR, FS_FINAL, finalSource, trailSource, TRAIL_U};

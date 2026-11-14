@@ -29,5 +29,5 @@ export function warpThen(fn){ /* the same twist, for changes that are not a new 
   tr.warpFn=fn;beginWarp();return true;
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get tr(){return tr}, get beginWarp(){return beginWarp}, get stepWarp(){return stepWarp}, get warpThen(){return warpThen}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={tr, beginWarp, stepWarp, warpThen};

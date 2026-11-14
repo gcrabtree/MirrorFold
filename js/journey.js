@@ -1,3 +1,4 @@
+/* Journey: templates and sets, their storage, the clocks that say when to change something, and the autopilot. */
 import { cam, norm } from "./camera.js";
 import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay } from "./choose.js";
 import { clock } from "./clock.js";
@@ -57,7 +58,7 @@ function jIndex(k,key){var o=catOf(k).opts;for(var i=0;i<o.length;i++)if(o[i][0]
 export function jApply(k,key){ /* false means it could not start yet (a transition is running) and should be retried */
   var i=jIndex(k,key);
   if(i<0||key===jCur(k))return true;
-  if(k==="world"){if(tr.warpDir!==0||scene.hyb)return false;requestWorld(i);return true;}
+  if(k==="world"){if(tr.warpDir!==0)return false;requestWorld(i);return true;}
   if(k==="mirrors")return warpThen(function(){setMirrors(i)});
   if(k==="land")return warpThen(function(){
     var sp=key.split(" "),kk;for(kk=0;kk<LK.length;kk++)if(LK[kk].id===sp[0])setLandKind(kk);
@@ -213,10 +214,8 @@ $("bJMove").addEventListener("click",function(){
 });
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get jt(){return jt},set jt(v){jt=v}, get journey(){return journey},set journey(v){journey=v}, get jMove(){return jMove},set jMove(v){jMove=v}, get jtReset(){return jtReset}, get CATS(){return CATS},set CATS(v){CATS=v}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v},
-  get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get jset(){return jset},set jset(v){jset=v}, get MODE_LABEL(){return MODE_LABEL}, get catOf(){return catOf}, get normT(){return normT}, get normS(){return normS},
-  get store(){return store}, get adopt(){return adopt}, get saveStore(){return saveStore}, get allT(){return allT}, get allS(){return allS}, get findT(){return findT},
-  get findS(){return findS}, get jCur(){return jCur}, get jNone(){return jNone}, get jIndex(){return jIndex}, get jApply(){return jApply}, get jPool(){return jPool},
-  get jPick(){return jPick}, get applyTemplate(){return applyTemplate}, get advanceSet(){return advanceSet}, get selectJourney(){return selectJourney}, get fillJT(){return fillJT}, get setJMove(){return setJMove},
-  get setJourney(){return setJourney}, get autopilot(){return autopilot}, get stepJourney(){return stepJourney}, get J(){return J}, get jReset(){return jReset}, get jResetAll(){return jResetAll}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
+  findT, findS, jCur, jNone, jIndex, jApply, jPool, jPick, applyTemplate, advanceSet,
+  selectJourney, fillJT, setJMove, setJourney, autopilot, stepJourney, J, jReset, jResetAll, get jt(){return jt},set jt(v){jt=v},
+  get journey(){return journey},set journey(v){journey=v}, get jMove(){return jMove},set jMove(v){jMove=v}, get CATS(){return CATS},set CATS(v){CATS=v}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v}, get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get jset(){return jset},set jset(v){jset=v}};

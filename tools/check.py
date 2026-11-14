@@ -62,7 +62,7 @@ setTimeout(function(){
   packFrame(world,0,0.2);
   log("pack worlds="+(WORLDS.length-NWORLD)+" options="+selWorld.options.length+"/"+catOf("world").opts.length+" showing="+world.id+" reviewed="+!!world.reviewed+" open space="+(wd>0.02)+" five="+packD.map(function(v){return v.toFixed(2)}).join(","));
   var nw0=WORLDS.length;loadPack(JSON.stringify({mirrorfold:1,name:"W",worlds:[{name:"Lattice",period:[2,2,2],code:"return 1.0;"},{name:"Broken",period:[2,2,2],code:"return nothing;"},{name:"Loose",period:[2,2,2],code:"return length(p)-0.3;"}]}));
-  var lw=WORLDS[WORLDS.length-1];log("refused="+(WORLDS.length-nw0===1)+" added="+lw.name+" reviewed="+!!lw.reviewed+" blend="+startHybrid(0,0));
+  var lw=WORLDS[WORLDS.length-1];log("refused="+(WORLDS.length-nw0===1)+" added="+lw.name+" reviewed="+!!lw.reviewed);
   libRemove("w",WORLDS.indexOf(world));log("after removal="+world.id+" worlds="+(WORLDS.length-NWORLD));
   loadPack(JSON.stringify({mirrorfold:1,filters:[{name:"Test code",code:"col=col.gbr;"},{name:"Bad clock",code:"col*=uTime;"},{name:"Bad glsl",code:"col=nothing(col);"},{name:"Test mix",edge:.5,post:5}],
     overlays:[{name:"Test ring",code:"ln=1.0-smoothstep(0.0,0.02,abs(length(p)-0.2-0.1*beat));"},{name:"Bad overlay",code:"ln=uOvBeat;"}]}));
