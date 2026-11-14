@@ -39,6 +39,7 @@ The Python tools need `google-chrome` or `chromium` on PATH (they run it headles
 - **Journey templates are keyed by option name**, not index (`"Melt"`, `"julia"`, `"6"`). Renaming a world id, motion, filter, overlay or palette silently drops it from users' saved templates.
 - **Motion parameters are per frame at 60 fps** and are corrected for frame time where they are applied in `frame()`. Keep new ones consistent.
 - **The VR viewer draws one picture per eye.** Anything centred on the screen (a feedback warp, an overlay, a filter that moves pixels, zoom blur, fringing) shows each eye something different and must be switched off while `stereo` is true. `frame()` does this in one place per pass; new effects need the same treatment.
+- **Shaders read the video only through `tV` in `js/video.js`**, the copy whose brightness is rate-limited by `videoFrame`. Never bind the raw video texture in a drawing pass: a user's video may strobe. Ways of showing it that are flat on the screen are off in the VR viewer (`d3` in `VMODES`).
 - **User look input goes through `userLook(dx, dy)`**, not straight into `lookX`/`lookY`. That is how the autopilot knows to stand back while the user steers. The autopilot itself still writes `lookX`/`lookY` directly.
 - **Nothing may strobe.** Pulses are soft and slow by design (tap tempo above about 165 BPM is halved). Respect `calm` (`prefers-reduced-motion`).
 

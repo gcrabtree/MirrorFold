@@ -138,6 +138,7 @@ The controls at the top of the screen fade after five seconds without input and 
 | Effects on | Shown for **Land over world**. Whether motions, filters and overlays act on **everything**, **the sky** (the world behind) or **the land**. |
 | FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
 | Detail | Steps through auto, sharp and fast. See [Performance](#performance). |
+| Video off / on | An experiment. Opens a row of controls for showing a video in the picture: choose a video file from this device or use the camera, pick where it shows (on the surfaces, through the shapes, in the distance, in the overlay, as trails, as the colours), how strongly, and pause it. The video is played without its sound, is never uploaded, and is slowed where needed so that it cannot make the screen flash. Pressing the button again turns the video off. |
 | Stats | Shows a readout in the top left corner: pictures drawn each second and the slowest one, how long the page's own script takes for each picture, the sharpness and size of the picture, the name of the graphics chip drawing it, and a trial of the distance probe (how long the page waits for the chip to answer one question, and the chip's answer beside the script's). Useful when the picture stutters. |
 | Morph | Turns the slow change of each world's shape on or off. |
 | Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |

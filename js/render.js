@@ -11,6 +11,7 @@ import { palCur, setPal } from "./palettes.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
 import { tA, tB, tF, tT, target } from "./targets.js";
+import { videoUniforms } from "./video.js";
 import { stereo, vrEye, vrEyeStep } from "./vr.js";
 import { tr } from "./warp.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
@@ -48,6 +49,7 @@ export function drawScene(fr){
   gl.uniform1f(U.uLandOn,landOver&&!LK[landKind].mirror?1:0);if(landOver){bindTex(6,tL.t);gl.uniform1i(U.uLandT,6);}
   gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
   setPal(U);
+  videoUniforms(U,tA.w,tA.h,!stereo,fr.per);
   gl.uniform3f(U.uPos,cam.pos[0],cam.pos[1],cam.pos[2]);
   camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];
   gl.uniformMatrix3fv(U.uCam,false,camArr);
@@ -87,6 +89,7 @@ export function drawTrails(fr){
   gl.uniform1f(TU.uShift,sel.moi>0?Math.min(0.3,(0.05+0.1*hp)*k60):0); /* trails drift through the colour channels so they read apart from the scene */
   gl.uniform1f(TU.uOvAmt,OVS[sel.ovsi]);gl.uniform1f(TU.uHue,clock.hueT+wHue);
   setPal(TU);
+  videoUniforms(TU,tc.w,tc.h,!stereo,null);
   gl.drawArrays(gl.TRIANGLES,0,3);
   fr.lk=lk;fr.ov=ov;fr.op=op;fr.tc=tc;
 }

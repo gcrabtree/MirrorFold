@@ -11,6 +11,10 @@ export function fragSource(w){
 (w.volume?"#define VOLUME":"#define SURFACE"),
 "#define VSTEPS "+(isTouch?44:56),
 "uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi;uniform vec4 uOrb,uVr;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;",
+"uniform sampler2D uVid;uniform vec4 uVidK;uniform vec3 uVidS;", /* the video: uVidK = which way it is shown (0 for none), its strength, and the scale that fits it to the screen */
+"vec3 vidLin(vec2 q){vec3 c=texture2D(uVid,q).rgb;return c*c;}", /* the video is stored ready for a screen; the scene works in light, and is made ready for the screen at the end */
+"vec3 vidAt(vec2 q){return vidLin(abs(fract(q*0.5)*2.0-1.0));}", /* repeating, each copy the mirror of its neighbour */
+"vec3 vidScr(){return vidLin((gl_FragCoord.xy/uRes-0.5)*uVidK.zw+0.5);}", /* flat on the screen */
 "vec4 orb;"
   ].concat(w.glsl,[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
@@ -62,6 +66,7 @@ export function fragSource(w){
 "  float gw=steps/float(STEPS);",
 "  if(hit>0.5)tmax=t;",
 "  vec3 fogc=pal(uHue+0.5)*0.015;",
+"  if(uVidK.x>2.5&&uVidK.x<3.5)fogc=mix(fogc,vidScr()*0.7,uVidK.y);", /* video in the distance: it takes the place of the dark that far things fade into */
 "  vec3 col=fogc;",
 "  if(hit>0.5){",
 "    vec3 p=ro+rd*t;",
@@ -76,10 +81,18 @@ export function fragSource(w){
 "    float fres=pow(1.0-nd,3.0);",
 "    vec3 base=pal(uHue+tr.w*0.8+0.25*tr.x);",
 "    base=mix(base,pal(uHue+0.35+tr.y*1.5),0.5*clamp(tr.z*2.0,0.0,1.0));",
+"    float vk=0.0,lit=0.05+0.7*dif+0.4*nd*nd;", /* how much of the surface's colour is the video, and how brightly the surface is lit */
+"    if(uVidK.x>0.5){",
+"      if(uVidK.x<1.5){vk=uVidK.y;lit=mix(lit,0.3+0.8*lit,vk);", /* video on the surfaces: laid on from the three axes, each weighted by how squarely the surface faces it */
+"        vec3 q=p*uVidS;vec3 wt=pow(abs(n),vec3(6.0));wt/=wt.x+wt.y+wt.z;",
+"        base=mix(base,vidAt(q.zy)*wt.x+vidAt(q.xz)*wt.y+vidAt(q.xy)*wt.z,uVidK.y);",
+"      }else if(uVidK.x<2.5){vk=uVidK.y;lit=mix(lit,0.55+0.5*lit,vk);base=mix(base,vidScr(),vk);}", /* through the shapes: lit more evenly, so the video reads as one picture */
+"      else if(uVidK.x>5.5)base=mix(base,vidAt(vec2(tr.w*1.6+0.3*tr.x,tr.y*2.0+tr.z)),uVidK.y);", /* as the colours: where the fractal's own measures say */
+"    }",
 "    float bands=smoothstep(0.75,1.0,0.5+0.5*sin(tr.w*24.0-uTime*1.2));",
 "    float ao=max(1.0-gw,0.0);ao*=sqrt(ao);",
-"    col=base*(0.05+0.7*dif+0.4*nd*nd)*ao;",
-"    col+=pal(uHue+0.5+tr.w)*bands*(0.5+0.9*uMid)*ao;",
+"    col=base*lit*ao;",
+"    col+=pal(uHue+0.5+tr.w)*bands*(0.5+0.9*uMid)*ao*(1.0-vk);", /* the glowing bands give way to the video */
 "    col+=fres*pal(uHue+0.2+t*0.08)*0.4*ao+spec*(0.5+1.4*uHi)*ao;",
 "    col=mix(fogc,col,exp(-FOG*t));",
 "  }",
@@ -107,10 +120,12 @@ export function fragSource(w){
 
 export const FS_TRAIL=[
 "precision highp float;varying vec2 v;uniform sampler2D uA,uB,uWv;",
-"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue;uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;",
+"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue;uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;",
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "void main(){",
 "  vec3 s=texture2D(uA,v).rgb;",
+"  vec3 vs=uVidK.x>3.5?texture2D(uVid,(v-0.5)*uVidK.zw+0.5).rgb:vec3(0.0);",
+"  if(uVidK.x>4.5&&uVidK.x<5.5)s+=vs*uVidK.y*(1.0-smoothstep(0.0,0.45,dot(s,vec3(0.299,0.587,0.114))));", /* video as trails: laid into the dark parts of the scene, so the world stays in front and the motion carries the video */
 "  vec2 c=v-0.5;c.x*=uAsp;float r=length(c);",
 "  float ang=uRot+uSwirl*(0.5-r);float cs=cos(ang),sn=sin(ang);",
 "  c=vec2(cs*c.x-sn*c.y,sn*c.x+cs*c.y)*uZoom;",
@@ -123,33 +138,35 @@ export const FS_TRAIL=[
 "  vec3 o=max(s,p);",
 "  if(uOv>0.5){",
 "    vec2 d=v-0.5;d.x*=uAsp;float m=min(1.0,uAsp);float rr=length(d)/m;float an=atan(d.y,d.x);float am=abs(an/3.14159265);float ln=0.0;",
+"    float wd=uVidK.x>3.5&&uVidK.x<4.5?7.0:1.0;", /* with a video in the overlay its lines are drawn much wider, so there is room for the video to show */
 "    if(uOv<1.5){", /* ring: the waveform bent into a circle */
 "      float wv=texture2D(uWv,vec2(am*0.98+0.01,0.5)).r*2.0-1.0;",
-"      ln=1.0-smoothstep(0.0,0.016,abs(rr-(0.26+0.2*wv)));",
+"      ln=1.0-smoothstep(0.0,0.016*wd,abs(rr-(0.26+0.2*wv)));",
 "    }else if(uOv<2.5){", /* scope: the waveform as a line across the middle */
 "      float wv=texture2D(uWv,vec2(abs(v.x*2.0-1.0)*0.98+0.01,0.5)).r*2.0-1.0;",
-"      ln=1.0-smoothstep(0.0,0.018,abs(d.y/m-0.22*wv));",
+"      ln=1.0-smoothstep(0.0,0.018*wd,abs(d.y/m-0.22*wv));",
 "    }else if(uOv<3.5){", /* spectrum: bars around a circle, one per frequency band */
 "      float q=am*40.0;float sp=texture2D(uWv,vec2((floor(q)+0.5)/40.0*0.7,0.5)).r;",
 "      ln=step(0.18,fract(q))*step(fract(q),0.82)*step(0.16,rr)*step(rr,0.17+0.34*sp);",
 "    }else if(uOv<4.5){", /* spokes: turning rays whose length follows the sound */
 "      float q=fract((an/6.2831853+uTime*0.015)*14.0);float sp=texture2D(uWv,vec2(0.05+0.3*am,0.5)).r;",
-"      ln=(1.0-smoothstep(0.0,0.008,abs(q-0.5)*0.4488*rr))*step(0.05,rr)*step(rr,0.12+0.4*sp+0.15*uOvMid);",
+"      ln=(1.0-smoothstep(0.0,0.008*wd,abs(q-0.5)*0.4488*rr))*step(0.05,rr)*step(rr,0.12+0.4*sp+0.15*uOvMid);",
 "    }else if(uOv<5.5){", /* rings: circles spreading outward, brighter on the beat */
 "      float f=abs(fract(rr*2.6-uTime*0.3)-0.5)/2.6;",
-"      ln=(1.0-smoothstep(0.0,0.008,f))*(0.35+0.65*uOvBeat)*step(rr,0.6);",
+"      ln=(1.0-smoothstep(0.0,0.008*wd,f))*(0.35+0.65*uOvBeat)*step(rr,0.6);",
 "    }else if(uOv<6.5){", /* spiral: a turning arm, rippled by the waveform */
 "      float wv=texture2D(uWv,vec2(fract(rr*1.5)*0.98+0.01,0.5)).r*2.0-1.0;",
 "      float f=abs(fract(rr*2.2-an/6.2831853-uTime*0.12+0.04*wv)-0.5)/2.2;",
-"      ln=(1.0-smoothstep(0.0,0.009,f))*step(rr,0.55);",
+"      ln=(1.0-smoothstep(0.0,0.009*wd,f))*step(rr,0.55);",
 "    }else{", /* orbit: four lights on looping paths that swell on the beat */
 "      for(int i=0;i<4;i++){",
 "        float fi=float(i);vec2 pp=0.34*vec2(cos(uTime*(0.5+0.17*fi)+fi*1.7),sin(uTime*(0.63+0.11*fi)+fi*2.3));",
-"        float q2=length(d/m-pp);ln+=exp(-q2*q2/(0.0006+0.0025*uOvHi));",
+"        float q2=length(d/m-pp);ln+=exp(-q2*q2/((0.0006+0.0025*uOvHi)*wd*wd*0.5));",
 "      }",
 "    }",
 "    vec3 oc=pal(uHue+0.3+rr*0.45);", /* coloured from the current palette */
-"    o+=(max(o,oc)-o)*min(ln,1.0)*uOvAmt;",
+"    if(uVidK.x>3.5&&uVidK.x<4.5)o=mix(o,mix(oc,vs,uVidK.y),min(ln,1.0)*uOvAmt);", /* video in the overlay: its shapes are windows onto the video, dark parts and all */
+"    else o+=(max(o,oc)-o)*min(ln,1.0)*uOvAmt;",
 "  }",
 "  gl_FragColor=vec4(o,1.0);",
 "}"].join("\n");
@@ -258,7 +275,7 @@ export function trailSource(code){
    .replace("void main(){","float time,beat,mid,hi,aspect;\nfloat sound(float x){return texture2D(uWv,vec2(clamp(x,0.0,1.0)*0.98+0.01,0.5)).r;}\nvoid mark(vec2 p,inout float ln,inout float hue){\n"+code+"\n}\nvoid main(){")
    .replace("    vec3 oc=pal(uHue+0.3+rr*0.45);","    float hq=0.3+rr*0.45;\n    if(uOv>98.5){ln=0.0;time=uTime;beat=uOvBeat;mid=uOvMid;hi=uOvHi;aspect=uAsp;mark(d/m,ln,hq);ln=clamp(ln,0.0,1.0);}\n    vec3 oc=pal(uHue+hq);");
 }
-export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uPa","uPb","uPc","uPd"];
+export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uPa","uPb","uPc","uPd","uVid","uVidK"];
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={VS, fragSource, FS_TRAIL, FS_DOWN, FS_BLUR, FS_FINAL, finalSource, trailSource, TRAIL_U};
