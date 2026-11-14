@@ -2,7 +2,7 @@
 
 A pack is one JSON file of worlds, palettes, motions, filters, overlays, Journey templates and sets. Almost all of it is names and numbers. The exceptions are filters and overlays, which may hold a short picture program for the graphics chip. Nothing in a pack is ever run as JavaScript, so a pack cannot reach the page, your files or the network.
 
-Packs in this folder are offered to everyone in the app: press **Library**, choose a pack, and press **Add this pack**. Anyone can also load a pack file from their own device with **Load a pack file**, without it being in this folder.
+Packs in this folder are offered to everyone in the app: press **Gallery and library** and press **Add** on a pack. Anyone can also load a pack file from their own device with **Load a pack file**, without it being in this folder.
 
 Worlds, like filters and overlays, hold a short picture program. See [Worlds](#worlds).
 
@@ -246,7 +246,7 @@ A template has one entry for each of `world`, `palette`, `mirrors`, `motion`, `f
 
 This folder is the gallery. The app lists what `index.json` names, with each pack's name, author, `about` and what it holds.
 
-**The short way.** In the app, open **Gallery and library** and press **Offer mine to the gallery**. It opens a form on GitHub with your pack in it. When you send the form, a check runs (`tools/offer.mjs`, the same cleaners the app uses). If the pack passes, a pull request is opened for you with the pack as one file; anything the app would refuse is left out and named in a comment. If nothing in it passes, the comment says why, and editing the issue tries again.
+**The short way.** In the app, open **Gallery and library** and tick what you want to offer under **Offer to the gallery**, and press **Offer what is ticked**. It opens a form on GitHub with a pack of only those things in it (and anything of yours they use). What you added from the gallery is not listed. When you send the form, a check runs (`tools/offer.mjs`, the same cleaners the app uses). If the pack passes, a pull request is opened for you with the pack as one file; anything the app would refuse is left out and named in a comment. If nothing in it passes, the comment says why, and editing the issue tries again.
 
 **By hand.**
 

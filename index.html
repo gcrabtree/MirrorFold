@@ -34,34 +34,45 @@
     </select>
   </div>
   <div class="row">
+    <button id="bJourney" type="button" aria-pressed="false">Journey</button>
+    <button id="bStill" type="button" aria-pressed="false">Hold still</button>
+    <button id="bSpark" type="button">Throw a light</button>
+    <button id="mLook" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuLook">Look</button>
+    <button id="mLand" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuLand">Land and video</button>
+    <button id="mShare" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuShare">Save and share</button>
+    <button id="mMore" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuMore">More</button>
+  </div>
+  <!-- the four groups below open one at a time from the buttons above, and close when the controls fade -->
+  <div class="row menu" id="menuLook" hidden>
     <select id="selMotion" aria-label="Feedback motion"></select>
     <select id="selLook" aria-label="Filter"></select>
     <select id="selOv" aria-label="Overlay"></select>
     <button id="bOvS" type="button">Overlay 50%</button>
-  </div>
-  <div class="row">
-    <button id="bJourney" type="button" aria-pressed="false">Journey</button>
     <button id="bMirror" type="button">Mirrors off</button>
+    <button id="bFx" type="button">FX glow</button>
+    <button id="bMorph" type="button" aria-pressed="true">Morph</button>
+    <button id="bDrift" type="button" aria-pressed="true">Drift</button>
+  </div>
+  <div class="row menu" id="menuLand" hidden>
     <button id="bLand" type="button">Land off</button>
     <button id="bLandKind" type="button" hidden>Land is the Alps</button>
     <button id="bLandTint" type="button" hidden>Land colours natural</button>
     <button id="bLandFx" type="button" hidden>Effects on everything</button>
     <button id="bVideo" type="button">Video off</button>
-    <button id="bFx" type="button">FX glow</button>
-    <button id="bDetail" type="button">Detail auto</button>
-    <button id="bStats" type="button" aria-pressed="false">Stats</button>
-    <button id="bMorph" type="button" aria-pressed="true">Morph</button>
-    <button id="bDrift" type="button" aria-pressed="true">Drift</button>
-    <button id="bStill" type="button" aria-pressed="false">Hold still</button>
-    <button id="bOrbs" type="button" aria-pressed="true">Orbs</button>
-    <button id="bSpark" type="button">Throw a light</button>
-    <button id="bShare" type="button">Share spot</button>
+  </div>
+  <div class="row menu" id="menuShare" hidden>
     <button id="bShot" type="button">Save picture</button>
     <button id="bRec" type="button" aria-pressed="false">Record video</button>
+    <button id="bShare" type="button">Share spot</button>
+    <button id="bLib" type="button">Gallery and library</button>
+  </div>
+  <div class="row menu" id="menuMore" hidden>
+    <button id="bOrbs" type="button" aria-pressed="true">Orbs</button>
+    <button id="bDetail" type="button">Detail auto</button>
+    <button id="bStats" type="button" aria-pressed="false">Stats</button>
     <button id="bFull" type="button">Fullscreen</button>
     <button id="bVr" type="button" aria-pressed="false">VR viewer</button>
     <button id="bMidi" type="button" aria-pressed="false">Knobs</button>
-    <button id="bLib" type="button">Gallery and library</button>
     <a id="aHelp" class="btn" href="https://github.com/gcrabtree/MirrorFold#readme" target="_blank" rel="noopener">Help and source</a>
   </div>
   <div class="row" id="rowJourney" hidden>
@@ -127,8 +138,12 @@
     <h3 id="advGalHead">Gallery</h3>
     <p class="advNote" id="advGalNote">Journeys and packs that people have shared. They are kept with this site, and any picture programs in them have been looked at by a maintainer.</p>
     <div id="advGal"></div>
-    <div class="advRow"><button id="advOffer" type="button">Offer mine to the gallery</button></div>
-    <p class="advNote">Offering opens a form on GitHub with everything in your library in it, so first remove anything there that is not your own. A check runs on GitHub, and a maintainer looks at the pack before it appears here.</p>
+
+    <h3>Offer to the gallery</h3>
+    <p class="advNote">Tick what you want to offer. What you added from the gallery is someone else's, so it is not listed. If a journey or the scene uses a world, palette, motion, filter or overlay that is listed here, that goes with it.</p>
+    <div id="advOfferList"></div>
+    <div class="advRow"><button id="advOffer" type="button">Offer what is ticked</button></div>
+    <p class="advNote">Offering opens a form on GitHub with only the ticked things in it. A check runs on GitHub, and a maintainer looks at the pack before it appears here.</p>
 
     <h3 id="advLibHead">Library</h3>
     <p class="advNote">A pack is a small file of worlds, palettes, motions, filters, overlays, journey templates and sets. Nothing in a pack can reach the page or your data. Worlds, filters and overlays may hold a short picture program, which is checked before use. What you add is saved in this browser only.</p>

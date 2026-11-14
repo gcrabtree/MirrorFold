@@ -1,4 +1,4 @@
-/* Site packs, opening the setup panel, the sound wave picture, Stats, and the remaining buttons. */
+/* The groups of controls that open one at a time, opening the setup panel, and the remaining buttons. */
 import { scene } from "./choose.js";
 import { $, toast } from "./dom.js";
 import { cycleMirrors, press, wakeHud } from "./input.js";
@@ -10,7 +10,15 @@ import { encodeSpot } from "./spots.js";
 import { FX, sel } from "./state.js";
 import { DETAIL, di, resize, setDetail } from "./targets.js";
 export let orbsOn=true,morph=true,drift=true; /* the Orbs, Morph and Drift switches */
+export let menu="";      /* which group of controls is open: "", or one of MENUS */
+export const MENUS=["Look","Land","Share","More"];
 let de0;
+/* Open one group of controls and close the others; "" closes them all. The video's own row shows only with the Land group. */
+export function setMenu(name){
+  menu=MENUS.indexOf(name)>=0?name:"";
+  MENUS.forEach(function(m){$("menu"+m).hidden=m!==menu;$("m"+m).setAttribute("aria-expanded",m===menu?"true":"false")});
+  $("hud").setAttribute("data-menu",menu);
+}
 export function setFx(i){sel.fi=FX[i]?i:0;$("bFx").textContent="FX "+FX[sel.fi].name;}
 
 
@@ -18,6 +26,7 @@ export function setFx(i){sel.fi=FX[i]?i:0;$("bFx").textContent="FX "+FX[sel.fi].
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
+MENUS.forEach(function(m){$("m"+m).addEventListener("click",function(){setMenu(menu===m?"":m);wakeHud()})});
 try{orbsOn=localStorage.getItem("mirrorfold-orbs")!=="off"}catch(_){}
 $("bAdv").addEventListener("click",function(){openAdv(false)});
 $("bLib").addEventListener("click",function(){openAdv(true)});
@@ -60,4 +69,4 @@ $("bFull").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={setFx, get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};
+export const __dbg={setFx, MENUS, setMenu, get menu(){return menu},set menu(v){menu=v}, get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};

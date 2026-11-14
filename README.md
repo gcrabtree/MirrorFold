@@ -133,43 +133,61 @@ The controls at the top of the screen fade after five seconds without input and 
 
 ## The buttons
 
+The controls fade after five seconds and come back when you touch the picture.
+
 **First row:** World, Palette and Music.
 
-**Second row:**
+**Second row:** three buttons, then four that each open a group of controls under the row. One group is open at a time; pressing its button again closes it, and it closes when the controls fade.
 
-| Control | Options |
+| Button | What it does |
+|---|---|
+| Journey | Turns the autopilot on or off. |
+| Hold still | Stops everything that moves by itself: the clocks, the breathing of the world, the drift and Journey. You can still look and fly by hand. Whenever you are not moving, the picture sharpens over about a second, because each frame looks through a different part of every pixel and the frames are averaged. Key **H**. Turning Journey on lets go. |
+| Throw a light | Sends a small glowing ball ahead of you. It flies straight, bounces off the surfaces, loses a fifth of its speed at each bounce and shrinks away after twenty seconds. Throwing again takes it back. Not in the two cloud worlds, in a world from a pack, or with the land alone. Key **G**. |
+
+**Look**
+
+| Control | What it does |
 |---|---|
 | Feedback motion | none, Melt, Vortex, Tunnel, Implode, Ripple, Drift. Each one smears the previous frame in a different way. |
 | Filter | none, Echo, Neon, Solar, Negative, Poster, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl, Thermal, CRT, Halftone, Contour, Noir, Comic, Two-tone, Tape, Streaks, Emboss, Glass. The last six were made with video in mind. |
 | Overlay | none, Ring, Scope, Spectrum, Spokes, Rings, Spiral, Orbit. These draw the sound on top of the picture. |
 | Overlay strength | 15%, 30%, 50%, 75% or 100%. |
+| Mirrors | Steps through off, 3, 4, 6, 8 and 12 segments. |
+| FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
+| Morph | Turns the slow change of each world's shape on or off. |
+| Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
 
-**Third row:**
+**Land and video**
 
 | Button | What it does |
 |---|---|
-| Journey | Turns the autopilot on or off. |
-| Mirrors | Steps through off, 3, 4, 6, 8 and 12 segments. |
 | Land | Steps through **Land off**, **Land alone** and **Land over world**. See [The land](#the-land). |
 | Land is | Shown while the land is on. Steps through the landscapes: **the Alps**, **canyon country**, **a strange planet**, **a steel ball** and **a city**. |
 | Land colours | Shown while the land is on. **Land colours natural**, **Palette on sky and light**, or **Palette on everything**. |
 | Effects on | Shown for **Land over world**. Whether motions, filters and overlays act on **everything**, **the sky** (the world behind) or **the land**. |
-| FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
-| Detail | Steps through auto, sharp and fast. See [Performance](#performance). |
 | Video off / on | An experiment. Opens a row of controls for showing a video in the picture: choose a video file from this device or use the camera, pick where it shows (on the surfaces, through the shapes, in the distance, in the overlay, as the colours, or filling the screen with no world at all, where the mirrors, motions, filters and overlays all work on the video and the land can stand in front), how strongly, and pause it. **Video sound off / on** chooses whether the video's own sound is the music. Off, the video plays silently while whatever is chosen under Music carries on (useful for ambient footage); on, the picture pulses to the video's sound. When a file is chosen and Music is off, the video's sound is turned on for you. The video is never uploaded, and is slowed where needed so that it cannot make the screen flash. Pressing the button again turns the video off. |
-| Stats | Shows a readout in the top left corner: pictures drawn each second and the slowest one, how long the page's own script takes for each picture, the sharpness and size of the picture, the name of the graphics chip drawing it, and a trial of the distance probe (how long the page waits for the chip to answer one question, and the chip's answer beside the script's). Useful when the picture stutters. |
-| Morph | Turns the slow change of each world's shape on or off. |
-| Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
-| Hold still | Stops everything that moves by itself: the clocks, the breathing of the world, the drift and Journey. You can still look and fly by hand. Whenever you are not moving, the picture sharpens over about a second, because each frame looks through a different part of every pixel and the frames are averaged. Key **H**. Turning Journey on lets go. |
-| Orbs | Shows or hides the orbs. |
-| Throw a light | Sends a small glowing ball ahead of you. It flies straight, bounces off the surfaces, loses a fifth of its speed at each bounce and shrinks away after twenty seconds. Throwing again takes it back. Not in the two cloud worlds, in a world from a pack, or with the land alone. Key **G**. |
-| Share spot | Makes a link to where you are. |
+
+**Save and share**
+
+| Button | What it does |
+|---|---|
 | Save picture | Saves the picture as a PNG file. The file also holds the place and the look, so loading it in Mirrorfold (**Gallery and library**, **Load a pack file or a saved picture**, or drop it on the page) comes back to the same scene, with any palette, motion, filter, overlay or world of your own that it uses. Many websites remove that part when a picture is uploaded; the picture is then only a picture. Use **Hold still** first for a clean frame. |
 | Record video | Records the picture as it plays, and saves it as a video file when you press the button again. The controls are not in the video. The sound is recorded when Mirrorfold itself is playing it (the built-in music, your audio file, your video's sound), and not when it is only listening (a tab, the microphone, tap tempo). It stops itself after five minutes. The video is as sharp and as smooth as the picture on your screen, no better. The button is missing in browsers that cannot record. |
-| Knobs | For a MIDI controller, in browsers that have Web MIDI (Chrome and Edge; the button is missing elsewhere). The browser asks for permission. The first four knobs you turn are given, in order: speed, overlay strength, look left and right, look up and down. A look knob turns the view steadily while it is away from its middle. Pads and keys change the world, palette, motion or filter, by turn. Nothing is sent to the controller. |
+| Share spot | Makes a link to where you are. |
+| Gallery and library | Opens the setup panel at the gallery. See [Library and packs](#library-and-packs). |
+
+**More**
+
+| Button | What it does |
+|---|---|
+| Orbs | Shows or hides the orbs. |
+| Detail | Steps through auto, sharp and fast. See [Performance](#performance). |
+| Stats | Shows a readout in the top left corner: pictures drawn each second and the slowest one, how long the page's own script takes for each picture, the sharpness and size of the picture, the name of the graphics chip drawing it, and a trial of the distance probe (how long the page waits for the chip to answer one question, and the chip's answer beside the script's). Useful when the picture stutters. |
 | Fullscreen | Fills the screen. |
-| Help and source | Opens this page on GitHub in a new tab. |
 | VR viewer | Phones and tablets only. Draws a picture for each eye, for a phone in a viewer. See [VR viewer](#vr-viewer). |
+| Knobs | For a MIDI controller, in browsers that have Web MIDI (Chrome and Edge; the button is missing elsewhere). The browser asks for permission. The first four knobs you turn are given, in order: speed, overlay strength, look left and right, look up and down. A look knob turns the view steadily while it is away from its middle. Pads and keys change the world, palette, motion or filter, by turn. Nothing is sent to the controller. |
+| Help and source | Opens this page on GitHub in a new tab. |
 
 ## The land
 
@@ -285,7 +303,7 @@ A **pack** is a small file of worlds, palettes, motions, filters, overlays, Jour
 
 Programs in packs published with Mirrorfold have been reviewed. A program you load from a file or paste as text has not, so while it is in use Mirrorfold shows the picture smoothed over time, which makes it impossible for it to flash the screen. The Library list marks those items.
 
-Press **Gallery and library** to open that part of the setup panel. The **gallery** comes first: journeys and packs that people have shared, each with **Add**. They are files in this project's `packs` folder, so the list is missing when the page is opened straight from a file. **Offer mine to the gallery** opens a form on GitHub with everything in your library in it (remove anything that is not your own first); you need a GitHub account to send it. A check runs there, and a maintainer looks at the pack before it appears in the gallery. See [packs/README.md](packs/README.md).
+Press **Gallery and library** to open that part of the setup panel. The **gallery** comes first: journeys and packs that people have shared, each with **Add**. They are files in this project's `packs` folder, so the list is missing when the page is opened straight from a file. Under **Offer to the gallery** is a list of what you have made or loaded yourself, and the scene showing now, each with a tick box. **Offer what is ticked** opens a form on GitHub with only those things in it; you need a GitHub account to send it. What you added from the gallery is someone else's and is not in the list. If a journey or the scene you tick uses a world, palette, motion, filter or overlay in the list, that goes with it, and the message says so. A check runs there, and a maintainer looks at the pack before it appears in the gallery. See [packs/README.md](packs/README.md).
 
 The **library** is below it:
 

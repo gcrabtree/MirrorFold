@@ -42,7 +42,7 @@ export function handle(issue, taken) {
   if (!text) return no("the form's pack box is empty.");
   if (text.length > MAX_BYTES) return no("it is larger than " + MAX_BYTES + " characters.");
   let raw;
-  try { raw = JSON.parse(text); } catch (e) { return no("the pack box does not hold valid JSON. Copy the whole text from **Copy mine as text** in the app."); }
+  try { raw = JSON.parse(text); } catch (e) { return no("the pack box does not hold valid JSON. In the app, press **Offer what is ticked** again and paste what it copies."); }
   const { pack, dropped } = tidy(raw, field(body, "pack name"), field(body, "your name") || login, field(body, "about"));
   if (!pack) return no("nothing in it could be used" + (dropped.length ? " (" + dropped.map(md).join(", ") + " would be refused by the app)." : "."));
   if (!pack.name) return no("it needs a name of 1 to 28 characters.");

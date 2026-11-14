@@ -1,6 +1,7 @@
 /* Input: touch, mouse, wheel and keyboard, and the controls that fade when left alone. */
 import { cam, userLook } from "./camera.js";
 import { requestWorld, scene, setMirrors } from "./choose.js";
+import { setMenu } from "./controls.js";
 import { $, canvas, toast } from "./dom.js";
 import { doBoost } from "./flight.js";
 import { journey, setJourney } from "./journey.js";
@@ -21,7 +22,7 @@ export function wakeHud(){
   hudTimer=setTimeout(function(){
     var ae=document.activeElement;
     if(ae&&ae.tagName==="SELECT"){wakeHud();return;}
-    hud.classList.add("hide");
+    hud.classList.add("hide");setMenu("");
   },5000);
 }
 function release(e){

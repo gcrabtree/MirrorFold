@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        The app's **Offer mine to the gallery** button fills this form in for you. A check runs when you send it.
+        The app's **Offer what is ticked** button fills this form in for you. A check runs when you send it.
         If your pack passes, a pull request is opened, and a maintainer looks at it before it joins the gallery.
   - type: input
     id: name
@@ -29,7 +29,7 @@ body:
     id: pack
     attributes:
       label: The pack
-      description: In the app, open Library, press "Copy mine as text", and paste here.
+      description: The app fills this in. If it is empty, paste: the app copied the pack when it opened this form.
       render: json
     validations:
       required: true
