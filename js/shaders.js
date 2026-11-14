@@ -215,24 +215,33 @@ VR_GLSL,
 "  c.x/=uAsp;",
 "  return c+uDrift;",
 "}",
+/* VR viewer: how near each part of an overlay is, as a multiple of the overlay's own depth. The ring and the scope are
+   pushed nearer and farther by the sound's wave; the spectrum, spokes, rings and spiral are a cone, far at the middle
+   and near at the rim, so rings that spread come toward the viewer. */
+"float ovDepth(vec2 d){",
+"  float am=abs(atan(d.y,d.x)/3.14159265);",
+"  if(uOv<1.5)return 1.0+0.5*(texture2D(uWv,vec2(am*0.98+0.01,0.5)).r*2.0-1.0);",
+"  if(uOv<2.5)return 1.0+0.5*(texture2D(uWv,vec2(abs(2.0*d.x)*0.98+0.01,0.5)).r*2.0-1.0);",
+"  if(uOv<6.5)return 0.3+2.0*min(length(d),0.7);",
+"  return 1.0;",
+"}",
 "void main(){",
 "  vec4 sa=texture2D(uA,v);vec3 s=sa.rgb;float oa=1.0;",
 "  vec3 vs=uVidK.x>3.5&&uVidK.x<4.5?texture2D(uVid,(v-0.5)*uVidK.zw+0.5).rgb:vec3(0.0);",
 "  vec3 p;vec2 ev=vec2(0.0);float sg=0.0;",
 "  if(uVr>0.5){",
-     /* VR viewer. The trail that arrives at this pixel came from somewhere else in the last picture, and how far apart
-        the eyes see it (eg) is only known once it is found. So: guess from what was here, find it, read its own, find it again. */
+     /* VR viewer. A trail is painted on the world: it lies on whatever surface is seen at this pixel, at that surface's
+        depth, so it reads as the world itself changing and not as a sheet in front of it. The middle view of this surface
+        point says where the motion takes the trail from; that place is read in this eye's half, shifted by the depth of
+        what lies there, which is only known once it is read: so guess, read it, and read again. */
 "    sdE=v.x<0.5?-1.0:1.0;sg=-sdE;ev=eyeOf(v);",
-"    float k=clamp(uZoom,0.5,2.0),eg=texture2D(uB,v).a*"+VR_EMAX+";vec2 src=v;",
-"    for(int i=0;i<2;i++){",
-"      vec2 cc=ev-vec2(sg*eg/k,0.0);", /* where the middle view sees it now. A zoom moves it nearer or farther, so its eta is divided by the zoom */
-"      vec3 dd=uTurn*vec3(cc,1.0);cc=dd.xy/max(dd.z,0.2);", /* where that direction was before the head turned: trails stay where they are in the world */
-"      src=texOf(bend(cc*"+VR_KAP+")/"+VR_KAP+"+vec2(sg*eg,0.0));",
-"      if(i==0)eg=texture2D(uB,src).a*"+VR_EMAX+";",
-"    }",
-"    vec4 pa=texture2D(uB,src);p=pa.rgb;",
+"    float es=sa.a*"+VR_EMAX+",eg=es;",
+"    vec3 dd=uTurn*vec3(ev-vec2(sg*es,0.0),1.0);", /* where that direction was before the head turned: trails stay where they are in the world */
+"    vec2 cs=bend(dd.xy/max(dd.z,0.2)*"+VR_KAP+")/"+VR_KAP+",src=v;",
+"    for(int i=0;i<2;i++){src=texOf(cs+vec2(sg*eg,0.0));if(i==0)eg=texture2D(uB,src).a*"+VR_EMAX+";}",
+"    p=texture2D(uB,src).rgb;",
 "    p=mix(p,p.brg,uShift);p=max(p*uDecay-0.004,0.0)*(1.0-smoothstep(1.7,1.8,length(ev)));", /* nothing outside what the lens shows */
-"    oa=mix(sa.a,min(pa.a/k,1.0),smoothstep(-0.02,0.02,dot(p-s,vec3(0.299,0.587,0.114))));", /* the brighter of the scene and the trail is what is seen here, so its depth is kept */
+"    oa=sa.a;",
 "  }else{",
 "  p=texture2D(uB,bend(v-0.5)+0.5).rgb;",
 "  p=mix(p,p.brg,uShift);",
@@ -240,7 +249,9 @@ VR_GLSL,
 "  }",
 "  vec3 o=max(s,p);",
 "  if(uOv>0.5){",
-"    vec2 d=v-0.5;d.x*=uAsp;if(uVr>0.5)d=(ev-vec2(sg*uOvEta,0.0))*"+VR_KAP+";float m=min(1.0,uAsp);float rr=length(d)/m;float an=atan(d.y,d.x);float am=abs(an/3.14159265);float ln=0.0;",
+"    vec2 d=v-0.5;d.x*=uAsp;float oe=uOvEta;",
+"    if(uVr>0.5)for(int i=0;i<3;i++){d=(ev-vec2(sg*oe,0.0))*"+VR_KAP+";if(i<2)oe=min(uOvEta*ovDepth(d),"+VR_EMAX+");}", /* VR viewer: the shape is drawn in the middle view, each part at its own depth. Where a part is seen depends on its depth and its depth on where it is, so go round twice */
+"    float m=min(1.0,uAsp);float rr=length(d)/m;float an=atan(d.y,d.x);float am=abs(an/3.14159265);float ln=0.0;",
 "    float wd=uVidK.x>3.5&&uVidK.x<4.5?7.0:1.0;", /* with a video in the overlay its lines are drawn much wider, so there is room for the video to show */
 "    if(uOv<1.5){", /* ring: the waveform bent into a circle */
 "      float wv=texture2D(uWv,vec2(am*0.98+0.01,0.5)).r*2.0-1.0;",
@@ -264,14 +275,16 @@ VR_GLSL,
 "    }else{", /* orbit: four lights on looping paths that swell on the beat */
 "      for(int i=0;i<4;i++){",
 "        float fi=float(i);vec2 pp=0.34*vec2(cos(uTime*(0.5+0.17*fi)+fi*1.7),sin(uTime*(0.63+0.11*fi)+fi*2.3));",
-"        float q2=length(d/m-pp);ln+=exp(-q2*q2/((0.0006+0.0025*uOvHi)*wd*wd*0.5));",
+"        vec2 dl=d;float el=uOvEta;",
+"        if(uVr>0.5){el=min(uOvEta*(1.0+0.6*sin(uTime*(0.4+0.13*fi)+fi*2.1)),"+VR_EMAX+");dl=(ev-vec2(sg*el,0.0))*"+VR_KAP+";}", /* VR viewer: each light also swings nearer and farther */
+"        float q2=length(dl/m-pp),gl2=exp(-q2*q2/((0.0006+0.0025*uOvHi)*wd*wd*0.5));if(gl2>ln)oe=el;ln+=gl2;",
 "      }",
 "    }",
 "    if(uVr>0.5)ln*=1.0-smoothstep(1.7,1.8,length(ev));",
 "    vec3 oc=pal(uHue+0.3+rr*0.45);", /* coloured from the current palette */
 "    if(uVidK.x>3.5&&uVidK.x<4.5)o=mix(o,mix(oc,vs,uVidK.y),min(ln,1.0)*uOvAmt);", /* video in the overlay: its shapes are windows onto the video, dark parts and all */
 "    else o+=(max(o,oc)-o)*min(ln,1.0)*uOvAmt;",
-"    if(uVr>0.5)oa=mix(oa,uOvEta/"+VR_EMAX+",min(ln,1.0)*uOvAmt);", /* where the overlay is drawn, its depth is what the trails carry on */
+"    if(uVr>0.5)oa=mix(oa,oe/"+VR_EMAX+",min(ln,1.0)*uOvAmt);", /* where the overlay is drawn, its depth is what the trails carry on */
 "  }",
 "  gl_FragColor=vec4(o,oa);",
 "}"].join("\n");
@@ -344,7 +357,7 @@ VR_GLSL,
 "    col.b+=texture2D(uT,at(cw*k*(1.0-ca))).b;",
 "  }",
 "  col*=0.25;",
-"  if(uEcho>0.0){vec3 e=texture2D(uT,at(-cw*0.5)).rgb;col=max(col*(1.0-0.35*uEcho),e*0.85*uEcho);}",
+"  if(uEcho>0.0){vec2 te=at(-cw*0.5);if(uVr>1.5){float ek=etaS;etaS=texture2D(uT,te).a*"+VR_EMAX+";te=at(-cw*0.5);etaS=ek;}vec3 e=texture2D(uT,te).rgb;col=max(col*(1.0-0.35*uEcho),e*0.85*uEcho);}",
 "  if(uEdge>0.0){",
 "    vec2 px=uPx*1.5;",
 "    float l0=dot(texture2D(uT,tw-vec2(px.x,0.0)).rgb,LW);",

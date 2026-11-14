@@ -235,9 +235,9 @@ Turning your head turns the view. With **Drift** on you glide toward wherever yo
 While the mode is on:
 
 - **Motions, trails, filters, overlays and transitions all work, in depth.** An effect made for a flat screen would show each eye something different. So in the viewer each effect is worked out on the view from between your eyes, and every piece of the picture it moves keeps its own depth. Quad shows four mirrored worlds, each with its depth; Twirl winds the whole space; Mosaic's tiles stand at the depth of what they show.
-- **Trails move in depth.** A motion that zooms the trails outward (Tunnel) brings them toward you; one that zooms inward (Implode) sends them away.
+- **Trails lie on the world.** A trail is painted onto whatever surface it falls on, at that surface's depth, so a motion looks like the world itself smearing and flowing. (The first version let trails move nearer and farther on their own; in a real viewer that read as a separate sheet in front of the world.)
 - **Trails stay put when you turn your head.** They are fixed to the world, not to your face.
-- **Overlays float** a little in front of the nearest surface, and swell toward you on the beat.
+- **Overlays have depth of their own.** They float in front of the nearest surface and swell toward you on the beat. The ring and the scope are pushed nearer and farther along their length by the sound's wave. Spectrum, Spokes, Rings and Spiral are a cone, far at the middle and near at the rim, so spreading rings come toward you. Each of Orbit's lights swings nearer and farther as it goes round.
 - A filter that came in a pack with its own code is not drawn: its code works on the flat screen.
 - CRT and Halftone draw their pattern on the screen, not in the world, so the pattern sits at no particular depth.
 - The land and a video shown flat are off, as before. The slow automatic roll is off.
