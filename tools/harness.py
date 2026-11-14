@@ -55,14 +55,47 @@ def make_page(inject="", hide_ui=False, quality=None):
     return path
 
 
+_pad = None
+
+
+def _band(path):
+    """How many rows at the bottom of a screenshot are the bare page and not the picture (0 without Pillow)."""
+    try:
+        from PIL import Image
+    except ImportError:
+        return 0
+    im = Image.open(path).convert("RGB")
+    w, h = im.size
+    bare = lambda y: all(max(abs(c - d) for c, d in zip(im.getpixel((x, y)), (5, 3, 11))) <= 3 for x in range(0, w, max(1, w // 40)))
+    n = 0
+    while n < h and bare(h - 1 - n):
+        n += 1
+    return n if n < h else 0
+
+
+def _shot(page, out, size, budget_ms, hash_):
+    subprocess.run([chrome()] + FLAGS + [
+        f"--window-size={size[0]},{size[1]}", f"--virtual-time-budget={budget_ms}",
+        f"--screenshot={out}", f"file://{page}#{hash_}"], capture_output=True, timeout=240)
+
+
 def screenshot(out, inject="", hash_="lattice", size=(420, 700), budget_ms=2500, hide_ui=True, quality="sharp"):
     """Render the page to a PNG. budget_ms is virtual time; software frames are slow, so only
-    a few dozen frames run in that time. Feedback effects need a larger budget and quality="fast"."""
+    a few dozen frames run in that time. Feedback effects need a larger budget and quality="fast".
+
+    Some Chrome builds count the window's frame in --window-size, so the page is shorter than asked for and the
+    bottom of the screenshot is bare. The first shot measures that; if there is any, every shot is taken that much
+    taller and cut back to size (this needs Pillow; without it the shot is left as Chrome made it)."""
+    global _pad
     page = make_page(inject, hide_ui=hide_ui, quality=quality)
     try:
-        subprocess.run([chrome()] + FLAGS + [
-            f"--window-size={size[0]},{size[1]}", f"--virtual-time-budget={budget_ms}",
-            f"--screenshot={out}", f"file://{page}#{hash_}"], capture_output=True, timeout=240)
+        if _pad is None:
+            _shot(page, out, size, 1500, hash_)
+            _pad = _band(out)
+        _shot(page, out, (size[0], size[1] + _pad), budget_ms, hash_)
+        if _pad:
+            from PIL import Image
+            Image.open(out).crop((0, 0, size[0], size[1])).save(out)
     finally:
         os.unlink(page)
     return out

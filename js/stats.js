@@ -5,7 +5,8 @@ import { morphValue } from "./clock.js";
 import { $, gl } from "./dom.js";
 import { press, wakeHud } from "./input.js";
 import { probe, probeOut, probePts } from "./probe.js";
-import { q, tA } from "./targets.js";
+import { landMode } from "./land.js";
+import { landQ, q, tA } from "./targets.js";
 export let statsOn=false;
 let gpuName="",sT0=0,sPr=0;
 export const ST={n:0,worst:0,js:0,pr:0,pn:0,gd:0,jd:0,t:0};
@@ -13,7 +14,7 @@ export function statsShow(){
   var fps=ST.n/ST.t,lines=[
     Math.round(fps)+" pictures a second, slowest "+Math.round(ST.worst*1000)+" ms",
     "script "+(ST.js/ST.n).toFixed(1)+" ms a picture",
-    "sharpness "+Math.round(q*100)+"%, "+tA.w+" x "+tA.h+" points",
+    "sharpness "+Math.round(q*100)+"%, "+tA.w+" x "+tA.h+" points"+(landMode&&landQ<1?", the land at "+Math.round(landQ*100)+"% of that":""),
     "drawn by: "+gpuName.slice(0,70)];
   if(ST.pn)lines.push("distance probe, waiting for the chip "+(ST.pr/ST.pn).toFixed(2)+" ms: chip "+ST.gd.toFixed(4)+(ST.jd===ST.jd?", script "+ST.jd.toFixed(4):", no script for this world"));
   else lines.push("distance probe: not for this world");

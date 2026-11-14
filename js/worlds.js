@@ -454,7 +454,46 @@ export const WORLDS=[
  "  float g2=dot(sin(p*2.0),cos(p.yzx*2.0));",
  "  return exp(-abs(g)*(4.0-1.2*uM))+0.4*exp(-abs(g2)*8.0);",
  "}"],
- de:function(){return .2}}
+ de:function(){return .2}},
+/* The Mandelbrot set, taken into quaternions: z starts at a small seed, the point itself is c, and z = z*z + c.
+   With no seed this is the flat set turned about its long axis; the morph moves the seed, which pulls it out of round. */
+{id:"mandel",name:"Mandelbrot",hue:.62,fog:.12,maxd:22,speed:1.0,start:[1.7,.15,1.7],
+ period:function(){return [6.8,6.8,6.8]},
+ glsl:[
+ "#define P 3.4",
+ "float map(vec3 p){",
+ "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  vec4 c=vec4(p.x-0.75,p.y,p.z,0.0);",
+ "  vec4 z=vec4(0.10*uM,0.14*sin(1.3*uM+0.5),0.0,0.10*cos(0.9*uM));",
+ "  float md=0.0;float mz2=dot(z,z);orb=vec4(1000.0);",
+ "  for(int i=0;i<12;i++){",
+ "    md=2.0*sqrt(mz2)*md+1.0;",
+ "    z=vec4(z.x*z.x-dot(z.yzw,z.yzw),2.0*z.x*z.yzw)+c;",
+ "    mz2=dot(z,z);",
+ "    orb=min(orb,vec4(abs(z.xyz),mz2));",
+ "    if(mz2>64.0)break;",
+ "  }",
+ "  orb.w=min(orb.w,1.5);",
+ "  return 0.25*sqrt(mz2)/md*log(max(mz2,1e-9));",
+ "}"],
+ de:function(x,y,z,m){
+  var P=3.4;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var c0=x-.75,a=.10*m,b=.14*Math.sin(1.3*m+.5),cc=0,d=.10*Math.cos(.9*m);
+  var dm=0,mz2=a*a+b*b+cc*cc+d*d;
+  for(var i=0;i<12;i++){
+    dm=2*Math.sqrt(mz2)*dm+1;
+    var na=a*a-(b*b+cc*cc+d*d)+c0,nb=2*a*b+y,nc=2*a*cc+z,nd=2*a*d;
+    a=na;b=nb;cc=nc;d=nd;mz2=a*a+b*b+cc*cc+d*d;
+    if(mz2>64)break;
+  }
+  return .25*Math.sqrt(mz2)/dm*Math.log(Math.max(mz2,1e-9));
+ }},
+/* The two zoom worlds are flat pictures, not spaces: js/zoom.js draws them and moves the view. They are marked as cloud
+   worlds too, so that everything that needs a surface (the orb's check, the thrown light, the distance probe) leaves them alone. */
+{id:"mzoom",name:"Mandelbrot zoom",hue:.55,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,
+ period:function(){return [4,4,4]},glsl:[],de:function(){return .2}},
+{id:"jzoom",name:"Julia zoom",hue:.1,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,julia:true,
+ period:function(){return [4,4,4]},glsl:[],de:function(){return .2}}
 ];
 
 

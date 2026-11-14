@@ -11,11 +11,12 @@ import { palCur, setPal } from "./palettes.js";
 import { driven } from "./packs.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
-import { tA, tB, tF, tT, target } from "./targets.js";
+import { landQ, tA, tB, tF, tT, target } from "./targets.js";
 import { vidAlone, videoScene, videoUniforms } from "./video.js";
 import { jit, stillN } from "./still.js";
 import { stereo, vrEye, vrEyeStep } from "./vr.js";
 import { tr } from "./warp.js";
+import { zoomUniforms } from "./zoom.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
 export const flip={cur:0,fcur:0};         /* which of each pair of pictures is being drawn into this frame: the trails, and the smoothed final picture */
 
@@ -30,6 +31,10 @@ export function drawScene(fr){
      clear sky, so the world need only be drawn where the land leaves it showing. Not in the VR viewer. */
   var landOn=landMode>0&&!stereo&&!!pLand,landOver=landOn&&landMode===2,src=tA;
   if(landOver){landPass(landLayer(),true,fovNow,clock.hueT+wHue);}
+  else if(landOn&&landQ<1){ /* the land alone, drawn small and then spread over the whole picture */
+    landPass(landLayer(),false,fovNow,clock.hueT+wHue);
+    passTo(tA,pCopy);bindTex(0,tL.t);gl.uniform1i(pCopy.U.uT,0);gl.drawArrays(gl.TRIANGLES,0,3);
+  }
   else if(landOn)landPass(tA,false,fovNow,clock.hueT+wHue);
   /* the video filling the screen takes the world's place (not in the VR viewer, where a flat picture would not sit right for each eye) */
   if((!landOn||landOver)&&vidAlone()&&!stereo)videoScene(tA,mirrors[sel.mi],clock.spin,bt);
@@ -51,13 +56,14 @@ export function drawScene(fr){
   gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrTan,vrEye);
   gl.uniform1f(U.uPix,stereo?vrTan:2/(Math.sqrt(tA.w*tA.h)*1.15));
   gl.uniform1f(U.uFov,fovNow);
-  gl.uniform1f(U.uLandOn,landOver&&!LK[landKind].mirror?1:0);if(landOver){bindTex(6,tL.t);gl.uniform1i(U.uLandT,6);}
+  gl.uniform1f(U.uLandOn,landOver&&!LK[landKind].mirror?1:0);bindTex(6,landOver?tL.t:null);gl.uniform1i(U.uLandT,6); /* always a unit of its own: left at unit 0 it can name the very picture being drawn into, and the chip then refuses to draw */
   gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
   setPal(U);
   videoUniforms(U,tA.w,tA.h,!stereo,fr.per);
   gl.uniform3f(U.uPos,cam.pos[0],cam.pos[1],cam.pos[2]);
   camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];
   gl.uniformMatrix3fv(U.uCam,false,camArr);
+  if(w.flat)zoomUniforms(U,w);
   gl.drawArrays(gl.TRIANGLES,0,3);
   }
   /* which picture the effects work on: the land laid over the world, the world alone, or the land alone */

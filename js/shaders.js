@@ -1,5 +1,6 @@
 /* The scene shader and the post-processing shaders. */
 import { STEPS, isTouch } from "./dom.js";
+import { REF_W, ZBAIL } from "./zoom.js";
 
 export const VS="attribute vec2 a;varying vec2 v;void main(){v=a*0.5+0.5;gl_Position=vec4(a,0.0,1.0);}";
 export function fragSource(w){
@@ -8,7 +9,7 @@ export function fragSource(w){
 "#define STEPS "+STEPS,
 "#define MAXD "+w.maxd.toFixed(1),
 "#define FOG "+w.fog.toFixed(3),
-(w.volume?"#define VOLUME":"#define SURFACE"),
+(w.flat?"#define FLAT":w.volume?"#define VOLUME":"#define SURFACE"),
 "#define VSTEPS "+(isTouch?44:56),
 "uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi;uniform vec4 uOrb,uVr,uSpark;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;uniform vec2 uJit;",
 "uniform sampler2D uVid;uniform vec4 uVidK;uniform vec3 uVidS;", /* the video: uVidK = which way it is shown (0 for none), its strength, and the scale that fits it to the screen */
@@ -27,6 +28,32 @@ export function fragSource(w){
 "  float halo=exp(-d2/(R2*14.0))*0.55+exp(-d2/(R2*120.0))*0.18;",
 "  return vec3(core)+mix(vec3(1.0),pal(uHue+hue),0.6)*halo;",
 "}",
+].concat(w.flat?[
+/* A zoom world: the Mandelbrot set or a Julia set, flat. Each pixel is followed only as its difference dz from a
+   reference path worked out in JavaScript (js/zoom.js), because the shader's own numbers run out of digits a few
+   thousand times in. uZ = the view's size, the cosine and sine of its turn, and 1 for a Julia set. uZn = how long the
+   two reference paths are, and how many steps to take. When a pixel comes nearer to zero than its own difference, or
+   its path runs out, it carries on against the path that starts from zero (row 1), where the difference is the point itself. */
+"uniform sampler2D uRef;uniform vec4 uZ;uniform vec3 uZn;",
+"vec2 refAt(float i,float row){return texture2D(uRef,vec2((i+0.5)/"+REF_W.toFixed(1)+",0.25+0.5*row)).xy;}",
+"vec3 zoomCol(vec2 uv){",
+"  vec2 d0=vec2(uZ.y*uv.x-uZ.z*uv.y,uZ.z*uv.x+uZ.y*uv.y)*uZ.x;",
+"  vec2 dz=uZ.w>0.5?d0:vec2(0.0),dc=uZ.w>0.5?vec2(0.0):d0;",
+"  float ri=0.0,row=0.0,len=uZn.x,n=0.0,m=0.0,esc=0.0,near=1e9;",
+"  vec2 Z=refAt(0.0,0.0),w=Z+dz;",
+"  for(int i=0;i<"+(isTouch?384:REF_W)+";i++){",
+"    if(float(i)>=uZn.z)break;",
+"    if(dot(w,w)<dot(dz,dz)||ri>=len-1.0){dz=w;ri=0.0;row=1.0;len=uZn.y;Z=vec2(0.0);}",
+"    dz=2.0*vec2(Z.x*dz.x-Z.y*dz.y,Z.x*dz.y+Z.y*dz.x)+vec2(dz.x*dz.x-dz.y*dz.y,2.0*dz.x*dz.y)+dc;",
+"    ri+=1.0;Z=refAt(ri,row);w=Z+dz;m=dot(w,w);n+=1.0;near=min(near,m);",
+"    if(m>"+ZBAIL.toFixed(1)+"){esc=1.0;break;}",
+"  }",
+"  if(esc<0.5)return pal(uHue+0.6)*0.10*sqrt(min(near,1.0));", /* never left: inside the set, nearly dark */
+"  float sn=n+1.0-log2(0.5*log2(m));", /* the step count, made smooth between one step and the next */
+"  float x=0.30*sqrt(sn)+0.06*uM;",
+"  vec3 c=pal(uHue+x)*(0.62+0.38*cos(6.2831853*(x*3.0+0.25)));", /* the palette, with a finer band of light and dark across it */
+"  return c*(0.20+0.55*c)*(1.0+0.5*uBeat)+pal(uHue+0.3)*0.2*uMid*exp(-0.02*sn);",
+"}"]:[],[
 "void main(){",
 "  if(uLandOn>0.5&&texture2D(uLandT,gl_FragCoord.xy/uRes).a>0.995){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* the land covers this pixel: nothing to draw */
 "  vec2 fc=gl_FragCoord.xy+uJit;", /* Hold still shifts the rays by part of a pixel, a different part each frame, and the frames are averaged */
@@ -52,6 +79,9 @@ export function fragSource(w){
 "  }",
 "  vec3 ro=uPos+uCam*vec3(eo,0.0);",
 "  float tmax=1e9;",
+"#ifdef FLAT",
+"  vec3 col=zoomCol(uv);",
+"#else",
 "#ifdef VOLUME",
 "  vec3 rd=normalize(uCam*vec3(uv,fov));",
 "  vec3 col=vec3(0.0);",
@@ -108,8 +138,11 @@ export function fragSource(w){
 "  }",
 "  col+=pal(uHue+0.7+r*0.1)*gw*gw*gw*0.22;",
 "#endif",
+"#endif",
+"#ifndef FLAT",
 "  if(uOrb.w>0.0)col+=ball(uOrb,ro,rd,tmax,0.15)*(0.85+0.15*sin(uTime*2.5));",
 "  if(uSpark.w>0.0)col+=ball(uSpark,ro,rd,tmax,0.6);", /* the thrown light, in another of the palette's colours */
+"#endif",
 "  col*=clamp(1.0-0.16*r*r,0.35,1.0)*(1.0-uVr.x*smoothstep(1.5,1.8,r));",
 "  col*=1.35;col=col/(1.0+0.2*col);",
 "  float lum=dot(col,vec3(0.299,0.587,0.114));",
@@ -118,7 +151,7 @@ export function fragSource(w){
 "  col=pow(col,vec3(1.15));",
 "  col=pow(col,vec3(0.4545))*uFade;",
 "  gl_FragColor=vec4(col,1.0);",
-"}"]).join("\n");
+"}"])).join("\n");
 }
 
 export const FS_TRAIL=[

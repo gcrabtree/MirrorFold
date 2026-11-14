@@ -43,6 +43,7 @@ export function turn(fr){
   userLook(kx*dt*1.2,ky*dt*1.2);
   var f=1-Math.exp(-dt*14),ax=cam.lookX*f,ay=cam.lookY*f;cam.lookX-=ax;cam.lookY-=ay;
   if(still&&Math.abs(cam.lookX)+Math.abs(cam.lookY)<2e-4){ax+=cam.lookX;ay+=cam.lookY;cam.lookX=cam.lookY=0;} /* holding still: finish the turn, so the view comes to a full stop */
+  fr.lx=ax;fr.ly=ay;
   cam.F=rot(cam.F,cam.Up,ax);cam.F=rot(cam.F,cam.R,ay);cam.Up=rot(cam.Up,cam.R,ay);
   var rollT=((keys.KeyE?1:0)-(keys.KeyQ?1:0))*1.2;
   var idle=stick.id===null&&!keys.KeyW&&!keys.KeyS&&!keys.KeyA&&!keys.KeyD;
@@ -50,6 +51,7 @@ export function turn(fr){
   cam.rollIn+=(rollT-cam.rollIn)*(1-Math.exp(-dt*4));
   if(still&&rollT===0&&Math.abs(cam.rollIn)<2e-3)cam.rollIn=0;
   cam.Up=rot(cam.Up,cam.F,-cam.rollIn*dt);
+  fr.gr=cam.gRoll;
   if(cam.gRoll!==0){cam.Up=rot(cam.Up,cam.F,cam.gRoll);cam.gRoll=0;}
   cam.F=norm(cam.F);cam.R=norm(cross(cam.Up,cam.F));cam.Up=cross(cam.F,cam.R);
   if(landMode&&!stereo&&Math.abs(cam.F[1])<0.97){ /* over land the horizon is eased level */
@@ -65,6 +67,7 @@ export function move(fr){
   var mx=(keys.KeyD?1:0)-(keys.KeyA?1:0)+stick.x;
   var mz=(keys.KeyW?1:0)-(keys.KeyS?1:0)-stick.y;
   var my=(keys.Space?1:0)-((keys.ShiftLeft||keys.ShiftRight)?1:0);
+  fr.uz=mz;
   if(started&&idle&&my===0){if(travel)mz+=0.5*ease;else if(drift&&!still)mz+=0.3*ease;}
   if(!started){mz=0.18;mx=0;my=0;}
   var sp=Math.min(wSpeed,Math.max(0.012,dist*2.6))*cam.baseSpeed*(1+0.25*lv)*(1+3*cam.boost);

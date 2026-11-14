@@ -9,6 +9,7 @@ import { sel } from "./state.js";
 import { freeT, tA, target } from "./targets.js";
 import { vidOn } from "./video.js";
 import { stereo } from "./vr.js";
+import { zoomKey } from "./zoom.js";
 export let still=false;  /* the Hold still switch: the clocks, the morph, the drift and Journey are stopped */
 export let stillN=0;     /* how many frames are in the kept picture, up to STILL_MAX; 0 while the scene is moving */
 export const jit=[0,0];  /* how far this frame's rays are shifted, in pixels: a different part of each pixel every frame */
@@ -41,7 +42,7 @@ export function stillFree(){freeT(tR[0]);freeT(tR[1]);tR[0]=tR[1]=null;stillN=0;
 export function stillAim(fr){
   if(!still||landMode===1||vidOn){stillN=0;jit[0]=jit[1]=0;return;}
   var now=[cam.pos[0],cam.pos[1],cam.pos[2],cam.F[0],cam.F[1],cam.F[2],cam.Up[0],cam.Up[1],cam.Up[2],fr.m],i,same=true;
-  var k=scene.world.id+","+tA.w+","+tA.h+","+sel.mi+","+sel.pi+","+(stereo?1:0);
+  var k=scene.world.id+","+tA.w+","+tA.h+","+sel.mi+","+sel.pi+","+(stereo?1:0)+(scene.world.flat?","+zoomKey():"");
   for(i=0;i<10;i++){if(Math.abs(now[i]-was[i])>1e-9)same=false;was[i]=now[i];}
   if(k!==key){key=k;same=false;}
   stillN=same?Math.min(STILL_MAX,stillN+1):1;

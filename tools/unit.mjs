@@ -16,6 +16,8 @@ import { __dbg as packs } from "../js/packs.js";
 import { __dbg as editor } from "../js/editor.js";
 import { __dbg as tasteM } from "../js/taste.js";
 import { __dbg as stillM } from "../js/still.js";
+import { __dbg as targetsM } from "../js/targets.js";
+import { __dbg as zoomM } from "../js/zoom.js";
 import { __dbg as pictureM } from "../js/picture.js";
 import { __dbg as galleryM } from "../js/gallery.js";
 import { __dbg as recordM } from "../js/record.js";
@@ -241,6 +243,47 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a scene needs a spot of the right shape", cleanScene({ spot: "julia" }) === null && cleanScene({ spot: "javascript:alert(1)-0123456789abcdef" }) === null && cleanScene({}) === null && cleanScene([]) === null);
   expect("a scene with a wrong field is refused", cleanScene({ spot: "julia-0123456789abcdef", fx: "strobe" }) === null && cleanScene({ spot: "julia-0123456789abcdef", land: "http://x over" }) === null && cleanScene({ spot: "julia-0123456789abcdef", mirrors: "6" }) === null);
   expect("a sentence about a pack is one plain line of at most 160 characters", cleanAbout("  two\nlines\t here ") === "two lines here" && cleanAbout("x".repeat(500)).length === 160 && cleanAbout(5) === "");
+}
+
+// ---- Detail auto: what it gives up, and in what order
+{
+  const { detailStep } = targetsM;
+  const run = (q, lq, land) => { const seen = []; for (let i = 0, st; i < 40 && (st = detailStep(true, false, q, lq, land)); i++) { q = st.q; lq = st.landQ; seen.push(q.toFixed(2) + "/" + lq); } return { q, lq, seen }; };
+  const w = run(0.85, 1, false), l = run(0.85, 1, true);
+  expect("without the land, sharpness stops at 60% and the land's size is left alone", Math.abs(w.q - 0.6) < 1e-9 && w.lq === 1);
+  expect("with the land, sharpness goes to 60%, then the land's picture shrinks, then sharpness goes on to 35%", Math.abs(l.q - 0.35) < 1e-9 && l.lq === 0.5 && l.seen.indexOf("0.60/0.7") >= 0 && l.seen.indexOf("0.60/0.5") === l.seen.indexOf("0.60/0.7") + 1, l.seen.join(" "));
+  expect("going back up, the whole picture comes first", detailStep(false, true, 0.5, 0.5, true).landQ === 0.5 && detailStep(false, true, 0.5, 0.5, true).q > 0.5);
+  expect("the land's picture grows again only with a great deal of time to spare", detailStep(false, false, 1, 0.5, true) === null && detailStep(false, true, 1, 0.5, true).landQ === 0.7 && detailStep(false, true, 1, 0.7, true).landQ === 1 && detailStep(false, true, 1, 1, true) === null);
+}
+
+// ---- the zoom worlds: reference paths, targets, the tour and share links
+{
+  const { refOrbit, fixedPoint, zoomIter, targetDepth, pilotTo, zoomSpot, zoomFromSpot, zoomEnter, zm, ZTARGETS, JULIAS, REF_W, ZTOP, ZMIN } = zoomM;
+  const buf = new Float32Array(REF_W * 2 * 4);
+  expect("a point outside the set leaves in a few steps, and the path ends there", (n => n < 8 && buf[4] === 1 && buf[5] === 1 && buf[8] === 1 && buf[9] === 3 && Math.hypot(buf[4 * n - 4], buf[4 * n - 3]) > 16 && Math.hypot(buf[4 * n - 8], buf[4 * n - 7]) <= 16)(refOrbit(buf, 0, 0, 0, 1, 1)));
+  expect("a point inside the set fills the whole path", refOrbit(buf, 1, 0, 0, -0.1, 0.1) === REF_W && Math.hypot(buf[REF_W * 4 + 4 * 1000], buf[REF_W * 4 + 4 * 1000 + 1]) < 1);
+  const misi = t => { let x = 0, y = 0; const seen = []; for (let i = 0; i < 40; i++) { const nx = x * x - y * y + t.x; y = 2 * x * y + t.y; x = nx; seen.push([x, y]); } return seen; };
+  expect("every Mandelbrot target but the small copy lands on a cycle: its path stays put or repeats", ZTARGETS.slice(0, 7).every(t => { const o = misi(t); for (let n = 0; n < 27; n++) for (let p = 1; p <= 3; p++) if (Math.hypot(o[n + p][0] - o[n][0], o[n + p][1] - o[n][1]) < 1e-9) return true; return false; }));
+  expect("every target stays on its path for the whole of it (it is in the set)", ZTARGETS.every(t => misi(t).slice(0, 30).every(q => Math.hypot(q[0], q[1]) < 2.01)));
+  expect("a Julia set's chosen point maps to itself and pushes away", JULIAS.every(c => { const f = fixedPoint(c[0], c[1]); return Math.hypot(f[0] * f[0] - f[1] * f[1] + c[0] - f[0], 2 * f[0] * f[1] + c[1] - f[1]) < 1e-12 && 2 * Math.hypot(f[0], f[1]) > 1.04; }));
+  expect("more steps are taken as the view shrinks, up to the device's limit", zoomIter(ZTOP, 1024, false) === 150 && zoomIter(1e-4, 1024, false) > zoomIter(1e-2, 1024, false) && zoomIter(1e-12, 1024, false) === 1024 && zoomIter(1e-12, 384, false) === 384);
+  expect("a device given fewer steps is not taken as deep", targetDepth(ZTARGETS[1], 384) > targetDepth(ZTARGETS[1], 1024) && targetDepth(ZTARGETS[7], 1024) === 0.03);
+  const z = { x: -0.6, y: 0, s: 1.5 }, t = ZTARGETS[0]; let steps = 0, minS = 9;
+  while (!pilotTo(z, t.x, t.y, 1e-11, 1 / 60, 0.45) && steps < 20000) { steps++; }
+  expect("the tour reaches a target exactly, and at the size asked for", z.x === t.x && z.y === t.y && z.s === 1e-11 && steps < 20000, steps + " " + JSON.stringify(z));
+  const z2 = { x: t.x, y: t.y, s: 1e-9 }, t2 = ZTARGETS[2]; let grew = false, off = false; steps = 0;
+  while (!pilotTo(z2, t2.x, t2.y, 1e-9, 1 / 60, 0.45) && steps < 40000) { steps++; if (z2.s > 0.5) grew = true; if (grew && z2.s < 1e-3 && Math.hypot(t2.x - z2.x, t2.y - z2.y) > z2.s) off = true; }
+  expect("going from one target to another, the view backs out first and never loses the new one off the picture on the way in", grew && !off && z2.x === t2.x && z2.s === 1e-9, steps + " " + grew + " " + off);
+  const mw = { flat: true }, jw = { flat: true, julia: true };
+  zoomEnter(mw); zm.x = ZTARGETS[1].x; zm.y = -ZTARGETS[1].y; zm.s = 3e-8; zm.rot = 1;
+  const sp = zoomSpot(mw); zoomEnter(mw); zoomFromSpot(mw, sp);
+  expect("a link to a target comes back to exactly that place", sp.length === 14 && /^[0-9a-z]+$/.test(sp) && zm.x === ZTARGETS[1].x && zm.y === -ZTARGETS[1].y && Math.abs(Math.log10(zm.s / 3e-8)) < 0.01 && Math.abs(zm.rot - 1) < 0.2, sp + " " + JSON.stringify(zm));
+  zoomEnter(mw); zm.x = -0.7453; zm.y = 0.1127; zm.s = 1e-7; const sp2 = zoomSpot(mw); zoomFromSpot(mw, sp2);
+  expect("a link to anywhere else comes back near it, and no deeper than it can be trusted", Math.hypot(zm.x + 0.7453, zm.y - 0.1127) < 1e-5 && zm.s === 1e-3, JSON.stringify(zm));
+  zoomEnter(jw); const c0 = [zm.jx, zm.jy], f = fixedPoint(zm.jx, zm.jy); zm.x = f[0]; zm.y = f[1]; zm.s = 1e-5; const sp3 = zoomSpot(jw); zoomEnter(jw); zoomFromSpot(jw, sp3);
+  expect("a Julia link keeps which set it was and the fixed point", zm.jx === c0[0] && zm.jy === c0[1] && zm.x === f[0] && zm.y === f[1] && Math.abs(Math.log10(zm.s / 1e-5)) < 0.01, JSON.stringify(zm));
+  zoomFromSpot(mw, "zzzzzzzzzzzzzz");
+  expect("a nonsense link still leaves a view inside the limits", Math.abs(zm.x) <= 3 && Math.abs(zm.y) <= 3 && zm.s >= ZMIN && zm.s <= 2 * ZTOP, JSON.stringify(zm));
 }
 
 // ---- the gallery: its list, the offer form's address, and the script that takes an offered pack

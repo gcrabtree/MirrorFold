@@ -12,6 +12,7 @@ import { applySpot, fromHash } from "./spots.js";
 import { LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
 import { beginWarp, tr } from "./warp.js";
 import { WORLDS } from "./worlds.js";
+import { zoomEnter } from "./zoom.js";
 export const scene={
   world:null,   /* the current entry of WORLDS */
   orb:null,orbT:0, /* the orb's place and size, and a timer for checking it is still in open space */
@@ -53,6 +54,7 @@ export function setWorldNow(i,quiet){
     var sd=deMany(w,sc,ns,m);
     for(k=0;k<ns;k++)if(sd[k]>best){best=sd[k];cam.pos=[sc[3*k],sc[3*k+1],sc[3*k+2]];}
   }
+  if(w.flat)zoomEnter(w);
   selWorld.value=String(i);
   spawnOrb();
   if(!quiet){scene.lastHash=w.id;try{location.hash=w.id}catch(_){}}
