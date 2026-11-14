@@ -24,6 +24,7 @@ export function facing(de,x,y,z,m,e){
 /* Why a light cannot be thrown here, or "" if it can. A pack world has no distance to ask every frame, a cloud world has no surfaces, and the land alone or a video has no world. */
 export function sparkBar(w){
   if(w.pack)return "A light cannot be thrown in a world from a pack.";
+  if(w.flat)return "There is nothing in a flat picture for a light to bounce off.";
   if(w.volume)return "There is nothing in a cloud world for a light to bounce off.";
   if(landMode===1||vidAlone())return "A light needs a world to fly in.";
   return "";

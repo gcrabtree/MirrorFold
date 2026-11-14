@@ -8,12 +8,17 @@ import { setPal } from "./palettes.js";
 import { bindTex, link, passTo } from "./programs.js";
 import { camArr } from "./render.js";
 import { mirrors, sel } from "./state.js";
-import { freeT, tA, target } from "./targets.js";
+import { freeT, landQ, tA, target } from "./targets.js";
 export let tL=null,tC=null,tLP=null; /* the land's own picture when it is over a world, that picture laid over the world, and the coarse first pass */
 export let landClear=0.11;           /* how high above the ground the camera flies */
 export function landClimb(d){landClear=Math.max(0.035,Math.min(1.5,landClear+d));}
 export function landFreeTargets(){freeT(tL);freeT(tC);freeT(tLP);tL=tC=tLP=null;}
-export function landLayer(){if(!tL)tL=target(tA.w,tA.h);return tL;}
+/* the land's own picture. It may be smaller than the whole picture (landQ, set by Detail), because the land is the costliest thing drawn */
+export function landLayer(){
+  var w=Math.max(2,Math.round(tA.w*landQ)),h=Math.max(2,Math.round(tA.h*landQ));
+  if(!tL||tL.w!==w||tL.h!==h){freeT(tL);tL=target(w,h);}
+  return tL;
+}
 export function landMixed(){if(!tC)tC=target(tA.w,tA.h);return tC;}
 export let landMode=0, landKind=0, landTint=0, landFx=0, pLand=null, pMix=null;
 let pLandPre=null, landTex=null;
@@ -78,7 +83,7 @@ function landBuild(){ /* compiled the first time the land is turned on; false if
 /* draw the land into dst. "over" leaves the sky clear (alpha 0) and lets lakes mirror the world in tA. */
 const LP_CI=new Float32Array(26),LP_CF=new Float32Array(26),LP_LI=new Float32Array(12),LP_LF=new Float32Array(12);
 export function landPass(dst,over,fov,hue){
-  var pw=Math.ceil(tA.w/8),ph=Math.ceil(tA.h/8),k,tt,wrap=function(v){return v-256*Math.floor(v/256)};
+  var pw=Math.ceil(dst.w/8),ph=Math.ceil(dst.h/8),k,tt,wrap=function(v){return v-256*Math.floor(v/256)};
   if(!tLP||tLP.w!==pw||tLP.h!==ph){freeT(tLP);tLP=target(pw,ph);}
   /* the camera's place in each noise layer and each grid of things, split into a whole number and a remainder so the shader loses nothing */
   var ci=LP_CI,cf=LP_CF,li=LP_LI,lf=LP_LF,px=lpos[0]*LFREQ,pz=lpos[2]*LFREQ; /* kept between frames, so nothing is left for the browser to clear up */
@@ -87,7 +92,7 @@ export function landPass(dst,over,fov,hue){
     li[2*j]=Math.floor(bx);li[2*j+1]=Math.floor(bz);lf[2*j]=bx-Math.floor(bx);lf[2*j+1]=bz-Math.floor(bz);});
   var da=[wrap(lpos[0]*LFREQ*429),wrap(lpos[2]*LFREQ*429)],db=[wrap(lpos[0]*LFREQ*2571),wrap(lpos[2]*LFREQ*2571)];
   var set=function(U){
-    gl.uniform2f(U.uRes,tA.w,tA.h);gl.uniform1f(U.uTime,clock.time);
+    gl.uniform2f(U.uRes,dst.w,dst.h);gl.uniform1f(U.uTime,clock.time);
     gl.uniform3f(U.uPos,lpos[0],lpos[1],lpos[2]);gl.uniformMatrix3fv(U.uCam,false,camArr);
     gl.uniform1f(U.uFov,fov);gl.uniform1f(U.uSeg,mirrors[sel.mi]);gl.uniform1f(U.uSpin,clock.spin);gl.uniform1f(U.uSky,over?1:0);
     gl.uniform2fv(U.uCi,ci);gl.uniform2fv(U.uCf,cf);gl.uniform2fv(U.uLi,li);gl.uniform2fv(U.uLf,lf);

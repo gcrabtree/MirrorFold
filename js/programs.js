@@ -3,6 +3,7 @@ import { canvas, errBox, gl } from "./dom.js";
 import { FS_BLUR, FS_DOWN, FS_FINAL, FS_TRAIL, TRAIL_U, VS, finalSource, fragSource, trailSource } from "./shaders.js";
 let vsObj=null;
 
+import { zoomOk } from "./zoom.js";
 export function overlayProg(ov){ /* null if this overlay's code does not compile on this device */
   if(ov.prog===undefined){try{ov.prog=link(trailSource(ov.code),TRAIL_U)}catch(e){ov.prog=null;}}
   return ov.prog;
@@ -30,7 +31,8 @@ export function link(fs,names){
 }
 export function build(w){
   if(w.prog)return;
-  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uJit","uSpark"]);
+  if(w.flat&&!zoomOk())throw new Error("This device cannot hold the numbers a zoom world needs.");
+  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uJit","uSpark","uRef","uZ","uZn"]);
   w.prog=o.prog;w.U=o.U;
 }
 

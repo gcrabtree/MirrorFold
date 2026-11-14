@@ -10,7 +10,7 @@ Mirrorfold is a first-person fly-through of endless fractal worlds, rendered by 
 
 Features, in the order a user meets them:
 
-- **17 worlds.** 15 are surfaces found by sphere tracing a distance estimator; 2 (Nebula, Aurora) are volumetric.
+- **20 worlds.** 16 are surfaces found by sphere tracing a distance estimator; 2 (Nebula, Aurora) are volumetric; 2 (Mandelbrot zoom, Julia zoom) are flat pictures (section 6c).
 - **Free flight** with six degrees of freedom. Speed scales with distance to the nearest surface, so you cannot hit a wall.
 - **Kaleidoscope mirrors**: off, 3, 4, 6, 8 or 12 segments, applied to the ray direction.
 - **13 palettes** (7 available at once, 6 unlocked by finding orbs).
@@ -55,6 +55,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/main.js` | Loads every file below, runs each one's `init()` in this order, then publishes `window.MF` |
 | `js/dom.js` | `$`, the canvas, the WebGL context, touch and reduced-motion detection, `STEPS`, `toast` |
 | `js/worlds.js` | `WORLDS`: each world's GLSL `map` beside its JavaScript `de` |
+| `js/zoom.js` | The two zoom worlds: where the view is, the reference paths, the targets, the tour, and their share links |
 | `js/palettes.js` | `PALETTES`, which are unlocked, `setPalette`, and `palCur`, the palette in use easing toward the chosen one |
 | `js/packs.js` | The cleaners: `cleanName`, `cleanPalette`, `cleanMotion`, `cleanCode`, `cleanFilter`, `cleanOverlay`, `cleanWorld` |
 | `js/shaders.js` | `fragSource(w)` and the post-processing shaders `FS_TRAIL`, `FS_DOWN`, `FS_BLUR`, `FS_FINAL` |
@@ -133,7 +134,7 @@ Scene shaders are compiled lazily, one program per world, by `build(w)`, and cac
 | sharp | 1 | 3 | no |
 | fast | 0.5 | 2 | no |
 
-In auto mode, every 30 frames the mean frame time is checked: above 36 ms, `q` is multiplied by 0.9; below 22 ms, by 1.06. The policy is to give up frame rate before sharpness. An earlier version started at 0.55 and dropped to 0.3, which users found too blurry.
+In auto mode, every 30 frames the mean frame time is checked: above 36 ms, `q` is multiplied by 0.9; below 22 ms, by 1.06. What changes is decided by `detailStep` (a pure function, tested in `tools/unit.mjs`). With the land on there is a second number, `landQ` (1, 0.7 or 0.5): the size of the land's own picture beside the whole picture. `landLayer()` makes `tL` that size, `landPass` takes its resolution from the picture it is given, and the land alone is drawn into `tL` and copied up to `tA` when `landQ` is below 1. Going down, `q` goes to 0.6, then `landQ` to 0.7 and 0.5, then `q` on to 0.35; going up, `q` first, and `landQ` only when the mean frame time is under 12 ms. The reason: the land costs about three times a world per pixel (measured in software rendering, 61 ms against 23 ms), and a user's Intel laptop chip took 60 to 75 ms a picture for land over a world at `q` 0.35. Whether this is enough there is not yet known. No single part of the land shader stood out when the shadow, the mirrored pass and the step count were each cut in turn, though the timings were too noisy to rule much out. The policy is to give up frame rate before sharpness. An earlier version started at 0.55 and dropped to 0.3, which users found too blurry.
 
 March steps are fixed at compile time: `STEPS` is 96 on touch devices and 120 otherwise; volumetric `VSTEPS` is 44 and 56.
 
@@ -246,6 +247,7 @@ Two requirements matter more than anything else when adding or changing a world:
 | Crystal | Octahedral KIFS | abs, sort, two rotations, `p = 2p; p.x -= 1`; 6 iterations; `(|p| - 0.9)/s` | 6 | rotation angles |
 | Bulbs | Mandelbulb | Mirror tile `P=3.4`; spherical power map, 6 iterations; `0.5*log(r)*r/dr` | 6.8 | power `8 + 1.5m` |
 | Julia | Quaternion Julia | Mirror tile `P=3.4`; `z = z^2 + c` in quaternions, 9 iterations; `0.25*sqrt(|z|^2/|dz|^2)*log(|z|^2)` | 6.8 | the constant `c` |
+| Mandelbrot | The Mandelbrot set in quaternions | Mirror tile `P=3.4`; `z` starts at a small seed, `c` is the point (moved 0.75 along x), `z = z^2 + c`, 12 iterations, bailout 64; `0.5*|z|*log|z|/|dz|` with `|dz| = 2|z||dz| + 1`. With no seed it is the flat set turned about its real axis | 6.8 | the seed, which pulls the shape out of round |
 | Coral | Layered gyroids | `g(p) = dot(sin p, cos p.zxy)` at 1x, 3x, 9x; a thick shell of the first, bumped and perforated by the others; factor 0.42 | 2π | shell thickness |
 | Gates | Nested tori | xy mirror tile (4), z repeat (1), twist of 2π per 16 units; a torus then 5 KIFS levels of smaller tori; factor 0.6 | 8, 8, 16 | twist phase |
 | Nebula | Volumetric Kaliset | `p = abs(p)/dot(p,p) - f`, 10 iterations, accumulating `|len - prevLen|`; cubed | 2 | `f = 0.55 + 0.03m` |
@@ -270,6 +272,24 @@ Worlds were developed by writing several candidates at once, rendering them, and
 ### Blends (removed)
 
 The app once could mix two worlds' distance fields into one scene. The control for it was removed because a blend cost twice as much per pixel and did not look good enough, and the engine code behind it was removed later. It is in the repository's history before the commit "Remove the world-blend code" if it is wanted again.
+
+## 6c. The zoom worlds
+
+`js/zoom.js`. **Mandelbrot zoom** (`mzoom`) and **Julia zoom** (`jzoom`) are entries in `WORLDS` with `flat: true` and no `map`. They are also marked `volume: true`, so that everything that already leaves the cloud worlds alone (the probe, the thrown light, the orb's surface check, Journey in the VR viewer) leaves them alone too. The camera still flies its hidden course through an empty world; nothing shows it.
+
+**The view** is `zm`: the middle `x, y` in doubles, `s` (the distance from the middle to the top of a square picture), the turn `rot`, and the Julia constant `jx, jy`. `stepZoom(fr)` runs after `move`: the look applied this frame (`fr.lx`, `fr.ly`) and the sideways inputs slide the middle, the user's forward input (`fr.uz`, before drift or autopilot is added) zooms, `cam.rollIn` turns. With nothing asked for it zooms in slowly (Drift) or runs `tour` (Journey travelling).
+
+**Drawing.** The shader's numbers are single precision, which runs out a few thousand times in. So each pixel is followed only as its difference `dz` from a reference path (perturbation): `dz' = 2*Z*dz + dz*dz + dc`, with `Z` read from a 1024 by 2 picture of real numbers (`OES_texture_float`) that `zoomUniforms` fills from `refOrbit`, in doubles, whenever the middle moves. Row 0 is the path of the view's middle and row 1 the path from zero; for the Mandelbrot set they are the same. When a pixel's value `Z + dz` is smaller than `dz`, or its row runs out, it carries on against row 1 from the start with `dz` set to the value itself (rebasing), which is what keeps one reference good for the whole picture. `zoomIter` sets the step count from `s`, up to `zoomCap()` (1,024, or 384 on a touch device; the loop's fixed bound is the same number). Colour is the smoothed step count through the palette. Without the float texture `build` throws for these two worlds and `setWorldNow` skips them with a message.
+
+**Targets.** `ZTARGETS` holds seven Misiurewicz points (found by Newton's method on `f^(k+p)(0) = f^k(0)`; `tools/unit.mjs` checks each still lands on a cycle) and one small copy of the set. Around a Misiurewicz point the picture repeats at every size, so the tour can go to `ZMIN`-ish depths; each target has `d`, the smallest `s` worth going to, and `per`, roughly how many more steps each tenfold zoom costs, from which `targetDepth` works out how deep a device with fewer steps may go. `fixedPoint(c)` gives the Julia tour's point: the alpha fixed point when it repels by more than 1.045 a step, otherwise the beta one.
+
+**The tour.** `pilotTo` is a pure step: while the target is off the picture or near its edge the view backs out; once it is inside, the middle closes on it three times faster than the view shrinks and snaps onto it exactly, which matters because the reference path must be the target's own. Mandelbrot: target, rest `ZHOLD`, next target (mirrored top to bottom at random). Julia: fixed point, rest, out to the whole set, then the constant eases to the next of `JULIAS` over six seconds.
+
+**Share links.** A zoom world's spot is still 16 letters and digits, so `cleanScene` and the hash pattern are unchanged: palette, mirrors, then `zoomSpot`'s 14: the target's number if the middle is exactly a target (which restores it exactly), the middle to 4 digits each (about three millionths), `log s`, the turn, and the Julia set's number. `zoomFromSpot` holds a view that is not on a target to `s` of a thousandth or more.
+
+**Hold still** compares `zoomKey()` as well as the camera, so the picture is sharpened only while the view is not changing.
+
+**A fault this turned up.** The scene shader's `uLandT` was only given a texture unit while the land was over a world; otherwise it stayed at unit 0, which at that point in the frame can hold `tA`, the picture being drawn into. The other worlds got away with it. The zoom shader did not: the draw was refused with `INVALID_OPERATION` and the picture was black. `drawScene` now always points `uLandT` at unit 6, bound to the land's picture or to nothing.
 
 ## 6a. The land
 

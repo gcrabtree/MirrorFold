@@ -13,7 +13,7 @@
 >
 > Mirrorfold is designed to avoid strobing, but it has **not** been tested or certified against any photosensitivity standard, and no setting makes it safe for everyone. It is not a medical device and nothing here is medical advice. It is provided "as is", without warranty of any kind, and you use it entirely at your own risk; see the [licence](LICENSE).
 
-Fly through endless fractal worlds in your browser. Seventeen worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
+Fly through endless fractal worlds in your browser. Twenty worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
 
 This project is inspired in part by the music visualizers from decades past… from Winamp plugins to the standalone visualizer MilkDrop. This has a familiar feel when in Journey mode (an autopilot that flies through the procedurally generated 3D worlds) while listening to music. 
 
@@ -31,7 +31,7 @@ Relax, unwind, and enjoy!
 
 **Try it: https://gcrabtree.github.io/MirrorFold/**
 
-![Contact sheet of all 17 worlds](docs/worlds.jpg)
+![Contact sheet of all 20 worlds](docs/worlds.jpg)
 
 The app is one page, one stylesheet and a folder of JavaScript modules. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
 
@@ -46,6 +46,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - [VR viewer](#vr-viewer)
 - [Music](#music)
 - [Journey](#journey)
+- [The zoom worlds](#the-zoom-worlds)
 - [Orbs and share links](#orbs-and-share-links)
 - [Performance](#performance)
 - [Motion and privacy](#motion-and-privacy)
@@ -56,7 +57,8 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 
 ## What it does
 
-- **17 worlds.** Fifteen are solid fractal surfaces; two (Nebula and Aurora) are glowing volumes. Every world repeats forever in all directions.
+- **20 worlds.** Sixteen are solid fractal surfaces; two (Nebula and Aurora) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
+- **Zooms a trillion times deep.** The two zoom worlds magnify the Mandelbrot set and Julia sets up to about a trillion times, on points where there is always something to see. See [The zoom worlds](#the-zoom-worlds).
 - **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
 - **Morph.** Each world slowly changes shape as you fly.
 - **Kaleidoscope mirrors**: off, or 3, 4, 6, 8 or 12 segments.
@@ -70,7 +72,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - **A light to throw**, which bounces off the surfaces of the world.
 - **VR viewer** mode for a phone in a Cardboard-style holder: a picture for each eye, and you look around by turning your head.
 
-The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, Shards, Crystal, Julia, Web, Temple, Nebula, Fortress, Hive, Gates, Aurora.
+The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, Shards, Crystal, Julia, Web, Temple, Nebula, Fortress, Hive, Gates, Aurora, Mandelbrot, Mandelbrot zoom, Julia zoom.
 
 ## Run it
 
@@ -208,7 +210,7 @@ You fly over the land the same way as through a world: the stick, **W A S D**, *
 
 **Land colours** decides what the palette does: nothing, tint the sky, sun and haze, or recolour the land and water as well. Mirrors apply to the land. **Effects on** decides what the motion, filter and overlay act on when the land is over a world.
 
-The land is the heaviest thing Mirrorfold draws. With **Detail auto** it may lower the sharpness further than a world does. It is switched off in the VR viewer.
+The land is the heaviest thing Mirrorfold draws: about three times the work of a world. With **Detail auto**, when the pictures come too slowly the sharpness drops to 60% first, then the land alone is drawn smaller (70%, then 50% of the picture's size) and spread out, so the land goes soft while the world behind stays as sharp as it was, and only then does the whole picture go on down to 35%. **Detail fast** draws the land at 70%. **Stats** shows the land's size when it is reduced. It is switched off in the VR viewer.
 
 Journey templates have a **Land** entry: leave the land as you set it, keep it off, or change it at random among the landscapes you tick, each alone or over the world. The built-in template **Landscapes** does this.
 
@@ -332,6 +334,26 @@ Sliders stop at the same limits a pack is held to. Filter and overlay programs a
 
 Worlds cannot be put in a pack yet. The file format, the allowed ranges and how to offer a pack for inclusion are in [packs/README.md](packs/README.md).
 
+## The zoom worlds
+
+**Mandelbrot zoom** and **Julia zoom** are not spaces to fly through. Each is the flat set seen from above, and the controls move the view over it:
+
+| To do this | Phone or tablet | Mouse and keyboard |
+|---|---|---|
+| Zoom in and out | Stick up and down | W and S |
+| Slide the picture | Drag, or stick left and right | Move the mouse, arrow keys, A and D, Space and Shift |
+| Turn the picture | Twist with two fingers | Q and E |
+| Zoom faster or slower | Pinch | Mouse wheel |
+
+Left alone with **Drift** on, the view zooms slowly in on its middle. With **Journey** on (and **Movement travel**), it takes a tour instead:
+
+- **Mandelbrot zoom** goes to one of eight places on the edge of the set: the three-way branch, a seahorse's spiral, the long needle, an elephant's trunk, the sceptre, the top branch, the four-way spiral, and the small copy of the whole set that sits on the needle. It zooms in as far as the device allows, rests, backs out until the next place is in view, and goes there. Seven of the eight are points where the pattern repeats itself all the way down, so the tour can go on to about a trillion times.
+- **Julia zoom** shows ten Julia sets in turn. For each it zooms in on a point where the set's arms meet (or, for some, on its tip), rests, backs out, and then the set changes smoothly into the next one.
+
+How deep it goes depends on the device. A computer takes up to 1,024 steps for each pixel and a phone or tablet 384, so a phone stops sooner at the places that need many steps (the seahorse and the elephant most of all). Away from the tour's places you can zoom wherever you like, but a middle chosen by hand usually ends in plain colour or in the black inside of the set.
+
+Mirrors, motions, filters, overlays, the land and **Hold still** all work on the zoom worlds. There is no orb in them and no light to throw, and Journey leaves them out in the VR viewer. **Share spot** keeps a place the tour has centred exactly; any other view comes back right only while it is magnified less than about a thousand times.
+
 ## Orbs and share links
 
 Each world hides a glowing orb. Fly into it to collect it. The first six orbs each unlock a new palette. After that, collecting an orb takes you to another world. Progress is saved in your browser.
@@ -346,11 +368,11 @@ Every pixel is computed by stepping a ray through a fractal, which is heavy work
 
 | Mode | Behaviour |
 |---|---|
-| auto | Starts at 85% resolution and adjusts between 60% and 100% to hold the frame rate. This is the default. |
+| auto | Starts at 85% resolution and adjusts between 60% and 100% to hold the frame rate. This is the default. With the land on it gives up more: see [The land](#the-land). |
 | sharp | Full resolution, up to three device pixels per CSS pixel. |
 | fast | Half resolution. |
 
-Bulbs, Julia, Box and Fortress are the heaviest worlds. If the picture stutters, try **Detail fast** or **FX clean**.
+Bulbs, Julia, Box and Fortress are the heaviest worlds. If the picture stutters, try **Detail fast** or **FX clean**. A video playing in another tab (for **Listen to a tab**) is decoded by the same graphics chip, and on a laptop's built-in chip that can take several times longer per picture than the same scene with the other tab paused. Turning that video's quality down, or playing sound only, gives the time back.
 
 ## Motion and privacy
 
@@ -384,7 +406,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `js/` | The app, as about 35 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
-| `docs/worlds.jpg` | Contact sheet of all 17 worlds |
+| `docs/worlds.jpg` | Contact sheet of all 20 worlds |
 | `packs/` | Packs published with the site, the list of them (`index.json`) and the pack format (`README.md`) |
 | `tools/unit.mjs` | Tests for the change detector, the weighted picker, the head-turn math, the steering handoff and the pack cleaners |
 | `tools/pack.mjs` | Checks pack files with the same code the app uses |
@@ -438,6 +460,7 @@ The app was developed against headless Chrome with software rendering. These hav
 - Typing in the journey editor on iOS.
 - The home-screen full-screen mode on iPhone, including whether the controls clear the notch.
 - The screen mirroring steps in `docs/TV.md`, on any TV device.
+- **The zoom worlds** on any real graphics chip. The 1,024-step loop that reads a picture of numbers has only been compiled and run by software rendering; how long a Windows machine takes to build that shader, the frame rate deep in a zoom, and whether a phone has the kind of picture it needs (without it the two worlds say so and are skipped) are all unknown. The controls for them have never been tried by hand.
 - Everything added in November 2026 on anything but headless Chrome: **Hold still** (whether a phone keeps its frame rate while it sharpens), **Save picture** and **Record video** on a phone (a download link may open the file instead of saving it), the **gallery's** offer form and its GitHub workflow (never run), the two **hybrid worlds** in flight, the **VR comfort** rules in a viewer, and **Knobs** with a real MIDI controller (only made-up messages were tried).
 - Whether the screen really stays awake with Journey or the VR viewer on, in Safari and from the home-screen icon.
 - **Listen to a tab** with real Spotify and YouTube tabs, and **Microphone** with a real microphone. Both were tested with simulated devices only.

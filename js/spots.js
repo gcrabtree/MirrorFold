@@ -6,9 +6,11 @@ import { spawnOrb } from "./orbs.js";
 import { PALETTES, palOpen, setPalette } from "./palettes.js";
 import { mirrors, sel } from "./state.js";
 import { WORLDS } from "./worlds.js";
+import { zoomFromSpot, zoomSpot } from "./zoom.js";
 /* a spot is world, palette, mirrors, position, heading and morph time packed into letters and digits */
-function b36(v,len){v=Math.max(0,Math.min(Math.pow(36,len)-1,Math.round(v)));var t=v.toString(36);while(t.length<len)t="0"+t;return t;}
+export function b36(v,len){v=Math.max(0,Math.min(Math.pow(36,len)-1,Math.round(v)));var t=v.toString(36);while(t.length<len)t="0"+t;return t;}
 export function encodeSpot(){
+  if(scene.world.flat)return scene.world.id+"-"+b36(sel.pi,1)+b36(sel.mi,1)+zoomSpot(scene.world); /* a zoom world keeps its own kind of place */
   var per=scene.world.period(morphValue()),t=b36(sel.pi,1)+b36(sel.mi,1),i;
   for(i=0;i<3;i++)t+=b36((cam.pos[i]/per[i]+0.5)*1295,2);
   t+=b36((Math.atan2(cam.F[0],cam.F[2])/(2*Math.PI)+0.5)*1295,2)+b36((Math.asin(Math.max(-1,Math.min(1,cam.F[1])))/Math.PI+0.5)*1295,2);
@@ -20,6 +22,7 @@ export function applySpot(t){
   var p=n(0,1),k=n(1,2);
   if(p<PALETTES.length&&palOpen(p))setPalette(p);
   if(k<mirrors.length)setMirrors(k);
+  if(scene.world.flat){zoomFromSpot(scene.world,t.slice(2));return;}
   clock.morphT=n(12,16)/4;
   var per=scene.world.period(morphValue()),i;
   for(i=0;i<3;i++)cam.pos[i]=(n(2+2*i,4+2*i)/1295-0.5)*per[i];

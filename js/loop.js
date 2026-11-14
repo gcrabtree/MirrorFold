@@ -7,6 +7,7 @@ import { morph } from "./controls.js";
 import { $, canvas, errBox } from "./dom.js";
 import { measure } from "./flight.js";
 import { wakeHud } from "./input.js";
+import { stepZoom } from "./zoom.js";
 import { autopilot, jMove, journey, stepJourney } from "./journey.js";
 import { landMode, moveLand } from "./land.js";
 import { setMusic, soundFrame } from "./listen.js";
@@ -42,7 +43,9 @@ const notes={
   dist:0,                      /* distance from the camera to the nearest surface */
   travel:false,hands:1,ease:1, /* Journey is flying; how much of the steering and of the forward motion the autopilot keeps while the user steers */
   idle:true,                   /* no movement keys or stick in use */
-  mx:0,my:0,mz:0,vf:0,         /* this frame's movement input (right, up, forward) and how quickly velocity follows it */
+  mx:0,my:0,mz:0,vf:0,         /* this frame's movement input from the user (right, up, forward) and how quickly velocity follows it */
+  uz:0,                        /* the forward part of it before any drift or autopilot is added */
+  lx:0,ly:0,gr:0,              /* how far the view turned this frame, across and up and down, and how far two fingers twisted it */
   per:null,spN:0,              /* the world's period, and speed as a part of the most the world allows */
   orbU:[0,0,0,0],              /* where to draw the orb, and its size (0 for none) */
   sparkU:[0,0,0,0],            /* the same for the thrown light */
@@ -79,6 +82,7 @@ function frame(now){
   }
   turn(notes);
   move(notes);
+  stepZoom(notes);
   if(landMode)moveLand(notes);
   stepOrb(notes);
   sparkFrame(notes);stepSpark(notes);
