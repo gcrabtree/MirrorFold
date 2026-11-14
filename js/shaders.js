@@ -34,25 +34,35 @@ export function fragSource(w){
    thousand times in. uZ = the view's size, the cosine and sine of its turn, and 1 for a Julia set. uZn = how long the
    two reference paths are, and how many steps to take. When a pixel comes nearer to zero than its own difference, or
    its path runs out, it carries on against the path that starts from zero (row 1), where the difference is the point itself. */
-"uniform sampler2D uRef;uniform vec4 uZ;uniform vec3 uZn;",
+"uniform sampler2D uRef;uniform vec4 uZ;uniform vec3 uZn;uniform vec2 uZo;",
 "vec2 refAt(float i,float row){return texture2D(uRef,vec2((i+0.5)/"+REF_W.toFixed(1)+",0.25+0.5*row)).xy;}",
-"vec3 zoomCol(vec2 uv){",
-"  vec2 d0=vec2(uZ.y*uv.x-uZ.z*uv.y,uZ.z*uv.x+uZ.y*uv.y)*uZ.x;",
+/* What a zoom world draws is not a colour but two numbers for each pixel, each spread over two of the four channels so
+   that it has 65,536 levels: the height of the relief, and the place in the palette. zoomLight in js/zoom.js lights it. */
+"vec2 pk(float v){float t=floor(v*65535.0+0.5);float hi=floor(t/256.0);return vec2(hi,t-hi*256.0)/255.0;}",
+"vec4 zoomData(vec2 uv){",
+"  vec2 d0=(vec2(uZ.y*uv.x-uZ.z*uv.y,uZ.z*uv.x+uZ.y*uv.y)+uZo)*uZ.x;", /* uZo: how far the picture's middle is from the reference point, in units of the view's size */
 "  vec2 dz=uZ.w>0.5?d0:vec2(0.0),dc=uZ.w>0.5?vec2(0.0):d0;",
 "  float ri=0.0,row=0.0,len=uZn.x,n=0.0,m=0.0,esc=0.0,near=1e9;",
 "  vec2 Z=refAt(0.0,0.0),w=Z+dz;",
+/* dr is how fast the point's value changes as the pixel moves, in units of the view's size: it gives the distance to
+   the set, which the height of the relief is made from */
+"  vec2 dr=uZ.w>0.5?vec2(uZ.x,0.0):vec2(0.0),ds=uZ.w>0.5?vec2(0.0):vec2(uZ.x,0.0);",
 "  for(int i=0;i<"+(isTouch?384:REF_W)+";i++){",
 "    if(float(i)>=uZn.z)break;",
 "    if(dot(w,w)<dot(dz,dz)||ri>=len-1.0){dz=w;ri=0.0;row=1.0;len=uZn.y;Z=vec2(0.0);}",
+"    if(dot(dr,dr)<1e30)dr=2.0*vec2(w.x*dr.x-w.y*dr.y,w.x*dr.y+w.y*dr.x)+ds;",
 "    dz=2.0*vec2(Z.x*dz.x-Z.y*dz.y,Z.x*dz.y+Z.y*dz.x)+vec2(dz.x*dz.x-dz.y*dz.y,2.0*dz.x*dz.y)+dc;",
 "    ri+=1.0;Z=refAt(ri,row);w=Z+dz;m=dot(w,w);n+=1.0;near=min(near,m);",
 "    if(m>"+ZBAIL.toFixed(1)+"){esc=1.0;break;}",
 "  }",
-"  if(esc<0.5)return pal(uHue+0.6)*0.10*sqrt(min(near,1.0));", /* never left: inside the set, nearly dark */
+"  if(esc<0.5)return vec4(1.0,1.0,0.0,0.0);", /* never left: inside the set, the top of the plateau */
 "  float sn=n+1.0-log2(0.5*log2(m));", /* the step count, made smooth between one step and the next */
-"  float x=0.30*sqrt(sn)+0.06*uM;",
-"  vec3 c=pal(uHue+x)*(0.62+0.38*cos(6.2831853*(x*3.0+0.25)));", /* the palette, with a finer band of light and dark across it */
-"  return c*(0.20+0.55*c)*(1.0+0.5*uBeat)+pal(uHue+0.3)*0.2*uMid*exp(-0.02*sn);",
+"  float x=0.30*sqrt(sn)+0.06*uM;", /* where in the palette */
+/* The height. The set is a plateau; the ground falls away from it, steeply at its edge and gently further out. de is
+   the distance to the set in units of the view's size, so the relief looks the same at every depth. */
+"  float de=0.5*sqrt(m/max(dot(dr,dr),1e-30))*log(m);",
+"  float h=0.998*(0.50*exp(-5.0*de)+0.32*exp(-28.0*de)+0.18*exp(-0.9*de));",
+"  return vec4(pk(h),pk(clamp(x/16.0,0.0,1.0)));",
 "}"]:[],[
 "void main(){",
 "  if(uLandOn>0.5&&texture2D(uLandT,gl_FragCoord.xy/uRes).a>0.995){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* the land covers this pixel: nothing to draw */
@@ -80,7 +90,7 @@ export function fragSource(w){
 "  vec3 ro=uPos+uCam*vec3(eo,0.0);",
 "  float tmax=1e9;",
 "#ifdef FLAT",
-"  vec3 col=zoomCol(uv);",
+"  vec3 col=vec3(0.0);gl_FragColor=zoomData(uv);return;",
 "#else",
 "#ifdef VOLUME",
 "  vec3 rd=normalize(uCam*vec3(uv,fov));",

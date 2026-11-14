@@ -347,10 +347,16 @@ Worlds cannot be put in a pack yet. The file format, the allowed ranges and how 
 
 Left alone with **Drift** on, the view zooms slowly in on its middle. With **Journey** on (and **Movement travel**), it takes a tour instead:
 
-- **Mandelbrot zoom** goes to one of eight places on the edge of the set: the three-way branch, a seahorse's spiral, the long needle, an elephant's trunk, the sceptre, the top branch, the four-way spiral, and the small copy of the whole set that sits on the needle. It zooms in as far as the device allows, rests, backs out until the next place is in view, and goes there. Seven of the eight are points where the pattern repeats itself all the way down, so the tour can go on to about a trillion times.
-- **Julia zoom** shows ten Julia sets in turn. For each it zooms in on a point where the set's arms meet (or, for some, on its tip), rests, backs out, and then the set changes smoothly into the next one.
+- **Mandelbrot zoom** goes to one of 21 places on the edge of the set: the three-way branch, a seahorse's spiral, the long needle, an elephant's trunk, the sceptre, the top branch, the four-way spiral, thirteen wheels, stars and whirlpools from around the main body, and the small copy of the whole set that sits on the needle. It zooms in as far as the device allows, rests, backs out until the next place is in view, and goes there, turning the picture slowly as it zooms. All but the small copy are points where the pattern repeats itself all the way down, so the tour can go on to about a trillion times.
+- **Julia zoom** shows fifteen Julia sets in turn. For each it zooms in on a point where the set's arms meet (or, for some, on its tip), rests, backs out, and then the set changes smoothly into the next one.
 
 How deep it goes depends on the device. A computer takes up to 1,024 steps for each pixel and a phone or tablet 384, so a phone stops sooner at the places that need many steps (the seahorse and the elephant most of all). Away from the tour's places you can zoom wherever you like, but a middle chosen by hand usually ends in plain colour or in the black inside of the set.
+
+**The picture stays on its busy part.** A zoom goes in on one exact point, and at many of them all the detail is to one side. So while the tour or Drift is running, the app keeps measuring where the detail in the picture is and slides the picture until that is in the middle. The point being zoomed on stays in view, off to one side if need be. As soon as you move the picture yourself, it is yours.
+
+**It is lit as a relief.** The picture is treated as a landscape seen from straight above: the set is a raised plateau, dark and polished, and the ground falls away from it, steeply at its edge. A light at the upper left of the screen lights the slopes that face it, the plateau and its arms throw shadows across the ground, hollows are darker, and steep edges catch a highlight and a little reflected sky. The middle of the sound makes the relief a little taller.
+
+**The Julia set follows the music.** The low end of the sound, smoothed over about a third of a second, and the **Morph** push the set's constant a little, which changes the whole shape. The push is largest with the whole set in view and shrinks as the view gets deeper, because deep in a small push already turns the whole picture. The Mandelbrot set's shape is fixed; there the sound changes only the light and the colour.
 
 Mirrors, motions, filters, overlays, the land and **Hold still** all work on the zoom worlds. There is no orb in them and no light to throw, and Journey leaves them out in the VR viewer. **Share spot** keeps a place the tour has centred exactly; any other view comes back right only while it is magnified less than about a thousand times.
 

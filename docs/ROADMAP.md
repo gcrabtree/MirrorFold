@@ -9,10 +9,10 @@ The survey looked at MilkDrop descendants (Butterchurn, projectM, NestDrop), fra
 | 1 | Hold still: a pause that sharpens the picture | GMT | built; architecture doc, section 8b |
 | 2 | More like this, less like this | Electric Sheep | built; architecture doc, section 11, Likes. Mixing liked items into new ones is still open |
 | 3 | A picture that opens as the scene | GMT | built; architecture doc, section 11, Packs |
-| 4 | The gallery: journeys and packs from other people, through GitHub | GMT, Electric Sheep | built, not yet tried on GitHub; see below |
+| 4 | The gallery: journeys and packs from other people, through GitHub | GMT, Electric Sheep | reading works; offering is paused (it failed from a phone, and the flow through a GitHub issue is too odd to expect anyone to use); see below |
 | 5 | Motions driven by a slow wave or by the sound | GMT, Synesthesia | built; architecture doc, section 8, Drivers |
 | 6 | Recording a flight as a video | Fractal Garden, MandelCraft | first step built (real-time recording, with the app's own sound); architecture doc, section 8c. Replaying a stored path at full sharpness is still open |
-| 7 | Hybrid worlds | GMT | two built, in `packs/hybrids.json`; see below |
+| 7 | Hybrid worlds | GMT | three built, in `packs/hybrids.json`; see below |
 | 8 | Comfort in the VR viewer | Plane9 | built; architecture doc, section 13, VR viewer |
 | 9 | A light to throw | Marble Marcher | built; architecture doc, section 5, The thrown light. It is a toy so far: nothing is scored |
 | 10 | Knobs: a MIDI controller | Synesthesia | built, never tried with a controller; architecture doc, section 13 |
@@ -51,6 +51,8 @@ The survey looked at MilkDrop descendants (Butterchurn, projectM, NestDrop), fra
 - **Offering.** The setup panel lists what the user has made, and the scene showing now, each with a tick box. **Offer what is ticked** opens a new issue on the repository with a pack of only those things filled in, and whatever of the user's own they use (an issue form, `.github/ISSUE_TEMPLATE/pack.yml`). A workflow (`.github/workflows/offer.yml`) runs `tools/offer.mjs` on it: the same cleaners the app uses. A pack that passes becomes a pull request that adds one file and the index line; one that does not gets a comment saying why.
 - **Review.** Merging is the review. Only packs in the page's own folder are marked reviewed, as now, so a person has looked at any code before it runs without the flash limiter.
 
+**Paused (14 November 2026).** Offering a pack was tried from a phone and did not work, and the owner's view is that few people would go through a GitHub issue form anyway. The code is still there (`offer` in `js/gallery.js`, `tools/offer.mjs`, the workflow and the issue form) and nothing more is being built on it. If it is taken up again it wants a different way in, not a fix to this one. The list below is what was open when it stopped.
+
 **Still open.**
 
 - The workflow has never run. It needs a `pack` label and the setting that lets Actions open pull requests (`packs/README.md`, For maintainers).
@@ -78,9 +80,11 @@ The survey looked at MilkDrop descendants (Butterchurn, projectM, NestDrop), fra
 
 **For.** New kinds of space from the folds that are already here.
 
-**How.** GMT alternates two formulas inside one iteration loop. Here that is a pack world, which needs no JavaScript `de`, so a hybrid is content and not engine work. `packs/hybrids.json`, in the gallery, has two: **Tetra bulbs** (Sierpinski tetrahedron folds, each followed by a sphere fold) and **Kleinian cage** (the Apollonian inversion of Lattice with an octahedral sort before it).
+**How.** GMT alternates two formulas inside one iteration loop. Here that is a pack world, which needs no JavaScript `de`, so a hybrid is content and not engine work. `packs/hybrids.json`, in the gallery, has three: **Tetra bulbs** (Sierpinski tetrahedron folds, each followed by a sphere fold), **Kleinian cage** (the Apollonian inversion of Lattice with an octahedral sort before it) and **Folded sponge** (the Sponge's levels, with a box fold inside each cell on the second and fourth, so the outer part of the cell is laid back over the inner and the holes come in unequal sizes).
 
-**Still open.** A box fold with a Menger step was tried three ways and gave either flat grainy walls or a blur, so it is not in the pack. Each of the two was looked at in stills and one short flight in headless Chrome only: how well the autopilot flies them, and their frame rate on a phone (five or six fold steps on every ray step, through the probe), are untested.
+**What did not work.** A box fold applied to the whole of space after a Menger step folds the open space outside the cube into the solid, and a Mandelbox loop with the Menger sort in it is grainy at every setting tried. Folded sponge works because its fold is applied inside one cell, where the point is already between -1 and 1, and the cell is then stretched back to full size; every step is a mirror or a scaling, so the distance stays exact.
+
+**Still open.** Each of the three was looked at in stills and one short flight in headless Chrome only: how well the autopilot flies them, and their frame rate on a phone (five or six fold steps on every ray step, through the probe), are untested.
 
 ## 8. Comfort in the VR viewer
 

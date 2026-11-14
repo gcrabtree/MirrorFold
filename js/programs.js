@@ -32,7 +32,7 @@ export function link(fs,names){
 export function build(w){
   if(w.prog)return;
   if(w.flat&&!zoomOk())throw new Error("This device cannot hold the numbers a zoom world needs.");
-  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uJit","uSpark","uRef","uZ","uZn"]);
+  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uJit","uSpark","uRef","uZ","uZn","uZo"]);
   w.prog=o.prog;w.U=o.U;
 }
 

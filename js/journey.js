@@ -158,6 +158,7 @@ export function setJourney(on){
 
 /* Travel: steer toward open space. Over land that means toward whichever side is lower, keeping to the valleys with the view a little below level; in a world it means comparing the distance to the right, left, up and down. */
 export function autopilot(fr){
+  if(fr.w.flat)return; /* a zoom world has no space to steer through: its own tour moves the picture, and a turn here would slide it off its target */
   var dt=fr.dt,hands=fr.hands*(stereo?0.5:1),dist=fr.dist,pk=fr.pk,m=fr.m; /* VR viewer: the autopilot turns at half speed, which is easier on the stomach */
   if(landMode){ /* over land the autopilot turns toward whichever side is lower, so it keeps to the valleys, and holds the view a little below level */
     var lrx=lhead[1],lrz=-lhead[0],lc=Math.cos(0.55)*1.3,ls=Math.sin(0.55)*1.3;

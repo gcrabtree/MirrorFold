@@ -80,6 +80,8 @@ function save(bytes){
 export function loadFile(f){
   if(!f)return;
   var png=/\.png$/i.test(f.name||"")||f.type==="image/png",rd=new FileReader();
+  /* a phone's photo library may hand over a JPEG or HEIC copy of a saved picture; the scene is not in a copy */
+  if(!png&&/^image\//.test(f.type||"")){toast("That picture is a copy in another format, and the scene is not in it. Choose the PNG file that Save picture made.");return;}
   if(f.size>(png?40000000:200000)){toast(png?"That picture is too big.":"That file is too big to be a Mirrorfold pack.");return;}
   rd.onerror=function(){toast("That file could not be read.")};
   if(png){
