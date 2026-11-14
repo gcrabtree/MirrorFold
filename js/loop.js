@@ -17,6 +17,7 @@ import { chipWait } from "./probe.js";
 import { drawBloom, drawFinal, drawScene, drawTrails } from "./render.js";
 import { statsBegin, statsEnd, statsOn } from "./stats.js";
 import { autoDetail } from "./targets.js";
+import { videoFrame } from "./video.js";
 import { stepWarp } from "./warp.js";
 export let started=false; /* the start card has been left */
 let last;
@@ -78,6 +79,7 @@ function frame(now){
 
   /* drawing */
   easePalette(dt);
+  videoFrame(notes);
   drawScene(notes);
   drawTrails(notes);
   drawBloom(notes);

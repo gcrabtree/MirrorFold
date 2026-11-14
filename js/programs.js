@@ -30,7 +30,7 @@ export function link(fs,names){
 }
 export function build(w){
   if(w.prog)return;
-  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn"]);
+  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS"]);
   w.prog=o.prog;w.U=o.U;
 }
 

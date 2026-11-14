@@ -33,8 +33,9 @@ import * as m29 from "./clock.js";
 import * as m30 from "./warp.js";
 import * as m31 from "./render.js";
 import * as mM from "./music.js";
+import * as mV from "./video.js";
 import * as m32 from "./loop.js";
-const mods=[m0,m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,m19,m20,m21,m22,m23,m24,m25,m26,m27,m28,m29,m30,m31,m32,mM];
+const mods=[m0,m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,m19,m20,m21,m22,m23,m24,m25,m26,m27,m28,m29,m30,m31,m32,mM,mV];
 /* an init that cannot go on (no WebGL, or no shader compiles) has already put a message on the page, and stops start-up by throwing "stop" */
 try{for(const m of mods)if(m.init)m.init();}catch(e){if(e.message!=="stop")throw e;}
 /* window.MF gives the test tools and the console every internal name, as the single script's closure used to */
