@@ -11,7 +11,7 @@ import { palCur, setPal } from "./palettes.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
 import { tA, tB, tF, tT, target } from "./targets.js";
-import { videoUniforms } from "./video.js";
+import { vidAlone, videoScene, videoUniforms } from "./video.js";
 import { stereo, vrEye, vrEyeStep } from "./vr.js";
 import { tr } from "./warp.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
@@ -28,7 +28,9 @@ export function drawScene(fr){
   var landOn=landMode>0&&!stereo&&!!pLand,landOver=landOn&&landMode===2,src=tA;
   if(landOver){landPass(landLayer(),true,fovNow,clock.hueT+wHue);}
   else if(landOn)landPass(tA,false,fovNow,clock.hueT+wHue);
-  if(!landOn||landOver){
+  /* the video filling the screen takes the world's place (not in the VR viewer, where a flat picture would not sit right for each eye) */
+  if((!landOn||landOver)&&vidAlone()&&!stereo)videoScene(tA,mirrors[sel.mi],clock.spin,bt);
+  else if(!landOn||landOver){
   gl.bindFramebuffer(gl.FRAMEBUFFER,tA.f);gl.viewport(0,0,tA.w,tA.h);gl.useProgram(w.prog);
   gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],orbU[3]);
   gl.uniform2f(U.uRes,tA.w,tA.h);
@@ -66,7 +68,7 @@ export function drawTrails(fr){
   var dt=fr.dt,bt=fr.bt,mp=fr.mp,mv=fr.mv,hp=fr.hp,fx=fr.fx,wHue=fr.wHue,src=fr.src,j;
   var mo=MOTIONS[sel.moi],lk=LOOKS[sel.lki],k60=dt*60,TU=pTrail.U;
   /* VR viewer: filters that move parts of the picture would show each eye something different, so they are left out */
-  if(stereo&&(lk.echo||lk.mos||lk.liq||lk.hue||lk.code||(lk.fx>0&&lk.fx<5)))lk=LOOKS[0];
+  if(stereo&&(lk.echo||lk.mos||lk.liq||lk.hue||lk.code||(lk.fx>0&&lk.fx<5)||lk.fx>11))lk=LOOKS[0];
   var tx=clock.hueT+wHue+0.2,tint=fr.tint;
   for(j=0;j<3;j++)tint[j]=Math.min(1,Math.max(0,palCur.a[j]+palCur.b[j]*Math.cos(6.28318*(palCur.c[j]*tx+palCur.d[j]))));
   var tc=tT[flip.cur],tp=tT[1-flip.cur];

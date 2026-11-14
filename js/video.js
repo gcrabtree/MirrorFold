@@ -1,8 +1,10 @@
 /* A video of your own, or the camera, shown in the picture. The shaders do not read the video itself but a small picture
    kept here, which follows the video only as fast as is safe: no sixteenth of it may change its average brightness quickly.
    So whatever is in the video, it cannot make the screen flash. */
+import { ac, bus } from "./audio.js";
 import { $, calm, errBox, gl, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
+import { musicMode, setMusic } from "./listen.js";
 import { bindTex, link, passTo } from "./programs.js";
 import { freeT, target } from "./targets.js";
 
@@ -12,11 +14,23 @@ export const VMODES=[
  {name:"through the shapes"},       /* flat on the screen, seen only where there is a surface, lit as the surface is */
  {name:"in the distance"},          /* flat on the screen, behind everything: the world fades into it with distance */
  {name:"in the overlay"},           /* the overlay's lines and shapes are windows onto it */
- {name:"as the colours",d3:true}    /* the world's colouring reads its colours from the video */
+ {name:"as the colours",d3:true},   /* the world's colouring reads its colours from the video */
+ {name:"filling the screen",alone:true} /* no world: the video is the scene, and the mirrors, motions, filters and overlays work on it. The land can stand in front */
 ];
 export const VAMT=[.35,.6,.85,1];
 export let vidMode=0,vidAmt=2;   /* positions in VMODES and VAMT */
 export let vidOn=false;          /* a video is loaded and showing */
+let sound=false,node=null;       /* the video's sound is wanted as the music, and its connection into the audio graph */
+let pScene=null;
+/* the video as the whole scene: fitted to the screen, folded by the mirrors as a world is, and swelling a little on the beat */
+const FS_SCENE=[
+"precision highp float;uniform vec2 uRes,uFit;uniform float uSeg,uSpin,uZoom;uniform sampler2D uVid;",
+"void main(){",
+"  float sc=sqrt(uRes.x*uRes.y);vec2 uv=(2.0*gl_FragCoord.xy-uRes)/sc;",
+"  if(uSeg>0.5){float r=length(uv),seg=6.2831853/uSeg,a=atan(uv.y,uv.x)+uSpin;a=abs(a-floor(a/seg)*seg-0.5*seg);uv=r*vec2(cos(a),sin(a));}",
+"  vec2 q=uv*sc/uRes*0.5*uFit*uZoom+0.5;",
+"  gl_FragColor=vec4(texture2D(uVid,1.0-abs(fract(q*0.5)*2.0-1.0)).rgb,1.0);", /* past its edge the video carries on as its own mirror image */
+"}"].join("\n");
 let el=null,url=null,stream=null,raw=null,blank=null,pVid=null,cur=0,asp=16/9,lastT=-1;
 const tV=[null,null];            /* the video picture the shaders read, and the one before it */
 let tM=null,pMean=null;          /* a 4 by 4 picture of the newest frame: the average colour of each sixteenth of it */
@@ -32,6 +46,23 @@ function label(){
   $("bVidPlay").hidden=!vidOn||!!stream;$("bVidPlay").textContent=el&&el.paused?"Play video":"Pause video";
 }
 export function setVidMode(i){vidMode=i%VMODES.length;label();}
+export function vidFile(){return !!(el&&el.getAttribute("src"));} /* a video file is loaded (the camera does not count: it has no sound) */
+export function vidAlone(){return vidOn&&!!tV[0]&&!!VMODES[vidMode].alone;} /* the video is the scene and no world is drawn */
+/* Whether the video's sound is the music. The sound is joined to the audio graph the first time it is wanted; from then on it plays
+   only through the graph, so muting the video is what silences it. The camera has no sound. */
+export function videoSound(on){
+  sound=!!on;if(!el)return;
+  if(sound&&!node&&ac){try{node=ac.createMediaElementSource(el);node.connect(bus);}catch(e){}}
+  el.muted=!(sound&&node&&!stream);
+}
+/* draw the video as the scene into the picture o */
+export function videoScene(o,seg,spin,bt){
+  var sa=o.w/o.h;
+  passTo(o,pScene);bindTex(5,tV[cur].t);gl.uniform1i(pScene.U.uVid,5);
+  gl.uniform2f(pScene.U.uRes,o.w,o.h);gl.uniform2f(pScene.U.uFit,sa>asp?1:sa/asp,sa>asp?asp/sa:1);
+  gl.uniform1f(pScene.U.uSeg,seg);gl.uniform1f(pScene.U.uSpin,spin);gl.uniform1f(pScene.U.uZoom,1-0.025*bt);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
 export function setVidAmt(i){vidAmt=i%VAMT.length;label();}
 function stopSource(){
   if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null;}
@@ -39,7 +70,7 @@ function stopSource(){
   if(url){try{URL.revokeObjectURL(url)}catch(_){}url=null;}
   vidOn=false;lastT=-1;
 }
-export function videoOff(){stopSource();label();}
+export function videoOff(){stopSource();if(musicMode==="video")setMusic("off");label();}
 function element(){
   if(el)return el;
   el=document.createElement("video");el.muted=true;el.loop=true;el.playsInline=true;el.setAttribute("playsinline","");el.preload="auto";
@@ -56,13 +87,13 @@ function element(){
 }
 /* show the video at this address: an object address made from a file the user chose */
 export function videoFrom(src){
-  stopSource();element().src=src;
+  stopSource();element().src=src;videoSound(sound);
   var p=el.play();if(p&&p.catch)p.catch(function(){});
 }
 function useCamera(){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){toast("This browser gives no camera here.");return;}
   navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280}},audio:false}).then(function(s){
-    stopSource();stream=s;element().srcObject=s;
+    stopSource();stream=s;element().srcObject=s;if(musicMode==="video")setMusic("off");videoSound(false);
     var p=el.play();if(p&&p.catch)p.catch(function(){});
   },function(){toast("The camera was not allowed.")});
 }
@@ -106,7 +137,7 @@ export function videoUniforms(U,w,h,flat,per){
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-pVid=link(FS_VID,["uT","uP","uK"]);pMean=link(FS_MEAN,["uT"]);tM=target(4,4);
+pVid=link(FS_VID,["uT","uP","uK"]);pScene=link(FS_SCENE,["uRes","uFit","uSeg","uSpin","uZoom","uVid"]);pMean=link(FS_MEAN,["uT"]);tM=target(4,4);
 raw=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,raw);
 gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
 gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
@@ -119,7 +150,8 @@ $("bVideo").addEventListener("click",function(){
 });
 $("vidIn").addEventListener("change",function(){
   var f=this.files&&this.files[0];if(!f)return;
-  errBox.textContent="";var u=URL.createObjectURL(f);videoFrom(u);url=u;wakeHud();
+  errBox.textContent="";var u=URL.createObjectURL(f);videoFrom(u);url=u;
+  setMusic("video");toast("Music is now the video's sound. The Music list changes it.");wakeHud();
 });
 $("bVidCam").addEventListener("click",function(){useCamera();wakeHud()});
 $("bVidMode").addEventListener("click",function(){setVidMode(vidMode+1);wakeHud()});
@@ -129,7 +161,7 @@ label();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={VMODES, VAMT, tV, mNew, mOut, FS_MEAN, VW, FS_VID, label, setVidMode,
-  setVidAmt, stopSource, videoOff, element, videoFrom, useCamera, videoFrame, videoUniforms, get vidMode(){return vidMode},set vidMode(v){vidMode=v}, get vidAmt(){return vidAmt},set vidAmt(v){vidAmt=v},
-  get vidOn(){return vidOn},set vidOn(v){vidOn=v}, get el(){return el},set el(v){el=v}, get url(){return url},set url(v){url=v}, get stream(){return stream},set stream(v){stream=v}, get raw(){return raw},set raw(v){raw=v}, get blank(){return blank},set blank(v){blank=v}, get pVid(){return pVid},set pVid(v){pVid=v}, get cur(){return cur},set cur(v){cur=v}, get asp(){return asp},set asp(v){asp=v}, get lastT(){return lastT},set lastT(v){lastT=v},
-  get tM(){return tM},set tM(v){tM=v}, get pMean(){return pMean},set pMean(v){pMean=v}};
+export const __dbg={VMODES, VAMT, FS_SCENE, tV, mNew, mOut, FS_MEAN, VW, FS_VID, label,
+  setVidMode, vidFile, vidAlone, videoSound, videoScene, setVidAmt, stopSource, videoOff, element, videoFrom,
+  useCamera, videoFrame, videoUniforms, get vidMode(){return vidMode},set vidMode(v){vidMode=v}, get vidAmt(){return vidAmt},set vidAmt(v){vidAmt=v}, get vidOn(){return vidOn},set vidOn(v){vidOn=v}, get sound(){return sound},set sound(v){sound=v}, get node(){return node},set node(v){node=v}, get pScene(){return pScene},set pScene(v){pScene=v}, get el(){return el},set el(v){el=v},
+  get url(){return url},set url(v){url=v}, get stream(){return stream},set stream(v){stream=v}, get raw(){return raw},set raw(v){raw=v}, get blank(){return blank},set blank(v){blank=v}, get pVid(){return pVid},set pVid(v){pVid=v}, get cur(){return cur},set cur(v){cur=v}, get asp(){return asp},set asp(v){asp=v}, get lastT(){return lastT},set lastT(v){lastT=v}, get tM(){return tM},set tM(v){tM=v}, get pMean(){return pMean},set pMean(v){pMean=v}};

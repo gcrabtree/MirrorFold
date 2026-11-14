@@ -343,7 +343,7 @@ Applied in this order. `LOOKS` entries set one or more of these uniforms.
 3. Liquid (`uLiq`, sinusoidal displacement) and Mosaic (`uMos`, cell quantisation).
 4. Sampling: four taps along the zoom-blur direction, with red and blue sampled at slightly different scales for colour fringing (`uCA`).
 5. Echo (a flipped, 2x ghost), Neon (four-tap edge detect), Solar, Negative, Prism (hue rotation growing with radius and time), Poster.
-6. Colour filters by `uFx`: Thermal (luminance through the palette), CRT, Halftone, Contour, Noir.
+6. Colour filters by `uFx`: Thermal (luminance through the palette), CRT, Halftone, Contour, Noir, and six made with video in mind: Comic (four levels a channel with dark outlines), Two-tone (two palette colours by brightness), Tape (rows shifted, colours out of register, a slow rolling band, faint grain), Streaks (bright parts run downward), Emboss, and Glass (15, a grid of small lenses, applied with the geometric ones).
 7. Bloom is added, then the transition tint and mask.
 
 ### Transitions
@@ -352,9 +352,9 @@ A world change (and a journey mirror change) runs `warp` from 0 to 1 over 0.5 s,
 
 ## 8a. Video (an experiment)
 
-`js/video.js` shows a video file the user picks, or the camera, in the picture. Nothing is uploaded or kept, the video is muted, and a pack cannot name a video. The frame step `videoFrame` runs before the drawing steps; `videoUniforms` hands the result to the scene shader and the trails pass on texture unit 5 (`uVid`, `uVidK` = way, strength, fit to screen; `uVidS` = repeat scale on surfaces).
+`js/video.js` shows a video file the user picks, or the camera, in the picture. Nothing is uploaded or kept, and a pack cannot name a video. The frame step `videoFrame` runs before the drawing steps; `videoUniforms` hands the result to the scene shader and the trails pass on texture unit 5 (`uVid`, `uVidK` = way, strength, fit to screen; `uVidS` = repeat scale on surfaces).
 
-Five ways (`VMODES`), chosen with the "Video …" button:
+Six ways (`VMODES`), chosen with the "Video …" button:
 
 | Way | Where | What it does |
 |---|---|---|
@@ -363,10 +363,13 @@ Five ways (`VMODES`), chosen with the "Video …" button:
 | in the distance | scene shader | Takes the place of the fog colour, so far things fade into the video. Only shows on open worlds. |
 | in the overlay | trails pass | The overlay's shapes are drawn seven times wider (`wd`) and replace what is under them with the video. Works with pack overlays too. |
 | as the colours | scene shader | The surface colour is read from the video at a point given by the orbit trap, so the fractal is striped with the video's colours. True 3D. |
+| filling the screen | its own program (`videoScene`) | No world is drawn: the video is the scene, fitted to the screen, folded by the mirrors exactly as a world is, and swelling 2.5% on the beat. Motions, filters, overlays and transitions then work on it as on any scene, and the land can stand in front (Land over). The camera still flies the unseen world, so the land moves. Orbs are off. In the VR viewer the world is drawn instead. |
 
 **The flash limit.** The shaders never read the video itself. They read `tV`, a 640-wide copy that `videoFrame` moves towards the newest frame. Each frame a 4 by 4 picture of the new frame's average colours (`pMean`, read back into `mNew`) is compared with the same averages of the copy (`mOut`, tracked in JavaScript, since the blend is linear). The blend amount is cut so that no sixteenth's average changes by more than 0.6 of full brightness a second (0.3 with reduced motion). Measured: a clip strobing black to white at 5 Hz comes through as a ripple of about 6%; ordinary footage is followed within a level or two; a hard cut becomes a fade of up to a second. Do not hand the raw texture to any shader.
 
-Not done: the video's sound, the land (it ignores the video; only the overlay way works over it), cloud worlds (same), a journey category, remembering the choice, any test on a real phone. The smoke test does not cover it, because headless Chrome's virtual clock does not run a video; it was tried with Playwright and three made-up clips.
+**Sound.** Music has a source `video` ("My video's sound"). Choosing a video file selects it. `videoSound(on)` joins the video element to the audio graph with `createMediaElementSource` the first time, and from then on mutes or unmutes the element; `liveAudio()` counts it, so the beat reading follows the video. Any other music source mutes the video. The camera has no sound. Checked in headless Chrome only (sound reaches the analyser; the video keeps playing while the audio context is suspended); iPhone untested.
+
+Not done: the land (it ignores the video; only the overlay way works over it), cloud worlds (same), a journey category, remembering the choice, any test on a real phone. The smoke test does not cover it, because headless Chrome's virtual clock does not run a video; it was tried with Playwright and three made-up clips.
 
 ## 9. Palettes
 

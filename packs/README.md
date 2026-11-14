@@ -111,7 +111,7 @@ A filter changes the finished picture. It can be a mix of the built-in filter co
 | `liq` | Liquid wobble | 0 to 0.03 |
 | `hue` | Colours turn slowly through the spectrum | 0 to 1 |
 | `ca` | Extra colour fringing toward the edges | 0 to 0.04 |
-| `fx` | One built-in effect: 1 Quad, 2 Tiles, 3 Bulge, 4 Twirl, 5 Thermal, 6 CRT, 7 Halftone, 8 Contour, 9 Noir | 0 to 9, whole numbers |
+| `fx` | One built-in effect: 1 Quad, 2 Tiles, 3 Bulge, 4 Twirl, 5 Thermal, 6 CRT, 7 Halftone, 8 Contour, 9 Noir, 10 Comic, 11 Two-tone, 12 Tape, 13 Streaks, 14 Emboss, 15 Glass | 0 to 15, whole numbers |
 | `code` | A program, described next | at most 2,000 characters |
 
 #### Filter programs

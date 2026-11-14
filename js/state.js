@@ -33,7 +33,13 @@ export const LOOKS=[
  {name:"CRT",fx:6},
  {name:"Halftone",fx:7},
  {name:"Contour",fx:8},
- {name:"Noir",fx:9}
+ {name:"Noir",fx:9},
+ {name:"Comic",fx:10},
+ {name:"Two-tone",fx:11},
+ {name:"Tape",fx:12},
+ {name:"Streaks",fx:13},
+ {name:"Emboss",fx:14},
+ {name:"Glass",fx:15}
 ];
 export const OVS=[.15,.3,.5,.75,1];
 export const OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"}];

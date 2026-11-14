@@ -48,7 +48,7 @@ function cleanCode(src){
 }
 export function cleanFilter(src){
   if(!src||typeof src!=="object")return null;
-  var lim={echo:[0,1],edge:[0,1],solar:[0,1],inv:[0,1],post:[3,16],mos:[8,400],liq:[0,0.03],hue:[0,1],ca:[0,0.04],fx:[0,9]};
+  var lim={echo:[0,1],edge:[0,1],solar:[0,1],inv:[0,1],post:[3,16],mos:[8,400],liq:[0,0.03],hue:[0,1],ca:[0,0.04],fx:[0,15]};
   var name=cleanName(src.name),out={name:name},k,v;
   if(!name)return null;
   for(k in lim){

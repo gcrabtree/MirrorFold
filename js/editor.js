@@ -17,7 +17,7 @@ export let ED;
 const ED_SIMPLE=[["changes","Colour changes",1,6,1,"How many times the strip goes from one colour to the other. At 1 it goes from the first colour to the second. At 2 it goes there and back."],
                ["slide","Slide",0,1,0.01,"Moves all the colours along the strip, so a different one comes first."],
                ["rainbow","Rainbow",0,1,0.01,"At 0 the strip holds only blends of your two colours. Higher values set red, green and blue out of step, so other colours appear in between."]];
-const FX_NAMES=["none","Quad","Tiles","Bulge","Twirl","Thermal","CRT","Halftone","Contour","Noir"]; /* {kind, item} while the editor is open */
+const FX_NAMES=["none","Quad","Tiles","Bulge","Twirl","Thermal","CRT","Halftone","Contour","Noir","Comic","Two-tone","Tape","Streaks","Emboss","Glass"]; /* {kind, item} while the editor is open */
 /* A palette from two colours. Each of red, green and blue swings between its amount in the first colour and its amount in the second.
    "changes" is how many times, "slide" moves the whole strip along, and "rainbow" sets the three out of step. */
 function palFromSimple(s){
@@ -173,7 +173,7 @@ ED={
           ["liq","Liquid",0,0.03,0.001,"Makes the picture waver as if seen through water."],
           ["hue","Colour turn",0,1,0.01,"Shifts every colour round the colour wheel, in slowly moving rings."],
           ["ca","Colour fringing",0,0.04,0.001,"Pulls red and blue apart toward the edges of the screen."],
-          ["fx","Built-in effect",0,9,1,"Adds one of the nine ready-made effects."]]}
+          ["fx","Built-in effect",0,15,1,"Adds one of the fifteen ready-made effects."]]}
 };
 $("edName").addEventListener("change",function(){
   var E=ED[ed.kind],old=ed.item.name,nn=uniqueName(cleanName(this.value)||"My "+E.word,E.list.filter(function(q){return q!==ed.item}).map(function(q){return q.name}));
