@@ -1,5 +1,5 @@
 /* The frame loop: the steps of one frame, in order. */
-import { musicFollowsSpeed, scrubFollow } from "./audio.js";
+import { scrubFollow } from "./audio.js";
 import { move, steering, turn } from "./camera.js";
 import { scene } from "./choose.js";
 import { morphValue, tickClock } from "./clock.js";
@@ -10,6 +10,7 @@ import { wakeHud } from "./input.js";
 import { autopilot, jMove, journey, stepJourney } from "./journey.js";
 import { landMode, moveLand } from "./land.js";
 import { setMusic, soundFrame } from "./listen.js";
+import { musicFollowsSpeed } from "./music.js";
 import { stepOrb } from "./orbs.js";
 import { easePalette } from "./palettes.js";
 import { chipWait } from "./probe.js";

@@ -82,7 +82,8 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/controls.js` | The Orbs, Morph and Drift switches and the wiring of the remaining buttons |
 | `js/stats.js` | The Stats readout |
 | `js/vr.js` | The VR viewer: stereo, head turning, wake lock |
-| `js/audio.js` | The audio graph, built-in music, the file player and scrubber |
+| `js/audio.js` | The audio graph, the orb chime, the file player and scrubber |
+| `js/music.js` | The built-in music: a dance track made up as it plays |
 | `js/listen.js` | Listening to a tab or the microphone, `setMusic`, tap tempo, the bands, the change detector, `soundFrame`, the wave picture |
 | `js/render.js` | Drawing a frame: `drawScene`, `drawTrails`, `drawBloom`, `drawFinal` |
 | `js/loop.js` | `begin` and `frame(now)`, which calls the steps of a frame in order |
@@ -359,10 +360,13 @@ The first seven palettes are always available. The other six are unlocked one at
 ### Graph
 
 ```
-drone oscillators -> droneGain -> lowpass -+
-kick, bass, pluck, hat --------------------+-> bus -> analyser -> master -> destination
-pluck -> sendIn -> delay (feedback) -------+
-file (buffer source or media element) -----+
+built-in music (js/music.js):
+  kick, clap, closed hats -----------------------------+
+  pad -> filter -> gate -+                             |
+  arp, lead, riser ------+-> tone filter -> duck ------+-> compressor -> air filter -> out -+
+  echo and reverb -------+                 (pumps)     |                                    |
+  bass -> subDuck (pumps deeper) ----------------------+                                    |
+orb chime, file (buffer source or media element) ------------------------------------------+-> bus -> analyser -> master -> destination
 
 shared tab or microphone -> cap.gain -> analyser      (master gain is 0 while listening)
 ```
@@ -371,7 +375,7 @@ One `AnalyserNode` (FFT 1024) sees whatever is playing. `ensureAudio()` builds t
 
 ### Sources (`setMusic(mode)`)
 
-- **built**: a generative track at 92 BPM. `tick()` runs every 90 ms and schedules eighth-note steps 350 ms ahead with `playStep`. Kick on every beat, hat off the beat, a bass note each bar, and a triangle-wave arpeggio that random-walks a minor pentatonic scale. The root moves through A, F, C, G every four bars and the drone retunes with it.
+- **built**: a dance track made up as it plays (`js/music.js`), 126 BPM, natural minor. `tick()` runs every 90 ms and schedules sixteenth-note steps 350 ms ahead on the audio clock with `playStep`. A song is 72 bars from `PLAN` (intro 8, build 8, drop 16, breakdown 8, build 8, drop 16, outro 8); `newSong()` then picks a new key, one of five four-bar chord loops (`PROGS`), a gate rhythm, an off-beat or rolling bass, an arp shape and a one-bar tune. The sounds are all oscillators and filtered noise: a kick (sine dropping from 165 to 44 Hz with a noise click) on every beat, which also ducks the `duck` and `subDuck` gains and lets them recover over about a fifth of a second (the sidechain pump); a clap (three bursts and a tail) on beats 2 and 4 of a drop, gathering pace through a build; hats; a saw-and-sine bass; the chord as three detuned saws a note, chopped by `gate`; an arp whose rests come from a Euclidean rhythm; a lead; a noise riser into each drop and an impact on it. A build ends with half a bar of silence. `musicFollowsSpeed` opens the last low-pass filter as you fly faster. `musicRender(ctx, bars)` schedules a song into an `OfflineAudioContext`, which is how the mix was checked: the author cannot hear it, so levels were measured bar by bar (peak 0.82 before the master gain of 0.5; breakdown about half the loudness of a drop). How it actually sounds is untested.
 - **file**: `decodeFile` reads the file and decodes it into an `AudioBuffer`, played by a looping `AudioBufferSourceNode`. Seeking is stop-and-restart at an offset, which is exact. Because a decoded hour of stereo audio is over a gigabyte, the file's length is probed first with a media element: anything over 15 minutes, or over 80 MB, or that decodes shorter than its reported length, plays through the media element instead (`useElement`). The `player` object abstracts the two (`pPlay`, `pPause`, `pSeek`, `pPos`, `pDur`).
 - **tab**: `getDisplayMedia` with audio. The user picks a tab in the browser's share dialog and turns on tab audio. Offered only where `getDisplayMedia` exists and the device has no touch screen, which in practice means Chrome and Edge on a computer; Firefox and Safari have the API but pass no audio, and that case ends with a message. The video track is requested as small and slow as allowed and is not used.
 - **mic**: `getUserMedia` with echo cancellation, noise suppression and automatic gain off, so the level follows the music.

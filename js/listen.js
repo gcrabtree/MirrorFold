@@ -1,9 +1,10 @@
 /* Sound in: choosing where the music comes from, listening to a tab or the microphone, tap tempo, and reading the sound each frame. */
-import { ac, analyser, cap, ensureAudio, fbins, master, pPause, pPlay, player, startBuilt, stopBuilt } from "./audio.js";
+import { ac, analyser, cap, ensureAudio, fbins, master, pPause, pPlay, player } from "./audio.js";
 import { selMusic } from "./choose.js";
 import { clock } from "./clock.js";
 import { $, calm, errBox, gl, isTouch, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
+import { startBuilt, stopBuilt } from "./music.js";
 import { OVERLAYS, sel } from "./state.js";
 export let musicMode="off",beat=0,level=0; /* where the sound comes from, and the two numbers the picture reads: a pulse that decays, and how loud the low end is */
 let taps=[],tapInt=0,tapAt=0;

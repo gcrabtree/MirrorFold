@@ -1,15 +1,11 @@
 /* Sound out: the audio graph, the built-in music, and the player and scrubber for a file of your own. */
-import { clock } from "./clock.js";
 import { $, errBox, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { musicMode } from "./listen.js";
-export let ac=null, master=null, analyser=null, filt=null, fbins=null, scrubbing;
-let bus=null, droneGain=null, sendIn=null, noiseBuf=null, audioEl=null, elNode=null, objUrl=null, scrub, scrubFill, scrubThumb,
+export let ac=null, master=null, analyser=null, fbins=null, scrubbing;
+export let bus=null, audioEl=null, elNode=null, objUrl=null, scrub, scrubFill, scrubThumb,
   tLabel, scrubFr, lastSeek, elErr=false;
 
-const drones=[];
-const seq={on:false,timer:0,next:0,step:0,idx:3,root:0};
-const PENT=[0,3,5,7,10],ROOTS=[0,-4,3,-2],BPM=92;
 export const cap={stream:null,node:null,gain:null,tok:0};
 
 export function ensureAudio(){
@@ -21,68 +17,14 @@ export function ensureAudio(){
     analyser=ac.createAnalyser();analyser.fftSize=1024;analyser.smoothingTimeConstant=0.6;analyser.connect(master);
     fbins=new Uint8Array(analyser.frequencyBinCount);
     bus=ac.createGain();bus.gain.value=1;bus.connect(analyser);
-    filt=ac.createBiquadFilter();filt.type="lowpass";filt.frequency.value=420;filt.Q.value=4;filt.connect(bus);
-    droneGain=ac.createGain();droneGain.gain.value=0;droneGain.connect(filt);
-    var dly=ac.createDelay(1);dly.delayTime.value=60/BPM*0.75;var fb=ac.createGain();fb.gain.value=0.42;
-    sendIn=ac.createGain();sendIn.gain.value=0.5;sendIn.connect(dly);dly.connect(fb);fb.connect(dly);dly.connect(bus);
-    [[55,"sawtooth",.09,.05],[82.5,"sawtooth",.06,.071],[110.2,"sine",.12,.043],[165.1,"triangle",.07,.093],[220.6,"sine",.05,.127]].forEach(function(v){
-      var o=ac.createOscillator();o.type=v[1];o.frequency.value=v[0];
-      var g=ac.createGain();g.gain.value=v[2];
-      var l=ac.createOscillator();l.frequency.value=v[3];var lg=ac.createGain();lg.gain.value=v[2]*0.8;
-      l.connect(lg);lg.connect(g.gain);o.connect(g);g.connect(droneGain);o.start();l.start();
-      drones.push({o:o,f:v[0]});
-    });
-    var n=Math.floor(ac.sampleRate*0.2);noiseBuf=ac.createBuffer(1,n,ac.sampleRate);
-    var ch=noiseBuf.getChannelData(0);for(var i=0;i<n;i++)ch[i]=Math.random()*2-1;
     return true;
   }catch(e){ac=null;return false;}
 }
-function env(g,t,peak,dur){g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(peak,t+0.006);g.gain.exponentialRampToValueAtTime(0.0005,t+dur);}
-function kick(t,v){
-  var o=ac.createOscillator(),g=ac.createGain();o.type="sine";
-  o.frequency.setValueAtTime(125,t);o.frequency.exponentialRampToValueAtTime(42,t+0.12);
-  env(g,t,v,0.3);o.connect(g);g.connect(bus);o.start(t);o.stop(t+0.32);
-}
-function bass(t,f){
-  var o=ac.createOscillator(),g=ac.createGain();o.type="sine";o.frequency.value=f;
-  env(g,t,0.22,1.5);o.connect(g);g.connect(bus);o.start(t);o.stop(t+1.55);
-}
+/* a short soft note: the chime when an orb is found */
 export function pluck(t,f){
   var o=ac.createOscillator(),g=ac.createGain();o.type="triangle";o.frequency.value=f;
-  env(g,t,0.06,0.5);o.connect(g);g.connect(bus);g.connect(sendIn);o.start(t);o.stop(t+0.55);
-}
-function hat(t){
-  var s=ac.createBufferSource(),h=ac.createBiquadFilter(),g=ac.createGain();s.buffer=noiseBuf;
-  h.type="highpass";h.frequency.value=7000;env(g,t,0.02,0.05);s.connect(h);h.connect(g);g.connect(bus);s.start(t);s.stop(t+0.07);
-}
-function playStep(n,t){
-  if(n%32===0){
-    seq.root=ROOTS[(n/32)%ROOTS.length];
-    var r=Math.pow(2,seq.root/12);
-    drones.forEach(function(d){d.o.frequency.setTargetAtTime(d.f*r,t,1.2)});
-  }
-  if(n%2===0)kick(t,n%8===0?0.5:0.34);else hat(t);
-  if(n%8===0)bass(t,55*Math.pow(2,seq.root/12));
-  if(Math.random()<0.82){
-    seq.idx=Math.max(0,Math.min(9,seq.idx+[-1,1,1,-1,2,-2,0][Math.floor(Math.random()*7)]));
-    var semi=seq.root+PENT[seq.idx%5]+12*Math.floor(seq.idx/5);
-    pluck(t,220*Math.pow(2,semi/12));
-  }
-}
-function tick(){
-  if(!seq.on||!ac||ac.state!=="running")return;
-  var spb=60/BPM/2;
-  if(seq.next<ac.currentTime)seq.next=ac.currentTime+0.05;
-  while(seq.next<ac.currentTime+0.35){playStep(seq.step,seq.next);seq.next+=spb;seq.step++;}
-}
-export function startBuilt(){
-  droneGain.gain.setTargetAtTime(1,ac.currentTime,1.5);
-  if(seq.on)return;
-  seq.on=true;seq.next=ac.currentTime+0.15;seq.timer=setInterval(tick,90);
-}
-export function stopBuilt(){
-  if(droneGain)droneGain.gain.setTargetAtTime(0,ac.currentTime,0.2);
-  seq.on=false;clearInterval(seq.timer);
+  g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(0.06,t+0.006);g.gain.exponentialRampToValueAtTime(0.0005,t+0.5);
+  o.connect(g);g.connect(bus);o.start(t);o.stop(t+0.55);
 }
 /* File playback. The file is decoded into memory and played from a buffer, so seeking is exact and instant.
    Very large files, or ones that fail to decode, fall back to a streaming audio element. */
@@ -194,12 +136,6 @@ export function scrubFollow(){
   if(musicMode==="file"&&player.mode&&!scrubbing&&pDur()>0)showScrub(pPos()/pDur());
 }
 
-/* The built-in music opens up as you fly faster. */
-export function musicFollowsSpeed(spN){
-  if(ac&&musicMode==="built"&&ac.state==="running"){
-    try{filt.frequency.setTargetAtTime(380+spN*1300+180*Math.sin(clock.time*0.13),ac.currentTime,0.6);}catch(_){}
-  }
-}
 
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
@@ -262,9 +198,7 @@ $("bPlay").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={drones, seq, PENT, ROOTS, BPM, cap, ensureAudio, env, kick, bass,
-  pluck, hat, playStep, tick, startBuilt, stopBuilt, player, mmss, pDur, pPos,
-  pIsPlaying, pPlay, pPause, pSeek, syncPlayBtn, showScrub, scrubAt, scrubEnd, fileReady, prepElement,
-  showElError, useElement, DECODE_MAX_SEC, DECODE_MAX_BYTES, decodeFile, showScrubIdle, scrubFollow, musicFollowsSpeed, get ac(){return ac},set ac(v){ac=v}, get master(){return master},set master(v){master=v},
-  get analyser(){return analyser},set analyser(v){analyser=v}, get filt(){return filt},set filt(v){filt=v}, get fbins(){return fbins},set fbins(v){fbins=v}, get scrubbing(){return scrubbing},set scrubbing(v){scrubbing=v}, get bus(){return bus},set bus(v){bus=v}, get droneGain(){return droneGain},set droneGain(v){droneGain=v}, get sendIn(){return sendIn},set sendIn(v){sendIn=v}, get noiseBuf(){return noiseBuf},set noiseBuf(v){noiseBuf=v}, get audioEl(){return audioEl},set audioEl(v){audioEl=v}, get elNode(){return elNode},set elNode(v){elNode=v},
-  get objUrl(){return objUrl},set objUrl(v){objUrl=v}, get scrub(){return scrub},set scrub(v){scrub=v}, get scrubFill(){return scrubFill},set scrubFill(v){scrubFill=v}, get scrubThumb(){return scrubThumb},set scrubThumb(v){scrubThumb=v}, get tLabel(){return tLabel},set tLabel(v){tLabel=v}, get scrubFr(){return scrubFr},set scrubFr(v){scrubFr=v}, get lastSeek(){return lastSeek},set lastSeek(v){lastSeek=v}, get elErr(){return elErr},set elErr(v){elErr=v}};
+export const __dbg={cap, ensureAudio, pluck, player, mmss, pDur, pPos, pIsPlaying, pPlay, pPause,
+  pSeek, syncPlayBtn, showScrub, scrubAt, scrubEnd, fileReady, prepElement, showElError, useElement, DECODE_MAX_SEC,
+  DECODE_MAX_BYTES, decodeFile, showScrubIdle, scrubFollow, get ac(){return ac},set ac(v){ac=v}, get master(){return master},set master(v){master=v}, get analyser(){return analyser},set analyser(v){analyser=v}, get fbins(){return fbins},set fbins(v){fbins=v}, get scrubbing(){return scrubbing},set scrubbing(v){scrubbing=v}, get bus(){return bus},set bus(v){bus=v},
+  get audioEl(){return audioEl},set audioEl(v){audioEl=v}, get elNode(){return elNode},set elNode(v){elNode=v}, get objUrl(){return objUrl},set objUrl(v){objUrl=v}, get scrub(){return scrub},set scrub(v){scrub=v}, get scrubFill(){return scrubFill},set scrubFill(v){scrubFill=v}, get scrubThumb(){return scrubThumb},set scrubThumb(v){scrubThumb=v}, get tLabel(){return tLabel},set tLabel(v){tLabel=v}, get scrubFr(){return scrubFr},set scrubFr(v){scrubFr=v}, get lastSeek(){return lastSeek},set lastSeek(v){lastSeek=v}, get elErr(){return elErr},set elErr(v){elErr=v}};
