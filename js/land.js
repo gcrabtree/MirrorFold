@@ -1,7 +1,7 @@
 /* The land at run time: its noise table, height, programs, drawing and controls. */
 import { cam } from "./camera.js";
 import { clock } from "./clock.js";
-import { $, gl, toast } from "./dom.js";
+import { $, canvas, gl, toast } from "./dom.js";
 import { LAND_PRE_MAIN, LFREQ, LPERIOD } from "./land-shader.js";
 import { LK, landSrc } from "./landscapes.js";
 import { setPal } from "./palettes.js";
@@ -9,7 +9,9 @@ import { bindTex, link, linkEnd, linkReady, linkStart, passTo } from "./programs
 import { camArr } from "./render.js";
 import { mirrors, sel } from "./state.js";
 import { freeT, landQ, tA, target } from "./targets.js";
+import { stereo } from "./vr.js";
 export let tL=null,tC=null,tLP=null; /* the land's own picture when it is over a world, that picture laid over the world, and the coarse first pass */
+export let landEye=0.002;             /* VR viewer: half the distance between the eyes, in the land's units. It follows the height above the ground, as the worlds' follows the distance to the nearest surface */
 export let landClear=0.11;           /* how high above the ground the camera flies */
 export function landClimb(d){landClear=Math.max(0.035,Math.min(1.5,landClear+d));}
 export function landFreeTargets(){freeT(tL);freeT(tC);freeT(tLP);tL=tC=tLP=null;}
@@ -23,8 +25,11 @@ export function landMixed(){if(!tC)tC=target(tA.w,tA.h);return tC;}
 export let landMode=0, landKind=0, landTint=0, landFx=0, pLand=null, pMix=null;
 let pLandPre=null, landTex=null;
 
-const FS_MIX="precision highp float;varying vec2 v;uniform sampler2D uT,uL;void main(){vec4 L=texture2D(uL,v);gl_FragColor=vec4(mix(texture2D(uT,v).rgb,L.rgb,L.a),1.0);}"; /* the land laid over the world */
-const LAND_U=["uX","uRes","uTime","uPos","uCam","uFov","uSeg","uSpin","uSky","uSkyT","uSun","uSunCol","uCi","uCf","uLi","uLf","uDa","uDb","uPa","uPb","uPc","uPd","uHue","uTint","uN","uPre","uPreRes","uK"];
+/* the land laid over the world. In the VR viewer the land's fourth number is 0 for no land and, from a half up, land with
+   its depth in the upper half; the picture that leaves here carries the depth of whichever is seen, as the world's does. */
+const FS_MIX="precision highp float;varying vec2 v;uniform sampler2D uT,uL;uniform float uVr;void main(){vec4 L=texture2D(uL,v),T=texture2D(uT,v);"+
+  "if(uVr>0.5){float k=smoothstep(0.2,0.3,L.a);gl_FragColor=vec4(mix(T.rgb,L.rgb,k),mix(T.a,max(L.a-0.5,0.0)*2.0,k));}else gl_FragColor=vec4(mix(T.rgb,L.rgb,L.a),1.0);}";
+const LAND_U=["uX","uRes","uTime","uPos","uCam","uFov","uSeg","uSpin","uSky","uSkyT","uSun","uSunCol","uCi","uCf","uLi","uLf","uDa","uDb","uPa","uPb","uPc","uPd","uHue","uTint","uN","uPre","uPreRes","uK","uVr"];
 /* the table of random numbers, made the same way every time */
 const LTAB=new Uint8Array(65536);
 export function landHash(ix,iy){return LTAB[(ix&255)+256*(iy&255)]/255;}
@@ -79,7 +84,7 @@ export function landFinish(k){
   var j=pLandJ[k],c;
   if(pLandK[k])return true;
   pLandJ[k]=null;
-  try{if(!j)j=landJobs(k);c=[linkEnd(j[0],LAND_U),j[1]?linkEnd(j[1],LAND_U):null];if(!pMix)pMix=link(FS_MIX,["uT","uL"]);}catch(e){return false;}
+  try{if(!j)j=landJobs(k);c=[linkEnd(j[0],LAND_U),j[1]?linkEnd(j[1],LAND_U):null];if(!pMix)pMix=link(FS_MIX,["uT","uL","uVr"]);}catch(e){return false;}
   pLandK[k]=c;
   landXTab(LK[k]);
   if(landTex)return true;
@@ -99,7 +104,7 @@ function landBuild(){ /* the landscape in use: made the first time the land is t
 /* draw the land into dst. "over" leaves the sky clear (alpha 0) and lets lakes mirror the world in tA. */
 const LP_CI=new Float32Array(26),LP_CF=new Float32Array(26),LP_LI=new Float32Array(12),LP_LF=new Float32Array(12);
 export function landPass(dst,over,fov,hue){
-  var pw=Math.ceil(dst.w/8),ph=Math.ceil(dst.h/8),k,tt,wrap=function(v){return v-256*Math.floor(v/256)};
+  var pw=Math.ceil(dst.w/8),ph=Math.ceil(dst.h/8),vrPx=0.000162*canvas.clientWidth/dst.w,k,tt,wrap=function(v){return v-256*Math.floor(v/256)};
   if(!tLP||tLP.w!==pw||tLP.h!==ph){freeT(tLP);tLP=target(pw,ph);}
   /* the camera's place in each noise layer and each grid of things, split into a whole number and a remainder so the shader loses nothing */
   var ci=LP_CI,cf=LP_CF,li=LP_LI,lf=LP_LF,px=lpos[0]*LFREQ,pz=lpos[2]*LFREQ; /* kept between frames, so nothing is left for the browser to clear up */
@@ -116,6 +121,7 @@ export function landPass(dst,over,fov,hue){
     setPal(U);
     gl.uniform1f(U.uHue,hue);gl.uniform1f(U.uTint,landTint);
     gl.uniform3fv(U.uSun,LK[landKind].sun);gl.uniform3fv(U.uSunCol,LK[landKind].sunCol);
+    gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrPx/0.039,landEye); /* VR viewer: the same lens numbers as the worlds get (see drawScene), for this picture's size, and half the eye spacing */
     gl.uniform1i(U.uX,7);gl.uniform1i(U.uN,4);gl.uniform1i(U.uPre,5);gl.uniform1i(U.uSkyT,6);gl.uniform2f(U.uPreRes,pw,ph);gl.uniform1f(U.uK,8);
   };
   camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];
@@ -154,6 +160,7 @@ export function moveLand(fr){
   lwant+=landClear;
   lpos[1]+=(lwant-lpos[1])*Math.min(1,dt*(lwant>lpos[1]?3:0.5));
   lpos[1]=Math.max(lpos[1],landFloor(lpos[0],lpos[2])+0.035);
+  landEye+=(0.021*Math.max(0.035,lpos[1]-landFloor(lpos[0],lpos[2]))-landEye)*(1-Math.exp(-dt*1.5));
   var xf=LK[landKind].extra; /* keep out of arches and other free-standing shapes: step back along the way out */
   if(xf){
     var xd=xf(lpos[0],lpos[1],lpos[2]);
@@ -175,4 +182,4 @@ export function init(){
 export const __dbg={landClimb, landFreeTargets, landLayer, landMixed, FS_MIX, LAND_U, LTAB, landHash, landH, landFloor,
   LAYERS, pLandK, pLandJ, landJobs, landStart, landReady, landFinish, lpos, lvel, lhead, landXTab, landBuild, LP_CI, LP_CF, LP_LI,
   LP_LF, landPass, setLand, setLandKind, setLandTint, setLandFx, moveLand, get tL(){return tL},set tL(v){tL=v}, get tC(){return tC},set tC(v){tC=v}, get tLP(){return tLP},set tLP(v){tLP=v},
-  get landClear(){return landClear},set landClear(v){landClear=v}, get landMode(){return landMode},set landMode(v){landMode=v}, get landKind(){return landKind},set landKind(v){landKind=v}, get landTint(){return landTint},set landTint(v){landTint=v}, get landFx(){return landFx},set landFx(v){landFx=v}, get pLand(){return pLand},set pLand(v){pLand=v}, get pMix(){return pMix},set pMix(v){pMix=v}, get pLandPre(){return pLandPre},set pLandPre(v){pLandPre=v}, get landTex(){return landTex},set landTex(v){landTex=v}};
+  get landEye(){return landEye},set landEye(v){landEye=v}, get landClear(){return landClear},set landClear(v){landClear=v}, get landMode(){return landMode},set landMode(v){landMode=v}, get landKind(){return landKind},set landKind(v){landKind=v}, get landTint(){return landTint},set landTint(v){landTint=v}, get landFx(){return landFx},set landFx(v){landFx=v}, get pLand(){return pLand},set pLand(v){pLand=v}, get pMix(){return pMix},set pMix(v){pMix=v}, get pLandPre(){return pLandPre},set pLandPre(v){pLandPre=v}, get landTex(){return landTex},set landTex(v){landTex=v}};

@@ -78,7 +78,7 @@ export function fragSource(w){
 "  return c*(1.0+0.5*uBeat)+pal(uHue+0.3)*0.2*uMid*exp(-0.02*sn);",
 "}"]:[],[
 "void main(){",
-"  if(uLandOn>0.5&&texture2D(uLandT,gl_FragCoord.xy/uRes).a>0.995){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* the land covers this pixel: nothing to draw */
+"  if(uLandOn>0.5&&texture2D(uLandT,gl_FragCoord.xy/uRes).a>(uVr.x>0.5?0.3:0.995)){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* the land covers this pixel: nothing to draw */
 "  vec2 fc=gl_FragCoord.xy+uJit;", /* Hold still shifts the rays by part of a pixel, a different part each frame, and the frames are averaged */
 "  vec2 uv=(2.0*fc-uRes)/sqrt(uRes.x*uRes.y);",
 "  vec2 eo=vec2(0.0);float fov=uFov;",

@@ -13,16 +13,27 @@ export const LFREQ=0.35,LPERIOD=256/LFREQ;
    and any free-standing shapes. landSrc() puts one together. */
 export const LAND_T=[
 "precision highp float;",
-"uniform vec2 uRes;uniform float uTime,uHue,uTint,uFov,uSeg,uSpin,uSky;uniform vec3 uPos,uSun,uSunCol,uPa,uPb,uPc,uPd;uniform mat3 uCam;uniform sampler2D uSkyT;",
+"uniform vec2 uRes;uniform float uTime,uHue,uTint,uFov,uSeg,uSpin,uSky;uniform vec3 uPos,uSun,uSunCol,uPa,uPb,uPc,uPd;uniform mat3 uCam;uniform sampler2D uSkyT;uniform vec4 uVr;",
 "uniform vec2 uCi[13],uCf[13],uLi[6],uLf[6],uPreRes;uniform vec4 uDa,uDb;uniform sampler2D uN,uPre,uX;uniform float uK;", /* where the camera sits in each noise layer, worked out exactly in JavaScript */
 "@CONST",
 "vec3 gTop,gLow,gSun,gHaze,gAmb;", /* sky, sun and haze colours, set once in main: natural, or taken from the palette */
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* the direction a pixel looks in: the same lens and the same mirrors as the worlds use, so the two line up */
+"vec2 gEo;float gR2,gPix;", /* set by ray: where this pixel's eye is beside the camera (VR viewer), how far off the lens's middle the pixel is (squared), and the tangent of the angle one pixel covers here */
 "vec3 ray(vec2 fc){",
-"  vec2 uv=(2.0*fc-uRes)/sqrt(uRes.x*uRes.y);",
-"  if(uSeg>0.5){float r=length(uv),seg=6.2831853/uSeg,a0=atan(uv.y,uv.x)+uSpin,a=abs(a0-floor(a0/seg)*seg-0.5*seg);uv=r*vec2(cos(a),sin(a));}",
-"  return normalize(uCam*vec3(uv,uFov));",
+"  vec2 uv=(2.0*fc-uRes)/sqrt(uRes.x*uRes.y);float fov=uFov;gEo=vec2(0.0);gPix=2.0/(sqrt(uRes.x*uRes.y)*uFov);",
+"  if(uVr.x>0.5){", /* VR viewer: one picture per eye, each ray bent the way the viewer's lens will bend it back (see the scene shader) */
+"    float sd=fc.x<0.5*uRes.x?-1.0:1.0;vec2 q=(fc-vec2(0.5*uRes.x+sd*uVr.y,0.5*uRes.y))*uVr.z;float q2=dot(q,q);",
+"    uv=q*(1.0+0.34*q2+0.55*q2*q2);gEo=vec2(sd*uVr.w,0.0);fov=1.0;gPix=uVr.z*(1.0+1.02*q2+2.75*q2*q2);",
+"  }",
+"  gR2=dot(uv,uv);",
+"  if(uSeg>0.5){",
+"    float r=length(uv),seg=6.2831853/uSeg,a0=atan(uv.y,uv.x)+uSpin,kq=floor(a0/seg),a=a0-kq*seg-0.5*seg,ta=uSpin-kq*seg-0.5*seg;",
+"    if(a<0.0){ta=-ta;gEo.y=-gEo.y;}", /* the eye's place gets the same turn or flip as the ray */
+"    gEo=vec2(cos(ta)*gEo.x-sin(ta)*gEo.y,sin(ta)*gEo.x+cos(ta)*gEo.y);",
+"    a=abs(a);uv=r*vec2(cos(a),sin(a));",
+"  }",
+"  return normalize(uCam*vec3(uv,fov));",
 "}",
 /* Random numbers come from a 256 by 256 table held in a texture. Each texel also carries its three neighbours,
    so one read gives all four corners that a noise value is blended from. JavaScript reads the same table. */
@@ -155,7 +166,8 @@ export const LAND_T=[
 "@GROUND",
 "@XCOL",
 "void main(){",
-"  vec3 ro=vec3(0.0,uPos.y,0.0),rd=ray(gl_FragCoord.xy);float alpha=1.0;", /* everything is measured from the camera */
+"  vec3 rd=ray(gl_FragCoord.xy),ro=vec3(0.0,uPos.y,0.0)+uCam*vec3(gEo,0.0);float alpha=1.0,tz=-1.0;", /* everything is measured from the camera; tz is how far the first thing seen is */
+"  if(uVr.x>0.5&&gR2>3.24){gl_FragColor=vec4(0.0);return;}", /* outside what the lens shows */
 "@COLS",
 "  if(uTint>0.5){", /* a palette colours the sky, the sun and the haze */
 "    vec3 pa=pal(uHue+0.55),pb=pal(uHue+0.2),pc=pal(uHue);",
@@ -179,14 +191,14 @@ export const LAND_T=[
 "      vec3 fc=mix(gHaze,gSun,0.45*pow(max(dot(rd,uSun),0.0),5.0));",
 "      col=k*((body*(1.0-fr)+WGLOW+gSun*sh*pow(max(dot(rr,uSun),0.0),300.0)*1.5)*(1.0-fo)+WFOAM*fo)+(1.0-k)*fc;",
 "      wgt=vec3(k*fr*(1.0-fo));",
-"      ro=p+vec3(0.0,0.002,0.0);rd=rr;alpha=mix(1.0,exp(-0.03*tw),0.8*uSky);",
+"      ro=p+vec3(0.0,0.002,0.0);rd=rr;alpha=mix(1.0,exp(-0.03*tw),0.8*uSky);tz=tw;",
 "    }else{",
 "      if(t>0.0){",
 "#ifdef EXTRAS",
 "        if(gX>0.5)col+=wgt*xcol(ro+rd*t,t,rd);else",
 "#endif",
-"        col+=wgt*ground(ro+rd*t,t,rd,float(b));if(b==0)alpha=mix(1.0,exp(-0.03*t),0.8*uSky);}", /* over a world, far land thins into it */
-"      else if(uSky<0.5)col+=wgt*haze(sky(rd),90.0*(1.0-smoothstep(0.0,0.12,rd.y)),rd);",
+"        col+=wgt*ground(ro+rd*t,t,rd,float(b));if(b==0){alpha=mix(1.0,exp(-0.03*t),0.8*uSky);tz=t;}}", /* over a world, far land thins into it */
+"      else if(uSky<0.5||(b==1&&uVr.x>0.5))col+=wgt*haze(sky(rd),90.0*(1.0-smoothstep(0.0,0.12,rd.y)),rd);", /* VR viewer: a lake mirrors the sky even over a world; where the world would land on the screen is different for each eye */
 "      else if(b==0)alpha=0.0;", /* over a world, the sky is left clear for the world to show through */
 "      else{vec3 cs=rd*uCam;vec2 st=(cs.xy/max(cs.z,0.05)*uFov*sqrt(uRes.x*uRes.y)+uRes)/(2.0*uRes);col+=wgt*pow(texture2D(uSkyT,clamp(st,0.0,1.0)).rgb,vec3(2.2));}", /* a lake mirrors the world: the last frame of it, looked up where the mirrored ray would land on screen */
 "      break;",
@@ -196,6 +208,11 @@ export const LAND_T=[
 "  col=pow(clamp(col,0.0,1.0),vec3(0.4545));",
 "  col=mix(vec3(dot(col,vec3(0.3,0.59,0.11))),col,1.12);",
 "  col+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))))-0.5)/255.0;", /* a fixed fine grain of half a step of brightness, so smooth dark gradients do not show as bands */
+"  if(uVr.x>0.5){", /* VR viewer: the fourth number carries the depth of what is seen (as in the scene shader, eta/0.064, which must stay the same number as VR_EMAX in shaders.js). Over a world it must also say where the land is: 0 for none, and from a half up for land, the depth in the upper half */
+"    float ea=tz>0.0?clamp(uVr.w*sqrt(1.0+gR2)/tz/0.064,0.0,1.0):0.0;",
+"    col*=1.0-smoothstep(1.5,1.8,sqrt(gR2));",
+"    gl_FragColor=uSky>0.5?vec4(col*step(0.001,alpha),alpha>0.0?0.5+0.5*ea:0.0):vec4(col,ea);return;",
+"  }",
 "  gl_FragColor=vec4(col*step(0.001,alpha),alpha);",
 "}"];
 export const ALPS_SHAPE=[
@@ -344,8 +361,8 @@ export const ALPS_COLS=[
 ].join("\n");
 export const LAND_PRE_MAIN=[
 "void main(){",
-"  vec3 ro=vec3(0.0,uPos.y,0.0),rd=ray(gl_FragCoord.xy*uK);",
-"  float r=uK*1.9/(sqrt(uRes.x*uRes.y)*uFov),t=0.02,tp=0.02,h=1.0;", /* the cone's half-width for each unit of distance */
+"  vec3 rd=ray(gl_FragCoord.xy*uK),ro=vec3(0.0,uPos.y,0.0)+uCam*vec3(gEo,0.0);",
+"  float r=uK*0.95*gPix,t=0.02,tp=0.02,h=1.0;", /* the cone's half-width for each unit of distance */
 "  for(int i=0;i<90;i++){",
 "    vec3 p=ro+rd*t;",
 "    float ny=0.45;", /* how much of the height above the land counts as clear distance: less where the land is steep */

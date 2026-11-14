@@ -73,13 +73,14 @@ ALPS_SKY,
 "}",
 /* what a mirror shows along r: the sky, or, over a world, the last frame of it, folded back on itself where r leaves the screen */
 "vec3 mirrorOf(vec3 r){",
-"  if(uSky<0.5)return sky(r);",
+"  if(uSky<0.5||uVr.x>0.5)return sky(r);", /* VR viewer: the sky, since where the world would land on the screen is different for each eye */
 "  vec3 cs=r*uCam;vec2 st=(cs.xy/max(abs(cs.z),0.2)*uFov*sqrt(uRes.x*uRes.y)+uRes)/(2.0*uRes);",
 "  return pow(texture2D(uSkyT,abs(fract(st*0.5)*2.0-1.0)).rgb,vec3(2.2));",
 "}",
 body,
 "void main(){",
-"  vec3 ro=vec3(0.0,uPos.y,0.0),rd=ray(gl_FragCoord.xy);float alpha=1.0;",
+"  vec3 rd=ray(gl_FragCoord.xy),ro=vec3(0.0,uPos.y,0.0)+uCam*vec3(gEo,0.0);float alpha=1.0,tz=-1.0;",
+"  if(uVr.x>0.5&&gR2>3.24){gl_FragColor=vec4(0.0);return;}", /* outside what the lens shows */
 cols,
 "  if(uTint>0.5){",
 "    vec3 pa=pal(uHue+0.55),pb=pal(uHue+0.2),pc=pal(uHue);",
@@ -87,13 +88,18 @@ cols,
 "  }",
 "  vec3 col=vec3(0.0);float t=-1.0;",
 hit, /* sets col and t (the distance, or -1 for the sky) */
-"  if(t>0.0)alpha=mix(1.0,exp(-0.03*t),0.8*uSky);",
+"  tz=t;if(t>0.0)alpha=mix(1.0,exp(-0.03*t),0.8*uSky);",
 "  else if(uSky<0.5)col=haze(sky(rd),90.0*(1.0-smoothstep(0.0,0.12,rd.y)),rd);",
 "  else alpha=0.0;",
 "  col=col*(2.51*col+0.03)/(col*(2.43*col+0.59)+0.14);",
 "  col=pow(clamp(col,0.0,1.0),vec3(0.4545));",
 "  col=mix(vec3(dot(col,vec3(0.3,0.59,0.11))),col,1.12);",
 "  col+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))))-0.5)/255.0;", /* a fixed fine grain of half a step of brightness, so smooth dark gradients do not show as bands */
+"  if(uVr.x>0.5){", /* VR viewer: the fourth number carries the depth of what is seen (as in the scene shader, eta/0.064, which must stay the same number as VR_EMAX in shaders.js). Over a world it must also say where the land is: 0 for none, and from a half up for land, the depth in the upper half */
+"    float ea=tz>0.0?clamp(uVr.w*sqrt(1.0+gR2)/tz/0.064,0.0,1.0):0.0;",
+"    col*=1.0-smoothstep(1.5,1.8,sqrt(gR2));",
+"    gl_FragColor=uSky>0.5?vec4(col*step(0.001,alpha),alpha>0.0?0.5+0.5*ea:0.0):vec4(col,ea);return;",
+"  }",
 "  gl_FragColor=vec4(col*step(0.001,alpha),alpha);",
 "}"].join("\n");
 }
@@ -160,7 +166,7 @@ function citySrc(){return landOwn([
 "}",
 "vec3 shade(vec3 p,vec3 rd,float t){", /* p in block units; t the distance in ordinary units */
 "  vec3 n=hN;float mat=hMat;vec2 c=hC,f=p.xz-c;block(c);",
-"  float px=t*S*2.0/(uFov*sqrt(uRes.x*uRes.y));", /* how wide a pixel is here, to fade out patterns finer than that */
+"  float px=t*S*gPix;", /* how wide a pixel is here, to fade out patterns finer than that */
 "  vec3 col;float gloss=0.0;",
 "  if(mat<0.5){", /* the ground: road, pavement or park */
 "    vec2 e=min(f,1.0-f);float d=min(e.x,e.y),crs=max(e.x,e.y);",

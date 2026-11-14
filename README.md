@@ -211,8 +211,7 @@ You fly over the land the same way as through a world: the stick, **W A S D**, *
 
 **Land colours** decides what the palette does: nothing, tint the sky, sun and haze, or recolour the land and water as well. Mirrors apply to the land. **Effects on** decides what the motion, filter and overlay act on when the land is over a world.
 
-The land is the heaviest thing Mirrorfold draws: about three times the work of a world. With **Detail auto**, when the pictures come too slowly the sharpness drops to 60% first, then the land alone is drawn smaller (70%, then 50% of the picture's size) and spread out, so the land goes soft while the world behind stays as sharp as it was, and only then does the whole picture go on down to 35%. **Detail fast** draws the land at 70%. **Stats** shows the land's size when it is reduced. It is switched off in the VR viewer.
-
+The land is the heaviest thing Mirrorfold draws: about three times the work of a world. With **Detail auto**, when the pictures come too slowly the sharpness drops to 60% first, then the land alone is drawn smaller (70%, then 50% of the picture's size) and spread out, so the land goes soft while the world behind stays as sharp as it was, and only then does the whole picture go on down to 35%. **Detail fast** draws the land at 70%. **Stats** shows the land's size when it is reduced. 
 Journey templates have a **Land** entry: leave the land as you set it, keep it off, or change it at random among the landscapes you tick, each alone or over the world. The built-in template **Landscapes** does this.
 
 ## On a TV
@@ -240,7 +239,8 @@ While the mode is on:
 - **Overlays have depth of their own.** They float in front of the nearest surface and swell toward you on the beat. The ring and the scope are pushed nearer and farther along their length by the sound's wave. Spectrum, Spokes, Rings and Spiral are a cone, far at the middle and near at the rim, so spreading rings come toward you. Each of Orbit's lights swings nearer and farther as it goes round.
 - A filter that came in a pack with its own code is not drawn: its code works on the flat screen.
 - CRT and Halftone draw their pattern on the screen, not in the world, so the pattern sits at no particular depth.
-- The land and a video shown flat are off, as before. The slow automatic roll is off.
+- **The land works**, alone and over a world, with every landscape, and the effects act on it like on a world. Its eye spacing follows your height above the ground. Three things differ from the ordinary view: lakes and the mirror landscapes (steel ball, city) reflect the sky and not the world; far land does not thin into the world behind it; and **Effects on** is always everything. The land is the heaviest thing drawn, and the viewer draws it for two eyes, so expect it to be slow on a phone.
+- A video shown flat is off, as before. The slow automatic roll is off.
 
 If an effect is hard on the eyes in your viewer, **FX clean** with motion, filter and overlay set to none gives the plain picture back.
 - Mirrors work, and both eyes see the same mirrored scene.

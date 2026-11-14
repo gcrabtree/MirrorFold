@@ -28,9 +28,14 @@ export function drawScene(fr){
   var fx=FX[sel.fi],U=w.U,wHue=w.hue;
   if(stillN){bt=0;mp=0;hp=0;} /* while the picture is being sharpened the scene takes nothing from the sound, or the frames would not match */
   var fovNow=calm?1.15:(1.15-0.13*spN-0.05*bt-0.25*cam.boost+0.025*Math.sin(clock.time*0.4));
+  /* VR viewer geometry, from the Cardboard viewer's published numbers: lenses 64 mm apart and 39 mm from the screen.
+     The browser does not report the screen's physical size, so one CSS pixel is taken as 0.162 mm, which is close on current phones.
+     Worked out before anything is drawn, since the effect passes need the numbers whatever the scene is. */
+  var vrPx=0.000162*canvas.clientWidth/tA.w,vrTan=vrPx/0.039;
+  fr.vrOff=0.032/vrPx;fr.vrTan=vrTan;
   /* 0. the land, if it is on. Alone, it is the whole scene. Over a world, it is drawn first into its own picture with a
-     clear sky, so the world need only be drawn where the land leaves it showing. Not in the VR viewer. */
-  var landOn=landMode>0&&!stereo&&!!pLand,landOver=landOn&&landMode===2,src=tA;
+     clear sky, so the world need only be drawn where the land leaves it showing. */
+  var landOn=landMode>0&&!!pLand,landOver=landOn&&landMode===2,src=tA;
   if(landOver){landPass(landLayer(),true,fovNow,clock.hueT+wHue);}
   else if(landOn&&landQ<1){ /* the land alone, drawn small and then spread over the whole picture */
     landPass(landLayer(),false,fovNow,clock.hueT+wHue);
@@ -49,12 +54,8 @@ export function drawScene(fr){
   gl.uniform1f(U.uHue,clock.hueT+wHue);
   gl.uniform1f(U.uSpin,clock.spin);
   gl.uniform1f(U.uFade,1);gl.uniform2f(U.uJit,jit[0],jit[1]);
-  /* VR viewer geometry, from the Cardboard viewer's published numbers: lenses 64 mm apart and 39 mm from the screen.
-     The browser does not report the screen's physical size, so one CSS pixel is taken as 0.162 mm, which is close on current phones.
-     Eye spacing follows the distance to the nearest surface, so the world always feels a similar size. */
-  var vrPx=0.000162*canvas.clientWidth/tA.w,vrTan=vrPx/0.039;
+  /* VR viewer: eye spacing follows the distance to the nearest surface, so the world always feels a similar size */
   vrEyeStep(dist,dt);
-  fr.vrOff=0.032/vrPx;fr.vrTan=vrTan;
   gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrTan,vrEye);
   gl.uniform1f(U.uPix,stereo?vrTan:2/(Math.sqrt(tA.w*tA.h)*1.15));
   gl.uniform1f(U.uFov,fovNow);
@@ -69,7 +70,8 @@ export function drawScene(fr){
   gl.drawArrays(gl.TRIANGLES,0,3);
   }
   /* which picture the effects work on: the land laid over the world, the world alone, or the land alone */
-  if(landOver&&landFx===0){passTo(landMixed(),pMix);bindTex(0,tA.t);bindTex(1,tL.t);gl.uniform1i(pMix.U.uT,0);gl.uniform1i(pMix.U.uL,1);gl.drawArrays(gl.TRIANGLES,0,3);src=tC;}
+  /* VR viewer: the effects are always on everything, since they need one picture that carries the depth of all that is seen */
+  if(landOver&&(landFx===0||stereo)){passTo(landMixed(),pMix);bindTex(0,tA.t);bindTex(1,tL.t);gl.uniform1i(pMix.U.uT,0);gl.uniform1i(pMix.U.uL,1);gl.uniform1f(pMix.U.uVr,stereo?1:0);gl.drawArrays(gl.TRIANGLES,0,3);src=tC;}
   else if(landOver&&landFx===2)src=tL;
   fr.fx=fx;fr.wHue=wHue;fr.landOn=landOn;fr.landOver=landOver;fr.src=src;
 }
@@ -122,7 +124,7 @@ export function drawTrails(fr){
 /* Step 3, bloom: the bright parts, shrunk and blurred. */
 export function drawBloom(fr){
   var bt=fr.bt,fx=fr.fx,tc=fr.tc,landOn=fr.landOn,landOver=fr.landOver;
-  var landLit=landOn&&!(landOver&&landFx===1)?0.3:1; /* glow and colour fringing are made for dark worlds; on a daylit land they wash the sky out, so they are turned down */
+  var landLit=landOn&&!(landOver&&landFx===1&&!stereo)?0.3:1; /* glow and colour fringing are made for dark worlds; on a daylit land they wash the sky out, so they are turned down */
   var bloom=fx.bloom*(1+0.7*bt)*landLit+0.5*tr.warp;
   if(bloom>0){
     passTo(tB[0],pDown);bindTex(0,tc.t);gl.uniform1i(pDown.U.uT,0);gl.uniform2f(pDown.U.uPx,1/tc.w,1/tc.h);gl.drawArrays(gl.TRIANGLES,0,3);
@@ -145,7 +147,7 @@ export function drawFinal(fr){
   passTo(slow?tF[flip.fcur]:null,PF);bindTex(0,tc.t);bindTex(1,tB[0].t);
   bindTex(3,slow?tF[1-flip.fcur].t:tc.t);gl.uniform1i(FU.uPrev,3);gl.uniform1f(FU.uKeep,slow?Math.exp(-dt/0.25):0);
   gl.uniform1i(FU.uT,0);gl.uniform1i(FU.uB,1);
-  gl.uniform1f(FU.uLandMix,landOver?landFx:0);if(landOver&&landFx>0){bindTex(6,tL.t);bindTex(7,tA.t);gl.uniform1i(FU.uLandT,6);gl.uniform1i(FU.uSkyT,7);}
+  gl.uniform1f(FU.uLandMix,landOver&&!stereo?landFx:0);if(landOver&&landFx>0&&!stereo){bindTex(6,tL.t);bindTex(7,tA.t);gl.uniform1i(FU.uLandT,6);gl.uniform1i(FU.uSkyT,7);}
   var ca=(fx.ca*(1+1.5*spN)+(sel.fi===2?0:0.006*hp))*landLit+0.012*cam.boost+(lk.ca||0);
   /* VR viewer: 1 when nothing bends the picture, and it is shown as it is; 2 when a filter, a transition or colour fringing
      does, and the pass works on the middle view and carries depth */
