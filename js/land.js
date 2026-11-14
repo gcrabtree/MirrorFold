@@ -5,7 +5,7 @@ import { $, gl, toast } from "./dom.js";
 import { LAND_PRE_MAIN, LFREQ, LPERIOD } from "./land-shader.js";
 import { LK, landSrc } from "./landscapes.js";
 import { setPal } from "./palettes.js";
-import { bindTex, link, passTo } from "./programs.js";
+import { bindTex, link, linkEnd, linkReady, linkStart, passTo } from "./programs.js";
 import { camArr } from "./render.js";
 import { mirrors, sel } from "./state.js";
 import { freeT, landQ, tA, target } from "./targets.js";
@@ -45,6 +45,7 @@ export function landH(x,z,N){
 export function landFloor(x,z){return LK[landKind].h?0:Math.max(landH(x,z,6),LK[landKind].water);}
 const LAYERS=[[240,0],[100,1],[160,1],[30,1],[230,0],[320,1]];
 const pLandK=[];
+const pLandJ=[]; /* landscapes started ahead of need and not yet finished */
 export const lpos=[412,1,300];
 export const lvel=[0,0];
 export const lhead=[0.56,0.83];
@@ -64,12 +65,23 @@ function landXTab(K){
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,256,0,gl.RGBA,gl.UNSIGNED_BYTE,px);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
 }
-function landBuild(){ /* compiled the first time the land is turned on; false if this device cannot */
-  var c=pLandK[landKind],src;
-  if(c){pLand=c[0];pLandPre=c[1];return true;}
-  try{if(LK[landKind].src)c=[link(LK[landKind].src(),LAND_U),null];else{src=landSrc(landKind);c=[link(src,LAND_U),link(src.slice(0,src.indexOf("/*sky*/"))+LAND_PRE_MAIN,LAND_U)];}if(!pMix)pMix=link(FS_MIX,["uT","uL"]);}catch(e){return false;}
-  pLandK[landKind]=c;pLand=c[0];pLandPre=c[1];
-  landXTab(LK[landKind]);
+/* a landscape's two programs, started but not waited for: the land itself and, where it has one, its coarse first pass */
+function landJobs(k){
+  var src;
+  if(LK[k].src)return [linkStart(LK[k].src()),null];
+  src=landSrc(k);return [linkStart(src),linkStart(src.slice(0,src.indexOf("/*sky*/"))+LAND_PRE_MAIN)];
+}
+/* start on a landscape ahead of need; false if there is nothing to start */
+export function landStart(k){if(pLandK[k]||pLandJ[k])return false;pLandJ[k]=landJobs(k);return true;}
+export function landReady(k){var j=pLandJ[k];return !j||(linkReady(j[0])&&(!j[1]||linkReady(j[1])));}
+/* have a landscape's programs and tables there, finishing one started ahead of need and waiting only for what is left of it; false if this device cannot */
+export function landFinish(k){
+  var j=pLandJ[k],c;
+  if(pLandK[k])return true;
+  pLandJ[k]=null;
+  try{if(!j)j=landJobs(k);c=[linkEnd(j[0],LAND_U),j[1]?linkEnd(j[1],LAND_U):null];if(!pMix)pMix=link(FS_MIX,["uT","uL"]);}catch(e){return false;}
+  pLandK[k]=c;
+  landXTab(LK[k]);
   if(landTex)return true;
   /* each texel holds its own number and those of the three neighbours to its right, above, and above right */
   var px=new Uint8Array(262144),x,y,o;
@@ -79,6 +91,10 @@ function landBuild(){ /* compiled the first time the land is turned on; false if
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,256,0,gl.RGBA,gl.UNSIGNED_BYTE,px);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
   return true;
+}
+function landBuild(){ /* the landscape in use: made the first time the land is turned on, unless it was made ahead of need; false if this device cannot */
+  if(!landFinish(landKind))return false;
+  pLand=pLandK[landKind][0];pLandPre=pLandK[landKind][1];return true;
 }
 /* draw the land into dst. "over" leaves the sky clear (alpha 0) and lets lakes mirror the world in tA. */
 const LP_CI=new Float32Array(26),LP_CF=new Float32Array(26),LP_LI=new Float32Array(12),LP_LF=new Float32Array(12);
@@ -157,6 +173,6 @@ export function init(){
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={landClimb, landFreeTargets, landLayer, landMixed, FS_MIX, LAND_U, LTAB, landHash, landH, landFloor,
-  LAYERS, pLandK, lpos, lvel, lhead, landXTab, landBuild, LP_CI, LP_CF, LP_LI,
+  LAYERS, pLandK, pLandJ, landJobs, landStart, landReady, landFinish, lpos, lvel, lhead, landXTab, landBuild, LP_CI, LP_CF, LP_LI,
   LP_LF, landPass, setLand, setLandKind, setLandTint, setLandFx, moveLand, get tL(){return tL},set tL(v){tL=v}, get tC(){return tC},set tC(v){tC=v}, get tLP(){return tLP},set tLP(v){tLP=v},
   get landClear(){return landClear},set landClear(v){landClear=v}, get landMode(){return landMode},set landMode(v){landMode=v}, get landKind(){return landKind},set landKind(v){landKind=v}, get landTint(){return landTint},set landTint(v){landTint=v}, get landFx(){return landFx},set landFx(v){landFx=v}, get pLand(){return pLand},set pLand(v){pLand=v}, get pMix(){return pMix},set pMix(v){pMix=v}, get pLandPre(){return pLandPre},set pLandPre(v){pLandPre=v}, get landTex(){return landTex},set landTex(v){landTex=v}};

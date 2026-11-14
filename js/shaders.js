@@ -108,7 +108,7 @@ export function fragSource(w){
 "#ifdef VOLUME",
 "  vec3 rd=normalize(uCam*vec3(uv,fov));",
 "  vec3 col=vec3(0.0);",
-"  float t=0.04+0.05*fract(sin(dot(fc,vec2(12.9898,78.233)))*43758.5453);",
+"  float t=0.04+VSTEP*fract(52.9829189*fract(dot(fc,vec2(0.06711056,0.00583715)))+0.4*fract(sin(dot(fc,vec2(12.9898,78.233)))*43758.5453));", /* each ray starts a different part of one step in, so the steps show as fine grain and not as layers (an even pattern, roughened a little so that it does not show as hatching); Hold still moves fc, and the grain averages away */
 "  float fall=1.0;",
 "  for(int i=0;i<VSTEPS;i++){",
 "    float a=dens(ro+rd*t);",
@@ -173,6 +173,7 @@ export function fragSource(w){
 "  col=col*col*(3.0-2.0*col);",
 "  col=pow(col,vec3(1.15));",
 "  col=pow(col,vec3(0.4545))*uFade;",
+"  col+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))))-0.5)/255.0;", /* a fixed fine grain of half a step of brightness, so smooth dark gradients do not show as bands */
 "  gl_FragColor=vec4(col,1.0);",
 "}"])).join("\n");
 }
@@ -337,6 +338,7 @@ export const FS_FINAL=[
 "  col=mix(col,uTint,max(tintAmt,diss))*mask;",
 "  if(uLandMix>0.5){vec4 L=texture2D(uLandT,v);col=uLandMix<1.5?mix(col,L.rgb,L.a):mix(texture2D(uSkyT,v).rgb,col,L.a);}", /* effects on the sky only: the land goes on top untouched. On the land only: the world shows untouched behind it. */
 "  if(uKeep>0.0)col=mix(col,texture2D(uPrev,v).rgb,uKeep);",
+"  col+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))))-0.5)/255.0;", /* a fixed fine grain of half a step of brightness, so smooth dark gradients do not show as bands */
 "  gl_FragColor=vec4(col,1.0);",
 "}"].join("\n");
 

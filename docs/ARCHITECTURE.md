@@ -95,6 +95,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/still.js` | Hold still: the pause, and averaging shifted frames into a sharp picture while nothing moves |
 | `js/record.js` | Record video: the canvas and the app's own sound into a video file |
 | `js/render.js` | Drawing a frame: `drawScene`, `drawTrails`, `drawBloom`, `drawFinal` |
+| `js/preload.js` | Getting ready ahead of need: the land's and the worlds' programs made one at a time while the pictures go on |
 | `js/loop.js` | `begin` and `frame(now)`, which calls the steps of a frame in order |
 
 **How the modules fit together.** Each file holds function declarations, constants that need nothing from elsewhere, and its own variables. Anything that has to happen when the app starts (building lists, wiring buttons, reading storage, compiling the effect shaders) is in the file's `init()`, and `main.js` calls the `init()`s in a fixed order. Loading a module therefore does nothing by itself, which is why the Node tools can import the cleaners and other pure functions without a page.
@@ -124,6 +125,24 @@ Targets are RGBA8 textures with linear filtering and clamped edges, created by `
 
 Scene shaders are compiled lazily, one program per world, by `build(w)`, and cached on the world object as `w.prog` and `w.U` (uniform locations). The four post programs are compiled once at start.
 
+### Programs made ahead of need
+
+Making a program (compiling and linking a shader) is the slowest single thing the page does: a landscape took from a few seconds to over ten on a user's phone, and the page stood still for all of it, because the land was made when it was first turned on.
+
+`js/programs.js` makes a program in two halves. `linkStart` hands the source to the chip and asks nothing back. `linkEnd` asks whether it worked, which is the call that waits. `linkReady` says whether the chip has finished without waiting, through `KHR_parallel_shader_compile` (`par`). `link` is the two halves together, for the small programs made at start-up.
+
+`js/preload.js` uses that. From start-up, also behind the start card, `preloadFrame` (a step of `frame()`) starts one program, looks each frame whether it is ready, finishes it, and starts the next. The order is `preloadOrder`: the landscape in use, the other landscapes in the order the button goes through them, then the worlds after the one in use. The start card shows how far it has got. A world's unfinished program is `w.job` and a landscape's is in `pLandJ`; `build(w)` and `landFinish(k)` finish one that was started, waiting only for what is left of it, so choosing something that is still being made costs no more than before.
+
+- Without `KHR_parallel_shader_compile` nothing is made ahead, because there is no way to do it without stopping the pictures. Everything is then made when first chosen, as before. Chrome and Edge have it; software rendering in headless Chrome does not, so `tools/check.py` runs the old path.
+- Some chips stop drawing while they make a program even with it. If two gaps of over 0.25 s between pictures are seen while a program is being made after the start card has been left, `preSlow` is set and nothing more is started for the rest of the visit.
+- Nothing is started during Hold still or a recording.
+- `localStorage["mirrorfold-preload"]` is set while this is going on and removed when it ends or on `pagehide`. Found at start-up, it means the last visit ended in the middle, and making things ahead is left out for that one visit.
+- Tested on one desktop chip through `--use-angle=gl`: all 24 programs in about 2 s with no gap over 0.1 s, and choosing lands and worlds while they were still being made gave no error. Not tested on a phone.
+
+### Dither
+
+The scene shader, the land shaders and `FS_FINAL` each end by adding a fixed grain of half a step of brightness (interleaved gradient noise from `gl_FragCoord`, between -0.5/255 and 0.5/255). Every picture in the pipeline is 8 bits a channel, and without it a smooth dark gradient (fog, a cloud world, the inside of the Mandelbrot set) is written as visible bands. The grain does not change from frame to frame, so it does not flicker and does not disturb Hold still.
+
 ### Resolution and the frame-time governor
 
 `resize()` sets the drawing buffer to `cssSize * min(devicePixelRatio, cap) * q`.
@@ -134,7 +153,11 @@ Scene shaders are compiled lazily, one program per world, by `build(w)`, and cac
 | sharp | 1 | 3 | no |
 | fast | 0.5 | 2 | no |
 
-In auto mode, every 30 frames the mean frame time is checked: above 36 ms, `q` is multiplied by 0.9; below 22 ms, by 1.06. What changes is decided by `detailStep` (a pure function, tested in `tools/unit.mjs`). With the land on there is a second number, `landQ` (1, 0.7 or 0.5): the size of the land's own picture beside the whole picture. `landLayer()` makes `tL` that size, `landPass` takes its resolution from the picture it is given, and the land alone is drawn into `tL` and copied up to `tA` when `landQ` is below 1. Going down, `q` goes to 0.6, then `landQ` to 0.7 and 0.5, then `q` on to 0.35; going up, `q` first, and `landQ` only when the mean frame time is under 12 ms. The reason: the land costs about three times a world per pixel (measured in software rendering, 61 ms against 23 ms), and a user's Intel laptop chip took 60 to 75 ms a picture for land over a world at `q` 0.35. Whether this is enough there is not yet known. No single part of the land shader stood out when the shadow, the mirrored pass and the step count were each cut in turn, though the timings were too noisy to rule much out. The policy is to give up frame rate before sharpness. An earlier version started at 0.55 and dropped to 0.3, which users found too blurry.
+In auto mode, every 30 frames the mean frame time is checked: above 36 ms, `q` is multiplied by 0.9; below 22 ms, by 1.06. When to step is decided by `detailNext` and what changes by `detailStep` (both pure functions, tested in `tools/unit.mjs`). A step down takes two slow readings in a row, since one is often the page doing something else. After a step down nothing goes up for 20 s; if that step down undid a step up, the wait doubles, up to 160 s, so a chip near the edge is not shaken back and forth (each change rebuilds every picture, which shows as a hitch). With the land on there is a second number, `landQ` (1, 0.7 or 0.5): the size of the land's own picture beside the whole picture. `landLayer()` makes `tL` that size, `landPass` takes its resolution from the picture it is given, and the land alone is drawn into `tL` and copied up to `tA` when `landQ` is below 1. Going down, `q` goes to 0.6, then `landQ` to 0.7 and 0.5, then `q` on to 0.35; going up, `q` first, and `landQ` only when the mean frame time is under 12 ms. The reason: the land costs about three times a world per pixel (measured in software rendering, 61 ms against 23 ms), and a user's Intel laptop chip took 60 to 75 ms a picture for land over a world at `q` 0.35. Whether this is enough there is not yet known. No single part of the land shader stood out when the shadow, the mirrored pass and the step count were each cut in turn, though the timings were too noisy to rule much out. The policy is to give up frame rate before sharpness. An earlier version started at 0.55 and dropped to 0.3, which users found too blurry.
+
+**Kept between visits.** Each change auto makes is written to `localStorage["mirrorfold-detail"]` as `{q, landQ}` and read back at start-up through `detailSaved`, which ignores anything out of range. Choosing Detail auto again starts it afresh at 0.85.
+
+**A visit that ended while starting.** `localStorage["mirrorfold-load"]` is set at start-up and removed after 600 frames or on `pagehide`. If it is still there at the next start-up, the last visit ended before the pictures were running (most likely the graphics chip or the tab gave up), so `detailLower` takes `q` to 0.7 of what it was (at most 0.6, at least 0.35) and `landQ` to 0.5, and a message says so. Losing the graphics context does the same for the next visit. Auto climbs back if the device can take it. Not tested on a device that really runs out; a page killed by hand in headless Chrome was.
 
 March steps are fixed at compile time: `STEPS` is 96 on touch devices and 120 otherwise; volumetric `VSTEPS` is 44 and 56.
 
@@ -193,7 +216,7 @@ A glowing sphere drawn analytically after the march. `uOrb` is `(position, radiu
 
 ### Volumetric worlds
 
-When `w.volume` is true the shader takes a different branch: a fixed-step march accumulating `pal(...) * VMAP(dens(p))` with a per-step falloff of 0.93 and a hash-jittered start to hide banding. `VMAP` and `VSTEP` are `#define`d by the world.
+When `w.volume` is true the shader takes a different branch: a fixed-step march accumulating `pal(...) * VMAP(dens(p))` with a per-step falloff of 0.93 and a start that is a different part of one step in for each pixel (interleaved gradient noise over the whole of `VSTEP`, with a little plain hash noise added, because the even pattern alone showed as diagonal hatching round the Nebula's stars), so the steps show as fine grain and not as layers. Hold still moves the pixel's position, so the grain averages away. `VMAP` and `VSTEP` are `#define`d by the world.
 
 ### The thrown light
 
@@ -373,7 +396,7 @@ Drawn into the feedback buffer after the composite, so the motion smears them. S
 
 ### Bloom
 
-`FS_DOWN` averages four taps and keeps what is above 0.5; `FS_BLUR` is a 9-tap Gaussian run horizontally then vertically at quarter resolution. Strength is `fx.bloom * (1 + 0.7*bass) + 0.5*warp`.
+`FS_DOWN` averages four taps and keeps what is above 0.5. Each tap sits on a corner between four full-size pixels, so the four together average all sixteen pixels under a quarter-size one: a small bright point cannot be missed in one frame and caught in the next. (Weighting the taps by brightness, as bloom over a wide brightness range needs, was looked at and left out: the pictures here are 8 bits, so nothing is brighter than 1.) `FS_BLUR` is a 9-tap Gaussian run horizontally then vertically at quarter resolution. Strength is `fx.bloom * (1 + 0.7*bass) + 0.5*warp`.
 
 ### Filters (`FS_FINAL`)
 
@@ -643,6 +666,8 @@ Verified in headless Chrome: the VR viewer renders two lens-shaped pictures with
 Not verified, because they need a real device or a human:
 
 - Frame rate on phones. Bulbs, Julia and the Mandelbox worlds are the heaviest.
+- Programs made ahead of need on a phone: how long it takes, and whether the picture keeps moving meanwhile (section 4).
+- The lower start after a visit that ended while starting, on a device that really gives up.
 - Multi-touch gestures. They cannot be simulated; the twist direction may feel reversed.
 - How the built-in music sounds, and how strong each band's reaction should be.
 - The change detector on real songs.

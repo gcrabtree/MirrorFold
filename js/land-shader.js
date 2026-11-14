@@ -195,6 +195,7 @@ export const LAND_T=[
 "  col=col*(2.51*col+0.03)/(col*(2.43*col+0.59)+0.14);", /* film-like roll-off of the bright end */
 "  col=pow(clamp(col,0.0,1.0),vec3(0.4545));",
 "  col=mix(vec3(dot(col,vec3(0.3,0.59,0.11))),col,1.12);",
+"  col+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))))-0.5)/255.0;", /* a fixed fine grain of half a step of brightness, so smooth dark gradients do not show as bands */
 "  gl_FragColor=vec4(col*step(0.001,alpha),alpha);",
 "}"];
 export const ALPS_SHAPE=[

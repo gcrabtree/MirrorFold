@@ -4,7 +4,7 @@ import { move, steering, turn } from "./camera.js";
 import { scene } from "./choose.js";
 import { morphValue, tickClock } from "./clock.js";
 import { morph } from "./controls.js";
-import { $, canvas, errBox } from "./dom.js";
+import { $, canvas, errBox, toast } from "./dom.js";
 import { measure } from "./flight.js";
 import { wakeHud } from "./input.js";
 import { stepZoom } from "./zoom.js";
@@ -16,12 +16,13 @@ import { musicFollowsSpeed } from "./music.js";
 import { stepOrb } from "./orbs.js";
 import { easePalette } from "./palettes.js";
 import { pictureFrame } from "./picture.js";
+import { preloadFrame } from "./preload.js";
 import { chipWait } from "./probe.js";
 import { drawBloom, drawFinal, drawScene, drawTrails } from "./render.js";
 import { sparkFrame, stepSpark } from "./spark.js";
 import { still, stillAim, stillBlend } from "./still.js";
 import { statsBegin, statsEnd, statsOn } from "./stats.js";
-import { autoDetail } from "./targets.js";
+import { autoDetail, detailLower, fellBack } from "./targets.js";
 import { videoFrame } from "./video.js";
 import { stepWarp } from "./warp.js";
 export let started=false; /* the start card has been left */
@@ -64,6 +65,7 @@ function frame(now){
   if(!(statsOn&&!scene.world.volume)&&!scene.world.pack)chipWait();
   statsBegin();
   autoDetail(now,dt);
+  preloadFrame(rawDt,started); /* make the next program ahead of need, a little each frame */
 
   /* what time it is, what the music is doing */
   soundFrame(notes);
@@ -107,7 +109,8 @@ $("enter").addEventListener("click",function(){begin(true)});
 $("enterQuiet").addEventListener("click",function(){begin(false)});
 
 last=performance.now();
-canvas.addEventListener("webglcontextlost",function(e){e.preventDefault();errBox.textContent="The graphics context was lost. Reload the page to continue.";});
+canvas.addEventListener("webglcontextlost",function(e){e.preventDefault();detailLower();errBox.textContent="The graphics context was lost. Reload the page to continue. It will start less sharp.";});
+if(fellBack)toast("The last visit stopped while starting, so the picture starts less sharp.");
 requestAnimationFrame(frame);
 }
 

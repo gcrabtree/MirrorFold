@@ -375,9 +375,13 @@ Every pixel is computed by stepping a ray through a fractal, which is heavy work
 
 | Mode | Behaviour |
 |---|---|
-| auto | Starts at 85% resolution and adjusts between 60% and 100% to hold the frame rate. This is the default. With the land on it gives up more: see [The land](#the-land). |
+| auto | Starts at 85% resolution and adjusts between 60% and 100% to hold the frame rate. This is the default. With the land on it gives up more: see [The land](#the-land). What it settles on is kept in this browser and used at the start of the next visit. |
 | sharp | Full resolution, up to three device pixels per CSS pixel. |
 | fast | Half resolution. |
+
+**Getting ready in the background.** The slowest thing the page does is prepare a world or a landscape for the graphics chip, and the land takes the longest. In Chrome and Edge the app now does this ahead of time, one after another, from the moment the page opens: the land first, then the other worlds. The start card shows how far it has got, and you can enter at any time. If the picture stops and starts on your device while this goes on, the app notices and leaves the rest until you choose them. In browsers that cannot do it in the background, each is prepared when you first choose it, with a pause.
+
+**If a visit ends while the app is starting**, the next visit starts less sharp and with a smaller land picture, and says so. The same happens after the message that the graphics context was lost. Detail auto goes back up if your device can take it.
 
 Bulbs, Julia, Box and Fortress are the heaviest worlds. If the picture stutters, try **Detail fast** or **FX clean**. A video playing in another tab (for **Listen to a tab**) is decoded by the same graphics chip, and on a laptop's built-in chip that can take several times longer per picture than the same scene with the other tab paused. Turning that video's quality down, or playing sound only, gives the time back.
 

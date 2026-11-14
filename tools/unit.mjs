@@ -245,6 +245,30 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a sentence about a pack is one plain line of at most 160 characters", cleanAbout("  two\nlines\t here ") === "two lines here" && cleanAbout("x".repeat(500)).length === 160 && cleanAbout(5) === "");
 }
 
+// ---- Detail auto: when it steps, and what it keeps for the next visit
+{
+  const { detailNext, detailSaved, DWAIT, DWAIT_MAX } = targetsM;
+  const s = { slowN: 0, hold: 0, wait: DWAIT, up: false };
+  expect("one slow reading does not step down", detailNext(0.05, 1000, s) === null);
+  expect("a second in a row does, and nothing goes up until the wait is over", detailNext(0.05, 2000, s) === "down" && detailNext(0.01, 2000 + DWAIT - 1, s) === null);
+  expect("a slow reading with an ordinary one between does not step down", (detailNext(0.05, 3000, s), detailNext(0.03, 4000, s), detailNext(0.05, 5000, s)) === null);
+  s.slowN = 0;
+  expect("after the wait it goes up, roomy when there is a great deal of time", detailNext(0.02, 2001 + DWAIT, s) === "up" && detailNext(0.01, 2002 + DWAIT, s) === "roomy");
+  detailNext(0.05, 50000, s); detailNext(0.05, 51000, s);
+  expect("a step down that undoes a step up doubles the wait", s.wait === 2 * DWAIT && s.hold === 51000 + 2 * DWAIT);
+  for (let i = 0; i < 10; i++) { s.up = true; detailNext(0.05, 0, s); detailNext(0.05, 0, s); }
+  expect("the wait stops growing", s.wait === DWAIT_MAX);
+  expect("a kept setting is read back", JSON.stringify(detailSaved('{"q":0.6,"landQ":0.7}')) === '{"q":0.6,"landQ":0.7}');
+  expect("a kept setting out of range, or not a setting, is ignored", detailSaved('{"q":0.1,"landQ":1}') === null && detailSaved('{"q":0.6,"landQ":0.6}') === null && detailSaved("x") === null && detailSaved(null) === null && detailSaved('{"q":"1","landQ":1}') === null);
+}
+
+// ---- Getting ready ahead of need: the order
+{
+  const { preloadOrder } = (await import("../js/preload.js")).__dbg;
+  const o = preloadOrder(5, 2, 4, 1).map(x => x[0][0] + x[1]).join(" ");
+  expect("the land in use first, then the other landscapes in the button's order, then the worlds after the one in use", o === "l2 l3 l4 l0 l1 w2 w3 w0", o);
+}
+
 // ---- Detail auto: what it gives up, and in what order
 {
   const { detailStep } = targetsM;
