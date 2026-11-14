@@ -223,7 +223,7 @@ Roku, Apple TV and other TV boxes cannot run Mirrorfold themselves, and there is
 
 ## VR viewer
 
-This mode is for a phone in a Cardboard-style viewer: a holder with two lenses that you look into. It has not been tried on a real phone or viewer yet, so treat it as experimental.
+This mode is for a phone in a Cardboard-style viewer: a holder with two lenses that you look into. The plain picture has been used in a real viewer. The motions, filters, overlays and transitions in it are new and have only been checked by measuring the two pictures against each other, not by eye in a viewer.
 
 1. Open Mirrorfold on the phone. On iPhone, open it from the home-screen icon so Safari's bars are out of the way (see [Full screen](#full-screen)).
 2. Choose what you want first: world, palette, music, and Journey or Drift.
@@ -234,10 +234,15 @@ Turning your head turns the view. With **Drift** on you glide toward wherever yo
 
 While the mode is on:
 
-- Feedback motions, trails and overlays are not drawn. They are centred on the screen, not on each eye.
-- These filters are not drawn, for the same reason: Echo, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl. The others work.
-- Changes of world always use the blink transition.
-- The slow automatic roll is off.
+- **Motions, trails, filters, overlays and transitions all work, in depth.** An effect made for a flat screen would show each eye something different. So in the viewer each effect is worked out on the view from between your eyes, and every piece of the picture it moves keeps its own depth. Quad shows four mirrored worlds, each with its depth; Twirl winds the whole space; Mosaic's tiles stand at the depth of what they show.
+- **Trails move in depth.** A motion that zooms the trails outward (Tunnel) brings them toward you; one that zooms inward (Implode) sends them away.
+- **Trails stay put when you turn your head.** They are fixed to the world, not to your face.
+- **Overlays float** a little in front of the nearest surface, and swell toward you on the beat.
+- A filter that came in a pack with its own code is not drawn: its code works on the flat screen.
+- CRT and Halftone draw their pattern on the screen, not in the world, so the pattern sits at no particular depth.
+- The land and a video shown flat are off, as before. The slow automatic roll is off.
+
+If an effect is hard on the eyes in your viewer, **FX clean** with motion, filter and overlay set to none gives the plain picture back.
 - Mirrors work, and both eyes see the same mirrored scene.
 
 The picture is shaped for the lenses of a Google Cardboard viewer (lenses 64 mm apart, 39 mm from the screen). A browser cannot find out how big the screen is, so the size is estimated. If the two pictures do not merge into one, or the world looks stretched, please open an issue and say which phone and viewer you used.
@@ -424,6 +429,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `tools/check.py` | Headless smoke test |
 | `tools/probe.py` | Checks each world's two distance functions against each other |
 | `tools/render.py` | Headless screenshots |
+| `tools/stereo.py` | How well the two eyes' halves of VR viewer pictures agree |
 | `tools/harness.py` | Shared code for the Python tools |
 | `CLAUDE.md` | Working notes for Claude Code sessions |
 | `apple-touch-icon.png` | Icon used when the site is added to a phone's home screen |
@@ -475,7 +481,7 @@ The app was developed against headless Chrome with software rendering. These hav
 - Everything added in November 2026 on anything but headless Chrome: **Hold still** (whether a phone keeps its frame rate while it sharpens), **Save picture** and **Record video** on a phone (a download link may open the file instead of saving it), the **gallery's** offer form and its GitHub workflow (never run), the two **hybrid worlds** in flight, the **VR comfort** rules in a viewer, and **Knobs** with a real MIDI controller (only made-up messages were tried).
 - Whether the screen really stays awake with Journey or the VR viewer on, in Safari and from the home-screen icon.
 - **Listen to a tab** with real Spotify and YouTube tabs, and **Microphone** with a real microphone. Both were tested with simulated devices only.
-- The VR viewer mode: whether the two pictures merge in a real viewer, whether head turning goes the right way, and whether it is comfortable.
+- The VR viewer's effects in depth (motions, trails, filters, overlays, transitions): whether they merge and are comfortable in a real viewer, and the frame rate with them on. Its plain picture has been used in a real viewer.
 
 Known weak spots: Box and Fortress look grainy, and the controls cover a lot of a phone screen until they fade. Reports from real devices are welcome as issues.
 

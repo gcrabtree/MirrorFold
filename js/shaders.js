@@ -87,7 +87,7 @@ export function fragSource(w){
 "    vec2 q=(fc-vec2(0.5*uRes.x+sd*uVr.y,0.5*uRes.y))*uVr.z;",
 "    float q2=dot(q,q);",
 "    uv=q*(1.0+0.34*q2+0.55*q2*q2);", /* bend each ray the way the viewer's lens will, so straight lines look straight through it */
-"    if(dot(uv,uv)>3.24){gl_FragColor=vec4(0.0,0.0,0.0,1.0);return;}", /* outside what the lens shows */
+"    if(dot(uv,uv)>3.24){gl_FragColor=vec4(0.0);return;}", /* outside what the lens shows */
 "    eo=vec2(sd*uVr.w,0.0);fov=1.0;",
 "  }",
 "  float r=length(uv);",
@@ -102,6 +102,7 @@ export function fragSource(w){
 "  }",
 "  vec3 ro=uPos+uCam*vec3(eo,0.0);",
 "  float tmax=1e9;",
+"  float eta=0.0;", /* VR viewer: how far apart the two eyes see this point, as half the difference of their angles' tangents; 0 for the far distance */
 "#ifdef FLAT",
 "  vec3 col=zoomCol(uv);",
 "#else",
@@ -127,7 +128,7 @@ export function fragSource(w){
 "    t+=d;steps+=1.0;",
 "  }",
 "  float gw=steps/float(STEPS);",
-"  if(hit>0.5)tmax=t;",
+"  if(hit>0.5){tmax=t;eta=uVr.w*sqrt(1.0+dot(uv,uv))/t;}", /* half the eye spacing over the depth along the way the head faces */
 "  vec3 fogc=pal(uHue+0.5)*0.015;",
 "  if(uVidK.x>2.5&&uVidK.x<3.5)fogc=mix(fogc,vidScr()*0.7,uVidK.y);", /* video in the distance: it takes the place of the dark that far things fade into */
 "  vec3 col=fogc;",
@@ -174,35 +175,78 @@ export function fragSource(w){
 "  col=pow(col,vec3(1.15));",
 "  col=pow(col,vec3(0.4545))*uFade;",
 "  col+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))))-0.5)/255.0;", /* a fixed fine grain of half a step of brightness, so smooth dark gradients do not show as bands */
-"  gl_FragColor=vec4(col,1.0);",
+"  gl_FragColor=vec4(col,uVr.x>0.5?clamp(eta/"+VR_EMAX+",0.0,1.0):1.0);", /* VR viewer: the fourth number carries the depth, for the effects to use */
 "}"])).join("\n");
 }
 
+/* The VR viewer in the effect passes. Each half of the picture is one eye's view, already bent for the lens.
+   An effect must show both eyes the same thing in space, so it does not work on the screen: it works on the middle
+   view, the one an eye between the two would see, and every piece of picture carries its own depth with it.
+   For an eye at -1 (left) or +1 (right), a point at depth z is seen at  e = c - side*eta,  where c is where the middle
+   view sees it and eta = (half the eye spacing)/z. Both are tangents of angles. The scene writes eta into the fourth
+   number of each pixel (as eta/VR_EMAX). eyeOf turns a place in the picture into e for that eye's lens; texOf goes back
+   (the lens is a fifth-degree curve, undone by Newton's method), kept inside that eye's half.
+   VR_KAP scales tangents so that the edge of what the lens shows is about 0.5, the range the effects' numbers were made for. */
+export const VR_EMAX="0.064",VR_KAP="0.55";
+const VR_GLSL=[
+"uniform vec4 uVrG;uniform vec2 uRes;", /* uVrG: lens centre's distance from the middle in pixels, tangent per pixel */
+"float sdE=-1.0;",
+"vec2 eyeOf(vec2 tc){vec2 q=(tc*uRes-vec2(0.5*uRes.x+sdE*uVrG.x,0.5*uRes.y))*uVrG.y;float q2=dot(q,q);return q*(1.0+0.34*q2+0.55*q2*q2);}",
+"vec2 texOf(vec2 e){",
+"  float ru=length(e),rq=min(ru,1.0);",
+"  for(int i=0;i<4;i++){float r2=rq*rq;rq-=(rq*(1.0+0.34*r2+0.55*r2*r2)-ru)/(1.0+1.02*r2+2.75*r2*r2);}",
+"  vec2 px=e*(ru>1e-6?rq/ru:1.0)/uVrG.y+vec2(0.5*uRes.x+sdE*uVrG.x,0.5*uRes.y);",
+"  px.x=sdE<0.0?clamp(px.x,0.5,0.5*uRes.x-0.5):clamp(px.x,0.5*uRes.x+0.5,uRes.x-0.5);",
+"  return px/uRes;",
+"}"].join("\n");
+
 export const FS_TRAIL=[
 "precision highp float;varying vec2 v;uniform sampler2D uA,uB,uWv;",
-"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue;uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;",
+"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
+VR_GLSL,
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
-"void main(){",
-"  vec3 s=texture2D(uA,v).rgb;",
-"  vec3 vs=uVidK.x>3.5&&uVidK.x<4.5?texture2D(uVid,(v-0.5)*uVidK.zw+0.5).rgb:vec3(0.0);",
-"  vec2 c=v-0.5;c.x*=uAsp;float r=length(c);",
+/* the motion: where in the last picture this place takes its trail from. c is measured from the middle, -0.5 to 0.5 */
+"vec2 bend(vec2 c){",
+"  c.x*=uAsp;float r=length(c);",
 "  float ang=uRot+uSwirl*(0.5-r);float cs=cos(ang),sn=sin(ang);",
 "  c=vec2(cs*c.x-sn*c.y,sn*c.x+cs*c.y)*uZoom;",
 "  c+=uWob*vec2(sin(c.y*9.0+uTime*0.7),cos(c.x*8.0-uTime*0.6));",
 "  c*=1.0+uRip*sin(r*18.0-uTime*2.0);",
 "  c.x/=uAsp;",
-"  vec3 p=texture2D(uB,c+0.5+uDrift).rgb;",
+"  return c+uDrift;",
+"}",
+"void main(){",
+"  vec4 sa=texture2D(uA,v);vec3 s=sa.rgb;float oa=1.0;",
+"  vec3 vs=uVidK.x>3.5&&uVidK.x<4.5?texture2D(uVid,(v-0.5)*uVidK.zw+0.5).rgb:vec3(0.0);",
+"  vec3 p;vec2 ev=vec2(0.0);float sg=0.0;",
+"  if(uVr>0.5){",
+     /* VR viewer. The trail that arrives at this pixel came from somewhere else in the last picture, and how far apart
+        the eyes see it (eg) is only known once it is found. So: guess from what was here, find it, read its own, find it again. */
+"    sdE=v.x<0.5?-1.0:1.0;sg=-sdE;ev=eyeOf(v);",
+"    float k=clamp(uZoom,0.5,2.0),eg=texture2D(uB,v).a*"+VR_EMAX+";vec2 src=v;",
+"    for(int i=0;i<2;i++){",
+"      vec2 cc=ev-vec2(sg*eg/k,0.0);", /* where the middle view sees it now. A zoom moves it nearer or farther, so its eta is divided by the zoom */
+"      vec3 dd=uTurn*vec3(cc,1.0);cc=dd.xy/max(dd.z,0.2);", /* where that direction was before the head turned: trails stay where they are in the world */
+"      src=texOf(bend(cc*"+VR_KAP+")/"+VR_KAP+"+vec2(sg*eg,0.0));",
+"      if(i==0)eg=texture2D(uB,src).a*"+VR_EMAX+";",
+"    }",
+"    vec4 pa=texture2D(uB,src);p=pa.rgb;",
+"    p=mix(p,p.brg,uShift);p=max(p*uDecay-0.004,0.0)*(1.0-smoothstep(1.7,1.8,length(ev)));", /* nothing outside what the lens shows */
+"    oa=mix(sa.a,min(pa.a/k,1.0),smoothstep(-0.02,0.02,dot(p-s,vec3(0.299,0.587,0.114))));", /* the brighter of the scene and the trail is what is seen here, so its depth is kept */
+"  }else{",
+"  p=texture2D(uB,bend(v-0.5)+0.5).rgb;",
 "  p=mix(p,p.brg,uShift);",
 "  p=max(p*uDecay-0.004,0.0);",
+"  }",
 "  vec3 o=max(s,p);",
 "  if(uOv>0.5){",
-"    vec2 d=v-0.5;d.x*=uAsp;float m=min(1.0,uAsp);float rr=length(d)/m;float an=atan(d.y,d.x);float am=abs(an/3.14159265);float ln=0.0;",
+"    vec2 d=v-0.5;d.x*=uAsp;if(uVr>0.5)d=(ev-vec2(sg*uOvEta,0.0))*"+VR_KAP+";float m=min(1.0,uAsp);float rr=length(d)/m;float an=atan(d.y,d.x);float am=abs(an/3.14159265);float ln=0.0;",
 "    float wd=uVidK.x>3.5&&uVidK.x<4.5?7.0:1.0;", /* with a video in the overlay its lines are drawn much wider, so there is room for the video to show */
 "    if(uOv<1.5){", /* ring: the waveform bent into a circle */
 "      float wv=texture2D(uWv,vec2(am*0.98+0.01,0.5)).r*2.0-1.0;",
 "      ln=1.0-smoothstep(0.0,0.016*wd,abs(rr-(0.26+0.2*wv)));",
 "    }else if(uOv<2.5){", /* scope: the waveform as a line across the middle */
-"      float wv=texture2D(uWv,vec2(abs(v.x*2.0-1.0)*0.98+0.01,0.5)).r*2.0-1.0;",
+"      float wv=texture2D(uWv,vec2(abs(2.0*d.x/uAsp)*0.98+0.01,0.5)).r*2.0-1.0;",
 "      ln=1.0-smoothstep(0.0,0.018*wd,abs(d.y/m-0.22*wv));",
 "    }else if(uOv<3.5){", /* spectrum: bars around a circle, one per frequency band */
 "      float q=am*40.0;float sp=texture2D(uWv,vec2((floor(q)+0.5)/40.0*0.7,0.5)).r;",
@@ -223,11 +267,13 @@ export const FS_TRAIL=[
 "        float q2=length(d/m-pp);ln+=exp(-q2*q2/((0.0006+0.0025*uOvHi)*wd*wd*0.5));",
 "      }",
 "    }",
+"    if(uVr>0.5)ln*=1.0-smoothstep(1.7,1.8,length(ev));",
 "    vec3 oc=pal(uHue+0.3+rr*0.45);", /* coloured from the current palette */
 "    if(uVidK.x>3.5&&uVidK.x<4.5)o=mix(o,mix(oc,vs,uVidK.y),min(ln,1.0)*uOvAmt);", /* video in the overlay: its shapes are windows onto the video, dark parts and all */
 "    else o+=(max(o,oc)-o)*min(ln,1.0)*uOvAmt;",
+"    if(uVr>0.5)oa=mix(oa,uOvEta/"+VR_EMAX+",min(ln,1.0)*uOvAmt);", /* where the overlay is drawn, its depth is what the trails carry on */
 "  }",
-"  gl_FragColor=vec4(o,1.0);",
+"  gl_FragColor=vec4(o,oa);",
 "}"].join("\n");
 export const FS_DOWN=[
 "precision highp float;varying vec2 v;uniform sampler2D uT;uniform vec2 uPx;",
@@ -249,12 +295,18 @@ export const FS_BLUR=[
 export const FS_FINAL=[
 "precision highp float;varying vec2 v;uniform sampler2D uT,uB;uniform float uWarp,uCA,uBloom,uTime,uAsp;uniform vec3 uTint;uniform vec2 uPx;",
 "uniform float uLiq,uMos,uEcho,uEdge,uPost,uSolar,uInv,uHueRot,uTr,uFx,uHue,uVr;uniform vec3 uPa,uPb,uPc,uPd;",
-"uniform sampler2D uPrev,uLandT,uSkyT;uniform float uKeep,uLandMix;", /* the last finished picture and how much of it to keep: the flash limiter for unreviewed pack code */
+"uniform sampler2D uPrev,uLandT,uSkyT;uniform float uKeep,uLandMix;",
+VR_GLSL,
+"float etaS=0.0,sgE=0.0;",
+"vec2 at(vec2 cw){return uVr<1.5?0.5+cw:texOf(cw/"+VR_KAP+"+vec2(sgE*etaS,0.0));}", /* where in the picture to read, for a place in the bent middle view: in the VR viewer, in this eye's half and shifted by the depth of what is read */ /* the last finished picture and how much of it to keep: the flash limiter for unreviewed pack code */
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "const vec3 LW=vec3(0.299,0.587,0.114);",
 "void main(){",
-"  vec2 c=v-0.5;float r=length(c);float w2=uWarp*uWarp;",
-"  vec2 cw=c;float zb=0.07;float tintAmt=w2*0.9;float mask=1.0;float diss=0.0;",
+"  vec2 c=v-0.5;float r,w2=uWarp*uWarp;vec2 ev=vec2(0.0);",
+"  if(uVr>1.5){sdE=v.x<0.5?-1.0:1.0;sgE=-sdE;ev=eyeOf(v);etaS=texture2D(uT,v).a*"+VR_EMAX+";c=(ev+vec2(sdE*etaS,0.0))*"+VR_KAP+";}", /* VR viewer: work on the middle view, starting from the depth of what is here now */
+"  vec2 cw;float zb,tintAmt,mask,diss;",
+"  for(int it=0;it<2;it++){", /* once everywhere else. In the VR viewer twice: bend, read the depth of what the bend brings here, and bend again from where the middle view sees that */
+"  r=length(c);cw=c;zb=0.07;tintAmt=w2*0.9;mask=1.0;diss=0.0;",
 "  if(uWarp>0.001){",
 "    if(uTr<0.5){", /* swirl */
 "      float ang=w2*2.2*(0.7-r);float cs=cos(ang),sn=sin(ang);",
@@ -267,7 +319,7 @@ export const FS_FINAL=[
 "    }else if(uTr<4.5){cw=c+vec2(0.0,w2*(0.3+0.22*sin(c.x*37.0)+0.14*sin(c.x*91.0+1.7)));tintAmt=w2*w2*0.95;", /* melt: the picture drips down */
 "    }else if(uTr<5.5){mask=smoothstep(0.0,0.04,(1.0-uWarp)*0.54-abs(c.y));tintAmt=0.0;", /* blink: closes like an eye */
 "    }else if(uTr<6.5){float band=floor(v.y*26.0);float h=fract(sin(band*91.7+floor(uTime*8.0)*13.1)*43758.5453);cw=c+vec2((h-0.5)*0.9*w2,0.0);", /* tear: bands slide apart */
-"    }else{vec2 cell=floor(v*vec2(uAsp,1.0)*56.0);diss=step(fract(sin(dot(cell,vec2(12.9898,78.233)))*43758.5453),uWarp*1.05);tintAmt=0.0;}", /* dissolve: tiles flip to colour */
+"    }else{vec2 cell=floor((c+0.5)*vec2(uAsp,1.0)*56.0);diss=step(fract(sin(dot(cell,vec2(12.9898,78.233)))*43758.5453),uWarp*1.05);tintAmt=0.0;}", /* dissolve: tiles flip to colour */
 "  }",
 "  if(uFx>0.5&&uFx<4.5){",
 "    if(uFx<1.5)cw=abs(cw);", /* quad: four-way mirror */
@@ -278,23 +330,27 @@ export const FS_FINAL=[
 "  if(uFx>14.5){vec2 gt=fract(cw*vec2(uAsp,1.0)*9.0)-0.5;cw+=gt*0.035;}", /* glass: a grid of small lenses */
 "  if(uLiq>0.0)cw+=uLiq*vec2(sin(cw.y*14.0+uTime*1.3),cos(cw.x*12.0-uTime*1.1));",
 "  if(uMos>0.0){vec2 n=vec2(uMos*uAsp,uMos);cw=(floor(cw*n)+0.5)/n;}",
-"  if(uVr>0.5)zb=0.0;", /* VR viewer: no zoom streaks or fringing, they are centred on the screen and not on each eye */
-"  float ca=(uCA+0.05*w2)*r*2.0*(1.0-uVr);",
+"  if(uVr<1.5)break;",
+"  etaS=texture2D(uT,at(cw)).a*"+VR_EMAX+";if(it==0)c=(ev+vec2(sdE*etaS,0.0))*"+VR_KAP+";",
+"  }",
+"  vec2 tw=at(cw);",
+"  if(uVr>0.5&&uVr<1.5)zb=0.0;", /* VR viewer with nothing bent: the picture is read as it is */
+"  float ca=(uCA+0.05*w2)*r*2.0*(uVr>0.5&&uVr<1.5?0.0:1.0);",
 "  vec3 col=vec3(0.0);",
 "  for(int i=0;i<4;i++){",
 "    float k=1.0-zb*uWarp*float(i);",
-"    col.r+=texture2D(uT,0.5+cw*k*(1.0+ca)).r;",
-"    col.g+=texture2D(uT,0.5+cw*k).g;",
-"    col.b+=texture2D(uT,0.5+cw*k*(1.0-ca)).b;",
+"    col.r+=texture2D(uT,at(cw*k*(1.0+ca))).r;",
+"    col.g+=texture2D(uT,at(cw*k)).g;",
+"    col.b+=texture2D(uT,at(cw*k*(1.0-ca))).b;",
 "  }",
 "  col*=0.25;",
-"  if(uEcho>0.0){vec3 e=texture2D(uT,0.5-cw*0.5).rgb;col=max(col*(1.0-0.35*uEcho),e*0.85*uEcho);}",
+"  if(uEcho>0.0){vec3 e=texture2D(uT,at(-cw*0.5)).rgb;col=max(col*(1.0-0.35*uEcho),e*0.85*uEcho);}",
 "  if(uEdge>0.0){",
 "    vec2 px=uPx*1.5;",
-"    float l0=dot(texture2D(uT,0.5+cw-vec2(px.x,0.0)).rgb,LW);",
-"    float l1=dot(texture2D(uT,0.5+cw+vec2(px.x,0.0)).rgb,LW);",
-"    float l2=dot(texture2D(uT,0.5+cw-vec2(0.0,px.y)).rgb,LW);",
-"    float l3=dot(texture2D(uT,0.5+cw+vec2(0.0,px.y)).rgb,LW);",
+"    float l0=dot(texture2D(uT,tw-vec2(px.x,0.0)).rgb,LW);",
+"    float l1=dot(texture2D(uT,tw+vec2(px.x,0.0)).rgb,LW);",
+"    float l2=dot(texture2D(uT,tw-vec2(0.0,px.y)).rgb,LW);",
+"    float l3=dot(texture2D(uT,tw+vec2(0.0,px.y)).rgb,LW);",
 "    float g=length(vec2(l1-l0,l3-l2));",
 "    vec3 neon=normalize(col+0.02)*1.6*smoothstep(0.03,0.22,g);",
 "    col=mix(col,neon+col*0.1,uEdge);",
@@ -317,8 +373,8 @@ export const FS_FINAL=[
 "    else if(uFx<9.5){float l2=smoothstep(0.06,0.7,lum);col=mix(vec3(l2),uTint*l2*1.5,smoothstep(0.5,0.95,l2)*0.65);}", /* noir: black and white, highlights in the palette colour */
 "    else if(uFx<10.5||(uFx>13.5&&uFx<14.5)){", /* comic and emboss both read the brightness either side */
 "      vec2 px=uPx*1.5;",
-"      float l0=dot(texture2D(uT,0.5+cw-px).rgb,LW),l1=dot(texture2D(uT,0.5+cw+px).rgb,LW);",
-"      float l2=dot(texture2D(uT,0.5+cw+vec2(px.x,-px.y)).rgb,LW),l3=dot(texture2D(uT,0.5+cw+vec2(-px.x,px.y)).rgb,LW);",
+"      float l0=dot(texture2D(uT,tw-px).rgb,LW),l1=dot(texture2D(uT,tw+px).rgb,LW);",
+"      float l2=dot(texture2D(uT,tw+vec2(px.x,-px.y)).rgb,LW),l3=dot(texture2D(uT,tw+vec2(-px.x,px.y)).rgb,LW);",
 "      if(uFx<10.5){", /* comic: a few flat colours, made stronger, with dark outlines */
 "        vec3 q=floor(col*4.0+0.5)/4.0;q=clamp(mix(vec3(dot(q,LW)),q,1.5),0.0,1.0);",
 "        col=q*(1.0-0.9*smoothstep(0.06,0.2,length(vec2(l1-l0,l3-l2))));",
@@ -327,16 +383,17 @@ export const FS_FINAL=[
 "    else if(uFx<12.5){", /* tape: lines shifted sideways a little, colours out of register, a soft band rolling up, faint lines and grain */
 "      float row=floor(v.y*200.0);",
 "      float sh=(fract(sin(row*91.7+floor(uTime*10.0)*7.3)*43758.5453)-0.5)*0.003+0.012*exp(-pow((fract(v.y-uTime*0.06)-0.5)*16.0,2.0));",
-"      vec3 t=vec3(texture2D(uT,0.5+cw+vec2(sh+0.004,0.0)).r,texture2D(uT,0.5+cw+vec2(sh,0.0)).g,texture2D(uT,0.5+cw+vec2(sh-0.004,0.0)).b);",
+"      vec3 t=vec3(texture2D(uT,tw+vec2(sh+0.004,0.0)).r,texture2D(uT,tw+vec2(sh,0.0)).g,texture2D(uT,tw+vec2(sh-0.004,0.0)).b);",
 "      t=mix(vec3(dot(t,LW)),t,0.8)*(0.93+0.07*cos(gl_FragCoord.y*3.14159));",
 "      col=clamp(t*0.94+0.03+0.03*(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233))+floor(uTime*10.0))*43758.5453)-0.5),0.0,1.0);",
 "    }else if(uFx<13.5){", /* streaks: the bright parts run down the picture */
-"      for(int i=1;i<9;i++){vec3 s=texture2D(uT,0.5+cw+vec2(0.0,float(i)*uPx.y*7.0)).rgb;col=max(col,s*smoothstep(0.45,0.8,dot(s,LW))*(1.0-float(i)/9.0));}",
+"      for(int i=1;i<9;i++){vec3 s=texture2D(uT,tw+vec2(0.0,float(i)*uPx.y*7.0)).rgb;col=max(col,s*smoothstep(0.45,0.8,dot(s,LW))*(1.0-float(i)/9.0));}",
 "    }",
 "  }",
-"  col+=texture2D(uB,0.5+cw).rgb*uBloom;",
+"  col+=texture2D(uB,tw).rgb*uBloom;",
 "  col=mix(col,uTint,max(tintAmt,diss))*mask;",
 "  if(uLandMix>0.5){vec4 L=texture2D(uLandT,v);col=uLandMix<1.5?mix(col,L.rgb,L.a):mix(texture2D(uSkyT,v).rgb,col,L.a);}", /* effects on the sky only: the land goes on top untouched. On the land only: the world shows untouched behind it. */
+"  if(uVr>1.5)col*=1.0-smoothstep(1.7,1.8,length(ev));", /* VR viewer: nothing outside what the lens shows */
 "  if(uKeep>0.0)col=mix(col,texture2D(uPrev,v).rgb,uKeep);",
 "  col+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))))-0.5)/255.0;", /* a fixed fine grain of half a step of brightness, so smooth dark gradients do not show as bands */
 "  gl_FragColor=vec4(col,1.0);",
@@ -346,7 +403,7 @@ export const FS_FINAL=[
 export function finalSource(code){
   return FS_FINAL
    .replace("void main(){","float aspect;vec2 pixel;\nvec3 scene(vec2 uv){return texture2D(uT,uv).rgb;}\nfloat luma(vec3 c){return dot(c,LW);}\nvoid look(vec2 uv,inout vec3 col){\n"+code+"\n}\nvoid main(){")
-   .replace("  col+=texture2D(uB,0.5+cw).rgb*uBloom;","  aspect=uAsp;pixel=uPx;look(0.5+cw,col);col=clamp(col,0.0,1.0);\n  col+=texture2D(uB,0.5+cw).rgb*uBloom;");
+   .replace("  col+=texture2D(uB,tw).rgb*uBloom;","  aspect=uAsp;pixel=uPx;look(tw,col);col=clamp(col,0.0,1.0);\n  col+=texture2D(uB,tw).rgb*uBloom;");
 }
 /* the feedback pass with a pack overlay's code in it. The code sets how bright the overlay is at a point, and where in the palette its colour comes from. */
 export function trailSource(code){
@@ -354,7 +411,7 @@ export function trailSource(code){
    .replace("void main(){","float time,beat,mid,hi,aspect;\nfloat sound(float x){return texture2D(uWv,vec2(clamp(x,0.0,1.0)*0.98+0.01,0.5)).r;}\nvoid mark(vec2 p,inout float ln,inout float hue){\n"+code+"\n}\nvoid main(){")
    .replace("    vec3 oc=pal(uHue+0.3+rr*0.45);","    float hq=0.3+rr*0.45;\n    if(uOv>98.5){ln=0.0;time=uTime;beat=uOvBeat;mid=uOvMid;hi=uOvHi;aspect=uAsp;mark(d/m,ln,hq);ln=clamp(ln,0.0,1.0);}\n    vec3 oc=pal(uHue+hq);");
 }
-export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uPa","uPb","uPc","uPd","uVid","uVidK"];
+export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK"];
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={VS, fragSource, FS_TRAIL, FS_DOWN, FS_BLUR, FS_FINAL, finalSource, trailSource, TRAIL_U};

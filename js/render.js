@@ -18,6 +18,7 @@ import { stereo, vrEye, vrEyeStep } from "./vr.js";
 import { tr } from "./warp.js";
 import { zoomUniforms } from "./zoom.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
+const camWas=new Float32Array([1,0,0,0,1,0,0,0,1]),turnArr=new Float32Array(9); /* the camera's three directions last frame, and this frame's turn from them */
 export const flip={cur:0,fcur:0};         /* which of each pair of pictures is being drawn into this frame: the trails, and the smoothed final picture */
 
 
@@ -53,6 +54,7 @@ export function drawScene(fr){
      Eye spacing follows the distance to the nearest surface, so the world always feels a similar size. */
   var vrPx=0.000162*canvas.clientWidth/tA.w,vrTan=vrPx/0.039;
   vrEyeStep(dist,dt);
+  fr.vrOff=0.032/vrPx;fr.vrTan=vrTan;
   gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrTan,vrEye);
   gl.uniform1f(U.uPix,stereo?vrTan:2/(Math.sqrt(tA.w*tA.h)*1.15));
   gl.uniform1f(U.uFov,fovNow);
@@ -76,19 +78,29 @@ export function drawScene(fr){
 export function drawTrails(fr){
   var dt=fr.dt,bt=fr.bt,mp=fr.mp,mv=fr.mv,hp=fr.hp,fx=fr.fx,wHue=fr.wHue,src=fr.src,j;
   var mo=MOTIONS[sel.moi],lk=LOOKS[sel.lki],k60=dt*60,TU=pTrail.U;
-  /* VR viewer: filters that move parts of the picture would show each eye something different, so they are left out */
-  if(stereo&&(lk.echo||lk.mos||lk.liq||lk.hue||lk.code||(lk.fx>0&&lk.fx<5)||lk.fx>11))lk=LOOKS[0];
+  /* VR viewer: a pack filter's code works on the screen, where each eye would be shown something different, so it is left out.
+     The built-in filters, the motions and the overlays work on the middle view and carry depth (see VR_GLSL in shaders.js). */
+  if(stereo&&lk.code)lk=LOOKS[0];
   var tx=clock.hueT+wHue+0.2,tint=fr.tint;
   for(j=0;j<3;j++)tint[j]=Math.min(1,Math.max(0,palCur.a[j]+palCur.b[j]*Math.cos(6.28318*(palCur.c[j]*tx+palCur.d[j]))));
   var tc=tT[flip.cur],tp=tT[1-flip.cur];
   /* a pack overlay has its own copy of this pass with its code in it */
-  var ov=OVERLAYS[sel.ovi],op=ov.code&&!stereo?overlayProg(ov):null;
-  if(ov.code&&!op&&!stereo&&!ov.told){ov.told=1;toast("Overlay "+ov.name+" does not work on this device.");}
+  var ov=OVERLAYS[sel.ovi],op=ov.code?overlayProg(ov):null;
+  if(ov.code&&!op&&!ov.told){ov.told=1;toast("Overlay "+ov.name+" does not work on this device.");}
   if(op)TU=op.U;
   if(sel.ovi>0)updateWave();
   passTo(tc,op||pTrail);bindTex(2,sel.ovi>0?waveTex:src.t);bindTex(1,tp.t);bindTex(0,src.t);
   gl.uniform1i(TU.uA,0);gl.uniform1i(TU.uB,1);gl.uniform1i(TU.uWv,2);
-  gl.uniform1f(TU.uDecay,stereo?0:Math.pow(Math.max(fx.decay,mo.decay||0,tr.warp>0?0.9:0),k60)); /* no trails in the VR viewer: they are warped about the middle of the screen */
+  gl.uniform1f(TU.uDecay,Math.pow(Math.max(fx.decay,mo.decay||0,tr.warp>0?0.9:0),k60));
+  /* VR viewer: which way each of this frame's directions pointed last frame (the camera's axes then, dotted with its axes now),
+     so the trails stay where they are in the world when the head turns; and the depth the overlay floats at, a little in
+     front of the nearest surface (whose eta is the eye spacing over its distance), swelling toward the viewer on the beat. */
+  var ax=[cam.R,cam.Up,cam.F],ii,jj;
+  for(jj=0;jj<3;jj++)for(ii=0;ii<3;ii++)turnArr[3*jj+ii]=camWas[3*ii]*ax[jj][0]+camWas[3*ii+1]*ax[jj][1]+camWas[3*ii+2]*ax[jj][2];
+  for(ii=0;ii<3;ii++){camWas[3*ii]=ax[ii][0];camWas[3*ii+1]=ax[ii][1];camWas[3*ii+2]=ax[ii][2];}
+  gl.uniform1f(TU.uVr,stereo?1:0);gl.uniform4f(TU.uVrG,fr.vrOff,fr.vrTan,0,0);gl.uniform2f(TU.uRes,tc.w,tc.h);
+  gl.uniformMatrix3fv(TU.uTurn,false,turnArr);
+  gl.uniform1f(TU.uOvEta,Math.min(0.05,1.25*vrEye/Math.max(fr.dist,1e-6)*(1+0.2*bt)));
   /* each of the motion's numbers as it is this frame: a driver may move it with a slow wave or with the sound */
   var dv=function(f,def){return driven(mo,f,def,clock.time,bt,mp,hp,calm?0.25:1)};
   gl.uniform1f(TU.uZoom,Math.pow(dv("zoom",0.994),k60)-0.02*tr.warp-0.012*bt*(mo.kick||0));
@@ -97,8 +109,8 @@ export function drawTrails(fr){
   gl.uniform1f(TU.uWob,dv("wob",0)*k60*(1+1.5*mv));
   gl.uniform1f(TU.uRip,dv("rip",0)*k60*(1+1.5*bt));
   gl.uniform2f(TU.uDrift,dv("dx",0)*k60,dv("dy",0)*k60);
-  gl.uniform1f(TU.uTime,clock.time);gl.uniform1f(TU.uAsp,tc.w/tc.h);
-  gl.uniform1f(TU.uOv,stereo?0:ov.code?(op?99:0):sel.ovi);gl.uniform1f(TU.uOvBeat,bt);gl.uniform1f(TU.uOvMid,mp);gl.uniform1f(TU.uOvHi,hp);
+  gl.uniform1f(TU.uTime,clock.time);gl.uniform1f(TU.uAsp,stereo?1:tc.w/tc.h);
+  gl.uniform1f(TU.uOv,ov.code?(op?99:0):sel.ovi);gl.uniform1f(TU.uOvBeat,bt);gl.uniform1f(TU.uOvMid,mp);gl.uniform1f(TU.uOvHi,hp);
   gl.uniform1f(TU.uShift,sel.moi>0?Math.min(0.3,(0.05+0.1*hp)*k60):0); /* trails drift through the colour channels so they read apart from the scene */
   gl.uniform1f(TU.uOvAmt,OVS[sel.ovsi]);gl.uniform1f(TU.uHue,clock.hueT+wHue);
   setPal(TU);
@@ -134,10 +146,15 @@ export function drawFinal(fr){
   bindTex(3,slow?tF[1-flip.fcur].t:tc.t);gl.uniform1i(FU.uPrev,3);gl.uniform1f(FU.uKeep,slow?Math.exp(-dt/0.25):0);
   gl.uniform1i(FU.uT,0);gl.uniform1i(FU.uB,1);
   gl.uniform1f(FU.uLandMix,landOver?landFx:0);if(landOver&&landFx>0){bindTex(6,tL.t);bindTex(7,tA.t);gl.uniform1i(FU.uLandT,6);gl.uniform1i(FU.uSkyT,7);}
-  gl.uniform1f(FU.uWarp,tr.warp);gl.uniform1f(FU.uTr,stereo?5:tr.trType);gl.uniform1f(FU.uVr,stereo?1:0); /* VR viewer always uses the blink transition */
-  gl.uniform1f(FU.uCA,stereo?0:(fx.ca*(1+1.5*spN)+(sel.fi===2?0:0.006*hp))*landLit+0.012*cam.boost+(lk.ca||0));
+  var ca=(fx.ca*(1+1.5*spN)+(sel.fi===2?0:0.006*hp))*landLit+0.012*cam.boost+(lk.ca||0);
+  /* VR viewer: 1 when nothing bends the picture, and it is shown as it is; 2 when a filter, a transition or colour fringing
+     does, and the pass works on the middle view and carries depth */
+  var vr=!stereo?0:(tr.warp>0||ca>0||lk.echo||lk.mos||lk.liq||lk.hue||(lk.fx>0&&lk.fx<5)||lk.fx===15)?2:1;
+  gl.uniform1f(FU.uWarp,tr.warp);gl.uniform1f(FU.uTr,tr.trType);gl.uniform1f(FU.uVr,vr);
+  gl.uniform4f(FU.uVrG,fr.vrOff,fr.vrTan,0,0);gl.uniform2f(FU.uRes,tc.w,tc.h);
+  gl.uniform1f(FU.uCA,ca);
   gl.uniform1f(FU.uBloom,bloom);
-  gl.uniform1f(FU.uTime,clock.time);gl.uniform1f(FU.uAsp,tc.w/tc.h);gl.uniform2f(FU.uPx,1/tc.w,1/tc.h);
+  gl.uniform1f(FU.uTime,clock.time);gl.uniform1f(FU.uAsp,vr===2?1:tc.w/tc.h);gl.uniform2f(FU.uPx,1/tc.w,1/tc.h);
   gl.uniform1f(FU.uLiq,(lk.liq||0)*(1+2*mv));gl.uniform1f(FU.uMos,lk.mos||0);gl.uniform1f(FU.uEcho,lk.echo||0);
   gl.uniform1f(FU.uEdge,lk.edge||0);gl.uniform1f(FU.uPost,lk.post||0);gl.uniform1f(FU.uSolar,lk.solar||0);
   gl.uniform1f(FU.uInv,lk.inv||0);gl.uniform1f(FU.uHueRot,lk.hue||0);
@@ -150,4 +167,4 @@ export function drawFinal(fr){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={camArr, flip, drawScene, drawTrails, drawBloom, drawFinal};
+export const __dbg={camArr, camWas, turnArr, flip, drawScene, drawTrails, drawBloom, drawFinal};

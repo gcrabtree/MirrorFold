@@ -55,7 +55,8 @@ const notes={
   src:null,                    /* the picture the effects work on */
   lk:null,ov:null,op:null,     /* the filter and overlay in use, and the overlay's own program if it has one */
   tint:[0,0,0],tc:null,        /* the palette's colour now, and the picture the trails were drawn into */
-  landLit:1,bloom:0            /* how much glow and fringing the land allows, and the glow's strength */
+  landLit:1,bloom:0,           /* how much glow and fringing the land allows, and the glow's strength */
+  vrOff:0,vrTan:0              /* VR viewer: each lens centre's distance from the middle of the picture in pixels, and the tangent of the angle one pixel covers */
 };
 function frame(now){
   requestAnimationFrame(frame);
