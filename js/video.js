@@ -20,6 +20,7 @@ export const VMODES=[
 export const VAMT=[.35,.6,.85,1];
 export let vidMode=0,vidAmt=2;   /* positions in VMODES and VAMT */
 export let vidOn=false;          /* a video is loaded and showing */
+let kind="";                     /* the chosen file's type, as the browser names it, for the message if it will not play */
 let sound=false,node=null;       /* the video's sound is wanted as the music, and its connection into the audio graph */
 let pScene=null;
 /* the video as the whole scene: fitted to the screen, folded by the mirrors as a world is, and swelling a little on the beat */
@@ -75,13 +76,21 @@ function element(){
   if(el)return el;
   el=document.createElement("video");el.muted=true;el.loop=true;el.playsInline=true;el.setAttribute("playsinline","");el.preload="auto";
   el.addEventListener("loadeddata",function(){
-    if(!el.videoWidth)return;
+    /* a file whose sound the browser can play but whose picture it cannot: common with phone recordings (HEVC) on a computer */
+    if(!el.videoWidth){if(!stream)errBox.textContent="This browser can play that file's sound but not its picture. The picture is probably HEVC (H.265), which many computers cannot show. Try it on the phone it came from, or convert it to H.264.";return;}
+    if(Math.max(el.videoWidth,el.videoHeight)>gl.getParameter(gl.MAX_TEXTURE_SIZE)){errBox.textContent="That video is "+el.videoWidth+" by "+el.videoHeight+", larger than this device can draw.";videoOff();return;}
     asp=el.videoWidth/el.videoHeight;
     var h=Math.max(2,Math.round(VW/asp));
     if(!tV[0]||tV[0].h!==h){freeT(tV[0]);freeT(tV[1]);tV[0]=target(VW,h);tV[1]=target(VW,h);mOut.fill(0);}
     vidOn=true;lastT=-1;label();
   });
-  el.addEventListener("error",function(){if(el.getAttribute("src")){toast("That video would not play here.");videoOff();}});
+  el.addEventListener("error",function(){
+    if(!el.getAttribute("src"))return;
+    /* say why, as far as the browser tells: 4 is a kind of file it cannot play, 3 is one it began and could not decode, 2 is a failed read */
+    var c=el.error?el.error.code:0,why=c===4?"This browser cannot play that kind of video file"+(kind?" ("+kind+")":"")+". If it came from a phone it is probably HEVC (H.265): try it on the phone, or convert it to H.264.":
+      c===3?"The video began but could not be decoded. It may be too large for this device or damaged.":c===2?"The file could not be read.":"That video would not play here.";
+    errBox.textContent=why+(el.error&&el.error.message?"\n("+el.error.message+")":"");videoOff();
+  });
   el.addEventListener("play",label);el.addEventListener("pause",label);
   return el;
 }
@@ -150,7 +159,7 @@ $("bVideo").addEventListener("click",function(){
 });
 $("vidIn").addEventListener("change",function(){
   var f=this.files&&this.files[0];if(!f)return;
-  errBox.textContent="";var u=URL.createObjectURL(f);videoFrom(u);url=u;
+  errBox.textContent="";kind=f.type;var u=URL.createObjectURL(f);videoFrom(u);url=u;
   setMusic("video");toast("Music is now the video's sound. The Music list changes it.");wakeHud();
 });
 $("bVidCam").addEventListener("click",function(){useCamera();wakeHud()});
@@ -163,5 +172,6 @@ label();
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={VMODES, VAMT, FS_SCENE, tV, mNew, mOut, FS_MEAN, VW, FS_VID, label,
   setVidMode, vidFile, vidAlone, videoSound, videoScene, setVidAmt, stopSource, videoOff, element, videoFrom,
-  useCamera, videoFrame, videoUniforms, get vidMode(){return vidMode},set vidMode(v){vidMode=v}, get vidAmt(){return vidAmt},set vidAmt(v){vidAmt=v}, get vidOn(){return vidOn},set vidOn(v){vidOn=v}, get sound(){return sound},set sound(v){sound=v}, get node(){return node},set node(v){node=v}, get pScene(){return pScene},set pScene(v){pScene=v}, get el(){return el},set el(v){el=v},
-  get url(){return url},set url(v){url=v}, get stream(){return stream},set stream(v){stream=v}, get raw(){return raw},set raw(v){raw=v}, get blank(){return blank},set blank(v){blank=v}, get pVid(){return pVid},set pVid(v){pVid=v}, get cur(){return cur},set cur(v){cur=v}, get asp(){return asp},set asp(v){asp=v}, get lastT(){return lastT},set lastT(v){lastT=v}, get tM(){return tM},set tM(v){tM=v}, get pMean(){return pMean},set pMean(v){pMean=v}};
+  useCamera, videoFrame, videoUniforms, get vidMode(){return vidMode},set vidMode(v){vidMode=v}, get vidAmt(){return vidAmt},set vidAmt(v){vidAmt=v}, get vidOn(){return vidOn},set vidOn(v){vidOn=v}, get kind(){return kind},set kind(v){kind=v}, get sound(){return sound},set sound(v){sound=v}, get node(){return node},set node(v){node=v}, get pScene(){return pScene},set pScene(v){pScene=v},
+  get el(){return el},set el(v){el=v}, get url(){return url},set url(v){url=v}, get stream(){return stream},set stream(v){stream=v}, get raw(){return raw},set raw(v){raw=v}, get blank(){return blank},set blank(v){blank=v}, get pVid(){return pVid},set pVid(v){pVid=v}, get cur(){return cur},set cur(v){cur=v}, get asp(){return asp},set asp(v){asp=v}, get lastT(){return lastT},set lastT(v){lastT=v}, get tM(){return tM},set tM(v){tM=v},
+  get pMean(){return pMean},set pMean(v){pMean=v}};
