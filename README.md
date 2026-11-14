@@ -1,5 +1,18 @@
 # Mirrorfold
 
+> [!WARNING]
+> **Photosensitivity, seizure and motion warning. Please read before use.**
+>
+> Mirrorfold shows constantly changing colour, moving patterns, pulsing light and fast simulated motion. A small number of people have seizures, blackouts or other reactions when they see visuals like these, **even if they have never had a seizure before**.
+>
+> - **Do not use Mirrorfold** if you or anyone watching has epilepsy, has ever had a seizure, or is sensitive to flashing light, patterns or motion, unless a doctor has said it is safe.
+> - **Stop at once and look away** if you notice dizziness, blurred or altered vision, eye or muscle twitching, confusion, disorientation, nausea, headache, or any involuntary movement. Get medical help if it does not pass.
+> - Simulated flight can cause motion sickness. The VR viewer makes this more likely. Use it seated, and take breaks.
+> - To lower the risk: use it in a well-lit room, sit back from the screen, prefer a smaller screen, keep sessions short, and do not use it when tired. Turning on your device's "reduce motion" setting makes Mirrorfold calmer.
+> - Video, audio and packs that you load yourself are outside the project's control and can add flashing or intense motion of their own.
+>
+> Mirrorfold is designed to avoid strobing, but it has **not** been tested or certified against any photosensitivity standard, and no setting makes it safe for everyone. It is not a medical device and nothing here is medical advice. It is provided "as is", without warranty of any kind, and you use it entirely at your own risk; see the [licence](LICENSE).
+
 Fly through endless fractal worlds in your browser. Seventeen worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
 
 This project is inspired in part by the music visualizers from decades past… from Winamp plugins to the standalone visualizer MilkDrop. This has a familiar feel when in Journey mode (an autopilot that flies through the procedurally generated 3D worlds) while listening to music. 
@@ -138,7 +151,7 @@ The controls at the top of the screen fade after five seconds without input and 
 | Effects on | Shown for **Land over world**. Whether motions, filters and overlays act on **everything**, **the sky** (the world behind) or **the land**. |
 | FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
 | Detail | Steps through auto, sharp and fast. See [Performance](#performance). |
-| Video off / on | An experiment. Opens a row of controls for showing a video in the picture: choose a video file from this device or use the camera, pick where it shows (on the surfaces, through the shapes, in the distance, in the overlay, as the colours, or filling the screen with no world at all, where the mirrors, motions, filters and overlays all work on the video and the land can stand in front), how strongly, and pause it. Choosing a video file also makes its sound the music (Music: My video's sound), so the picture pulses to it; pick another music source to silence the video. The video is never uploaded, and is slowed where needed so that it cannot make the screen flash. Pressing the button again turns the video off. |
+| Video off / on | An experiment. Opens a row of controls for showing a video in the picture: choose a video file from this device or use the camera, pick where it shows (on the surfaces, through the shapes, in the distance, in the overlay, as the colours, or filling the screen with no world at all, where the mirrors, motions, filters and overlays all work on the video and the land can stand in front), how strongly, and pause it. **Video sound off / on** chooses whether the video's own sound is the music. Off, the video plays silently while whatever is chosen under Music carries on (useful for ambient footage); on, the picture pulses to the video's sound. When a file is chosen and Music is off, the video's sound is turned on for you. The video is never uploaded, and is slowed where needed so that it cannot make the screen flash. Pressing the button again turns the video off. |
 | Stats | Shows a readout in the top left corner: pictures drawn each second and the slowest one, how long the page's own script takes for each picture, the sharpness and size of the picture, the name of the graphics chip drawing it, and a trial of the distance probe (how long the page waits for the chip to answer one question, and the chip's answer beside the script's). Useful when the picture stutters. |
 | Morph | Turns the slow change of each world's shape on or off. |
 | Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
@@ -310,7 +323,7 @@ Bulbs, Julia, Box and Fortress are the heaviest worlds. If the picture stutters,
 
 ## Motion and privacy
 
-**Motion.** Colour and motion shift constantly. Pulses are soft and slow by design and nothing strobes; a tapped tempo above about 165 beats per minute is halved. If your device is set to reduce motion, all reactions to sound are cut to a quarter and several motions are disabled.
+**Motion.** Read the warning at the top of this page first. Colour and motion shift constantly. Pulses are designed to be soft and slow and the app is built not to strobe, but this has not been tested against any photosensitivity standard. A tapped tempo above about 165 beats per minute is halved. A video you load is slowed where needed so its brightness cannot change quickly. If your device is set to reduce motion, all reactions to sound are cut to a quarter and several motions are disabled.
 
 **Privacy.** Mirrorfold makes no network requests of its own. The page loads two fonts from Google Fonts, and that is all. The VR viewer reads the phone's motion sensor to follow your head; the readings stay on the phone. **Listen to a tab** and **Microphone** only run when you choose them and the browser's permission prompt is accepted; the sound is analysed in the browser and never recorded or sent. An audio file you choose is read by your browser and is not uploaded. Templates, orb progress and the orbs setting are kept in your browser's local storage.
 
