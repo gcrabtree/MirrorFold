@@ -49,6 +49,5 @@ export function init(){
 NWORLD=WORLDS.length;
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get NWORLD(){return NWORLD},set NWORLD(v){NWORLD=v}, get packMs(){return packMs},set packMs(v){packMs=v}, get packWait(){return packWait},set packWait(v){packWait=v}, get packId(){return packId}, get packWorld(){return packWorld}, get deMany(){return deMany},
-  get packD(){return packD}, get packFrame(){return packFrame}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={packId, packWorld, deMany, packD, packFrame, get NWORLD(){return NWORLD},set NWORLD(v){NWORLD=v}, get packMs(){return packMs},set packMs(v){packMs=v}, get packWait(){return packWait},set packWait(v){packWait=v}};

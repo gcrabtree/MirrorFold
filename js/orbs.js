@@ -45,19 +45,18 @@ export function collectOrb(){
 /* The orb: drawn at its nearest copy, collected when you reach it, moved if the morph swallows it. Leaves where to draw it in fr.orbU. */
 export function stepOrb(fr){
   var dt=fr.dt,m=fr.m,w=fr.w,per=fr.per,i;
-  var orbU=[0,0,0,0];
-  if(scene.orb&&orbsOn&&!scene.hyb&&started){
+  var orbU=fr.orbU;orbU[0]=orbU[1]=orbU[2]=orbU[3]=0;
+  if(scene.orb&&orbsOn&&started){
     var oq=[0,0,0],od=0;
     for(i=0;i<3;i++){oq[i]=scene.orb.p[i]-cam.pos[i];oq[i]-=per[i]*Math.floor(oq[i]/per[i]+.5);od+=oq[i]*oq[i];}
     if(Math.sqrt(od)<scene.orb.r*2.5&&tr.warpDir===0)collectOrb();
     else{
-      orbU=[cam.pos[0]+oq[0],cam.pos[1]+oq[1],cam.pos[2]+oq[2],scene.orb.r];
+      orbU[0]=cam.pos[0]+oq[0];orbU[1]=cam.pos[1]+oq[1];orbU[2]=cam.pos[2]+oq[2];orbU[3]=scene.orb.r;
       scene.orbT+=dt;
       if(scene.orbT>1.5){scene.orbT=0;if(!w.volume&&Math.abs(w.de(scene.orb.p[0],scene.orb.p[1],scene.orb.p[2],m))<scene.orb.r*0.6)spawnOrb();}
     }
   }
-  fr.orbU=orbU;
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get spawnOrb(){return spawnOrb}, get chime(){return chime}, get collectOrb(){return collectOrb}, get stepOrb(){return stepOrb}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={spawnOrb, chime, collectOrb, stepOrb};

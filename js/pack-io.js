@@ -1,3 +1,4 @@
+/* Packs in and out: loading a pack, saving your own, the packs published with the site, and the library list. */
 import { fillLooks, fillMotions, fillOverlays, fillWorlds } from "./choose.js";
 import { $, gl, toast } from "./dom.js";
 import { ED, edOpen } from "./editor.js";
@@ -90,6 +91,5 @@ export function loadSitePacks(){
   }).catch(function(){sitePacks=null});
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get refreshLists(){return refreshLists}, get count(){return count}, get packNow(){return packNow}, get packSummary(){return packSummary}, get loadPack(){return loadPack}, get libRemove(){return libRemove},
-  get advRenderLib(){return advRenderLib}, get sitePacks(){return sitePacks},set sitePacks(v){sitePacks=v}, get fetchText(){return fetchText}, get loadSitePacks(){return loadSitePacks}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={refreshLists, count, packNow, packSummary, loadPack, libRemove, advRenderLib, fetchText, loadSitePacks, get sitePacks(){return sitePacks},set sitePacks(v){sitePacks=v}};

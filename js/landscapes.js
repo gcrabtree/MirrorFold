@@ -1,3 +1,4 @@
+/* The landscapes after the Alps: canyon country, the strange planet, the steel ball and the city, and the list of all five. */
 import { clock } from "./clock.js";
 import { ALPS_COLS, ALPS_GROUND, ALPS_SHAPE, ALPS_SHAPES, ALPS_SKY, ALPS_ZONE, LAND_T, LFREQ } from "./land-shader.js";
 import { landH, landHash } from "./land.js";
@@ -242,17 +243,14 @@ export function landSrc(k){
   return LAND_T.map(function(l){return l.charAt(0)==="@"?g[l.slice(1)]:l}).join("\n");
 }
 
-/* What this file does when the app starts. main.js calls each file's init in turn. */
-export function init(){
 /* ---------- canyon country: a plateau cut by gorges, with mesas, buttes, arches and balanced rocks ----------
    The same noise as the Alps, but its height is turned into steps: each step is a cliff, and the gentle rise between
    steps is a bench. CANYON_STEPS lists them as [where the cliff begins, where it ends, how high it is], in the noise's own
    units. The shader text and the JavaScript are both made from this one list. */
-var CANYON_STEPS=[[0.30,0.36,0.08],[0.375,0.425,0.14],[0.46,0.50,0.10],[0.515,0.545,0.08],[0.74,0.82,0.06],[0.80,0.84,0.16],[0.855,0.885,0.22],[0.93,0.97,0.14],[1.03,1.07,0.12]];
-var CANYON_SHAPE=stepShape(CANYON_STEPS,0.4,0.30);
+const CANYON_STEPS=[[0.30,0.36,0.08],[0.375,0.425,0.14],[0.46,0.50,0.10],[0.515,0.545,0.08],[0.74,0.82,0.06],[0.80,0.84,0.16],[0.855,0.885,0.22],[0.93,0.97,0.14],[1.03,1.07,0.12]];
 /* Free-standing rock, which a height cannot describe because it has air underneath: an arch or a balanced rock, at most
    one to each square of the coarsest noise grid. extra() is the distance to it; far from one, it is a safe smaller distance. */
-var CANYON_EXTRA=[
+const CANYON_EXTRA=[
 "float extra(vec3 p){",
 "  vec2 x=uCf[0]+p.xz*FREQ,i=floor(x),f=x-i;",
 "  vec4 B=texture2D(uX,(uCi[0]+i+0.5)/256.0);", /* worked out once in JavaScript: whether this square has a shape, and the height of the ground it stands on */
@@ -277,7 +275,7 @@ var CANYON_EXTRA=[
 "  vec2 b=vec2(ring-r*(0.8+0.5*lump)*(1.0+0.4*smoothstep(-R,R,y)),abs(w)-r*(0.55+0.5*lump));",
 "  return (min(max(b.x,b.y),0.0)+length(max(b,0.0))-0.2*r)*0.65;",
 "}"].join("\n");
-var CANYON_ZONE=[
+const CANYON_ZONE=[
 "vec3 zone(vec2 q,vec3 G,out float yv){", /* x trees, y brush, z stony; G must be terrG(q) */
 "  vec2 W=q+uPos.xz,g=G.xy;float hgt=G.z;",
 "  float ny=inversesqrt(1.0+dot(g,g)),n1=noise(W*FREQ*5.0+3.0),n2=noise(W*FREQ*17.0);",
@@ -289,7 +287,7 @@ var CANYON_ZONE=[
 "  float stony=dry*(0.9*smoothstep(0.40,0.60,ny)*(1.0-smoothstep(0.62,0.85,ny))+0.12*lvl);", /* fallen rock lies on the slopes under the cliffs, not on the cliffs */
 "  return vec3(trees,brush,clamp(stony,0.0,1.0));",
 "}"].join("\n");
-var CANYON_GROUND=[
+const CANYON_GROUND=[
 /* the colour of the rock at height y: level bands of red, orange, cream and dark red, a little wavy */
 "vec3 strata(float y,vec2 W){",
 "  float yy=y+0.035*(noise(W*FREQ*4.0)-0.5);",
@@ -346,7 +344,7 @@ var CANYON_GROUND=[
 "  col*=lin*(0.45+0.55*cav);",
 "  return haze(col,tr,rd);",
 "}"].join("\n");
-var CANYON_XCOL=[
+const CANYON_XCOL=[
 "vec3 xcol(vec3 p,float t,vec3 rd){", /* the colour of an arch or a balanced rock */
 "  vec2 e=vec2(0.0015+0.0008*t,0.0),W=p.xz+uPos.xz;",
 "  vec3 n=normalize(vec3(extra(p+e.xyy)-extra(p-e.xyy),extra(p+e.yxy)-extra(p-e.yxy),extra(p+e.yyx)-extra(p-e.yyx)));",
@@ -362,12 +360,12 @@ var CANYON_XCOL=[
 /* ---------- a strange planet: needle spires over rippled plains, glowing pools, and shapes that hang in the air ----------
    The same noise again. The plains carry ripples that follow the contours, the high ground rises into needles, veins of
    light run through the soil, and what grows there glows. A crystal, a ring or a slab floats over many of the squares. */
-var PLANET_SHAPE=[
+const PLANET_SHAPE=[
 "float shape(float a){float b=max(a-0.75,0.0);return 0.25*(a-0.30)+3.0*b*b+0.018*sin(70.0*a);}",
 "float dshape(float a){return 0.25+6.0*max(a-0.75,0.0)+1.26*cos(70.0*a);}",
 "float shapeU(float a){float b=max(a-0.703,0.0);return 0.25*(a-0.253)+3.0*b*b+0.018;}"
 ].join("\n");
-var PLANET_EXTRA=[
+const PLANET_EXTRA=[
 "float extra(vec3 p){",
 "  vec2 x=uCf[0]+p.xz*FREQ,i=floor(x),f=x-i;",
 "  vec4 B=texture2D(uX,(uCi[0]+i+0.5)/256.0);",
@@ -386,7 +384,7 @@ var PLANET_EXTRA=[
 "  vec3 b=abs(vec3(u,y,w))-vec3(0.045,0.20,0.012)*(0.6+4.0*s);", /* a thin upright slab */
 "  return min(max(b.x,max(b.y,b.z)),0.0)+length(max(b,0.0));",
 "}"].join("\n");
-var PLANET_SKY=[
+const PLANET_SKY=[
 "vec3 sky(vec3 rd){", /* a dark sky with stars, and a ringed planet hanging in it */
 "  float y=max(rd.y,0.0),s=max(dot(rd,uSun),0.0);",
 "  vec3 c=mix(gLow,gTop,pow(y,0.45));",
@@ -407,10 +405,7 @@ var PLANET_SKY=[
 "  c=mix(c,vec3(0.75,0.80,0.90)*clamp(0.3+60.0*dot(rd-md,uSun),0.08,1.0),smoothstep(0.9990,0.9992,mm));",
 "  return c+gSun*(0.9*pow(s,900.0)+0.25*pow(s,40.0));",
 "}"].join("\n");
-/* what grows there: thin horns that flare at the foot, and smooth round bulbs. The small growths and crystals reuse the bush and the boulder. */
-var PLANET_SHAPES=ALPS_SHAPES.replace('  return broad>0.5?0.5*sqrt(max(1.0-d*d,0.0))*(1.0+0.25*sin(v.x*9.0+R.g*20.0)*sin(v.y*8.0+R.b*20.0)):max(1.0-d,0.0)*(0.8+0.2*smoothstep(0.0,0.6,1.0-d));',
-  "  return broad>0.5?0.42*sqrt(max(1.0-1.6*dot(v,v),0.0)):pow(max(1.0-d,0.0),1.7);");
-var PLANET_ZONE=[
+const PLANET_ZONE=[
 "vec3 zone(vec2 q,vec3 G,out float yv){", /* x horns and bulbs, y small growths, z crystals; G must be terrG(q) */
 "  vec2 W=q+uPos.xz,g=G.xy;float hgt=G.z;",
 "  float ny=inversesqrt(1.0+dot(g,g)),n1=noise(W*FREQ*5.0+3.0),n2=noise(W*FREQ*17.0);",
@@ -419,7 +414,7 @@ var PLANET_ZONE=[
 "  float grove=dry*lvl*smoothstep(0.52,0.70,0.7*noise(W*FREQ*7.0+11.0)+0.3*n2);",
 "  return vec3(0.7*grove,dry*lvl*(1.0-0.6*grove),clamp(dry*(0.25+0.6*(1.0-lvl)),0.0,1.0));",
 "}"].join("\n");
-var PLANET_GROUND=[
+const PLANET_GROUND=[
 "vec3 ground(vec3 p,float tr,vec3 rd,float mir){",
 "  float t=tr+100.0*mir;",
 "  float det=smoothstep(1.6,0.25,t),det2=smoothstep(0.22,0.05,t);",
@@ -464,7 +459,7 @@ var PLANET_GROUND=[
 "  col+=gSun*sh*pow(max(dot(reflect(rd,n),uSun),0.0),40.0)*gloss;",
 "  return haze(col,tr,rd);",
 "}"].join("\n");
-var PLANET_XCOL=[
+const PLANET_XCOL=[
 "vec3 xcol(vec3 p,float t,vec3 rd){", /* the floating shapes: dark glass that shows shifting colours at its edges, and glows a little */
 "  vec2 e=vec2(0.001+0.0006*t,0.0);",
 "  vec3 n=normalize(vec3(extra(p+e.xyy)-extra(p-e.xyy),extra(p+e.yxy)-extra(p-e.yxy),extra(p+e.yyx)-extra(p-e.yyx)));",
@@ -475,6 +470,13 @@ var PLANET_XCOL=[
 "  col=col*(clamp(dot(n,uSun),0.0,1.0)*gSun*1.2+(0.45+0.55*n.y)*gAmb)+iri*(0.20+0.10*sin(uTime*0.5+p.y*9.0))+gSun*pow(max(dot(reflect(rd,n),uSun),0.0),60.0);",
 "  return haze(col,t,rd);",
 "}"].join("\n");
+
+/* What this file does when the app starts. main.js calls each file's init in turn. */
+export function init(){
+var CANYON_SHAPE=stepShape(CANYON_STEPS,0.4,0.30);
+/* what grows there: thin horns that flare at the foot, and smooth round bulbs. The small growths and crystals reuse the bush and the boulder. */
+var PLANET_SHAPES=ALPS_SHAPES.replace('  return broad>0.5?0.5*sqrt(max(1.0-d*d,0.0))*(1.0+0.25*sin(v.x*9.0+R.g*20.0)*sin(v.y*8.0+R.b*20.0)):max(1.0-d,0.0)*(0.8+0.2*smoothstep(0.0,0.6,1.0-d));',
+  "  return broad>0.5?0.42*sqrt(max(1.0-1.6*dot(v,v),0.0)):pow(max(1.0-d,0.0),1.7);");
 /* The city: square blocks, one building to a block, with roads between. A ray walks from block to block and is tested
    against the few boxes in each: the building (tall ones have a narrower upper part) and up to four parked cars.
    Everything is in block units from here on: one block is 1/(4*FREQ) across, and uCi[0]*4 is the camera's block. */
@@ -504,7 +506,7 @@ LK=[
 ];
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get LK(){return LK},set LK(v){LK=v}, get CITY_S(){return CITY_S},set CITY_S(v){CITY_S=v}, get stepShape(){return stepShape}, get canyonCell(){return canyonCell}, get canyonExtra(){return canyonExtra}, get planetShape(){return planetShape},
-  get planetCell(){return planetCell}, get planetExtra(){return planetExtra}, get landOwn(){return landOwn}, get EARTH_COLS(){return EARTH_COLS}, get BALL_R(){return BALL_R}, get ballSrc(){return ballSrc},
-  get CITY_RW(){return CITY_RW}, get citySrc(){return citySrc}, get cityBlock(){return cityBlock}, get cityH(){return cityH}, get cityExtra(){return cityExtra}, get landSrc(){return landSrc}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={stepShape, canyonCell, canyonExtra, planetShape, planetCell, planetExtra, landOwn, EARTH_COLS, BALL_R, ballSrc,
+  CITY_RW, citySrc, cityBlock, cityH, cityExtra, landSrc, CANYON_STEPS, CANYON_EXTRA, CANYON_ZONE, CANYON_GROUND,
+  CANYON_XCOL, PLANET_SHAPE, PLANET_EXTRA, PLANET_SKY, PLANET_ZONE, PLANET_GROUND, PLANET_XCOL, get LK(){return LK},set LK(v){LK=v}, get CITY_S(){return CITY_S},set CITY_S(v){CITY_S=v}};

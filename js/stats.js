@@ -24,10 +24,8 @@ export function statsShow(){
 export function statsBegin(){
   if(!statsOn)return;
   sT0=performance.now();sPr=0;
-  if(!scene.hyb){
-    probePts[0]=cam.pos[0];probePts[1]=cam.pos[1];probePts[2]=cam.pos[2];
-    if(probe(scene.world,morphValue(),1)){sPr=performance.now()-sT0;ST.pr+=sPr;ST.pn++;ST.gd=probeOut[0];ST.jd=scene.world.pack?NaN:scene.world.de(cam.pos[0],cam.pos[1],cam.pos[2],morphValue());}
-  }
+  probePts[0]=cam.pos[0];probePts[1]=cam.pos[1];probePts[2]=cam.pos[2];
+  if(probe(scene.world,morphValue(),1)){sPr=performance.now()-sT0;ST.pr+=sPr;ST.pn++;ST.gd=probeOut[0];ST.jd=scene.world.pack?NaN:scene.world.de(cam.pos[0],cam.pos[1],cam.pos[2],morphValue());}
 }
 /* Stats, end of a frame: count it, and show the readout twice a second. */
 export function statsEnd(rawDt){
@@ -44,6 +42,5 @@ $("bStats").addEventListener("click",function(){
 });
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get statsOn(){return statsOn},set statsOn(v){statsOn=v}, get gpuName(){return gpuName},set gpuName(v){gpuName=v}, get sT0(){return sT0},set sT0(v){sT0=v}, get sPr(){return sPr},set sPr(v){sPr=v}, get ST(){return ST}, get statsShow(){return statsShow},
-  get statsBegin(){return statsBegin}, get statsEnd(){return statsEnd}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={ST, statsShow, statsBegin, statsEnd, get statsOn(){return statsOn},set statsOn(v){statsOn=v}, get gpuName(){return gpuName},set gpuName(v){gpuName=v}, get sT0(){return sT0},set sT0(v){sT0=v}, get sPr(){return sPr},set sPr(v){sPr=v}};

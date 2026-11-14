@@ -35,5 +35,5 @@ export function fromHash(){
   return null;
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get b36(){return b36}, get encodeSpot(){return encodeSpot}, get applySpot(){return applySpot}, get fromHash(){return fromHash}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={b36, encodeSpot, applySpot, fromHash};

@@ -1,5 +1,5 @@
 /* Palettes: the list, which are unlocked, which is chosen, and the one in use easing toward it. */
-import { $ } from "./dom.js";
+import { $, gl } from "./dom.js";
 import { sel } from "./state.js";
 export let unlocked=0,orbsFound=0; /* palettes unlocked by orbs, and orbs found; kept in this browser */
 /* cosine palettes: colour = a + b*cos(2pi*(c*x+d)) */
@@ -23,6 +23,9 @@ export const BASE_PALS=7;
 export const NPAL=PALETTES.length;
 /* a built-in palette is open once its orb is found; palettes from a pack are always open */
 export function palOpen(i){return i<BASE_PALS+unlocked||i>=NPAL;}
+/* give a shader the palette in use (its four uniforms uPa, uPb, uPc, uPd) */
+export function setPal(U){gl.uniform3fv(U.uPa,palCur.a);gl.uniform3fv(U.uPb,palCur.b);gl.uniform3fv(U.uPc,palCur.c);gl.uniform3fv(U.uPd,palCur.d);}
+
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 /* an orb was collected: count it, and unlock the next palette if any are left. True if one was unlocked. */
 export function orbCounted(){orbsFound++;if(unlocked<NPAL-BASE_PALS){unlocked++;return true;}return false;}
@@ -59,7 +62,6 @@ palCur={a:PALETTES[0].a.slice(),b:PALETTES[0].b.slice(),c:PALETTES[0].c.slice(),
 try{var sv=JSON.parse(localStorage.getItem("mirrorfold")||"{}");unlocked=Math.max(0,Math.min(NPAL-BASE_PALS,sv.u|0));orbsFound=sv.n|0;}catch(_){}
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get unlocked(){return unlocked},set unlocked(v){unlocked=v}, get orbsFound(){return orbsFound},set orbsFound(v){orbsFound=v}, get PALETTES(){return PALETTES}, get BASE_PALS(){return BASE_PALS}, get NPAL(){return NPAL}, get palOpen(){return palOpen},
-  get orbCounted(){return orbCounted}, get palCur(){return palCur},set palCur(v){palCur=v}, get saveProgress(){return saveProgress}, get fillPalettes(){return fillPalettes}, get labelPalettes(){return labelPalettes}, get setPalette(){return setPalette},
-  get randomPalette(){return randomPalette}, get easePalette(){return easePalette}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={PALETTES, BASE_PALS, NPAL, palOpen, setPal, orbCounted, saveProgress, fillPalettes, labelPalettes, setPalette,
+  randomPalette, easePalette, get unlocked(){return unlocked},set unlocked(v){unlocked=v}, get orbsFound(){return orbsFound},set orbsFound(v){orbsFound=v}, get palCur(){return palCur},set palCur(v){palCur=v}};

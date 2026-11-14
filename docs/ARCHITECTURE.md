@@ -58,7 +58,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/palettes.js` | `PALETTES`, which are unlocked, `setPalette`, and `palCur`, the palette in use easing toward the chosen one |
 | `js/packs.js` | The cleaners: `cleanName`, `cleanPalette`, `cleanMotion`, `cleanCode`, `cleanFilter`, `cleanOverlay`, `cleanWorld` |
 | `js/shaders.js` | `fragSource(w)` and the post-processing shaders `FS_TRAIL`, `FS_DOWN`, `FS_BLUR`, `FS_FINAL` |
-| `js/programs.js` | `sh`, `link`, `build(w)`, `hybProg`, `passTo`, `bindTex`, the effect programs, and the programs for pack filters and overlays |
+| `js/programs.js` | `sh`, `link`, `build(w)`, `passTo`, `bindTex`, the effect programs, and the programs for pack filters and overlays |
 | `js/probe.js` | The distance probe, and `chipWait`, the once-a-frame wait for the graphics chip |
 | `js/pack-worlds.js` | Worlds from packs: `packWorld`, `deMany`, `packFrame` |
 | `js/targets.js` | Render targets, `resize`, the detail setting and Detail auto |
@@ -71,7 +71,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/clock.js` | `clock`: time, the morph's clock, colour drift, mirror spin; `tickClock`, `morphValue` |
 | `js/warp.js` | `tr`, the transition's state; `beginWarp`, `warpThen`, `stepWarp` |
 | `js/flight.js` | `measure` (distance to the nearest surface and the world's speed), `deAt`, `doBoost` |
-| `js/choose.js` | `scene`, what is showing; filling the lists; `setWorldNow`, `requestWorld`; blends; the address hash; mirrors |
+| `js/choose.js` | `scene`, what is showing; filling the lists; `setWorldNow`, `requestWorld`; the address hash; mirrors |
 | `js/orbs.js` | `spawnOrb`, `collectOrb`, `stepOrb` |
 | `js/spots.js` | Share spots: `encodeSpot`, `applySpot`, `fromHash` |
 | `js/input.js` | Pointer, wheel and keyboard handlers, gestures, the fading controls |
@@ -93,7 +93,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 
 **A frame.** `frame()` in `loop.js` is a list of calls: wait for the chip, read the sound, advance the clocks and the transition, measure the distance to the nearest surface, work out the steering, run the autopilot and Journey's clocks, turn and move the camera, move the land, update the orb, then draw (`drawScene`, `drawTrails`, `drawBloom`, `drawFinal`). Each step lives in the file that owns what it changes. The steps pass what they work out through one reused object, the frame's notes, called `fr` inside them; the comment above it in `loop.js` lists its fields.
 
-**`__dbg` and `window.MF`.** Every file ends with `__dbg`, an object with a getter (and, where the value can change, a setter) for every name in the file. `main.js` merges them into `window.MF`, and also offers each field of the five state objects by its bare name (`MF.pos` for `MF.cam.pos`). The test tools run their code inside `with(window.MF)`, so it can name any internal variable or function, and so can the browser console (`MF.setLand(1)`). When you add a top-level name to a file, add it to that file's `__dbg` if a test needs it.
+**`__dbg` and `window.MF`.** Every file ends with `__dbg`, an object holding every name in the file (with a getter and a setter for the ones that can change). `main.js` merges them into `window.MF`, and also offers each field of the five state objects by its bare name (`MF.pos` for `MF.cam.pos`). The test tools run their code inside `with(window.MF)`, so it can name any internal variable or function, and so can the browser console (`MF.setLand(1)`). When you add a top-level name to a file, add it to that file's `__dbg` if a test needs it.
 
 The code is still ES5 in style inside the files (`var`, function declarations, no classes).
 
@@ -254,11 +254,9 @@ Octave multipliers in Coral are integers (3, 9) so the sum stays periodic at 2π
 
 Worlds were developed by writing several candidates at once, rendering them, and keeping the good ones. First attempts often needed one retune (Crystal collapsed to dust until its rotation was reduced; Nebula and Aurora needed their gain changed by an order of magnitude).
 
-### Hybrids (dormant)
+### Blends (removed)
 
-`hybProg(a,b)` compiles a shader that defines `mapA` and `mapB` from two worlds and returns `mix(mapA(p), mapB(p + uOff), uMix)`. A mix of two 1-Lipschitz functions is 1-Lipschitz, so it is a valid field. `uOff` solves the period problem: when the camera wraps by world A's period, the same shift is added to `uOff` and then wrapped by B's period, so B keeps being sampled at the right place. `startHybrid`, `finishHybrid` and `deAt` support this.
-
-The user-facing Blend dropdown and the journey morph option were removed because blends cost twice as much per pixel and did not look good enough. The engine code remains and works; nothing calls `startHybrid` at present.
+The app once could mix two worlds' distance fields into one scene. The control for it was removed because a blend cost twice as much per pixel and did not look good enough, and the engine code behind it was removed later. It is in the repository's history before the commit "Remove the world-blend code" if it is wanted again.
 
 ## 6a. The land
 
@@ -282,7 +280,7 @@ The land (`landMode`: 0 off, 1 alone, 2 over the world) is a height field, not a
 
 `probe(w, m, n)` asks the graphics chip for world `w`'s distance at the first `n` (up to 16) points in `probePts`. `probeBuild` makes a program from the world's own shader text up to `main`, with a `main` that evaluates `map` at point number `gl_FragCoord.x`, clamps it to -8..8 and spreads it over three colour bytes; `probe` draws that into a 16 by 1 picture, reads it back and decodes into `probeOut`. It exists for two reasons:
 
-- **Worlds in packs.** A pack may not carry JavaScript, so a pack world has GLSL `map` but no `de`. `cleanWorld` checks it (the rules of `cleanCode`, no clock or sound, loops at most 16 times in all, numbers in range); `packWorld` wraps the code as `wmap(p, m)` inside a `map` that first folds `p` into the period, so the world is exactly periodic whatever the code does, and clamps the result. `packFrame` asks the probe once a frame for the camera and the autopilot's four points (`packD`); if the answer takes over 4 ms on average it asks every third frame. `deMany` batches the one-off searches (a starting place, an orb's place) 16 points to a question. Pack worlds cannot blend (`startHybrid` refuses), are appended after `NWORLD`, are saved in `localStorage["mirrorfold-library"]` as cleaned source, and while one that is not `reviewed` is showing the flash limiter is on. Untested: any pack world on a phone, and the orb in a pack world.
+- **Worlds in packs.** A pack may not carry JavaScript, so a pack world has GLSL `map` but no `de`. `cleanWorld` checks it (the rules of `cleanCode`, no clock or sound, loops at most 16 times in all, numbers in range); `packWorld` wraps the code as `wmap(p, m)` inside a `map` that first folds `p` into the period, so the world is exactly periodic whatever the code does, and clamps the result. `packFrame` asks the probe once a frame for the camera and the autopilot's four points (`packD`); if the answer takes over 4 ms on average it asks every third frame. `deMany` batches the one-off searches (a starting place, an orb's place) 16 points to a question. Pack worlds are appended after `NWORLD`, are saved in `localStorage["mirrorfold-library"]` as cleaned source, and while one that is not `reviewed` is showing the flash limiter is on. Untested: any pack world on a phone, and the orb in a pack world.
 - **Testing.** `tools/probe.py` compares `map` with `de` at 384 random points for every solid world. All 15 agree within 0.002 units plus 0.3% (32-bit against 64-bit arithmetic). This is the automatic check of the rule that the two must match.
 
 Reading a picture back makes the page wait until the chip has finished everything queued before it, which in practice is the rest of the previous frame. So the time the probe takes is mostly a measure of how far behind the chip is, not of the probe's own work. WebGL 1 has no way to read back without waiting; WebGL 2 does (a pixel buffer and a fence).
@@ -565,9 +563,6 @@ Not verified, because they need a real device or a human:
 - **The HUD is large.** With Journey on and a file loaded it covers about a third of a phone screen until it fades. It is four to six wrapping rows of pills. A collapsible menu or tabs would be better.
 - **Motion strengths were tuned from stills.** Some are probably too strong or too subtle in motion.
 - **Bulge is subtle; Scope and Orbit overlays can be faint** against bright worlds.
-- **Hybrid code is dead weight** unless the feature returns.
-- **`bmax` and `bavg` are unused** leftovers from the single-band analyser.
-- **Sponge with Halls and similar blends looked murky**, which is part of why blends were cut.
 
 ## 16. Ideas not yet built
 
@@ -589,7 +584,7 @@ The app was one script in one closure. It was split in four steps, each done mos
 
 What could still be better:
 
-- **The frame's notes are loosely typed.** `fr` has about thirty fields, and which step sets which is only written in a comment. Steps that returned their results and took them as arguments would make the flow checkable.
+- **The frame's notes are one shared record.** `fr` has about thirty fields, all declared with a comment in `loop.js`, but which step sets which is not checked. Steps that returned their results and took them as arguments would make the flow checkable.
 - **The drawing steps set dozens of uniforms by hand.** A small table per program would shorten `render.js` and make a missed uniform harder.
 - **`__dbg` is boilerplate.** It exists because the browser tests reach every name. Tests that import what they use would let it go.
 - **`init()` order still matters** for a few files (the lists must be filled before a world is chosen, the library must load before templates are read). The order is the one in `main.js`.

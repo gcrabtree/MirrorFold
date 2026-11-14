@@ -1,3 +1,4 @@
+/* The editor: sliders for a palette, motion or filter that you made or added. */
 import { setLook, setMotion } from "./choose.js";
 import { $, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
@@ -217,7 +218,6 @@ $("packIn").addEventListener("change",function(){
 });
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get ed(){return ed},set ed(v){ed=v}, get edClose(){return edClose}, get ED(){return ED},set ED(v){ED=v}, get ED_SIMPLE(){return ED_SIMPLE}, get FX_NAMES(){return FX_NAMES}, get palFromSimple(){return palFromSimple},
-  get palToSimple(){return palToSimple}, get edShow(){return edShow}, get edHex(){return edHex}, get edRgb(){return edRgb}, get edSwatch(){return edSwatch}, get edRead(){return edRead},
-  get edSimpleShow(){return edSimpleShow}, get edSimpleRead(){return edSimpleRead}, get edSlider(){return edSlider}, get edHelpFill(){return edHelpFill}, get edOpen(){return edOpen}, get edNew(){return edNew}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={edClose, ED_SIMPLE, FX_NAMES, palFromSimple, palToSimple, edShow, edHex, edRgb, edSwatch, edRead,
+  edSimpleShow, edSimpleRead, edSlider, edHelpFill, edOpen, edNew, get ed(){return ed},set ed(v){ed=v}, get ED(){return ED},set ED(v){ED=v}};

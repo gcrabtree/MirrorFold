@@ -1,3 +1,4 @@
+/* The setup panel: making and changing Journey templates and sets. */
 import { $, toast } from "./dom.js";
 import { edClose } from "./editor.js";
 import { wakeHud } from "./input.js";
@@ -105,7 +106,6 @@ export function openAdv(toLibrary){
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-/* ---------- journey setup panel ---------- */
 adv=$("adv"),advTpl=$("advTpl"),advSet=$("advSet"),advT=BUILTIN_T[0],advS=BUILTIN_S[0];
 advTpl.addEventListener("change",function(){advT=findT(this.value)||BUILTIN_T[0];advRenderT()});
 advSet.addEventListener("change",function(){advS=findS(this.value)||BUILTIN_S[0];advRenderS()});
@@ -148,7 +148,6 @@ $("advUseT").addEventListener("click",function(){useJourney("t:"+advT.name,advT.
 $("advUseS").addEventListener("click",function(){useJourney("s:"+advS.name,advS.name)});
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get advT(){return advT},set advT(v){advT=v}, get advS(){return advS},set advS(v){advS=v}, get advPick(){return advPick}, get adv(){return adv},set adv(v){adv=v}, get advTpl(){return advTpl},set advTpl(v){advTpl=v}, get advSet(){return advSet},set advSet(v){advSet=v},
-  get mk(){return mk}, get uniqueName(){return uniqueName}, get advFill(){return advFill}, get advRenderT(){return advRenderT}, get advChanged(){return advChanged}, get advRenderS(){return advRenderS},
-  get twoTap(){return twoTap}, get useJourney(){return useJourney}, get openAdv(){return openAdv}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={advPick, mk, uniqueName, advFill, advRenderT, advChanged, advRenderS, twoTap, useJourney, openAdv,
+  get advT(){return advT},set advT(v){advT=v}, get advS(){return advS},set advS(v){advS=v}, get adv(){return adv},set adv(v){adv=v}, get advTpl(){return advTpl},set advTpl(v){advTpl=v}, get advSet(){return advSet},set advSet(v){advSet=v}};

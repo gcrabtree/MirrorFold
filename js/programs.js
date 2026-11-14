@@ -1,8 +1,7 @@
 /* Compiling and linking shader programs. */
 import { canvas, errBox, gl } from "./dom.js";
 import { FS_BLUR, FS_DOWN, FS_FINAL, FS_TRAIL, TRAIL_U, VS, finalSource, fragSource, trailSource } from "./shaders.js";
-import { WORLDS } from "./worlds.js";
-let vsObj;
+let vsObj=null;
 
 export function overlayProg(ov){ /* null if this overlay's code does not compile on this device */
   if(ov.prog===undefined){try{ov.prog=link(trailSource(ov.code),TRAIL_U)}catch(e){ov.prog=null;}}
@@ -31,19 +30,8 @@ export function link(fs,names){
 }
 export function build(w){
   if(w.prog)return;
-  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr","uLandT","uLandOn"]);
+  var o=link(fragSource(w),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn"]);
   w.prog=o.prog;w.U=o.U;
-}
-/* a hybrid is two worlds' distance fields mixed; the second is sampled at an offset so both can keep wrapping */
-const hybCache={};
-export function hybProg(a,b){
-  var k=a+"_"+b;if(hybCache[k])return hybCache[k];
-  var A=WORLDS[a],B=WORLDS[b];
-  var g=A.glsl.map(function(l){return l.replace("float map(vec3 p)","float mapA(vec3 p)")}).concat(["#undef P"],
-        B.glsl.map(function(l){return l.replace("float map(vec3 p)","float mapB(vec3 p)")}),["#undef P",
-    "float map(vec3 p){float a=mapA(p);vec4 oa=orb;float b=mapB(p+uOff);orb=mix(oa,orb,uMix);return mix(a,b,uMix);}"]);
-  var o=link(fragSource({glsl:g,fog:(A.fog+B.fog)/2,maxd:Math.max(A.maxd,B.maxd)}),["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uMix","uOff","uOrb","uVr","uLandT","uLandOn"]);
-  hybCache[k]=o;return o;
 }
 
 export function bindTex(unit,t){gl.activeTexture(gl.TEXTURE0+unit);gl.bindTexture(gl.TEXTURE_2D,t);}
@@ -53,7 +41,6 @@ export let pTrail, pDown, pBlur, pFinal, pCopy; /* the programs for the trails, 
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-vsObj=null;
 try{
   pTrail=link(FS_TRAIL,TRAIL_U);
   pDown=link(FS_DOWN,["uT","uPx"]);
@@ -62,7 +49,6 @@ try{
 }catch(e){errBox.textContent="The effects shaders did not compile on this device.\n"+e.message;throw new Error("stop");}
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get vsObj(){return vsObj},set vsObj(v){vsObj=v}, get overlayProg(){return overlayProg}, get FS_COPY(){return FS_COPY}, get FINAL_U(){return FINAL_U}, get filterProg(){return filterProg}, get sh(){return sh},
-  get link(){return link}, get build(){return build}, get hybCache(){return hybCache}, get hybProg(){return hybProg}, get bindTex(){return bindTex}, get passTo(){return passTo},
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={overlayProg, FS_COPY, FINAL_U, filterProg, sh, link, build, bindTex, passTo, get vsObj(){return vsObj},set vsObj(v){vsObj=v},
   get pTrail(){return pTrail},set pTrail(v){pTrail=v}, get pDown(){return pDown},set pDown(v){pDown=v}, get pBlur(){return pBlur},set pBlur(v){pBlur=v}, get pFinal(){return pFinal},set pFinal(v){pFinal=v}, get pCopy(){return pCopy},set pCopy(v){pCopy=v}};

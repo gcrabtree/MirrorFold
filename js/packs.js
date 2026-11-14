@@ -1,3 +1,4 @@
+/* The cleaners: everything read from a pack goes through these, which refuse or limit whatever does not fit. */
 
 
 /* ---------- packs ----------
@@ -107,6 +108,5 @@ export function cleanMotion(src){
   return out;
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get cleanName(){return cleanName}, get cleanPalette(){return cleanPalette}, get cleanCode(){return cleanCode}, get cleanFilter(){return cleanFilter}, get cleanOverlay(){return cleanOverlay}, get cleanWorld(){return cleanWorld},
-  get cleanMotion(){return cleanMotion}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={cleanName, cleanPalette, cleanCode, cleanFilter, cleanOverlay, cleanWorld, cleanMotion};

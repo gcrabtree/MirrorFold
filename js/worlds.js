@@ -1,3 +1,4 @@
+/* The worlds: each one's shader distance function beside the same function in JavaScript. */
 import { fr, md, tile } from "./dom.js";
 
 /* ---------- the worlds ----------
@@ -462,5 +463,5 @@ export function init(){
 
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get WORLDS(){return WORLDS}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={WORLDS};

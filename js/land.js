@@ -4,7 +4,7 @@ import { clock } from "./clock.js";
 import { $, gl, toast } from "./dom.js";
 import { LAND_PRE_MAIN, LFREQ, LPERIOD } from "./land-shader.js";
 import { LK, landSrc } from "./landscapes.js";
-import { palCur } from "./palettes.js";
+import { setPal } from "./palettes.js";
 import { bindTex, link, passTo } from "./programs.js";
 import { camArr } from "./render.js";
 import { mirrors, sel } from "./state.js";
@@ -15,8 +15,8 @@ export function landClimb(d){landClear=Math.max(0.035,Math.min(1.5,landClear+d))
 export function landFreeTargets(){freeT(tL);freeT(tC);freeT(tLP);tL=tC=tLP=null;}
 export function landLayer(){if(!tL)tL=target(tA.w,tA.h);return tL;}
 export function landMixed(){if(!tC)tC=target(tA.w,tA.h);return tC;}
-export let landMode, landKind, landTint, landFx, pLand, pMix;
-let pLandPre, landTex;
+export let landMode=0, landKind=0, landTint=0, landFx=0, pLand=null, pMix=null;
+let pLandPre=null, landTex=null;
 
 const FS_MIX="precision highp float;varying vec2 v;uniform sampler2D uT,uL;void main(){vec4 L=texture2D(uL,v);gl_FragColor=vec4(mix(texture2D(uT,v).rgb,L.rgb,L.a),1.0);}"; /* the land laid over the world */
 const LAND_U=["uX","uRes","uTime","uPos","uCam","uFov","uSeg","uSpin","uSky","uSkyT","uSun","uSunCol","uCi","uCf","uLi","uLf","uDa","uDb","uPa","uPb","uPc","uPd","uHue","uTint","uN","uPre","uPreRes","uK"];
@@ -92,7 +92,7 @@ export function landPass(dst,over,fov,hue){
     gl.uniform1f(U.uFov,fov);gl.uniform1f(U.uSeg,mirrors[sel.mi]);gl.uniform1f(U.uSpin,clock.spin);gl.uniform1f(U.uSky,over?1:0);
     gl.uniform2fv(U.uCi,ci);gl.uniform2fv(U.uCf,cf);gl.uniform2fv(U.uLi,li);gl.uniform2fv(U.uLf,lf);
     gl.uniform4f(U.uDa,Math.floor(da[0]),Math.floor(da[1]),da[0]%1,da[1]%1);gl.uniform4f(U.uDb,Math.floor(db[0]),Math.floor(db[1]),db[0]%1,db[1]%1);
-    gl.uniform3fv(U.uPa,palCur.a);gl.uniform3fv(U.uPb,palCur.b);gl.uniform3fv(U.uPc,palCur.c);gl.uniform3fv(U.uPd,palCur.d);
+    setPal(U);
     gl.uniform1f(U.uHue,hue);gl.uniform1f(U.uTint,landTint);
     gl.uniform3fv(U.uSun,LK[landKind].sun);gl.uniform3fv(U.uSunCol,LK[landKind].sunCol);
     gl.uniform1i(U.uX,7);gl.uniform1i(U.uN,4);gl.uniform1i(U.uPre,5);gl.uniform1i(U.uSkyT,6);gl.uniform2f(U.uPreRes,pw,ph);gl.uniform1f(U.uK,8);
@@ -146,18 +146,12 @@ export function moveLand(fr){
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 (function(){var sd=20261113,i;for(i=0;i<65536;i++){sd=(Math.imul(sd,1664525)+1013904223)>>>0;LTAB[i]=sd>>>24;}})(); /* the grids things are scattered on: trees, trees, bushes, boulders, rocks, scree */
-landMode=0,landKind=0,landTint=0,landFx=0; /* which landscape (an entry in LK); 0 off, 1 alone, 2 over the world; palette on nothing, sky and light, everything; effects on everything, sky, land */
-pLand=null;
-pLandPre=null;
-pMix=null;
-landTex=null;
+ /* which landscape (an entry in LK); 0 off, 1 alone, 2 over the world; palette on nothing, sky and light, everything; effects on everything, sky, land */
+
 }
 
-/* for the test tools and the browser console: every name in this file, readable and (where it can change) settable */
-export const __dbg={get tL(){return tL},set tL(v){tL=v}, get tC(){return tC},set tC(v){tC=v}, get tLP(){return tLP},set tLP(v){tLP=v}, get landClear(){return landClear},set landClear(v){landClear=v}, get landClimb(){return landClimb}, get landFreeTargets(){return landFreeTargets},
-  get landLayer(){return landLayer}, get landMixed(){return landMixed}, get landMode(){return landMode},set landMode(v){landMode=v}, get landKind(){return landKind},set landKind(v){landKind=v}, get landTint(){return landTint},set landTint(v){landTint=v}, get landFx(){return landFx},set landFx(v){landFx=v},
-  get pLand(){return pLand},set pLand(v){pLand=v}, get pMix(){return pMix},set pMix(v){pMix=v}, get pLandPre(){return pLandPre},set pLandPre(v){pLandPre=v}, get landTex(){return landTex},set landTex(v){landTex=v}, get FS_MIX(){return FS_MIX}, get LAND_U(){return LAND_U},
-  get LTAB(){return LTAB}, get landHash(){return landHash}, get landH(){return landH}, get landFloor(){return landFloor}, get LAYERS(){return LAYERS}, get pLandK(){return pLandK},
-  get lpos(){return lpos}, get lvel(){return lvel}, get lhead(){return lhead}, get landXTab(){return landXTab}, get landBuild(){return landBuild}, get LP_CI(){return LP_CI},
-  get LP_CF(){return LP_CF}, get LP_LI(){return LP_LI}, get LP_LF(){return LP_LF}, get landPass(){return landPass}, get setLand(){return setLand}, get setLandKind(){return setLandKind},
-  get setLandTint(){return setLandTint}, get setLandFx(){return setLandFx}, get moveLand(){return moveLand}};
+/* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
+export const __dbg={landClimb, landFreeTargets, landLayer, landMixed, FS_MIX, LAND_U, LTAB, landHash, landH, landFloor,
+  LAYERS, pLandK, lpos, lvel, lhead, landXTab, landBuild, LP_CI, LP_CF, LP_LI,
+  LP_LF, landPass, setLand, setLandKind, setLandTint, setLandFx, moveLand, get tL(){return tL},set tL(v){tL=v}, get tC(){return tC},set tC(v){tC=v}, get tLP(){return tLP},set tLP(v){tLP=v},
+  get landClear(){return landClear},set landClear(v){landClear=v}, get landMode(){return landMode},set landMode(v){landMode=v}, get landKind(){return landKind},set landKind(v){landKind=v}, get landTint(){return landTint},set landTint(v){landTint=v}, get landFx(){return landFx},set landFx(v){landFx=v}, get pLand(){return pLand},set pLand(v){pLand=v}, get pMix(){return pMix},set pMix(v){pMix=v}, get pLandPre(){return pLandPre},set pLandPre(v){pLandPre=v}, get landTex(){return landTex},set landTex(v){landTex=v}};
