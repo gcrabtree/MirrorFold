@@ -48,15 +48,15 @@ The survey looked at MilkDrop descendants (Butterchurn, projectM, NestDrop), fra
 **How.** GitHub is the server.
 
 - **Reading.** The gallery is the `packs/` folder of the repository, served by Pages with the app. `packs/index.json` lists each pack with its name, author, a sentence about it and what is inside. It is written by `tools/gallery.mjs` from the pack files, and the check workflow fails if it is out of date. The setup panel shows the list as cards with **Add** on each.
-- **Offering.** **Offer mine to the gallery** opens a new issue on the repository with the user's pack filled in (an issue form, `.github/ISSUE_TEMPLATE/pack.yml`). A workflow (`.github/workflows/offer.yml`) runs `tools/offer.mjs` on it: the same cleaners the app uses. A pack that passes becomes a pull request that adds one file and the index line; one that does not gets a comment saying why.
+- **Offering.** The setup panel lists what the user has made, and the scene showing now, each with a tick box. **Offer what is ticked** opens a new issue on the repository with a pack of only those things filled in, and whatever of the user's own they use (an issue form, `.github/ISSUE_TEMPLATE/pack.yml`). A workflow (`.github/workflows/offer.yml`) runs `tools/offer.mjs` on it: the same cleaners the app uses. A pack that passes becomes a pull request that adds one file and the index line; one that does not gets a comment saying why.
 - **Review.** Merging is the review. Only packs in the page's own folder are marked reviewed, as now, so a person has looked at any code before it runs without the flash limiter.
 
 **Still open.**
 
 - The workflow has never run. It needs a `pack` label and the setting that lets Actions open pull requests (`packs/README.md`, For maintainers).
-- **Offer mine** sends the whole library, including items added from the gallery. Items do not record where they came from. The panel tells the user to remove what is not theirs first.
+- What came from the gallery is known by kind and name only (`fromGal`). Something loaded from another person's pack file is not known to be theirs: the form's own tick box ("I made this") is the only guard.
 - The gallery has no pictures. A pack with a `scene` could show one, made by `tools/render.py` when the index is written.
-- No way to offer a single journey or a single scene; it is the whole library or nothing.
+- The pack's name, author and sentence are typed into the form on GitHub, not in the app.
 
 **Rules it must keep.** The workflow treats the issue as data: it never puts issue text into a command, writes only the cleaned pack under a file name it makes itself, and has no secrets beyond the token GitHub gives it.
 

@@ -270,7 +270,30 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("an offered pack that passes gets a file name and the author's GitHub name", good.ok && good.file === "mine.json" && JSON.parse(good.text).author === "octo" && problems(good.text).length === 0);
   expect("a file name already in use gets the issue number added", handle({ number: 7, body: b, user: { login: "octo" } }, () => true).file === "mine-7.json");
   const hostile = handle({ number: 8, body: body("@everyone `x` [a](http://b)", "me", "", JSON.stringify({ palettes: [{ name: "@team <b>", a: 1 }] })), user: { login: "o" } }, () => false);
-  expect("a refusal quotes the issue's text only as plain text", !hostile.ok && !/(^|[^\\])[@<`\[]/.test(hostile.comment.split("\n")[0].replace("**Copy mine as text**", "")), hostile.comment.split("\n")[0]);
+  expect("a refusal quotes the issue's text only as plain text", !hostile.ok && !/(^|[^\\])[@<`\[]/.test(hostile.comment.split("\n")[0].replace("**Offer what is ticked**", "")), hostile.comment.split("\n")[0]);
+  // offering only what is ticked
+  const { offerPick, packNames, cleanFrom, offerSummary } = galleryM;
+  const mine = [
+    { kind: "worlds", key: "cage", item: { name: "Cage" }, label: "World: Cage" },
+    { kind: "palettes", key: "Rust", item: { name: "Rust" }, label: "Palette: Rust" },
+    { kind: "palettes", key: "Moss", item: { name: "Moss" }, label: "Palette: Moss" },
+    { kind: "motions", key: "Tide", item: { name: "Tide" }, label: "Motion: Tide" },
+    { kind: "templates", key: "T1", item: { name: "T1", palette: { mode: "random", set: ["Rust", "Ember"] }, world: { mode: "random", set: ["julia", "cage"] }, motion: { mode: "off", set: null } }, label: "Journey template: T1" },
+    { kind: "templates", key: "T2", item: { name: "T2", palette: { mode: "random", set: null } }, label: "Journey template: T2" },
+    { kind: "sets", key: "S", item: { name: "S", items: [{ tpl: "T1", min: 2 }, { tpl: "Classic", min: 2 }] }, label: "Journey set: S" },
+    { kind: "scene", key: "now", item: { spot: "cage-abc", palette: "Moss", motion: "Melt" }, label: "The scene" }
+  ];
+  const one = offerPick(mine, [2]);
+  expect("offering one thing sends that thing and nothing else", JSON.stringify(one.pack) === JSON.stringify({ mirrorfold: 1, name: "My Mirrorfold pack", author: "", palettes: [{ name: "Moss" }] }) && one.extra.length === 0, JSON.stringify(one));
+  const viaSet = offerPick(mine, [6]);
+  expect("a set brings its templates, and they bring what they name", viaSet.pack.sets.length === 1 && viaSet.pack.templates.length === 1 && viaSet.pack.templates[0].name === "T1" && viaSet.pack.palettes.length === 1 && viaSet.pack.palettes[0].name === "Rust" && viaSet.pack.worlds.length === 1 && !viaSet.pack.motions && !viaSet.pack.scene, JSON.stringify(viaSet.pack));
+  expect("what came along is named, and what was ticked is not", viaSet.extra.join() === "World: Cage,Palette: Rust,Journey template: T1" && offerPick(mine, [1, 4]).extra.join() === "World: Cage");
+  expect("a template that may use anything brings nothing", Object.keys(offerPick(mine, [5]).pack).join() === "mirrorfold,name,author,templates");
+  const sc = offerPick(mine, [7]);
+  expect("the scene brings its world and its look", sc.pack.scene.spot === "cage-abc" && sc.pack.worlds.length === 1 && sc.pack.palettes[0].name === "Moss" && !sc.pack.motions && offerSummary(sc.pack) === "1 world and 1 palette, and the scene", offerSummary(sc.pack));
+  expect("nothing ticked, or a tick on nothing, makes an empty pack", Object.keys(offerPick(mine, []).pack).length === 3 && Object.keys(offerPick(mine, [99]).pack).length === 3);
+  expect("the names in a gallery pack are noted by kind", packNames(JSON.stringify({ palettes: [{ name: " Glacier " }, { a: 1 }, null], templates: [{ name: "Tour" }], junk: [{ name: "x" }] })).join("|") === "palettes: Glacier |palettes:Glacier|templates:Tour" && packNames("{nope").length === 0);
+  expect("the stored note of what came from the gallery is kept only if it is a list of short strings", cleanFrom(["palettes:A", 3, null, "x".repeat(50), "nocolon"]).join() === "palettes:A" && cleanFrom({ a: 1 }).length === 0 && cleanFrom(Array(2000).fill("p:a")).length === 600);
   expect("an empty or broken pack box is refused with a reason", !handle({ number: 9, body: body("a", "b", "", "{nope"), user: {} }, () => false).ok && !handle({ number: 9, body: "", user: {} }, () => false).ok);
 }
 

@@ -4,7 +4,7 @@ import { edClose } from "./editor.js";
 import { wakeHud } from "./input.js";
 import { BUILTIN_S, BUILTIN_T, CATS, MODE_LABEL, allS, allT, applyTemplate, fillJT, findS, findT, journey, jt,
   jtReset, normS, normT, saveStore, selectJourney, setJourney, store } from "./journey.js";
-import { loadGallery } from "./gallery.js";
+import { loadGallery, offerFill } from "./gallery.js";
 import { advRenderLib } from "./pack-io.js";
 export let advT,advS; /* the template and the set the panel is showing */
 export function advPick(t,s){if(t)advT=t;if(s)advS=s;} /* choose which template and set the panel shows */
@@ -18,7 +18,7 @@ export function advFill(){
   advTpl.value=advT.name;
   advSet.textContent="";allS().forEach(function(x){advSet.appendChild(mk("option",{value:x.name,text:x.name+(x.builtin?" (built-in)":"")}))});
   advSet.value=advS.name;
-  advRenderT();advRenderS();advRenderLib();
+  advRenderT();advRenderS();advRenderLib();offerFill();
 }
 function advRenderT(){
   var t=advT,ro=t.builtin,box=$("advCats");
