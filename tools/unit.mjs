@@ -459,6 +459,43 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a pack palette's stripe is a gradient of plain colour numbers", /^linear-gradient\(90deg(,rgb\(\d+,\d+,\d+\)){9}\)$/.test(palStripe({ a: [.5, .5, .5], b: [.5, 9, -9], c: [1, 1, 1], d: [0, .3, .6] })));
 }
 
+// ---- the lessons: every step has its words in every language, its drawing, and a voice made from those same words
+{
+  const { existsSync, readFileSync } = await import("node:fs"), root = new URL("../", import.meta.url);
+  const { LANGS, cleanLang, fill, pickLang } = await import("../js/lang.js");
+  const { TRACKS, PARTS, partKey, narration, voiceName, sayHash } = await import("../js/lessons.js");
+  const { FIGS, hopsOut, visits, sqr2, num } = await import("../js/figures.js");
+  const bad = [];
+  for (const lg of LANGS) {
+    const raw = JSON.parse(readFileSync(new URL("lang/" + lg + ".json", root), "utf8")), words = cleanLang(raw);
+    if (Object.keys(words).length !== Object.keys(raw).length) bad.push("lang/" + lg + ".json holds something that is not text");
+    let marks = {};
+    try { marks = JSON.parse(readFileSync(new URL("voice/" + lg + "/index.json", root), "utf8")); } catch (_) { }
+    for (const T of TRACKS) {
+      if (!words["learn.track." + T.id]) bad.push(lg + ": no name for the track " + T.id);
+      for (const s of T.steps) {
+        for (const p of PARTS) if (!words[partKey(T.id, s, p)]) bad.push(lg + ": no text " + partKey(T.id, s, p));
+        if (!FIGS[s]) bad.push("no drawing for the step " + s);
+        if (!existsSync(new URL(voiceName(lg, T.id, s), root))) bad.push("no voice file " + voiceName(lg, T.id, s));
+        else if (marks[T.id + "-" + s] !== sayHash(narration(words, T.id, s).join("\n"))) bad.push("the voice for " + lg + " " + T.id + "-" + s + " was made from other words");
+      }
+    }
+    // every name the drawings and the panel ask for has text
+    const src = ["learn.js", "figures.js"].map(f => readFileSync(new URL("js/" + f, root), "utf8")).join("\n");
+    for (const m of src.matchAll(/"(learn\.[a-zA-Z.]+)"/g)) if (!m[1].endsWith(".") && !words[m[1]]) bad.push(lg + ": no text " + m[1]);
+  }
+  expect("every lesson step has its words, its drawing and an up-to-date voice (run tools/voice.py)", bad.length === 0, bad.join("; "));
+  expect("a voice file's address is made of the language and the step's names", voiceName("en", "mandel", "square") === "voice/en/mandel-square.mp3");
+  expect("text is filled in by position, and a name with no text gives the name", fill({ a: "{0} by {1}, {0}" }, "a", [3, 4]) === "3 by 4, 3" && fill({}, "x.y", []) === "x.y" && fill({}, "constructor", []) === "constructor");
+  expect("only text is kept from a language file", JSON.stringify(cleanLang({ a: "x", b: 3, c: { d: "y" }, e: ["z"] })) === '{"a":"x"}' && Object.keys(cleanLang([1])).length === 0);
+  expect("the language is the first wanted one we have, else English", pickLang(["fr-CA", "en-GB"]) === "en" && pickLang(["de"]) === "en" && pickLang([]) === "en");
+  expect("hops: 0 never leaves the ring, 1 leaves on its third hop, -2 stays, a little past one quarter leaves", hopsOut(0, 0, 200) === 0 && hopsOut(1, 0, 200) === 3 && hopsOut(-2, 0, 200) === 0 && hopsOut(0.26, 0, 200) > 0 && hopsOut(0.25, 0, 200) === 0);
+  expect("a path settles on 1 place at c = 0, 2 at -1, 3 at -1.755", visits(0, 0) === 1 && visits(-1, 0) === 2 && visits(-1.755, 0) === 3 && visits(1, 0) === -1);
+  const q = sqr2(0, 1);
+  expect("the point one unit straight up squares to minus one", q[0] === -1 && q[1] === 0);
+  expect("numbers are written plainly", num(0.5) === "0.50" && num(-0.001) === "-0.0010" && num(-0.0000001, 2) !== "-0.00" && num(65536) === "65536");
+}
+
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {
   const { readdirSync } = await import("node:fs"), dir = new URL("../js/", import.meta.url), seen = {}, twice = [];

@@ -96,6 +96,10 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/record.js` | Record video: the canvas and the app's own sound into a video file |
 | `js/render.js` | Drawing a frame: `drawScene`, `drawTrails`, `drawBloom`, `drawFinal` |
 | `js/picker.js` | The choosers with pictures: `openPick`, `thumbName`, and `pickFrame`, which keeps the list buttons saying what is chosen |
+| `js/lang.js` | The lessons' words: `loadLang`, `t`, from the flat file `lang/<language>.json` |
+| `js/lessons.js` | The lessons' tracks and steps, and the names of their texts and voice files |
+| `js/figures.js` | The lessons' drawings (`FIGS`) and their arithmetic |
+| `js/learn.js` | The lessons' panel: `openLearn`, `showStep`, `setVoice`, `learnFrame` |
 | `js/preload.js` | Getting ready ahead of need: the land's and the worlds' programs made one at a time while the pictures go on |
 | `js/loop.js` | `begin` and `frame(now)`, which calls the steps of a frame in order |
 
@@ -633,6 +637,23 @@ The pictures are 240 by 150 JPEGs in `thumbs/`, named by `thumbName(kind, key)` 
 
 Not done: pictures for what a pack adds (they would have to be drawn in the page), a picture inside the button itself, and any test on a phone.
 
+### The lessons
+
+**How it works** (`bLearn`, and `enterLearn` on the start card) opens `#learn`, a panel over the whole page. Four files:
+
+- `js/lessons.js`: `TRACKS`, each a list of step names in order, and the pure helpers `partKey`, `narration`, `voiceName` and `sayHash`. One track so far, `mandel`, with the steps `square`, `addc`, `plane`, `hops`, `pixels`, `patience`.
+- `js/lang.js`: the words. `lang/<language>.json` is flat: a name and its text, nothing nested. `loadLang` fetches it the first time the lessons open (by `XMLHttpRequest`, because the test tools open the page from a file, where `fetch` refuses), `cleanLang` keeps only text, and `t(name, ...)` gives the text with `{0}`, `{1}` filled in. `LANGS` lists the languages there are; `pickLang` chooses from the browser's list. Text from the file reaches the page only through `textContent`. A step's words are `learn.<track>.<step>.title`, `.text`, `.do` and `.name`.
+- `js/figures.js`: `FIGS`, one drawing for each step under the step's name, drawn on a 2D canvas (`#lnCv`), with the arithmetic they show (`hopsOut`, `visits`, `path`, `sqr2`) kept free of the page for the tests. A drawing has `init`, `draw`, and optionally `drag`, `key`, `ctl` (sliders), `changed` and `read` (the lines of numbers under it); the comment at the top of the file gives each one's arguments. Steps 5 and 6 share a grid of escape counts (`newGrid`, `gridStep`, `gridPaint`) worked out a few squares a frame.
+- `js/learn.js`: the panel. `openLearn`, `closeLearn`, `showStep(i)` (-1 is the list of steps), `setVoice`, and `learnFrame(now)`.
+
+While `learnOpen` is true, `frame()` calls `learnFrame` and returns: no world is drawn and no clock runs, so the lessons have the whole processor and the world is where it was on return. A key listener in the capture phase keeps keys from the flying controls while the panel is open.
+
+**The voice.** `tools/voice.py` asks the modules (through node) for each step's four pieces of text, has Kokoro read them (voice `af_heart`, a 0.45 s gap between pieces), and writes `voice/<language>/<track>-<step>.mp3`: one voice at 48 kbit/s, about 300 KB for 55 seconds. `voice/<language>/index.json` keeps `sayHash` of the words each file was made from, and `tools/unit.mjs` fails when a step's words no longer match its mark, so the spoken words cannot differ from the written ones. The page plays a file through one `Audio` element, only after the user turns the voice on (remembered in `localStorage["mirrorfold-voice"]`), and turns `master` down to a quarter while it speaks. The step last shown is kept in `localStorage["mirrorfold-learn"]`.
+
+**Adding a step:** its name in `TRACKS`, its four texts in every `lang/*.json`, its drawing in `FIGS`, then `tools/voice.py`. **Adding a language:** `lang/<code>.json` with every name, the code in `LANGS`, a Kokoro voice for it in `VOICES` in `tools/voice.py`, then `tools/voice.py`.
+
+Planned and not built: the steps after these six (zooming, Julia sets, other rules), a track from 2D to the 3D worlds, a track on colour, motions, filters and sound, a "How is this made?" way in from each world and filter, and the rest of the app's text in the language file.
+
 ### VR viewer
 
 `setStereo(on)` switches a side-by-side stereo mode for a phone in a Cardboard-style viewer. The button is hidden on devices without touch; the harness can still call `setStereo(true)`.
@@ -678,6 +699,7 @@ There is no test framework. `tools/` holds what was used during development:
 | `python3 tools/check.py` | Headless smoke test: compiles all worlds, cycles every option, opens the setup panel, runs journey ticks, taps a tempo, starts audio; fails on any script or WebGL error |
 | `python3 tools/render.py ...` | Screenshot one world, or `--all` for a contact sheet; `--js` runs code inside the page |
 | `python3 tools/thumbs.py [kind or name]` | Renders the choosers' pictures into `thumbs/` (needs Pillow and node) |
+| `.venv-voice/bin/python tools/voice.py [--all]` | Makes the lessons' sound files in `voice/` from the words in `lang/` (needs node, ffmpeg, and the Python packages kokoro and soundfile) |
 | `python3 tools/stereo.py a.png b.png` | For VR viewer pictures: how far blocks of the left half are from the right half, sideways and up and down (needs numpy) |
 
 `tools/harness.py` explains the mechanism: it writes a temporary copy of `index.html` with a `<base>` pointing at the repository and one extra script that waits for the `mf-ready` event (sent by `main.js` after start-up) and then runs the test code inside `with(window.MF)`. It relies on the exact tag that loads `js/main.js` and asserts on it. Chrome is started with `--allow-file-access-from-files` so that modules load from `file://`.
@@ -697,6 +719,7 @@ Verified in headless Chrome: the VR viewer renders two lens-shaped pictures with
 Not verified, because they need a real device or a human:
 
 - Frame rate on phones. Bulbs, Julia and the Mandelbox worlds are the heaviest.
+- The lessons on a phone: dragging in the drawings, how fast step 5 paints, and the voice. Nobody has listened to the sound files; they were made and measured, not heard.
 - Programs made ahead of need on a phone: how long it takes, and whether the picture keeps moving meanwhile (section 4).
 - The lower start after a visit that ended while starting, on a device that really gives up.
 - Multi-touch gestures. They cannot be simulated; the twist direction may feel reversed.

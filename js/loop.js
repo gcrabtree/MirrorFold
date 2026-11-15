@@ -10,6 +10,7 @@ import { wakeHud } from "./input.js";
 import { stepZoom } from "./zoom.js";
 import { autopilot, jMove, journey, stepJourney } from "./journey.js";
 import { landMode, moveLand } from "./land.js";
+import { learnFrame, learnOpen, openLearn } from "./learn.js";
 import { setMusic, soundFrame } from "./listen.js";
 import { midiFrame } from "./midi.js";
 import { musicFollowsSpeed } from "./music.js";
@@ -62,6 +63,7 @@ const notes={
 function frame(now){
   requestAnimationFrame(frame);
   if(document.hidden){last=now;return;}
+  if(learnOpen){learnFrame(now);last=now;return;} /* the lessons cover the page: draw the lesson, and leave the world as it is */
   var rawDt=(now-last)/1000,dt=notes.dt=Math.min(0.05,rawDt);last=now;
   /* wait for the graphics chip (Stats' probe and a pack world's probe do the same job, so not twice) */
   if(!(statsOn&&!scene.world.volume)&&!scene.world.pack)chipWait();
@@ -110,6 +112,7 @@ function frame(now){
 export function init(){
 $("enter").addEventListener("click",function(){begin(true)});
 $("enterQuiet").addEventListener("click",function(){begin(false)});
+$("enterLearn").addEventListener("click",function(){begin(false);openLearn();});
 
 last=performance.now();
 canvas.addEventListener("webglcontextlost",function(e){e.preventDefault();detailLower();errBox.textContent="The graphics context was lost. Reload the page to continue. It will start less sharp.";});

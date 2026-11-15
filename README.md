@@ -47,6 +47,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - [Music](#music)
 - [Journey](#journey)
 - [The zoom worlds](#the-zoom-worlds)
+- [The lessons](#the-lessons)
 - [Orbs and share links](#orbs-and-share-links)
 - [Performance](#performance)
 - [Motion and privacy](#motion-and-privacy)
@@ -142,7 +143,7 @@ The controls fade after five seconds and come back when you touch the picture.
 
 **First row:** World, Palette and Music. **World** and **Palette** each open a chooser: a grid of small pictures, one for each choice, with its name under it. Press a picture to choose it; **Close**, the Escape key or a press beside the grid leaves things as they were. Motion, Filter, Overlay, Mirrors, FX and the landscape button open the same kind of chooser. A world, palette, motion, filter or overlay that came from a pack has no picture: a palette shows a stripe of its colours, the others say so.
 
-**Second row:** three buttons, then four that each open a group of controls under the row. One group is open at a time; pressing its button again closes it, and it closes when the controls fade.
+**Second row:** three buttons, then four that each open a group of controls under the row, then **How it works**, which opens [the lessons](#the-lessons). One group is open at a time; pressing its button again closes it, and it closes when the controls fade.
 
 | Button | What it does |
 |---|---|
@@ -369,6 +370,23 @@ How deep it goes depends on the device. A computer takes up to 1,024 steps for e
 
 Mirrors, motions, filters, overlays, the land and **Hold still** all work on the zoom worlds. There is no orb in them and no light to throw, and Journey leaves them out in the VR viewer. **Share spot** keeps a place the tour has centred exactly; any other view comes back right only while it is magnified less than about a thousand times.
 
+## The lessons
+
+**How it works**, in the second row of buttons and on the start card, opens lessons that explain how the pictures are made. They are for anyone with school arithmetic. Each step has a drawing to drag, a few sentences in plain words, something to try, and then the name mathematics gives the idea, so that a name such as "complex numbers" arrives after the idea is already familiar.
+
+The first track, **From one number to the Mandelbrot set**, has six steps:
+
+1. Multiply a number by itself, again and again: it shrinks, runs away or stays.
+2. Add the same number after every squaring: which numbers keep the answers close.
+3. Numbers with two parts: squaring a point squares its distance and doubles its angle.
+4. The same rule on the sheet: drag the added point and watch the hops.
+5. Ask the question for every square of a grid: the picture appears as the grid gets finer.
+6. How long to wait before giving up: the limit on the count, as a slider.
+
+**Voice on** reads each step aloud. It is off until you turn it on, and the choice is remembered. The voice is a set of sound files made ahead of time from the same words (about 300 KB a step), fetched only for the step you are on; music plays more quietly while it speaks. **All steps** shows the list, and the app remembers the step you were on. While the lessons are open the world behind them is not drawn.
+
+Only this first track exists so far. The lessons' words are in one flat file, `lang/en.json`; English is the only language so far, and the rest of the app's text is not in that file yet.
+
 ## Orbs and share links
 
 Each world hides a glowing orb. Fly into it to collect it. The first six orbs each unlock a new palette. After that, collecting an orb takes you to another world. Progress is saved in your browser.
@@ -397,7 +415,7 @@ Bulbs, Julia, Box and Fortress are the heaviest worlds. If the picture stutters,
 
 **Motion.** Read the warning at the top of this page first. Colour and motion shift constantly. Pulses are designed to be soft and slow and the app is built not to strobe, but this has not been tested against any photosensitivity standard. A tapped tempo above about 165 beats per minute is halved. A video you load is slowed where needed so its brightness cannot change quickly. If your device is set to reduce motion, all reactions to sound are cut to a quarter and several motions are disabled.
 
-**Privacy.** Mirrorfold makes no network requests of its own. The page loads two fonts from Google Fonts, and that is all. The VR viewer reads the phone's motion sensor to follow your head; the readings stay on the phone. **Listen to a tab** and **Microphone** only run when you choose them and the browser's permission prompt is accepted; the sound is analysed in the browser and never recorded or sent. An audio file you choose is read by your browser and is not uploaded. Templates, orb progress and the orbs setting are kept in your browser's local storage.
+**Privacy.** Mirrorfold makes no network requests of its own. The page loads two fonts from Google Fonts, and that is all; the lessons' words and voice come from the site itself. The VR viewer reads the phone's motion sensor to follow your head; the readings stay on the phone. **Listen to a tab** and **Microphone** only run when you choose them and the browser's permission prompt is accepted; the sound is analysed in the browser and never recorded or sent. An audio file you choose is read by your browser and is not uploaded. Templates, orb progress and the orbs setting are kept in your browser's local storage.
 
 ## How it works
 
@@ -422,11 +440,13 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 |---|---|
 | `index.html` | The page's markup |
 | `css/app.css` | The styling |
-| `js/` | The app, as about 45 modules; the architecture document lists what each holds |
+| `js/` | The app, as about 50 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 26 worlds |
 | `thumbs/` | The choosers' small pictures, one for each built-in world, palette, motion, filter, overlay, mirror setting, FX setting and landscape |
+| `lang/` | The lessons' words, one flat file for each language (`en.json`) |
+| `voice/` | The lessons' voice: one sound file for each step, and `index.json`, which records the words each was made from |
 | `packs/` | Packs published with the site, the list of them (`index.json`) and the pack format (`README.md`) |
 | `tools/unit.mjs` | Tests for the change detector, the weighted picker, the head-turn math, the steering handoff and the pack cleaners |
 | `tools/pack.mjs` | Checks pack files with the same code the app uses |
@@ -434,6 +454,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `tools/probe.py` | Checks each world's two distance functions against each other |
 | `tools/render.py` | Headless screenshots |
 | `tools/thumbs.py` | Makes the pictures in `thumbs/`; run it after adding or changing anything that has one |
+| `tools/voice.py` | Makes the sound files in `voice/` with Kokoro; run it after changing a lesson's words |
 | `tools/stereo.py` | How well the two eyes' halves of VR viewer pictures agree |
 | `tools/harness.py` | Shared code for the Python tools |
 | `CLAUDE.md` | Working notes for Claude Code sessions |

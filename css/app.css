@@ -165,3 +165,36 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
 #start{padding:max(24px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
 #err{bottom:max(16px,env(safe-area-inset-bottom))}
 }
+
+/* How it works: the lessons. A panel over the page; a step is a drawing with its sliders and numbers, and the words beside or under it */
+#learn{position:fixed;inset:0;z-index:9;background:var(--void);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+#learn[hidden],#lnHome[hidden],#lnStep[hidden]{display:none}
+.learnIn{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
+#learn h2{font:300 24px/1.1 var(--display);margin:0}
+#learn h3{font:600 15px/1.3 var(--display);margin:0;color:var(--cool);letter-spacing:.02em}
+#learn p{margin:0;font-size:14px;line-height:1.6;color:var(--ink)}
+#lnHome,#lnStep{display:flex;flex-direction:column;gap:12px}
+#lnIntro{max-width:640px}
+#lnList{display:flex;flex-direction:column;gap:8px;max-width:640px}
+#lnList button{text-align:left;border-radius:14px;line-height:1.35;padding:12px 14px;font-size:13px}
+#learn #lnCount{font-size:11px;color:var(--ink-dim);letter-spacing:.06em}
+.lnCols{display:flex;flex-direction:column;gap:14px}
+.lnFig{display:flex;flex-direction:column;gap:8px;min-width:0}
+/* the drawing is an ordinary canvas in the page, not the full-screen one the worlds are drawn on */
+#lnCv{position:static;inset:auto;width:100%;height:auto;aspect-ratio:8/5;border:1px solid var(--edge);border-radius:14px;background:#0b0618;cursor:pointer}
+#lnCv:focus-visible{outline:2px solid var(--cool);outline-offset:2px}
+.lnRow{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--ink-dim)}
+.lnRow input{width:100%;margin:0;height:28px;accent-color:var(--cool)}
+#lnRead{margin:0;font:500 12px/1.6 var(--body);color:var(--cool);white-space:pre-wrap;overflow-wrap:anywhere;min-height:3.2em}
+.lnWords{display:flex;flex-direction:column;gap:12px;min-width:0}
+#learn .lnBox{border:1px solid var(--edge);border-radius:14px;padding:10px 12px}
+.lnBox strong{display:block;font:600 11px/1.2 var(--display);letter-spacing:.06em;color:var(--hot);margin-bottom:6px}
+#lnName strong{color:var(--cool)}
+.lnNav{justify-content:space-between}
+#learn button:disabled{opacity:.45;cursor:default}
+@media (min-width:900px){
+  .lnCols{flex-direction:row;align-items:flex-start}
+  .lnFig{flex:1.25}
+  .lnWords{flex:1}
+}

@@ -41,6 +41,7 @@
     <button id="mLand" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuLand">Land and video</button>
     <button id="mShare" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuShare">Save and share</button>
     <button id="mMore" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuMore">More</button>
+    <button id="bLearn" type="button">How it works</button>
   </div>
   <!-- the four groups below open one at a time from the buttons above, and close when the controls fade -->
   <div class="row menu" id="menuLook" hidden>
@@ -112,6 +113,7 @@
     <div class="go">
       <button id="enter" type="button">Enter with music</button>
       <button id="enterQuiet" type="button">Enter silent</button>
+      <button id="enterLearn" type="button">How it works: the lessons</button>
     </div>
     <p id="preNote" hidden></p>
   </div>
@@ -163,6 +165,34 @@
   <div class="pickIn">
     <div class="advRow advHead"><h2 id="pickTitle"></h2><button id="pickClose" type="button">Close</button></div>
     <div id="pickGrid"></div>
+  </div>
+</div>
+<!-- How it works: the lessons. Every word in it is filled in from lang/<language>.json by js/learn.js -->
+<div id="learn" hidden>
+  <div class="learnIn">
+    <div class="advRow advHead"><h2 id="lnTitle"></h2><span class="advRow"><button id="lnVoice" type="button" aria-pressed="false"></button><button id="lnClose" type="button"></button></span></div>
+    <div id="lnHome">
+      <p id="lnIntro"></p>
+      <h3 id="lnTrack"></h3>
+      <div id="lnList"></div>
+    </div>
+    <div id="lnStep" hidden>
+      <p id="lnCount"></p>
+      <h3 id="lnHead"></h3>
+      <div class="lnCols">
+        <div class="lnFig">
+          <canvas id="lnCv" tabindex="0" role="img"></canvas>
+          <div id="lnCtl"></div>
+          <pre id="lnRead" aria-live="polite"></pre>
+        </div>
+        <div class="lnWords">
+          <p id="lnText"></p>
+          <p id="lnDo" class="lnBox"></p>
+          <p id="lnName" class="lnBox"></p>
+        </div>
+      </div>
+      <div class="advRow lnNav"><button id="lnBack" type="button"></button><button id="lnAll" type="button"></button><button id="lnNext" type="button" class="advGo"></button></div>
+    </div>
   </div>
 </div>
 <div id="ed" hidden>

@@ -104,6 +104,22 @@ setTimeout(function(){
   openPick("filter");$("pickGrid").children[4].click();pickFrame();
   log("choosers="+pk.join(" ")+" chose="+LOOKS[sel.lki].name+" shut="+$("pick").hidden+" button="+$("pLook").textContent);
 },2700);
+setTimeout(openLearn,2710);
+setTimeout(function(){
+  /* the lessons: every step opens with its words, draws without error, and its sliders and arrow keys work */
+  var out=[],i,k,f;
+  for(i=0;i<TRACKS[0].steps.length;i++){
+    showStep(i);learnFrame(performance.now());f=learnFig;
+    if(f.ctl){learnSt[f.ctl[0].k]=f.ctl[0].max;if(f.changed)f.changed(learnSt);}
+    if(f.drag)f.drag(200,120,learnSt,640,400);
+    if(f.key)f.key(1,1,learnSt);
+    for(k=0;k<3;k++)learnFrame(performance.now()+k*16);
+    readout();
+    out.push(TRACKS[0].steps[i]+":"+($("lnText").textContent.length>80&&$("lnHead").textContent.indexOf("learn.")<0?"words":"NO-WORDS")+":"+$("lnRead").textContent.split("\n").length);
+  }
+  log("lessons open="+learnOpen+" "+out.join(" ")+" missing="+(document.getElementById("learn").textContent.match(/learn\.[a-z]+\.[a-zA-Z.]+/)||["none"])[0]);
+  closeLearn();log("lessons shut="+$("learn").hidden);
+},2740);
 setTimeout(function(){setStereo(true);setMirrors(3);log("vr="+stereo);},2750);
 setTimeout(function(){stepWorld(1);},2900);
 setTimeout(function(){setStereo(false);setMirrors(0);},3500);
