@@ -1,6 +1,10 @@
 /* Journey clocks, transitions, and small helpers for flying. */
 import { cam } from "./camera.js";
 import { scene } from "./choose.js";
+import { morph } from "./controls.js";
+import { calm } from "./dom.js";
+import { heard } from "./song.js";
+import { still } from "./still.js";
 import { packD, packFrame } from "./pack-worlds.js";
 
 export function doBoost(){cam.boost=1;}
@@ -17,6 +21,7 @@ export function measure(fr){
   if(pk)packFrame(w,m,Math.min(1,Math.max(0.06,packD[0]*5)));
   var dist=pk?packD[0]:Math.abs(deAt(cam.pos[0],cam.pos[1],cam.pos[2],m));
   cam.boost*=Math.exp(-dt*1.2);if(cam.boost<0.01)cam.boost=0;
+  if(heard.drop&&morph===2&&!calm&&!still)cam.boost=Math.max(cam.boost,0.6); /* a drop in the music: a surge forward, as an orb gives */
   fr.w=w;fr.wSpeed=wSpeed;fr.pk=pk;fr.dist=dist;
 }
 

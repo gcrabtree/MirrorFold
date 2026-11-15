@@ -61,7 +61,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - **27 worlds.** Twenty-two are solid surfaces, all fractals but Cell (the inside of a living cell); three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
 - **Zooms a trillion times deep.** The two zoom worlds magnify the Mandelbrot set and Julia sets up to about a trillion times, on points where there is always something to see. See [The zoom worlds](#the-zoom-worlds).
 - **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
-- **Morph.** Each world slowly changes shape as you fly.
+- **Morph.** Each world changes shape as you fly. With music playing, the song decides the shape: a quiet passage opens the world out, a full one folds it dense, and a drop gives a surge forward.
 - **Kaleidoscope mirrors**: off, or 3, 4, 6, 8 or 12 segments.
 - **14 colour palettes.** Eight are available from the start (one of them, Wood, is browns). Six are unlocked by finding orbs.
 - **A picture beside every name.** The world, palette, motion, filter, overlay, mirrors, FX and landscape buttons each open a grid of small pictures that show what each choice looks like.
@@ -162,7 +162,7 @@ The controls fade after five seconds and come back when you touch the picture.
 | Mirrors | Opens a chooser: off, 3, 4, 6, 8 or 12 segments. The M key steps through them. |
 | FX | Opens a chooser: glow, trails or clean. Sets the base amount of trail and bloom. |
 | Surface | Opens a chooser of what the worlds' surfaces are made of, all in the palette's colours. **Plain** gives each part of a shape one colour. **Grain** is the rings of a tree, as if every shape were carved from a block of timber (choose the palette Wood for browns); the rings' waves drift slowly, grow with the music and step on the beat. **Dots** are round dots with a dark border that grow on the beat. **Tiles** are blocks of different shades with dark joints, and some light up with the high notes. **Marble** is pale stone with dark veins that drift and thicken on the beat. **Wire** is a dark surface with a glowing grid that brightens on the beat. **Cells** are irregular patches with dark edges that widen on the beat. **Pearl** is a sheen whose colour slides over a shape as you pass. It changes the solid worlds only: the three glowing worlds and the two zoom worlds have no surfaces. |
-| Morph | Turns the slow change of each world's shape on or off. |
+| Morph | Three settings. **Morph follows song** (the default): the world's shape goes with how full the music is. Quiet passages take it to its open end, full ones to its dense end, and it moves between them over several seconds. When the music suddenly comes in much fuller (a drop) you get a surge of speed. With no sound to follow (music off, or tap tempo) it behaves as the next setting. **Morph drifts**: the shape changes slowly by itself, a little faster with the music's mids. **Morph off**: the worlds keep their shape. |
 | Pattern | For the two zoom worlds: the pattern in the open parts of the picture. Changes (Journey picks one at each new place), cells, stripes or none. |
 | Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
 
@@ -257,7 +257,7 @@ If moving through the world makes you feel unwell, stop. **Movement drift** is g
 
 ## Music
 
-Three bands of the sound drive different parts of the picture. Bass drives zoom kicks, bloom and flight speed. Mids drive the morph speed, rotation and the bands on surfaces. Treble drives highlights, colour fringing and how fast the colours drift.
+Three bands of the sound drive different parts of the picture. Bass drives zoom kicks, bloom and flight speed. Mids drive the morph speed (when Morph drifts), rotation and the bands on surfaces. Treble drives highlights, colour fringing and how fast the colours drift.
 
 | Setting | What it does |
 |---|---|
@@ -303,7 +303,7 @@ Two more buttons sit beside it. **More like this** makes Journey choose what is 
 
 In both settings you can take over at any moment. While you turn the view, by dragging, with the arrow keys, or by turning your head in the VR viewer, the autopilot stops steering and the automatic forward motion nearly stops. About a second after you stop turning, it carries on from where you are looking. The choice of travel or drift is remembered in your browser.
 
-A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter, overlay, surface and land you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes instead of on a clock.
+A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter, overlay, surface and land you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes, or a drop lands, instead of on a clock.
 
 A **set** plays several templates in turn, each for a number of minutes.
 

@@ -24,6 +24,8 @@ import { __dbg as recordM } from "../js/record.js";
 import { __dbg as sparkM } from "../js/spark.js";
 import { __dbg as flitsM } from "../js/flits.js";
 import { __dbg as midiM } from "../js/midi.js";
+import { __dbg as songM } from "../js/song.js";
+import { __dbg as worldsM } from "../js/worlds.js";
 import { tidy, slug, problems, packText, indexEntry } from "./packlib.mjs";
 import { handle, answer, packField } from "./offer.mjs";
 const { makeChangeDetector } = listen, { jPick } = journey, { devMat, gyroTurn } = vr, { userActive } = camera;
@@ -559,6 +561,49 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     expect("the bulge at zero strength, and outside its circle, leaves a square where it is", LK.bulgeFrom(100, 60, 0)[0] === 100 && LK.bulgeFrom(5, 5, .5)[2] === 1);
   }
   expect("numbers are written plainly", num(0.5) === "0.50" && num(-0.001) === "-0.0010" && num(-0.0000001, 2) !== "-0.00" && num(65536) === "65536");
+}
+
+// ---- the song shapes the world (js/song.js)
+{
+  const { makeSongTracker, songMorph, morphSteer, denseSide, SONG_HI } = songM, dt = 1 / 30, barLen = 4 * 60 / 126;
+  /* the built-in song's energy, bar by bar, as the analyser gives it (measured by rendering the song without playing it):
+     a quiet opening, a build, a drop after half a bar of silence, a breakdown, the same again, and a fading end */
+  const BARS = [0.379,0.383,0.392,0.386,0.700,0.701,0.714,0.712,0.726,0.715,0.730,0.725,0.739,0.735,0.758,0.519,0.763,0.753,0.759,0.753,0.760,0.748,0.761,0.754,0.760,0.751,0.761,0.754,0.761,0.755,0.760,0.751,0.507,0.318,0.390,0.290,0.495,0.352,0.409,0.336,0.471,0.318,0.396,0.301,0.738,0.734,0.755,0.513,0.778,0.766,0.776,0.772,0.776,0.767,0.775,0.772,0.778,0.773,0.775,0.769,0.777,0.768,0.776,0.773,0.725,0.700,0.704,0.691,0.683,0.666,0.654,0.622];
+  const run = (energyAt, secs) => { const tr = makeSongTracker(), lv = [], drops = []; for (let t = 0; t < secs; t += dt) { const o = tr(dt, energyAt(t)); lv.push(o.level); if (o.drop) drops.push(t); } return { lv, drops }; };
+  const mean = (lv, a, b) => { let s = 0, n = 0; for (let i = Math.floor(a / dt); i < Math.floor(b / dt); i++) { s += lv[i]; n++; } return s / n; };
+  const song = run(t => BARS[Math.min(71, Math.floor(t / barLen))], 72 * barLen), B = barLen;
+  expect("the built-in song's quiet opening counts as nearly empty", mean(song.lv, 1 * B, 4 * B) < 0.3, mean(song.lv, 1 * B, 4 * B));
+  expect("its drops count as full", mean(song.lv, 20 * B, 32 * B) > 0.9 && mean(song.lv, 50 * B, 64 * B) > 0.9);
+  expect("its breakdown counts as nearly empty", mean(song.lv, 34 * B, 44 * B) < 0.15, mean(song.lv, 34 * B, 44 * B));
+  expect("a drop is heard where the music comes in full: at bar 4 and at bar 44, and not in the breakdown or the fade",
+    song.drops.some(t => Math.abs(t / B - 4) < 0.6) && song.drops.some(t => Math.abs(t / B - 44) < 0.6) && !song.drops.some(t => (t / B > 33 && t / B < 43.5) || t / B > 64), song.drops.map(t => (t / B).toFixed(1)).join(" "));
+  expect("drops are at least eight seconds apart", song.drops.every((t, i) => i === 0 || t - song.drops[i - 1] >= 8));
+  const flat = run(() => 0.7, 120);
+  expect("a song that is equally loud all through counts as full, with no drops", mean(flat.lv, 30, 120) > 0.95 && flat.drops.length === 0);
+  const verse = run(t => Math.floor(t / 20) % 2 ? 0.70 : 0.64, 200);
+  expect("a verse only a little under its chorus still goes from one end to the other", mean(verse.lv, 172, 179) < 0.2 && mean(verse.lv, 192, 199) > 0.8, mean(verse.lv, 172, 179) + " " + mean(verse.lv, 192, 199));
+  const silent = run(() => 0, 30);
+  expect("silence is empty and has no drops", silent.lv.every(x => x === 0) && silent.drops.length === 0);
+  const start = run(t => t < 10 ? 0 : 0.7, 30);
+  expect("music starting after silence is not a drop", start.drops.length === 0, start.drops.join(" "));
+  const noisy = run(t => 0.7 + 0.03 * Math.sin(t * 9.1) + 0.02 * Math.sin(t * 23.7), 120);
+  expect("the ordinary rise and fall of a steady song is not a drop", noisy.drops.length === 0);
+  expect("the level is always between 0 and 1", [song, flat, verse, start, noisy].every(r => r.lv.every(x => x >= 0 && x <= 1)));
+  expect("a quiet passage asks for the world's open end and a full one for its dense end, whichever way round the world is",
+    songMorph(0, 1, 0) < -0.8 && songMorph(1, 1, 0) > 0.8 && songMorph(0, -1, 0) > 0.8 && songMorph(1, -1, 0) < -0.8);
+  expect("the morph asked for never leaves its range", [0, 0.5, 1].every(l => [-1, 1].every(sd => [0, 22, 44, 66].every(tm => Math.abs(songMorph(l, sd, tm)) <= 0.98))));
+  /* steering the morph's clock */
+  let T = 137.2, worst = 0, prev = T;
+  for (let i = 0; i < 60 * 20; i++) { T = morphSteer(T, 0.6, 1 / 60, 3); worst = Math.max(worst, Math.abs(T - prev) * 60); prev = T; }
+  expect("the morph's clock is steered to a time that gives the morph asked for", Math.abs(Math.sin(0.09 * T) - 0.6) < 1e-6, Math.sin(0.09 * T));
+  expect("and never faster than its limit", worst <= 3 + 1e-9, worst);
+  expect("it goes to the nearest such time, not round the long way", Math.abs(T - 137.2) < 2 * Math.PI / 0.09 / 2);
+  let T2 = 5, far = 0; for (let i = 0; i < 60 * 60; i++) { const aim = 0.9 * Math.sin(i / 60 * 0.8); const n = morphSteer(T2, aim, 1 / 60, 3); far = Math.max(far, Math.abs(n - T2)); T2 = n; }
+  expect("following an aim that keeps moving, it never jumps", far <= 3 / 60 + 1e-9, far);
+  expect("once there it stays", morphSteer(T, 0.6, 1 / 60, 3) === T || Math.abs(morphSteer(T, 0.6, 1 / 60, 3) - T) < 1e-9);
+  const solid = worldsM.WORLDS.filter(w => !w.volume && !w.flat);
+  expect("every solid world has a dense end, found the same way each time", solid.every(w => { const a = denseSide(w); return (a === 1 || a === -1) && a === denseSide(w); }));
+  expect("a cloud or zoom world, with no surfaces to measure, gets the high end", worldsM.WORLDS.filter(w => w.volume).every(w => denseSide(w) === 1));
 }
 
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them

@@ -8,7 +8,10 @@ import { landFx, landMode, landTint, setLand, setLandFx, setLandTint } from "./l
 import { encodeSpot } from "./spots.js";
 import { FX, SURFACES, sel } from "./state.js";
 import { DETAIL, di, resize, setDetail } from "./targets.js";
-export let orbsOn=true,morph=true,drift=true; /* the Orbs, Morph and Drift switches */
+export let orbsOn=true,drift=true; /* the Orbs and Drift switches */
+export let morph=2;       /* Morph: 0 off, 1 the worlds change shape slowly by themselves, 2 their shape follows the song (and by themselves while there is no sound to follow) */
+export const MORPHS=["off","drifts","follows song"];
+export function setMorph(i){morph=((i%3)+3)%3;press($("bMorph"),morph>0);$("bMorph").textContent="Morph "+MORPHS[morph];}
 export let menu="";      /* which group of controls is open: "", or one of MENUS */
 export const MENUS=["Look","Land","Share","More"];
 let de0;
@@ -52,7 +55,8 @@ $("bDetail").addEventListener("click",function(){
   setDetail((di+1)%DETAIL.length);
   this.textContent="Detail "+DETAIL[di];resize();wakeHud();
 });
-$("bMorph").addEventListener("click",function(){morph=!morph;press(this,morph);wakeHud()});
+setMorph(morph);
+$("bMorph").addEventListener("click",function(){setMorph(morph+1);toast(morph===2?"The worlds' shape follows the song":morph?"The worlds change shape by themselves":"The worlds keep their shape");wakeHud()});
 $("bDrift").addEventListener("click",function(){drift=!drift;press(this,drift);wakeHud()});
 de0=document.documentElement;
 if(!(de0.requestFullscreen||de0.webkitRequestFullscreen))$("bFull").style.display="none";
@@ -66,4 +70,4 @@ $("bFull").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={setFx, setSurface, MENUS, setMenu, get menu(){return menu},set menu(v){menu=v}, get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};
+export const __dbg={MORPHS, setMorph, setFx, setSurface, MENUS, setMenu, get menu(){return menu},set menu(v){menu=v}, get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};

@@ -2,6 +2,7 @@
 import { ac, analyser, cap, ensureAudio, fbins, master, pPause, pPlay, player } from "./audio.js";
 import { selMusic } from "./choose.js";
 import { clock } from "./clock.js";
+import { songStep } from "./song.js";
 import { $, calm, errBox, gl, isTouch, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { startBuilt, stopBuilt } from "./music.js";
@@ -76,7 +77,7 @@ export function tap(){
   }else{$("bTap").textContent="Keep tapping";}
 }
 /* Three bands, each with a level (how loud, smoothed) and a pulse (a hit that decays).
-   Bass drives zoom kicks, bloom and field of view. Mids drive morphing, rotation, wobble and the glowing bands.
+   Bass drives zoom kicks, bloom and field of view. Mids drive the morph when it drifts by itself, rotation, wobble and the glowing bands.
    Treble drives highlights, colour fringing, colour drift and the small overlay lights. */
 export const bands={b:{lv:0,p:0,mx:.08,av:0,fl:.08},m:{lv:0,p:0,mx:.05,av:0,fl:.05},t:{lv:0,p:0,mx:.03,av:0,fl:.03}};
 function bandStep(o,raw,dt,gain){
@@ -105,7 +106,7 @@ function makeChangeDetector(){
   };
 }
 export function readMusic(dt){
-  soundChanged=false;var k,o;
+  soundChanged=false;var k,o,en=0,live=false;
   if(musicMode==="tap"&&tapInt>0){ /* no sound to read: bass on the beat, mids between beats, treble twice a beat */
     var ph=((performance.now()/1000-tapAt)/tapInt)%1;
     bands.b.p=Math.exp(-ph*4.5);bands.b.lv=0.45;
@@ -115,8 +116,10 @@ export function readMusic(dt){
     analyser.getByteFrequencyData(fbins);
     var rb=bandAvg(1,4),rm=bandAvg(6,45),rt=bandAvg(60,250); /* roughly below 200 Hz, 250 Hz to 2 kHz, above 2.5 kHz */
     bandStep(bands.b,rb,dt,3.2);bandStep(bands.m,rm,dt,4);bandStep(bands.t,rt,dt,4.5);
-    soundChanged=detectChange(dt,0.5*rb+0.35*rm+0.15*rt,(rt+0.5*rm)/(rb+rm+rt+0.001));
+    en=0.5*rb+0.35*rm+0.15*rt;live=true;
+    soundChanged=detectChange(dt,en,(rt+0.5*rm)/(rb+rm+rt+0.001));
   }else{for(k in bands){o=bands[k];o.p*=Math.exp(-dt*5);o.lv*=Math.exp(-dt*2);}}
+  songStep(dt,en,live); /* how full the music is, and whether a drop has landed (js/song.js) */
   beat=bands.b.p;level=bands.b.lv;
 }
 

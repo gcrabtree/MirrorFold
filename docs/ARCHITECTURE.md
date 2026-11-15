@@ -75,6 +75,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/choose.js` | `scene`, what is showing; filling the lists; `setWorldNow`, `requestWorld`; the address hash; mirrors |
 | `js/orbs.js` | `spawnOrb`, `collectOrb`, `stepOrb` |
 | `js/spark.js` | The thrown light: `throwSpark`, `stepSpark`, `bounce`, `facing` |
+| `js/song.js` | The song shapes the world: `makeSongTracker` (how full the music is, and drops), `denseSide`, `songAim`, `morphSteer`. Free of the page |
 | `js/flits.js` | The sprites: `stepFlits`, `flitFade`, `flitAim`, the Sprites switch |
 | `js/midi.js` | Knobs: a MIDI controller's knobs and pads |
 | `js/spots.js` | Share spots: `encodeSpot`, `applySpot`, `fromHash` |
@@ -92,7 +93,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/audio.js` | The audio graph, the orb chime, the file player and scrubber |
 | `js/music.js` | The built-in music: a dance track made up as it plays |
 | `js/video.js` | A video file or the camera shown in the picture: the element, the slowed copy the shaders read, its controls |
-| `js/listen.js` | Listening to a tab or the microphone, `setMusic`, tap tempo, the bands, the change detector, `soundFrame`, the wave picture |
+| `js/listen.js` | Listening to a tab or the microphone, `setMusic`, tap tempo, the bands, the change detector, `soundFrame` (which also runs the song tracker), the wave picture |
 | `js/still.js` | Hold still: the pause, and averaging shifted frames into a sharp picture while nothing moves |
 | `js/record.js` | Record video: the canvas and the app's own sound into a video file |
 | `js/render.js` | Drawing a frame: `drawScene`, `drawTrails`, `drawBloom`, `drawFinal` |
@@ -519,7 +520,7 @@ A select's `change` event may not count as a user gesture for audio on iOS, so a
 | Band | FFT bins | Roughly | Drives |
 |---|---|---|---|
 | bass | 1–4 | below 200 Hz | motion zoom kicks, bloom, field of view, flight speed, Rings overlay |
-| mid | 6–45 | 250 Hz–2 kHz | morph speed, motion rotation and wobble, surface bands, Liquid filter, Spokes length |
+| mid | 6–45 | 250 Hz–2 kHz | morph speed (Morph drifts), motion rotation and wobble, surface bands, Liquid filter, Spokes length |
 | treble | 60–250 | above 2.5 kHz | specular highlights, colour fringing, hue drift, trail colour shift, Orbit lights |
 
 Each band keeps a **level** and a **pulse** (`bandStep`). The raw average is normalised by a slowly decaying running maximum (so quiet and loud tracks both use the full range), a slow average is tracked, and the pulse is `max(pulse*exp(-5dt), clamp((x - avg)*gain))`, an onset detector with decay. Level follows with a fast attack and slow release.
@@ -539,6 +540,20 @@ It keeps a short average (time constant 0.8 s) and a long one (8 s) of each. Nov
 ```
 
 and it fires when novelty exceeds 0.45, after a 5 s warm-up. After firing it holds for 4 s, during which the long averages are snapped to the short ones so the new sound becomes the baseline. `tools/unit.mjs` checks it against six synthetic signals. It has not been tuned on real music; the threshold 0.45 and the weight 2.2 are the two numbers to adjust.
+
+### The song shapes the world (`js/song.js`)
+
+With Morph set to "follows song" (`morph` 2 in `controls.js`, the default) the morph is not left to its clock: the music's fullness decides it.
+
+**The tracker** (`makeSongTracker`, run by `songStep` from `readMusic` on the same energy `e` as the change detector). The analyser's bytes count in decibels (0 to 255 over 70 dB), so 0.1 of `e` is about 7 dB, and all the numbers here are in those units. It keeps a fast average `f` (0.5 s) and a slow one `s` (3 s), a full mark `hi` (jumps up to `s`, sinks toward it over 60 s, starts at `SONG_HI` 0.6) and a quiet mark `lo` (jumps down to `s`, rises toward it over 20 s, never nearer `hi` than `SONG_SPAN` 0.06, about 4 dB). `level = (s - lo) / (hi - lo)`, held in 0 to 1. Because `lo` rises quickly and may come within 4 dB of `hi`, a song whose verse is only a little under its chorus still runs from one end to the other; a song equally loud throughout sits at 1. Energy under `SONG_QUIET` is silence: the marks do not move, the level falls away, and music starting again is taken up from its first sound. A **drop** is `f - s > SONG_DROP` (0.08, about 6 dB) after 5 s of music, at most one every 8 s. `heard` holds `level`, `drop` (true for one frame) and `live`.
+
+**From level to morph.** `denseSide(w)` measures a world once (cached by id): the open space (`de`, capped at a quarter of the period) at forty fixed places in one repeat, at three morphs each side of zero; the side with less is the dense one. A pack world, a cloud or a zoom gets the high end. `songMorph` gives `side * 0.85 * (2*level - 1)` plus a slow sway of 0.12, so a steady passage does not leave the world standing. In about half the worlds the morph changes the shape without making it measurably more or less open (Bulbs, Hive, Gates, Foam, Cell and others); there the two ends are still the two ends of the morph, but which is called dense is close to arbitrary.
+
+**Steering.** The morph stays a function of `clock.morphT` (`morphValue`), so share spots and everything that reads it are unchanged. `tickClock` moves `morphT` with `morphSteer` toward the nearest time at which the morph's main wave `sin(0.09 t)` equals the aim, at no more than 3 clock seconds a second (1.2 with reduced motion) and slowing as it arrives. That is about the fastest the morph already went with loud mids, so the camera is no more likely to be overtaken by a surface than before. `morphT` is kept above zero by adding 200 pi, the time in which both of the morph's waves come round. Hold still does not call `tickClock`, so the shape stands; the tracker goes on listening.
+
+**The drop.** `measure` in `flight.js` sets `cam.boost` to at least 0.6 on a drop (not with reduced motion, not while held still), the same soft surge an orb gives. A Journey template whose worlds change with the sound treats a drop as a change too (`stepJourney`).
+
+**Tested.** `tools/unit.mjs` runs the tracker over the built-in song's energy bar by bar. Those 72 numbers were measured by rendering the song with `musicRender` into an `OfflineAudioContext` in headless Chrome and putting it through a copy of the analyser's arithmetic: the quiet opening and the breakdown come out near 0, the drops near 1, and drops are heard at bars 4, 17, 44 and 49. It also checks a steady song, a verse 4 dB under its chorus, silence, a start from silence, and the steering. Not tested: any real recording, a microphone (much quieter, so the first minute sits low until `hi` sinks), and how any of it looks in flight. `SONG_SPAN` and `SONG_DROP` are the two numbers to adjust.
 
 ## 11. Journey
 

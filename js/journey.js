@@ -9,6 +9,7 @@ import { press, wakeHud } from "./input.js";
 import { landH, landKind, landMode, lhead, lpos, setLand, setLandKind } from "./land.js";
 import { LK } from "./landscapes.js";
 import { liveAudio, soundChanged } from "./listen.js";
+import { heard } from "./song.js";
 import { packD } from "./pack-worlds.js";
 import { PALETTES, palOpen, setPalette } from "./palettes.js";
 import { LOOKS, MOTIONS, OVERLAYS, SURFACES, mirrors, sel } from "./state.js";
@@ -189,7 +190,7 @@ export function stepJourney(dt){
     if(cf.mode!=="random")continue;
     var due=J[ck].t>J[ck].next;
     if(ck==="world"&&cf.trigger==="sound"&&liveAudio()){ /* wait for the music to shift, but never forever */
-      due=(soundChanged&&J.world.t>Math.max(10,cf.every*0.25))||J.world.t>cf.every*2.5;
+      due=((soundChanged||heard.drop)&&J.world.t>Math.max(10,cf.every*0.25))||J.world.t>cf.every*2.5;
     }
     if(due&&jApply(ck,jPick(ck,cf,jCur(ck),jPool(ck,cf)))){jReset(ck);jLast=ck;}
   }

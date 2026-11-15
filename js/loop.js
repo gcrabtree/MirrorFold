@@ -2,7 +2,7 @@
 import { scrubFollow } from "./audio.js";
 import { move, steering, turn } from "./camera.js";
 import { scene } from "./choose.js";
-import { morphValue, tickClock } from "./clock.js";
+import { clock, morphValue, tickClock } from "./clock.js";
 import { morph } from "./controls.js";
 import { $, canvas, errBox, toast } from "./dom.js";
 import { measure } from "./flight.js";
@@ -22,6 +22,7 @@ import { pictureFrame } from "./picture.js";
 import { preloadFrame } from "./preload.js";
 import { chipWait } from "./probe.js";
 import { drawBloom, drawFinal, drawScene, drawTrails } from "./render.js";
+import { songAim } from "./song.js";
 import { sparkFrame, stepSpark } from "./spark.js";
 import { still, stillAim, stillBlend } from "./still.js";
 import { statsBegin, statsEnd, statsOn } from "./stats.js";
@@ -74,7 +75,7 @@ function frame(now){
 
   /* what time it is, what the music is doing */
   soundFrame(notes);
-  if(!still)tickClock(notes,morph); /* Hold still stops the clocks, and with them the morph, the colour drift and the turning mirrors */
+  if(!still)tickClock(notes,morph,morph===2?songAim(scene.world,clock.time):null); /* Hold still stops the clocks, and with them the morph, the colour drift and the turning mirrors */
   stepWarp(dt);
   notes.m=morphValue();
 
