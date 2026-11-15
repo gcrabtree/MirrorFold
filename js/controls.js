@@ -1,11 +1,10 @@
 /* The groups of controls that open one at a time, opening the setup panel, and the remaining buttons. */
 import { scene } from "./choose.js";
 import { $, toast } from "./dom.js";
-import { cycleMirrors, press, wakeHud } from "./input.js";
+import { press, wakeHud } from "./input.js";
 import { adv, openAdv } from "./journey-panel.js";
 import { journey, setJourney } from "./journey.js";
-import { landFx, landKind, landMode, landTint, setLand, setLandFx, setLandKind, setLandTint } from "./land.js";
-import { LK } from "./landscapes.js";
+import { landFx, landMode, landTint, setLand, setLandFx, setLandTint } from "./land.js";
 import { encodeSpot } from "./spots.js";
 import { FX, sel } from "./state.js";
 import { DETAIL, di, resize, setDetail } from "./targets.js";
@@ -44,12 +43,9 @@ $("bShare").addEventListener("click",function(){
   wakeHud();
 });
 $("bJourney").addEventListener("click",function(){setJourney(!journey);wakeHud()});
-$("bMirror").addEventListener("click",function(){cycleMirrors();wakeHud()});
 $("bLand").addEventListener("click",function(){setLand((landMode+1)%3);wakeHud()});
-$("bLandKind").addEventListener("click",function(){setLandKind((landKind+1)%LK.length);wakeHud()});
 $("bLandTint").addEventListener("click",function(){setLandTint((landTint+1)%3);wakeHud()});
 $("bLandFx").addEventListener("click",function(){setLandFx((landFx+1)%3);wakeHud()});
-$("bFx").addEventListener("click",function(){setFx((sel.fi+1)%FX.length);wakeHud()});
 setFx(sel.fi);
 $("bDetail").addEventListener("click",function(){
   setDetail((di+1)%DETAIL.length);

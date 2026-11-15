@@ -45,6 +45,24 @@ a.btn{text-decoration:none;display:inline-block}
 #rowJourney select{max-width:none}
 #adv{position:fixed;inset:0;z-index:7;background:rgba(5,3,11,.93);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px}
 #adv[hidden]{display:none}
+/* the chooser with pictures: a button that opens it, and its grid of tiles (a picture over a name) */
+.pick{border-color:var(--hot);padding-right:28px;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23f3ecff' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center}
+.pick[hidden],select[hidden]{display:none}
+#pick{position:fixed;inset:0;z-index:8;background:rgba(5,3,11,.93);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+#pick[hidden]{display:none}
+.pickIn{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
+#pick h2{font:300 24px/1.1 var(--display);margin:0}
+#pickGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.tile{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:0;border-radius:14px;overflow:hidden;text-align:left;
+  -webkit-backdrop-filter:none;backdrop-filter:none}
+.tile img,.tile .noPic{display:block;width:100%;height:auto;aspect-ratio:8/5;object-fit:cover;background:#120a24}
+.tile .noPic{display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;font-size:10px;line-height:1.3;color:var(--ink-dim)}
+.tile>span:last-child{padding:9px 10px;line-height:1.25}
+.tile[aria-pressed="true"]{border-color:var(--cool);box-shadow:0 0 0 1px var(--cool)}
+.tile:disabled{opacity:.45;cursor:default}
 .advIn{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px;padding-bottom:40px}
 .advItem{font-size:13px;flex:1;min-width:120px}
 /* the editor is a sheet along the bottom, so the picture stays in view above it while the controls move.

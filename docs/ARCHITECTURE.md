@@ -10,7 +10,7 @@ Mirrorfold is a first-person fly-through of endless fractal worlds, rendered by 
 
 Features, in the order a user meets them:
 
-- **20 worlds.** 16 are surfaces found by sphere tracing a distance estimator; 2 (Nebula, Aurora) are volumetric; 2 (Mandelbrot zoom, Julia zoom) are flat pictures (section 6c).
+- **26 worlds.** 21 are surfaces found by sphere tracing a distance estimator; 3 (Nebula, Aurora, Lanterns) are volumetric; 2 (Mandelbrot zoom, Julia zoom) are flat pictures (section 6c).
 - **Free flight** with six degrees of freedom. Speed scales with distance to the nearest surface, so you cannot hit a wall.
 - **Kaleidoscope mirrors**: off, 3, 4, 6, 8 or 12 segments, applied to the ray direction.
 - **13 palettes** (7 available at once, 6 unlocked by finding orbs).
@@ -95,6 +95,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/still.js` | Hold still: the pause, and averaging shifted frames into a sharp picture while nothing moves |
 | `js/record.js` | Record video: the canvas and the app's own sound into a video file |
 | `js/render.js` | Drawing a frame: `drawScene`, `drawTrails`, `drawBloom`, `drawFinal` |
+| `js/picker.js` | The choosers with pictures: `openPick`, `thumbName`, and `pickFrame`, which keeps the list buttons saying what is chosen |
 | `js/preload.js` | Getting ready ahead of need: the land's and the worlds' programs made one at a time while the pictures go on |
 | `js/loop.js` | `begin` and `frame(now)`, which calls the steps of a frame in order |
 
@@ -273,10 +274,18 @@ Two requirements matter more than anything else when adding or changing a world:
 | Mandelbrot | The Mandelbrot set in quaternions | Mirror tile `P=3.4`; `z` starts at a small seed, `c` is the point (moved 0.75 along x), `z = z^2 + c`, 12 iterations, bailout 64; `0.5*|z|*log|z|/|dz|` with `|dz| = 2|z||dz| + 1`. With no seed it is the flat set turned about its real axis | 6.8 | the seed, which pulls the shape out of round |
 | Coral | Layered gyroids | `g(p) = dot(sin p, cos p.zxy)` at 1x, 3x, 9x; a thick shell of the first, bumped and perforated by the others; factor 0.42 | 2π | shell thickness |
 | Gates | Nested tori | xy mirror tile (4), z repeat (1), twist of 2π per 16 units; a torus then 5 KIFS levels of smaller tori; factor 0.6 | 8, 8, 16 | twist phase |
+| Tangle | 3D Truchet pipes | Each unit cell holds three quarter rings (radius 0.5, about three of its edges) that join the middles of its six faces; the cell is flipped on each axis by three bits of `n(n+3) mod 61`, `n` being the cell's place mod 8 on each axis; rings ribbed by `cos(8*angle)`; factor 0.7 | 8 | pipe thickness |
+| Foam | Space less spheres | 4 levels of `a = mod(p*s,2)-1`, `d = max(d, (R - |a|)/s)`, `s *= 3`; `R = 1.25` at the first level, so the holes join, then about 0.92, so they pit | 2 | `R = 0.92 + 0.07m` after the first level |
+| Thicket | Branching trees | Mirror tile `P=3`; a stem (capsule of length 1), then `p.y -= 1; p.xz = abs(p.xz)`, two leans, `p *= 1.6`; 7 levels; factor 0.8 | 6 | the lean |
+| Kleinian | Limit set of a Kleinian group (Jos Leys, Knighty) | y mirror-folded into the slab `[0, a]`; 12 times: wrap x and z to `[-1,1]`, turn the upper half over onto the lower, invert `p = -p/r2` and move by `(0, a)`; `0.6*min(y, a-y, 0.3)/max(df, 2)` | 2, 2a, 2 | `a = 1.9 + 0.04m` |
+| Pyrite | Cubes on cubes' corners | Mirror tile `P=4`; a cube of half-size 0.5, then `p = abs(p) - 0.66`, two rotations, `p *= 2.6`; 4 levels; factor 0.9 | 8 | rotation |
 | Nebula | Volumetric Kaliset | `p = abs(p)/dot(p,p) - f`, 10 iterations, accumulating `|len - prevLen|`; cubed | 2 | `f = 0.55 + 0.03m` |
 | Aurora | Volumetric warped gyroid | Three octaves of `p += A*sin(p.yzx*F + t)`, then `exp(-k*|gyroid|)` ribbons | 2π | ribbon width |
+| Lanterns | Volumetric lights | One soft light to a unit cell and one to a half cell, each off its cell's middle by a hash of the cell (mod 8) and swaying with the clock, faded toward the cell's sides so that none is cut; plus a faint gyroid haze | 8 | size of the larger lights |
 
 Safety factors (0.42, 0.6, 0.8 and so on) are there because some of these estimators are not strictly 1-Lipschitz: twists, sums of gyroids and clamped sphere folds can overestimate distance. Lowering a factor trades speed for fewer overshoot artifacts.
+
+Tangle's cell number is worked out with whole numbers below 2^24 and `floor(mod(x + 0.5, y))`, never a `fract(sin())` hash: the chip and JavaScript must agree on every cell, and a chip's `mod` may be off by a hair at an exact multiple. Kleinian's estimator never reports more than 0.09, so flight there is slow and even.
 
 Octave multipliers in Coral are integers (3, 9) so the sum stays periodic at 2π. The Gates twist rate is `2π/16` so the field repeats exactly every 16 units of z.
 
@@ -288,7 +297,8 @@ Octave multipliers in Coral are integers (3, 9) so the sum stays periodic at 2π
 4. Pick `start` in open space, or use `null` to have 300 random points sampled for the largest distance.
 5. Add the id to any built-in template sets that should include it (templates with `set: null` include everything automatically).
 6. Update the world count in the start card text.
-7. Run `python3 tools/render.py --world <id> -o x.png`, try two or three palettes, then `python3 tools/check.py`.
+7. Run `python3 tools/render.py --world <id> -o x.png`, try two or three palettes, then `python3 tools/check.py` and `python3 tools/probe.py`.
+8. Run `python3 tools/thumbs.py world-<id>` for its picture in the chooser (`tools/unit.mjs` fails without it), and `python3 tools/render.py --all -o docs/worlds.jpg`.
 
 Worlds were developed by writing several candidates at once, rendering them, and keeping the good ones. First attempts often needed one retune (Crystal collapsed to dust until its rotation was reduced; Nebula and Aurora needed their gain changed by an order of magnitude).
 
@@ -613,7 +623,15 @@ Roll is not stored. `applySpot()` restores morph time first, because some period
 
 **Mouse and keyboard.** Click captures the pointer where allowed, otherwise drag to look. W A S D, Space and Shift (up and down), Q and E (roll), arrows (look), wheel (speed), `[` and `]` (world), 1–9 (world), P (palette), M (mirrors), J (journey), T (tap tempo), B or double-click (boost). Key handling is skipped while focus is in a select, input or textarea.
 
-The HUD fades after 5 seconds without interaction and returns on any touch. It is a row of lists (World, Palette, Music), a row of buttons, and four groups (**Look**, **Land and video**, **Save and share**, **More**) of which one at most is open: `menu` and `setMenu(name)` in `controls.js`, with the group rows named `menuLook` and so on in `index.html`. Its last button, **Help and source**, is a link to the repository's README; on a copy served from `<user>.github.io/<name>` it is rewritten to point at `github.com/<user>/<name>`.
+The HUD fades after 5 seconds without interaction and returns on any touch. It is a row of World, Palette and Music, a row of buttons, and four groups (**Look**, **Land and video**, **Save and share**, **More**) of which one at most is open: `menu` and `setMenu(name)` in `controls.js`, with the group rows named `menuLook` and so on in `index.html`. Its last button, **Help and source**, is a link to the repository's README; on a copy served from `<user>.github.io/<name>` it is rewritten to point at `github.com/<user>/<name>`.
+
+### The choosers with pictures
+
+`js/picker.js`. World, Palette, Motion, Filter, Overlay, Mirrors, FX and the landscape are each chosen from a grid of tiles, a picture over a name (`openPick(kind)`, one panel `#pick` filled for whichever button opened it). The five `<select>` lists are still in the page, hidden: the rest of the code sets and reads them as before, and `pickFrame`, a step of `frame()`, rewrites a button's words when what is chosen changes, whoever changed it. A tile calls the same function the list's change did (`requestWorld`, `setPalette`, `setMotion`, `setLook`, `setOverlay`, `setMirrors`, `setFx`, `setLandKind`).
+
+The pictures are 240 by 150 JPEGs in `thumbs/`, named by `thumbName(kind, key)` (`thumbs/world-klein.jpg`, `thumbs/filter-two-tone.jpg`), about 1.4 MB in all, and each is fetched only when its tile comes near the screen (`loading="lazy"`). `tools/thumbs.py` renders them: worlds as they start, palettes, motions, filters, mirrors and FX on Temple, overlays on Aurora (they are light on top, so they need a dark world), landscapes alone. It replaces `Math.random` with a fixed run of numbers so that a world with no fixed start is the same every time. Only built-ins have pictures (`i < NWORLD` and the like). A pack never names a file: a pack palette's tile is a stripe of its colours built from its numbers (`palStripe`), and the others say they have no picture.
+
+Not done: pictures for what a pack adds (they would have to be drawn in the page), a picture inside the button itself, and any test on a phone.
 
 ### VR viewer
 
@@ -659,6 +677,7 @@ There is no test framework. `tools/` holds what was used during development:
 | `python3 tools/probe.py` | Compares every world's GLSL `map` with its JavaScript `de` through the distance probe |
 | `python3 tools/check.py` | Headless smoke test: compiles all worlds, cycles every option, opens the setup panel, runs journey ticks, taps a tempo, starts audio; fails on any script or WebGL error |
 | `python3 tools/render.py ...` | Screenshot one world, or `--all` for a contact sheet; `--js` runs code inside the page |
+| `python3 tools/thumbs.py [kind or name]` | Renders the choosers' pictures into `thumbs/` (needs Pillow and node) |
 | `python3 tools/stereo.py a.png b.png` | For VR viewer pictures: how far blocks of the left half are from the right half, sideways and up and down (needs numpy) |
 
 `tools/harness.py` explains the mechanism: it writes a temporary copy of `index.html` with a `<base>` pointing at the repository and one extra script that waits for the `mf-ready` event (sent by `main.js` after start-up) and then runs the test code inside `with(window.MF)`. It relies on the exact tag that loads `js/main.js` and asserts on it. Chrome is started with `--allow-file-access-from-files` so that modules load from `file://`.

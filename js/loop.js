@@ -15,6 +15,7 @@ import { midiFrame } from "./midi.js";
 import { musicFollowsSpeed } from "./music.js";
 import { stepOrb } from "./orbs.js";
 import { easePalette } from "./palettes.js";
+import { pickFrame } from "./picker.js";
 import { pictureFrame } from "./picture.js";
 import { preloadFrame } from "./preload.js";
 import { chipWait } from "./probe.js";
@@ -100,6 +101,7 @@ function frame(now){
   drawTrails(notes);
   drawBloom(notes);
   drawFinal(notes);
+  pickFrame(); /* the list buttons say what is chosen */
   pictureFrame(); /* Save picture takes the frame now, while it is still on the canvas */
   statsEnd(rawDt);
 }

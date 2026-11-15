@@ -98,6 +98,12 @@ setTimeout(function(){for(var k in J)J[k].t=999;},1200);
 setTimeout(function(){setMusic("tap");tap();},1600);
 setTimeout(tap,2100);
 setTimeout(function(){tap();log("tap bpm="+(tapInt?Math.round(60/tapInt):0));setMusic("built");},2600);
+setTimeout(function(){
+  /* the choosers with pictures: each opens with a tile for everything in its list, and a tile chooses and shuts it */
+  var pk=[];PICK_ORDER.forEach(function(k){openPick(k);pk.push(k+":"+$("pickGrid").children.length+":"+$("pickGrid").querySelectorAll("img").length);closePick();});
+  openPick("filter");$("pickGrid").children[4].click();pickFrame();
+  log("choosers="+pk.join(" ")+" chose="+LOOKS[sel.lki].name+" shut="+$("pick").hidden+" button="+$("pLook").textContent);
+},2700);
 setTimeout(function(){setStereo(true);setMirrors(3);log("vr="+stereo);},2750);
 setTimeout(function(){stepWorld(1);},2900);
 setTimeout(function(){setStereo(false);setMirrors(0);},3500);

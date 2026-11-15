@@ -442,6 +442,23 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a look knob at either end turns at full rate, and the rate grows smoothly", Math.abs(knobRate(1) - 1) < 1e-9 && Math.abs(knobRate(0) + 1) < 1e-9 && knobRate(0.8) > knobRate(0.7) && knobRate(0.7) > 0);
 }
 
+// ---- the choosers' pictures: every built-in world, palette, motion, filter, overlay, mirror setting, FX setting and landscape has one
+{
+  const { existsSync } = await import("node:fs"), root = new URL("../", import.meta.url);
+  const { thumbName, palStripe } = (await import("../js/picker.js")).__dbg;
+  const { WORLDS } = await import("../js/worlds.js"), { PALETTES } = await import("../js/palettes.js");
+  const { MOTIONS, LOOKS, OVERLAYS, FX, mirrors } = await import("../js/state.js"), land = await import("../js/landscapes.js");
+  land.init(); // the list of landscapes is made at start-up, and needs no page
+  const want = [].concat(WORLDS.map(w => thumbName("world", w.id)), PALETTES.map(p => thumbName("palette", p.name)), MOTIONS.map(m => thumbName("motion", m.name)),
+    LOOKS.map(f => thumbName("filter", f.name)), OVERLAYS.map(o => thumbName("overlay", o.name)), mirrors.map(m => thumbName("mirrors", m)),
+    FX.map(f => thumbName("fx", f.name)), land.LK.map(k => thumbName("land", k.id)));
+  const missing = want.filter(f => !existsSync(new URL(f, root)));
+  expect("a picture's file name is made of small letters, digits and hyphens only", thumbName("filter", "Two-tone") === "thumbs/filter-two-tone.jpg" && thumbName("world", "../x y") === "thumbs/world-x-y.jpg");
+  expect("no two built-ins share a picture", new Set(want).size === want.length);
+  expect("every built-in has its picture in thumbs/ (run python3 tools/thumbs.py)", missing.length === 0, missing.join(", "));
+  expect("a pack palette's stripe is a gradient of plain colour numbers", /^linear-gradient\(90deg(,rgb\(\d+,\d+,\d+\)){9}\)$/.test(palStripe({ a: [.5, .5, .5], b: [.5, 9, -9], c: [1, 1, 1], d: [0, .3, .6] })));
+}
+
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {
   const { readdirSync } = await import("node:fs"), dir = new URL("../js/", import.meta.url), seen = {}, twice = [];

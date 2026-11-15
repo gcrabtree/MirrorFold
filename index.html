@@ -21,8 +21,8 @@
 
 <div id="hud" class="hide">
   <div class="row">
-    <select id="selWorld" aria-label="World"></select>
-    <select id="selPal" aria-label="Palette"></select>
+    <button id="pWorld" type="button" class="pick">World</button><select id="selWorld" aria-label="World" hidden></select>
+    <button id="pPal" type="button" class="pick">Palette</button><select id="selPal" aria-label="Palette" hidden></select>
     <select id="selMusic" aria-label="Music">
       <option value="off">Music off</option>
       <option value="built">Built-in music</option>
@@ -44,19 +44,19 @@
   </div>
   <!-- the four groups below open one at a time from the buttons above, and close when the controls fade -->
   <div class="row menu" id="menuLook" hidden>
-    <select id="selMotion" aria-label="Feedback motion"></select>
-    <select id="selLook" aria-label="Filter"></select>
-    <select id="selOv" aria-label="Overlay"></select>
+    <button id="pMotion" type="button" class="pick">Motion</button><select id="selMotion" aria-label="Feedback motion" hidden></select>
+    <button id="pLook" type="button" class="pick">Filter</button><select id="selLook" aria-label="Filter" hidden></select>
+    <button id="pOv" type="button" class="pick">Overlay</button><select id="selOv" aria-label="Overlay" hidden></select>
     <button id="bOvS" type="button">Overlay 50%</button>
-    <button id="bMirror" type="button">Mirrors off</button>
-    <button id="bFx" type="button">FX glow</button>
+    <button id="bMirror" type="button" class="pick">Mirrors off</button>
+    <button id="bFx" type="button" class="pick">FX glow</button>
     <button id="bMorph" type="button" aria-pressed="true">Morph</button>
     <button id="bDrift" type="button" aria-pressed="true">Drift</button>
     <button id="bPattern" type="button">Pattern changes</button>
   </div>
   <div class="row menu" id="menuLand" hidden>
     <button id="bLand" type="button">Land off</button>
-    <button id="bLandKind" type="button" hidden>Land is the Alps</button>
+    <button id="bLandKind" type="button" class="pick" hidden>Land is the Alps</button>
     <button id="bLandTint" type="button" hidden>Land colours natural</button>
     <button id="bLandFx" type="button" hidden>Effects on everything</button>
     <button id="bVideo" type="button">Video off</button>
@@ -104,7 +104,7 @@
 <div id="start">
   <div class="card">
     <h1>Mirrorfold</h1>
-    <p>Twenty endless fractal worlds to fly through. They breathe, recolour and pulse with the music, and you can never hit a wall. Turn on Journey to sit back and be flown.</p>
+    <p>Twenty-six endless fractal worlds to fly through. They breathe, recolour and pulse with the music, and you can never hit a wall. Turn on Journey to sit back and be flown.</p>
     <p>Each world hides a glowing orb. Fly into it. The first six you find each unlock a new palette. The Orbs button hides them.</p>
     <p id="how"></p>
     <p>For Apple Music or any other app: enter silent, start your song there, then set Music to Tap tempo and tap along.</p>
@@ -156,6 +156,13 @@
     <p class="advNote">Or move a pack as text: copy yours out of this box, or paste one in and load it.</p>
     <textarea id="advIO" rows="4" aria-label="Pack as text" spellcheck="false"></textarea>
     <div class="advRow"><button id="advCopy" type="button">Copy mine as text</button><button id="advLoad" type="button">Load from text</button></div>
+  </div>
+</div>
+<!-- the chooser with pictures: one grid, filled for whichever button opened it -->
+<div id="pick" hidden>
+  <div class="pickIn">
+    <div class="advRow advHead"><h2 id="pickTitle"></h2><button id="pickClose" type="button">Close</button></div>
+    <div id="pickGrid"></div>
   </div>
 </div>
 <div id="ed" hidden>

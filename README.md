@@ -13,7 +13,7 @@
 >
 > Mirrorfold is designed to avoid strobing, but it has **not** been tested or certified against any photosensitivity standard, and no setting makes it safe for everyone. It is not a medical device and nothing here is medical advice. It is provided "as is", without warranty of any kind, and you use it entirely at your own risk; see the [licence](LICENSE).
 
-Fly through endless fractal worlds in your browser. Twenty worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
+Fly through endless fractal worlds in your browser. Twenty-six worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
 
 This project is inspired in part by the music visualizers from decades past… from Winamp plugins to the standalone visualizer MilkDrop. This has a familiar feel when in Journey mode (an autopilot that flies through the procedurally generated 3D worlds) while listening to music. 
 
@@ -31,7 +31,7 @@ Relax, unwind, and enjoy!
 
 **Try it: https://gcrabtree.github.io/MirrorFold/**
 
-![Contact sheet of all 20 worlds](docs/worlds.jpg)
+![Contact sheet of all 26 worlds](docs/worlds.jpg)
 
 The app is one page, one stylesheet and a folder of JavaScript modules. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
 
@@ -57,13 +57,14 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 
 ## What it does
 
-- **20 worlds.** Sixteen are solid fractal surfaces; two (Nebula and Aurora) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
+- **26 worlds.** Twenty-one are solid fractal surfaces; three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
 - **Zooms a trillion times deep.** The two zoom worlds magnify the Mandelbrot set and Julia sets up to about a trillion times, on points where there is always something to see. See [The zoom worlds](#the-zoom-worlds).
 - **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
 - **Morph.** Each world slowly changes shape as you fly.
 - **Kaleidoscope mirrors**: off, or 3, 4, 6, 8 or 12 segments.
 - **13 colour palettes.** Seven are available from the start. Six are unlocked by finding orbs.
-- **6 feedback motions, 17 filters, 7 overlays and 8 transitions**, in the style of the MilkDrop music visualiser.
+- **A picture beside every name.** The world, palette, motion, filter, overlay, mirrors, FX and landscape buttons each open a grid of small pictures that show what each choice looks like.
+- **6 feedback motions, 23 filters, 7 overlays and 8 transitions**, in the style of the MilkDrop music visualiser.
 - **Music reactivity** from a built-in track, your own audio file, another browser tab such as Spotify or YouTube, the microphone, or a tapped tempo.
 - **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter, overlay and land over time. You control what it may change with templates.
 - **Share spot** links that take someone to the exact place you are looking at.
@@ -72,7 +73,9 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - **A light to throw**, which bounces off the surfaces of the world.
 - **VR viewer** mode for a phone in a Cardboard-style holder: a picture for each eye, and you look around by turning your head.
 
-The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, Shards, Crystal, Julia, Web, Temple, Nebula, Fortress, Hive, Gates, Aurora, Mandelbrot, Mandelbrot zoom, Julia zoom.
+The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, Shards, Crystal, Julia, Web, Temple, Nebula, Fortress, Hive, Gates, Aurora, Mandelbrot, Tangle, Foam, Thicket, Kleinian, Pyrite, Lanterns, Mandelbrot zoom, Julia zoom.
+
+The six added last: **Tangle** is pipes that never end, **Foam** is a frame pitted with round holes, **Thicket** is branching trees, **Kleinian** is a hall of lace columns between a floor and a ceiling, **Pyrite** is cubes with smaller cubes on their corners, and **Lanterns** is soft lights hanging in the dark.
 
 ## Run it
 
@@ -137,7 +140,7 @@ The controls at the top of the screen fade after five seconds without input and 
 
 The controls fade after five seconds and come back when you touch the picture.
 
-**First row:** World, Palette and Music.
+**First row:** World, Palette and Music. **World** and **Palette** each open a chooser: a grid of small pictures, one for each choice, with its name under it. Press a picture to choose it; **Close**, the Escape key or a press beside the grid leaves things as they were. Motion, Filter, Overlay, Mirrors, FX and the landscape button open the same kind of chooser. A world, palette, motion, filter or overlay that came from a pack has no picture: a palette shows a stripe of its colours, the others say so.
 
 **Second row:** three buttons, then four that each open a group of controls under the row. One group is open at a time; pressing its button again closes it, and it closes when the controls fade.
 
@@ -145,7 +148,7 @@ The controls fade after five seconds and come back when you touch the picture.
 |---|---|
 | Journey | Turns the autopilot on or off. |
 | Hold still | Stops everything that moves by itself: the clocks, the breathing of the world, the drift and Journey. You can still look and fly by hand. Whenever you are not moving, the picture sharpens over about a second, because each frame looks through a different part of every pixel and the frames are averaged. Key **H**. Turning Journey on lets go. |
-| Throw a light | Sends a small glowing ball ahead of you. It flies straight, bounces off the surfaces, loses a fifth of its speed at each bounce and shrinks away after twenty seconds. Throwing again takes it back. Not in the two cloud worlds, in a world from a pack, or with the land alone. Key **G**. |
+| Throw a light | Sends a small glowing ball ahead of you. It flies straight, bounces off the surfaces, loses a fifth of its speed at each bounce and shrinks away after twenty seconds. Throwing again takes it back. Not in the three cloud worlds, in a world from a pack, or with the land alone. Key **G**. |
 
 **Look**
 
@@ -155,8 +158,8 @@ The controls fade after five seconds and come back when you touch the picture.
 | Filter | none, Echo, Neon, Solar, Negative, Poster, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl, Thermal, CRT, Halftone, Contour, Noir, Comic, Two-tone, Tape, Streaks, Emboss, Glass. The last six were made with video in mind. |
 | Overlay | none, Ring, Scope, Spectrum, Spokes, Rings, Spiral, Orbit. These draw the sound on top of the picture. |
 | Overlay strength | 15%, 30%, 50%, 75% or 100%. |
-| Mirrors | Steps through off, 3, 4, 6, 8 and 12 segments. |
-| FX | Steps through glow, trails and clean. Sets the base amount of trail and bloom. |
+| Mirrors | Opens a chooser: off, 3, 4, 6, 8 or 12 segments. The M key steps through them. |
+| FX | Opens a chooser: glow, trails or clean. Sets the base amount of trail and bloom. |
 | Morph | Turns the slow change of each world's shape on or off. |
 | Pattern | For the two zoom worlds: the pattern in the open parts of the picture. Changes (Journey picks one at each new place), cells, stripes or none. |
 | Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
@@ -166,7 +169,7 @@ The controls fade after five seconds and come back when you touch the picture.
 | Button | What it does |
 |---|---|
 | Land | Steps through **Land off**, **Land alone** and **Land over world**. See [The land](#the-land). |
-| Land is | Shown while the land is on. Steps through the landscapes: **the Alps**, **canyon country**, **a strange planet**, **a steel ball** and **a city**. |
+| Land is | Shown while the land is on. Opens a chooser of the landscapes: **the Alps**, **canyon country**, **a strange planet**, **a steel ball** and **a city**. |
 | Land colours | Shown while the land is on. **Land colours natural**, **Palette on sky and light**, or **Palette on everything**. |
 | Effects on | Shown for **Land over world**. Whether motions, filters and overlays act on **everything**, **the sky** (the world behind) or **the land**. |
 | Video off / on | An experiment. Opens a row of controls for showing a video in the picture: choose a video file from this device or use the camera, pick where it shows (on the surfaces, through the shapes, in the distance, in the overlay, as the colours, or filling the screen with no world at all, where the mirrors, motions, filters and overlays all work on the video and the land can stand in front), how strongly, and pause it. **Video sound off / on** chooses whether the video's own sound is the music. Off, the video plays silently while whatever is chosen under Music carries on (useful for ambient footage); on, the picture pulses to the video's sound. When a file is chosen and Music is off, the video's sound is turned on for you. The video is never uploaded, and is slowed where needed so that it cannot make the screen flash. Pressing the button again turns the video off. |
@@ -419,16 +422,18 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 |---|---|
 | `index.html` | The page's markup |
 | `css/app.css` | The styling |
-| `js/` | The app, as about 35 modules; the architecture document lists what each holds |
+| `js/` | The app, as about 45 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
-| `docs/worlds.jpg` | Contact sheet of all 20 worlds |
+| `docs/worlds.jpg` | Contact sheet of all 26 worlds |
+| `thumbs/` | The choosers' small pictures, one for each built-in world, palette, motion, filter, overlay, mirror setting, FX setting and landscape |
 | `packs/` | Packs published with the site, the list of them (`index.json`) and the pack format (`README.md`) |
 | `tools/unit.mjs` | Tests for the change detector, the weighted picker, the head-turn math, the steering handoff and the pack cleaners |
 | `tools/pack.mjs` | Checks pack files with the same code the app uses |
 | `tools/check.py` | Headless smoke test |
 | `tools/probe.py` | Checks each world's two distance functions against each other |
 | `tools/render.py` | Headless screenshots |
+| `tools/thumbs.py` | Makes the pictures in `thumbs/`; run it after adding or changing anything that has one |
 | `tools/stereo.py` | How well the two eyes' halves of VR viewer pictures agree |
 | `tools/harness.py` | Shared code for the Python tools |
 | `CLAUDE.md` | Working notes for Claude Code sessions |

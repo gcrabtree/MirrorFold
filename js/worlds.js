@@ -488,6 +488,171 @@ export const WORLDS=[
   }
   return .25*Math.sqrt(mz2)/dm*Math.log(Math.max(mz2,1e-9));
  }},
+/* Pipes that never end: every unit cell holds three quarter rings joining the middles of its six faces, turned one of
+   eight ways by a number worked out from the cell's place. The number uses whole-number sums only, so the chip and
+   JavaScript agree on it exactly, and it repeats every 8 cells. */
+{id:"tangle",name:"Tangle",hue:.52,fog:.1,maxd:24,speed:1.0,start:[1,1,1],
+ period:function(){return [8,8,8]},
+ glsl:[
+ "float mo(float x,float y){return floor(mod(x+0.5,y));}",
+ "float map(vec3 p){",
+ "  vec3 c=floor(p);vec3 q=p-c-0.5;",
+ "  float n=mo(c.x,8.0)+8.0*mo(c.y,8.0)+64.0*mo(c.z,8.0);float a=mo(n*(n+3.0),61.0);",
+ "  q*=1.0-2.0*vec3(mo(a,2.0),mo(floor((a+0.5)*0.5),2.0),mo(floor((a+0.5)*0.25),2.0));",
+ "  vec2 e1=q.xy-0.5;vec2 e2=q.xz-vec2(-0.5,0.5);vec2 e3=q.yz+0.5;",
+ "  float d1=length(vec2(length(e1)-0.5,q.z));float d2=length(vec2(length(e2)-0.5,q.y));float d3=length(vec2(length(e3)-0.5,q.x));",
+ "  float d=d1;vec2 e=e1;",
+ "  if(d2<d){d=d2;e=e2;}",
+ "  if(d3<d){d=d3;e=e3;}",
+ "  float g=cos(8.0*atan(e.y,e.x));",
+ "  orb=vec4(abs(q),0.5+0.4*g);",
+ "  return 0.7*(d-(0.14+0.04*uM)*(1.0+0.22*g));",
+ "}"],
+ de:function(x,y,z,m){
+  function mo(v,k){return Math.floor(md(v+.5,k))}
+  var cx=Math.floor(x),cy=Math.floor(y),cz=Math.floor(z),qx=x-cx-.5,qy=y-cy-.5,qz=z-cz-.5;
+  var n=mo(cx,8)+8*mo(cy,8)+64*mo(cz,8),a=mo(n*(n+3),61);
+  if(mo(a,2))qx=-qx;if(mo(Math.floor((a+.5)*.5),2))qy=-qy;if(mo(Math.floor((a+.5)*.25),2))qz=-qz;
+  var e1x=qx-.5,e1y=qy-.5,e2x=qx+.5,e2y=qz-.5,e3x=qy+.5,e3y=qz+.5;
+  var d1=Math.hypot(Math.hypot(e1x,e1y)-.5,qz),d2=Math.hypot(Math.hypot(e2x,e2y)-.5,qy),d3=Math.hypot(Math.hypot(e3x,e3y)-.5,qx);
+  var d=d1,ex=e1x,ey=e1y;
+  if(d2<d){d=d2;ex=e2x;ey=e2y}
+  if(d3<d){d=d3;ex=e3x;ey=e3y}
+  var g=Math.cos(8*Math.atan2(ey,ex));
+  return .7*(d-(.14+.04*m)*(1+.22*g));
+ }},
+/* What is left of space after round holes are taken out of it at four sizes. The largest holes overlap their
+   neighbours, which leaves a frame to fly through; the smaller ones pit the frame like pumice. */
+{id:"foam",name:"Foam",hue:.15,fog:.16,maxd:16,speed:.6,start:[1,1,1],
+ period:function(){return [2,2,2]},
+ glsl:[
+ "float map(vec3 p){",
+ "  float s=1.0;float R=1.25;orb=vec4(1000.0);float d=-1e5;",
+ "  for(int i=0;i<4;i++){",
+ "    vec3 a=mod(p*s,2.0)-1.0;",
+ "    orb=min(orb,vec4(abs(a),dot(a,a)*0.4));",
+ "    d=max(d,(R-length(a))/s);",
+ "    s*=3.0;R=0.92+0.07*uM;",
+ "  }",
+ "  return d;",
+ "}"],
+ de:function(x,y,z,m){
+  var s=1,R=1.25,d=-1e5;
+  for(var i=0;i<4;i++){
+    d=Math.max(d,(R-Math.hypot(md(x*s,2)-1,md(y*s,2)-1,md(z*s,2)-1))/s);
+    s*=3;R=.92+.07*m;
+  }
+  return d;
+ }},
+/* Trees: a stem, then at its tip the space is folded four ways, leant over, and shrunk, and the stem is drawn again. */
+{id:"thicket",name:"Thicket",hue:.3,fog:.13,maxd:22,speed:.9,start:[1.2,.3,1.2],
+ period:function(){return [6,6,6]},
+ glsl:[
+ "#define P 3.0",
+ "float map(vec3 p){",
+ "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  float an=0.62+0.2*uM;float ca=cos(an),sa=sin(an),cb=cos(0.5*an),sb=sin(0.5*an);",
+ "  float s=1.0;float d=1e5;orb=vec4(1000.0);p.y+=1.5;",
+ "  for(int i=0;i<7;i++){",
+ "    d=min(d,(length(p-vec3(0.0,clamp(p.y,0.0,1.0),0.0))-0.07)/s);",
+ "    p.y-=1.0;p.xz=abs(p.xz);",
+ "    p.xy=vec2(ca*p.x-sa*p.y,sa*p.x+ca*p.y);",
+ "    p.zy=vec2(cb*p.z-sb*p.y,sb*p.z+cb*p.y);",
+ "    orb=min(orb,vec4(abs(p),dot(p,p)*0.5));",
+ "    p*=1.6;s*=1.6;",
+ "  }",
+ "  return 0.8*d;",
+ "}"],
+ de:function(x,y,z,m){
+  var P=3;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var an=.62+.2*m,ca=Math.cos(an),sa=Math.sin(an),cb=Math.cos(.5*an),sb=Math.sin(.5*an),s=1,d=1e5,t;y+=1.5;
+  for(var i=0;i<7;i++){
+    d=Math.min(d,(Math.hypot(x,y-Math.max(0,Math.min(1,y)),z)-.07)/s);
+    y-=1;x=Math.abs(x);z=Math.abs(z);
+    t=ca*x-sa*y;y=sa*x+ca*y;x=t;
+    t=cb*z-sb*y;y=sb*z+cb*y;z=t;
+    x*=1.6;y*=1.6;z*=1.6;s*=1.6;
+  }
+  return .8*d;
+ }},
+/* The limit set of a Kleinian group (after Jos Leys and Knighty): a slab of space is wrapped sideways, its upper half
+   is turned over onto its lower half, and it is turned inside out through a sphere, again and again. */
+{id:"klein",name:"Kleinian",hue:.72,fog:.2,maxd:14,speed:.5,start:[1.55,.84,.84],
+ period:function(m){var a=1.9+.04*m;return [2,2*a,2]},
+ glsl:[
+ "float map(vec3 p){",
+ "  float a=1.9+0.04*uM;float df=1.0;orb=vec4(1000.0);",
+ "  p.y=a-abs(mod(p.y,2.0*a)-a);",
+ "  for(int i=0;i<12;i++){",
+ "    p.xz=mod(p.xz+1.0,2.0)-1.0;",
+ "    if(p.y>=0.5*a)p=vec3(-p.x,a-p.y,-p.z);",
+ "    float ir=1.0/max(dot(p,p),1e-6);",
+ "    p*=-ir;p.x=-p.x;p.y=a+p.y;df*=ir;",
+ "    orb=min(orb,vec4(abs(p),dot(p,p)*0.3));",
+ "  }",
+ "  return 0.6*min(min(p.y,a-p.y),0.3)/max(df,2.0);",
+ "}"],
+ de:function(x,y,z,m){
+  var a=1.9+.04*m,df=1;
+  y=a-Math.abs(md(y,2*a)-a);
+  for(var i=0;i<12;i++){
+    x=md(x+1,2)-1;z=md(z+1,2)-1;
+    if(y>=.5*a){x=-x;y=a-y;z=-z}
+    var ir=1/Math.max(x*x+y*y+z*z,1e-6);
+    x=x*ir;y=a-y*ir;z=-z*ir;df*=ir;
+  }
+  return .6*Math.min(Math.min(y,a-y),.3)/Math.max(df,2);
+ }},
+/* Cubes with smaller cubes on their eight corners, and smaller ones on theirs. */
+{id:"pyrite",name:"Pyrite",hue:.11,fog:.13,maxd:22,speed:.9,start:[2,.3,2],
+ period:function(){return [8,8,8]},
+ glsl:[
+ "#define P 4.0",
+ "float map(vec3 p){",
+ "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  float a1=0.25+0.3*uM;float c1=cos(a1),s1=sin(a1);",
+ "  float s=1.0;float d=1e5;orb=vec4(1000.0);",
+ "  for(int i=0;i<4;i++){",
+ "    vec3 b=abs(p)-0.5;",
+ "    d=min(d,(length(max(b,0.0))+min(max(b.x,max(b.y,b.z)),0.0))/s);",
+ "    p=abs(p)-0.66;",
+ "    p.xy=vec2(c1*p.x-s1*p.y,s1*p.x+c1*p.y);",
+ "    p.yz=vec2(c1*p.y-s1*p.z,s1*p.y+c1*p.z);",
+ "    orb=min(orb,vec4(abs(p),dot(p,p)));",
+ "    p*=2.6;s*=2.6;",
+ "  }",
+ "  return 0.9*d;",
+ "}"],
+ de:function(x,y,z,m){
+  var P=4;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var a1=.25+.3*m,c1=Math.cos(a1),s1=Math.sin(a1),s=1,d=1e5,t;
+  for(var i=0;i<4;i++){
+    var bx=Math.abs(x)-.5,by=Math.abs(y)-.5,bz=Math.abs(z)-.5;
+    d=Math.min(d,(Math.hypot(Math.max(bx,0),Math.max(by,0),Math.max(bz,0))+Math.min(Math.max(bx,by,bz),0))/s);
+    x=Math.abs(x)-.66;y=Math.abs(y)-.66;z=Math.abs(z)-.66;
+    t=c1*x-s1*y;y=s1*x+c1*y;x=t;
+    t=c1*y-s1*z;z=s1*y+c1*z;y=t;
+    x*=2.6;y*=2.6;z*=2.6;s*=2.6;
+  }
+  return .9*d;
+ }},
+/* Soft lights hanging in the dark at two sizes, one to a cell, each a little off its cell's middle and slowly swaying. */
+{id:"lanterns",name:"Lanterns",hue:.6,fog:0,maxd:1,speed:.6,start:[.3,.2,.1],volume:true,
+ period:function(){return [8,8,8]},
+ glsl:[
+ "#define VMAP(a) ((a)*(a)*1.5)",
+ "#define VSTEP 0.1",
+ "float lay(vec3 p,float k){",
+ "  vec3 c=floor(p);vec3 f=p-c-0.5;c=floor(mod(c+0.5,8.0));",
+ "  float h=fract(sin(dot(c,vec3(12.9898,78.233,37.719)))*43758.5453);",
+ "  vec3 w3=smoothstep(0.5,0.3,abs(f));",
+ "  f-=0.36*(vec3(h,fract(h*57.31),fract(h*913.7))-0.5)+0.04*sin(uTime*0.3+h*vec3(40.0,70.0,90.0));",
+ "  float d2=dot(f,f);return (0.3+0.7*fract(h*311.1))*w3.x*w3.y*w3.z*(exp(-d2*k)+0.6*exp(-d2*k*7.0));",
+ "}",
+ "float dens(vec3 p){",
+ "  return lay(p,40.0-9.0*uM)+0.7*lay(p*2.0+3.3,34.0)+0.06*exp(-3.0*abs(dot(sin(p*0.7854),cos(p.zxy*0.7854))));",
+ "}"],
+ de:function(){return .25}},
 /* The two zoom worlds are flat pictures, not spaces: js/zoom.js draws them and moves the view. They are marked as cloud
    worlds too, so that everything that needs a surface (the orb's check, the thrown light, the distance probe) leaves them alone. */
 {id:"mzoom",name:"Mandelbrot zoom",hue:.55,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,
