@@ -22,6 +22,7 @@ import { __dbg as pictureM } from "../js/picture.js";
 import { __dbg as galleryM } from "../js/gallery.js";
 import { __dbg as recordM } from "../js/record.js";
 import { __dbg as sparkM } from "../js/spark.js";
+import { __dbg as flitsM } from "../js/flits.js";
 import { __dbg as midiM } from "../js/midi.js";
 import { tidy, slug, problems, packText, indexEntry } from "./packlib.mjs";
 import { handle, answer, packField } from "./offer.mjs";
@@ -415,6 +416,19 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("the first kind of video the browser can record is chosen", recType(t => /webm/.test(t)) === REC_TYPES[1] && recType(() => true) === REC_TYPES[0]);
   expect("a browser that names no kind gets none, and the recorder its own default", recType(() => false) === "");
   expect("the recording clock reads minutes and seconds", recClock(0) === "0:00" && recClock(75.9) === "1:15" && recClock(-3) === "0:00");
+}
+
+// ---- Sprites: fading, where they make for, and the shader's count of them
+{
+  const { flitFade, flitAim, NFLIT, FLIT_IN, FLIT_OUT } = flitsM;
+  expect("a sprite is unseen as it arrives and as it leaves, and full between", flitFade(0, 6) === 0 && flitFade(6, 6) === 0 && flitFade(3, 6) === 1);
+  expect("a sprite fades in and out evenly, never past full", Math.abs(flitFade(FLIT_IN / 2, 6) - 0.5) < 1e-12 && Math.abs(flitFade(6 - FLIT_OUT / 2, 6) - 0.5) < 1e-12 && flitFade(-1, 6) === 0 && flitFade(9, 6) === 0);
+  let okAim = true;
+  for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) { const a = flitAim(i / 10, j / 10, 1 - j / 10); if (!(a[0] >= 2.5 && a[0] <= 7 && Math.abs(a[1]) <= 0.45 * a[0] + 1e-12 && Math.abs(a[2]) <= 0.3 * a[0] + 1e-12)) okAim = false; }
+  expect("a sprite makes for a place ahead of the camera and inside the view", okAim);
+  const { fragSource } = await import("../js/shaders.js"), { WORLDS } = await import("../js/worlds.js");
+  const src = fragSource(WORLDS[0]);
+  expect("the scene shader has a line for each sprite, and no more", src.includes("uniform vec4 uFl[" + NFLIT + "],uFlT[" + NFLIT + "];") && src.includes("uFl[" + (NFLIT - 1) + "].w>0.0") && !src.includes("uFl[" + NFLIT + "].w"));
 }
 
 // ---- Throw a light: bouncing

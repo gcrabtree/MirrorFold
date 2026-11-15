@@ -51,7 +51,7 @@ def one(j, tmp):
     # The same picture every run: worlds with no fixed start choose one by chance, so chance is replaced by a fixed
     # run of numbers and the world entered again. The palette is put in place at once; in the app it eases in.
     first = "var sd=11;Math.random=function(){sd=(sd*16807)%2147483647;return sd/2147483647};" \
-            "started=true;orbsOn=false;setWorldNow(WORLDS.indexOf(scene.world),true);"
+            "started=true;orbsOn=false;flitsOn=false;setWorldNow(WORLDS.indexOf(scene.world),true);"
     harness.screenshot(png, first + j["js"] + ";easePalette(60);", world, (480, 300),
                        9000 if j["slow"] else 3500, quality="fast" if j["slow"] else "sharp")
     Image.open(png).convert("RGB").resize((240, 150), Image.LANCZOS).save(os.path.join(ROOT, j["file"]), quality=82, optimize=True)

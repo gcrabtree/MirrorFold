@@ -27,7 +27,7 @@ ap.add_argument("-o", "--out", default="render.png")
 a = ap.parse_args()
 w, h = (int(x) for x in a.size.split("x"))
 # started=true skips the start card's slow drift; orbs off keeps shots comparable.
-base = f"started=true;orbsOn=false;setPalette({a.palette});{a.js};"
+base = f"started=true;orbsOn=false;flitsOn=false;setPalette({a.palette});{a.js};"
 q = "fast" if a.fast else "sharp"
 
 if not a.all:

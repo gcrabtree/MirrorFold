@@ -6,6 +6,7 @@ import { morphValue, tickClock } from "./clock.js";
 import { morph } from "./controls.js";
 import { $, canvas, errBox, toast } from "./dom.js";
 import { measure } from "./flight.js";
+import { stepFlits } from "./flits.js";
 import { wakeHud } from "./input.js";
 import { stepZoom } from "./zoom.js";
 import { autopilot, jMove, journey, stepJourney } from "./journey.js";
@@ -92,6 +93,7 @@ function frame(now){
   if(landMode)moveLand(notes);
   stepOrb(notes);
   sparkFrame(notes);stepSpark(notes);
+  stepFlits(notes);
   musicFollowsSpeed(notes.spN);
 
   /* drawing */
