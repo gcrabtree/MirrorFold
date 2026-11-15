@@ -221,12 +221,12 @@ BUILTIN_T=[
  {name:"Everything",mirrors:{mode:"random",none:"50"},motion:{mode:"random"},filter:{mode:"random"},overlay:{mode:"random"},surface:{mode:"random"}},
  {name:"Clean flight",mirrors:{mode:"off"},motion:{mode:"off"},filter:{mode:"off"},overlay:{mode:"off"},surface:{mode:"off"}},
  {name:"MilkDrop",mirrors:{mode:"off"},motion:{mode:"random",set:["Melt","Vortex","Tunnel","Implode","Ripple","Drift"]},
-  filter:{mode:"random",set:["none","Echo","Neon","Solar","Liquid","Prism","Thermal","Contour"]},overlay:{mode:"random"}},
+  filter:{mode:"random",set:["none","Echo","Neon","Solar","Liquid","Prism","Thermal","Contour"]},overlay:{mode:"random"},surface:{mode:"random"}},
  {name:"Kaleidoscope",mirrors:{mode:"random",set:["3","4","6","8","12"]},motion:{mode:"off"},filter:{mode:"random",set:["none","Quad","Tiles","Twirl","Prism"]},overlay:{mode:"off"}},
  {name:"Calm",world:{every:90,set:["coral","julia","aurora","nebula","gates","halls","temple"]},palette:{every:40},mirrors:{mode:"off"},
   motion:{mode:"random",every:50,set:["none","Melt","Drift"]},filter:{mode:"random",every:60,set:["none","Liquid"]},overlay:{mode:"off"}},
  {name:"Landscapes",world:{every:70},mirrors:{mode:"off"},land:{mode:"random",every:80}},
- {name:"Follow the music",world:{trigger:"sound",every:45},mirrors:{mode:"random",none:"75"},motion:{mode:"random"},overlay:{mode:"random",set:["Ring","Scope","Spectrum","Spokes"]}}
+ {name:"Follow the music",world:{trigger:"sound",every:45},mirrors:{mode:"random",none:"75"},motion:{mode:"random"},overlay:{mode:"random",set:["Ring","Scope","Spectrum","Spokes"]},surface:{mode:"random"}}
 ].map(function(t){return normT(t,true)});
 BUILTIN_S=[normS({name:"Grand tour",order:"cycle",items:[{tpl:"Clean flight",min:2},{tpl:"MilkDrop",min:2},{tpl:"Kaleidoscope",min:2},{tpl:"Everything",min:3}]},true)];
 try{

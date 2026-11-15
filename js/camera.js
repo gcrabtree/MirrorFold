@@ -42,7 +42,8 @@ export function turn(fr){
   var kx=(keys.ArrowRight?1:0)-(keys.ArrowLeft?1:0),ky=(keys.ArrowDown?1:0)-(keys.ArrowUp?1:0);
   userLook(kx*dt*1.2,ky*dt*1.2);
   var f=1-Math.exp(-dt*14),ax=cam.lookX*f,ay=cam.lookY*f;cam.lookX-=ax;cam.lookY-=ay;
-  if(still&&Math.abs(cam.lookX)+Math.abs(cam.lookY)<2e-4){ax+=cam.lookX;ay+=cam.lookY;cam.lookX=cam.lookY=0;} /* holding still: finish the turn, so the view comes to a full stop */
+  /* A turn that is all but done is finished here, so that the look comes to exactly nothing within a second. Left to die away by itself it takes most of a minute to reach nothing, and a zoom world, which reads any look as the user taking the picture, would not start its tour for that long after the autopilot's last turn in the world before. Holding still finishes it sooner, so the view comes to a full stop. */
+  if(Math.abs(cam.lookX)+Math.abs(cam.lookY)<(still?2e-4:1e-7)){ax+=cam.lookX;ay+=cam.lookY;cam.lookX=cam.lookY=0;}
   fr.lx=ax;fr.ly=ay;
   cam.F=rot(cam.F,cam.Up,ax);cam.F=rot(cam.F,cam.R,ay);cam.Up=rot(cam.Up,cam.R,ay);
   var rollT=((keys.KeyE?1:0)-(keys.KeyQ?1:0))*1.2;
