@@ -2,6 +2,7 @@
 import { cam, norm } from "./camera.js";
 import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay } from "./choose.js";
 import { clock } from "./clock.js";
+import { setSurface } from "./controls.js";
 import { $, toast } from "./dom.js";
 import { deAt } from "./flight.js";
 import { press, wakeHud } from "./input.js";
@@ -10,7 +11,7 @@ import { LK } from "./landscapes.js";
 import { liveAudio, soundChanged } from "./listen.js";
 import { packD } from "./pack-worlds.js";
 import { PALETTES, palOpen, setPalette } from "./palettes.js";
-import { LOOKS, MOTIONS, OVERLAYS, mirrors, sel } from "./state.js";
+import { LOOKS, MOTIONS, OVERLAYS, SURFACES, mirrors, sel } from "./state.js";
 import { setStill } from "./still.js";
 import { pickWeighted, saveTaste, taste, tasteClear, tasteCount, tasteNudge, tasteOf } from "./taste.js";
 import { keepAwake, stereo } from "./vr.js";
@@ -55,14 +56,15 @@ export function allS(){return BUILTIN_S.concat(store.sets)}
 export function findT(n){var a=allT();for(var i=0;i<a.length;i++)if(a[i].name===n)return a[i];return null;}
 export function findS(n){var a=allS();for(var i=0;i<a.length;i++)if(a[i].name===n)return a[i];return null;}
 
-export function jCur(k){return k==="world"?scene.world.id:k==="palette"?PALETTES[sel.pi].name:k==="mirrors"?String(mirrors[sel.mi]):k==="motion"?MOTIONS[sel.moi].name:k==="filter"?LOOKS[sel.lki].name:k==="land"?(landMode?LK[landKind].id+(landMode===2?" over":" alone"):"none"):OVERLAYS[sel.ovi].name;}
-export function jNone(k){return k==="mirrors"?"0":"none";}
+export function jCur(k){return k==="world"?scene.world.id:k==="palette"?PALETTES[sel.pi].name:k==="mirrors"?String(mirrors[sel.mi]):k==="motion"?MOTIONS[sel.moi].name:k==="filter"?LOOKS[sel.lki].name:k==="surface"?SURFACES[sel.si].name:k==="land"?(landMode?LK[landKind].id+(landMode===2?" over":" alone"):"none"):OVERLAYS[sel.ovi].name;}
+export function jNone(k){return k==="mirrors"?"0":k==="surface"?"plain":"none";}
 function jIndex(k,key){var o=catOf(k).opts;for(var i=0;i<o.length;i++)if(o[i][0]===key)return i;return -1;}
 export function jApply(k,key){ /* false means it could not start yet (a transition is running) and should be retried */
   var i=jIndex(k,key);
   if(i<0||key===jCur(k))return true;
   if(k==="world"){if(tr.warpDir!==0)return false;requestWorld(i);return true;}
   if(k==="mirrors")return warpThen(function(){setMirrors(i)});
+  if(k==="surface")return warpThen(function(){setSurface(i)}); /* behind a transition, as mirrors are: the whole picture changes at once */
   if(k==="land")return warpThen(function(){
     var sp=key.split(" "),kk;for(kk=0;kk<LK.length;kk++)if(LK[kk].id===sp[0])setLandKind(kk);
     setLand(key==="none"?0:sp[1]==="over"?2:1);
@@ -112,7 +114,7 @@ export function jLess(){
   if(jApply(k,jPick(k,c,cur,jPool(k,c))))jReset(k);else J[k].t=J[k].next+1; /* a transition is running: change as soon as it ends */
   toast("Less of "+JNAME[k]+" "+name+".");
 }
-export const JNAME={world:"the world",palette:"the palette",mirrors:"mirrors",motion:"the motion",filter:"the filter",overlay:"the overlay",land:"the land"};
+export const JNAME={world:"the world",palette:"the palette",mirrors:"mirrors",motion:"the motion",filter:"the filter",overlay:"the overlay",surface:"the surface",land:"the land"};
 export function applyTemplate(t,announce){
   jt=t;
   CATS.forEach(function(c){
@@ -193,7 +195,7 @@ export function stepJourney(dt){
   }
 }
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */
-export const J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22},land:{base:80}};
+export const J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22},surface:{base:45},land:{base:80}};
 export function jReset(k){J[k].t=0;J[k].next=J[k].base*(0.8+0.4*Math.random());}
 function jResetAll(){for(var k in J)jReset(k);}
 
@@ -201,7 +203,7 @@ function jResetAll(){for(var k in J)jReset(k);}
 export function init(){
 jResetAll();
 /* ---------- journey templates ----------
-   A template sets, for each of seven categories, whether a journey leaves it alone, forces it off, or changes it at random,
+   A template sets, for each of eight categories, whether a journey leaves it alone, forces it off, or changes it at random,
    how often, and from which options. A set plays several templates in turn. */
 CATS=[
  {k:"world",label:"Worlds",every:55,modes:["keep","random"],opts:WORLDS.map(function(w){return [w.id,w.name]})},
@@ -210,13 +212,14 @@ CATS=[
  {k:"motion",label:"Motions",every:24,modes:["off","keep","random"],opts:MOTIONS.map(function(o){return [o.name,o.name]})},
  {k:"filter",label:"Filters",every:27,modes:["off","keep","random"],opts:LOOKS.map(function(o){return [o.name,o.name]})},
  {k:"overlay",label:"Overlays",every:22,modes:["off","keep","random"],opts:OVERLAYS.map(function(o){return [o.name,o.name]})},
+ {k:"surface",label:"Surfaces",every:45,modes:["off","keep","random"],opts:SURFACES.map(function(o){return [o.name,o.name]})},
  /* the land: "none", or a landscape's id followed by " alone" or " over" (over the world) */
  {k:"land",label:"Land",every:80,modes:["off","keep","random"],opts:[].concat.apply([["none","none"]],LK.map(function(K){var n=K.name.replace("Land is ","");return [[K.id+" alone",n+", alone"],[K.id+" over",n+", over the world"]]}))}
 ];
 BUILTIN_T=[
  {name:"Classic",mirrors:{mode:"off"}},
- {name:"Everything",mirrors:{mode:"random",none:"50"},motion:{mode:"random"},filter:{mode:"random"},overlay:{mode:"random"}},
- {name:"Clean flight",mirrors:{mode:"off"},motion:{mode:"off"},filter:{mode:"off"},overlay:{mode:"off"}},
+ {name:"Everything",mirrors:{mode:"random",none:"50"},motion:{mode:"random"},filter:{mode:"random"},overlay:{mode:"random"},surface:{mode:"random"}},
+ {name:"Clean flight",mirrors:{mode:"off"},motion:{mode:"off"},filter:{mode:"off"},overlay:{mode:"off"},surface:{mode:"off"}},
  {name:"MilkDrop",mirrors:{mode:"off"},motion:{mode:"random",set:["Melt","Vortex","Tunnel","Implode","Ripple","Drift"]},
   filter:{mode:"random",set:["none","Echo","Neon","Solar","Liquid","Prism","Thermal","Contour"]},overlay:{mode:"random"}},
  {name:"Kaleidoscope",mirrors:{mode:"random",set:["3","4","6","8","12"]},motion:{mode:"off"},filter:{mode:"random",set:["none","Quad","Tiles","Twirl","Prism"]},overlay:{mode:"off"}},

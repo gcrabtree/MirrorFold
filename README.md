@@ -63,11 +63,11 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
 - **Morph.** Each world slowly changes shape as you fly.
 - **Kaleidoscope mirrors**: off, or 3, 4, 6, 8 or 12 segments.
-- **13 colour palettes.** Seven are available from the start. Six are unlocked by finding orbs.
+- **14 colour palettes.** Eight are available from the start (one of them, Wood, is browns). Six are unlocked by finding orbs.
 - **A picture beside every name.** The world, palette, motion, filter, overlay, mirrors, FX and landscape buttons each open a grid of small pictures that show what each choice looks like.
 - **6 feedback motions, 23 filters, 7 overlays and 8 transitions**, in the style of the MilkDrop music visualiser.
 - **Music reactivity** from a built-in track, your own audio file, another browser tab such as Spotify or YouTube, the microphone, or a tapped tempo.
-- **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter, overlay and land over time. You control what it may change with templates.
+- **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter, overlay, surface and land over time. You control what it may change with templates.
 - **Share spot** links that take someone to the exact place you are looking at.
 - **Hold still**, a pause that sharpens the picture, **Save picture**, which saves a picture that opens again as the scene it shows, and **Record video**.
 - **A gallery** of journeys and packs that people have shared, and a way to offer your own.
@@ -161,6 +161,7 @@ The controls fade after five seconds and come back when you touch the picture.
 | Overlay strength | 15%, 30%, 50%, 75% or 100%. |
 | Mirrors | Opens a chooser: off, 3, 4, 6, 8 or 12 segments. The M key steps through them. |
 | FX | Opens a chooser: glow, trails or clean. Sets the base amount of trail and bloom. |
+| Surface | Opens a chooser: plain or grain. Plain gives each part of a shape one colour of the palette. Grain gives the surfaces the rings of a tree, as if every shape were carved from a block of timber, in the palette's colours: choose the palette Wood for browns. The rings' waves drift slowly, grow with the music and step on the beat. It changes the solid worlds only: the three glowing worlds and the two zoom worlds have no surfaces. |
 | Morph | Turns the slow change of each world's shape on or off. |
 | Pattern | For the two zoom worlds: the pattern in the open parts of the picture. Changes (Journey picks one at each new place), cells, stripes or none. |
 | Drift | Turns the slow forward drift on or off when you are not steering. The drift nearly stops while you turn the view, and picks up again when you stop. |
@@ -301,7 +302,7 @@ Two more buttons sit beside it. **More like this** makes Journey choose what is 
 
 In both settings you can take over at any moment. While you turn the view, by dragging, with the arrow keys, or by turning your head in the VR viewer, the autopilot stops steering and the automatic forward motion nearly stops. About a second after you stop turning, it carries on from where you are looking. The choice of travel or drift is remembered in your browser.
 
-A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter, overlay and land you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes instead of on a clock.
+A **template** says what Journey may change and how often. For each of world, palette, mirrors, motion, filter, overlay, surface and land you choose whether it changes, how many seconds between changes, and which options are allowed. Worlds can also change when the music changes instead of on a clock.
 
 A **set** plays several templates in turn, each for a number of minutes.
 

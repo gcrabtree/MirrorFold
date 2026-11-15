@@ -10,7 +10,8 @@ export const PALETTES=[
  {name:"Sunset",a:[.5,.5,.5],b:[.5,.5,.5],c:[1,.7,.4],d:[0,.15,.2]},
  {name:"Acid",a:[.5,.5,.5],b:[.5,.5,.5],c:[2,1,0],d:[.5,.2,.25]},
  {name:"Orchid",a:[.55,.3,.6],b:[.45,.3,.4],c:[1,1,1],d:[0,.45,.15]},
- {name:"Bone",a:[.5,.48,.44],b:[.5,.48,.44],c:[1,1,1],d:[0,.02,.05]}
+ {name:"Bone",a:[.5,.48,.44],b:[.5,.48,.44],c:[1,1,1],d:[0,.02,.05]},
+ {name:"Wood",a:[.42,.23,.1],b:[.24,.15,.08],c:[1,1,1],d:[0,.03,.06]} /* browns, pale to dark: with Surface grain it gives timber */
 ,
  {name:"Aurora",a:[.2,.5,.4],b:[.2,.5,.4],c:[1,1,1],d:[.6,0,.3]},
  {name:"Infra",a:[.5,.1,.3],b:[.5,.1,.3],c:[1,1,1],d:[0,.5,.6]},
@@ -19,7 +20,7 @@ export const PALETTES=[
  {name:"Gold",a:[.5,.4,.15],b:[.5,.4,.2],c:[1,1,1],d:[0,.05,.3]},
  {name:"Ultraviolet",a:[.35,.1,.55],b:[.35,.1,.45],c:[1,1,1],d:[.1,.5,0]}
 ];
-export const BASE_PALS=7;
+export const BASE_PALS=8;
 export const NPAL=PALETTES.length;
 /* a built-in palette is open once its orb is found; palettes from a pack are always open */
 export function palOpen(i){return i<BASE_PALS+unlocked||i>=NPAL;}

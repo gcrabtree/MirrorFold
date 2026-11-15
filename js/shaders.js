@@ -16,7 +16,20 @@ export function fragSource(w){
 "vec3 vidLin(vec2 q){vec3 c=texture2D(uVid,q).rgb;return c*c;}", /* the video is stored ready for a screen; the scene works in light, and is made ready for the screen at the end */
 "vec3 vidAt(vec2 q){return vidLin(abs(fract(q*0.5)*2.0-1.0));}", /* repeating, each copy the mirror of its neighbour */
 "vec3 vidScr(){return vidLin((gl_FragCoord.xy/uRes-0.5)*uVidK.zw+0.5);}", /* flat on the screen */
-"vec4 orb;"
+"vec4 orb;",
+/* Surface grain: the rings of a tree. The grain is worked out from a place in space, not laid on a surface, so a shape shows rings where it is cut
+   across and long stripes where it is cut along, as if carved from a block. q is the place turned into angles that go
+   round a whole number of times in the world's period, and everything below is made of sines and cosines of whole
+   multiples of them, so the grain repeats exactly where the world does. One trunk runs along z through each two units
+   or so; woodAt gives how dark the wood is at q, from 0 (the pale wood of spring) to 1 (the dark line that ends a year).
+   The rings' waves move: they drift slowly with the clock, grow with the middle of the sound, and the rings step
+   outward a third of a ring on the beat. Hold still gives the scene no clock and no sound, so they stand still for it. */
+"uniform float uSurf;uniform vec3 uPer;",
+"float woodAt(vec3 q){",
+"  float w=0.5*sin(q.z+1.3*sin(2.0*q.x+q.y+0.21*uTime)+0.13*uTime)+0.3*sin(2.0*q.z+3.0*q.y+1.0-0.17*uTime)+0.15*sin(5.0*q.x-3.0*q.z+0.11*uTime);",
+"  float g=fract(10.0*sqrt(2.02-cos(q.x+0.15*sin(q.z))-cos(q.y+0.15*cos(q.z)))+(0.9+1.6*uMid)*w-0.35*uBeat);",
+"  return g*g*g*(1.0-smoothstep(0.9,1.0,g));",
+"}"
   ].concat(w.glsl,[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* a glowing ball at o.xyz of size o.w, seen along the ray, if nothing is in front of it: a bright core and a soft halo in a palette colour */
@@ -145,6 +158,17 @@ export function fragSource(w){
 "    float fres=pow(1.0-nd,3.0);",
 "    vec3 base=pal(uHue+tr.w*0.8+0.25*tr.x);",
 "    base=mix(base,pal(uHue+0.35+tr.y*1.5),0.5*clamp(tr.z*2.0,0.0,1.0));",
+"    float wood=0.0;",
+"    if(uSurf>0.5){", /* the grain: each ring runs through half the palette from pale wood to dark line, and the line is darkened too; rings too fine for a pixel fade to their average, so far wood does not sparkle */
+"      wood=1.0;vec3 wm=max(floor(uPer*0.5+0.5),1.0)*6.28318/uPer;vec3 wq=p*wm;",
+"      float sharp=clamp(0.016/(uPix*t),0.0,1.0);",
+"      float wd=woodAt(wq);vec3 we=wm*0.004;",
+"      vec3 wg=vec3(woodAt(wq+vec3(we.x,0.0,0.0)),woodAt(wq+vec3(0.0,we.y,0.0)),woodAt(wq+vec3(0.0,0.0,we.z)))-wd;",
+"      n=normalize(n-0.35*sharp*(wg-n*dot(wg,n)));", /* the dark lines stand a little proud, as on sanded wood */
+"      float fib=(sin(97.0*wq.x+31.0*wq.y+sin(wq.z))+sin(89.0*wq.y-41.0*wq.x-sin(2.0*wq.z))+sin(67.0*wq.x-71.0*wq.y))*0.4*clamp(0.003/(uPix*t)-0.3,0.0,1.0);", /* fine fibres along the trunk: three sets of waves across it that do not line up, so they show as specks on a cut end and streaks along a side, and only close to */
+"      wd=mix(0.22,wd,sharp);",
+"      base=pal(uHue+0.12*tr.w+0.5*wd)*(1.0-0.5*wd)*(1.0+0.14*fib)*(0.8+0.3*clamp(tr.x,0.0,1.0));",
+"    }",
 "    float vk=0.0,lit=0.05+0.7*dif+0.4*nd*nd;", /* how much of the surface's colour is the video, and how brightly the surface is lit */
 "    if(uVidK.x>0.5){",
 "      if(uVidK.x<1.5){vk=uVidK.y;lit=mix(lit,0.3+0.8*lit,vk);", /* video on the surfaces: laid on from the three axes, each weighted by how squarely the surface faces it */
@@ -156,8 +180,8 @@ export function fragSource(w){
 "    float bands=smoothstep(0.75,1.0,0.5+0.5*sin(tr.w*24.0-uTime*1.2));",
 "    float ao=max(1.0-gw,0.0);ao*=sqrt(ao);",
 "    col=base*lit*ao;",
-"    col+=pal(uHue+0.5+tr.w)*bands*(0.5+0.9*uMid)*ao*(1.0-vk);", /* the glowing bands give way to the video */
-"    col+=fres*pal(uHue+0.2+t*0.08)*0.4*ao+spec*(0.5+1.4*uHi)*ao;",
+"    col+=pal(uHue+0.5+tr.w)*bands*(0.5+0.9*uMid)*ao*(1.0-vk)*(1.0-0.85*wood);", /* the glowing bands give way to the video, and are faint on wood */
+"    col+=fres*pal(uHue+0.2+t*0.08)*0.4*ao*(1.0-0.8*wood)+spec*(0.5+1.4*uHi)*ao*(1.0-0.65*wood);", /* wood shines less */
 "    col=mix(fogc,col,exp(-FOG*t));",
 "  }",
 "  col+=pal(uHue+0.7+r*0.1)*gw*gw*gw*0.22;",

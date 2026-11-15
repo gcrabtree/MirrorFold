@@ -1,7 +1,7 @@
 /* The choosers with pictures: a button in the controls shows what is chosen, and opens a grid of pictures with names.
    The pictures are the files in thumbs/, made by tools/thumbs.py. What came from a pack has no picture. */
 import { scene, requestWorld, setLook, setMirrors, setMotion, setOverlay } from "./choose.js";
-import { setFx } from "./controls.js";
+import { setFx, setSurface } from "./controls.js";
 import { $ } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { landKind, setLandKind } from "./land.js";
@@ -9,9 +9,9 @@ import { LK } from "./landscapes.js";
 import { NLOOK, NMOT, NOV } from "./library.js";
 import { NWORLD } from "./pack-worlds.js";
 import { NPAL, PALETTES, palOpen, setPalette } from "./palettes.js";
-import { FX, LOOKS, MOTIONS, OVERLAYS, mirrors, sel } from "./state.js";
+import { FX, LOOKS, MOTIONS, OVERLAYS, SURFACES, mirrors, sel } from "./state.js";
 import { WORLDS } from "./worlds.js";
-export const PICK_ORDER=["world","palette","motion","filter","overlay","mirrors","fx","land"];
+export const PICK_ORDER=["world","palette","motion","filter","overlay","mirrors","fx","land","surface"];
 let KINDS;          /* for each chooser: its title, its button, and how to list, read and set what it chooses */
 let pickEl,pickOpen=""; /* the panel, and which chooser it is showing ("" when shut) */
 let pickWas;        /* what each button last said, so that it is rewritten only when it changes */
@@ -76,7 +76,9 @@ KINDS={
  fx:{title:"FX",btn:$("bFx"),n:function(){return FX.length},name:function(i){return "FX "+FX[i].name},
   pic:function(i){return thumbName("fx",FX[i].name)},cur:function(){return sel.fi},set:setFx},
  land:{title:"Land",btn:$("bLandKind"),n:function(){return LK.length},name:function(i){return LK[i].name},
-  pic:function(i){return thumbName("land",LK[i].id)},cur:function(){return landKind},set:setLandKind}
+  pic:function(i){return thumbName("land",LK[i].id)},cur:function(){return landKind},set:setLandKind},
+ surface:{title:"Surface",btn:$("bSurf"),n:function(){return SURFACES.length},name:function(i){return "Surface "+SURFACES[i].name},
+  pic:function(i){return thumbName("surface",SURFACES[i].name)},cur:function(){return sel.si},set:setSurface}
 };
 PICK_ORDER.forEach(function(k){KINDS[k].btn.addEventListener("click",function(){openPick(k)})});
 $("pickClose").addEventListener("click",closePick);

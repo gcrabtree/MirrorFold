@@ -6,7 +6,7 @@ import { adv, openAdv } from "./journey-panel.js";
 import { journey, setJourney } from "./journey.js";
 import { landFx, landMode, landTint, setLand, setLandFx, setLandTint } from "./land.js";
 import { encodeSpot } from "./spots.js";
-import { FX, sel } from "./state.js";
+import { FX, SURFACES, sel } from "./state.js";
 import { DETAIL, di, resize, setDetail } from "./targets.js";
 export let orbsOn=true,morph=true,drift=true; /* the Orbs, Morph and Drift switches */
 export let menu="";      /* which group of controls is open: "", or one of MENUS */
@@ -19,6 +19,7 @@ export function setMenu(name){
   $("hud").setAttribute("data-menu",menu);
 }
 export function setFx(i){sel.fi=FX[i]?i:0;$("bFx").textContent="FX "+FX[sel.fi].name;}
+export function setSurface(i){sel.si=SURFACES[i]?i:0;$("bSurf").textContent="Surface "+SURFACES[sel.si].name;}
 
 
 
@@ -65,4 +66,4 @@ $("bFull").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={setFx, MENUS, setMenu, get menu(){return menu},set menu(v){menu=v}, get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};
+export const __dbg={setFx, setSurface, MENUS, setMenu, get menu(){return menu},set menu(v){menu=v}, get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};

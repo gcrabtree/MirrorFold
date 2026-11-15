@@ -447,11 +447,11 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const { existsSync } = await import("node:fs"), root = new URL("../", import.meta.url);
   const { thumbName, palStripe } = (await import("../js/picker.js")).__dbg;
   const { WORLDS } = await import("../js/worlds.js"), { PALETTES } = await import("../js/palettes.js");
-  const { MOTIONS, LOOKS, OVERLAYS, FX, mirrors } = await import("../js/state.js"), land = await import("../js/landscapes.js");
+  const { MOTIONS, LOOKS, OVERLAYS, FX, SURFACES, mirrors } = await import("../js/state.js"), land = await import("../js/landscapes.js");
   land.init(); // the list of landscapes is made at start-up, and needs no page
   const want = [].concat(WORLDS.map(w => thumbName("world", w.id)), PALETTES.map(p => thumbName("palette", p.name)), MOTIONS.map(m => thumbName("motion", m.name)),
     LOOKS.map(f => thumbName("filter", f.name)), OVERLAYS.map(o => thumbName("overlay", o.name)), mirrors.map(m => thumbName("mirrors", m)),
-    FX.map(f => thumbName("fx", f.name)), land.LK.map(k => thumbName("land", k.id)));
+    FX.map(f => thumbName("fx", f.name)), SURFACES.map(f => thumbName("surface", f.name)), land.LK.map(k => thumbName("land", k.id)));
   const missing = want.filter(f => !existsSync(new URL(f, root)));
   expect("a picture's file name is made of small letters, digits and hyphens only", thumbName("filter", "Two-tone") === "thumbs/filter-two-tone.jpg" && thumbName("world", "../x y") === "thumbs/world-x-y.jpg");
   expect("no two built-ins share a picture", new Set(want).size === want.length);

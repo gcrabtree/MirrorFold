@@ -1,6 +1,6 @@
 /* what is chosen in each list, as a position in it */
 import { calm } from "./dom.js";
-export const sel={pi:0,mi:0,fi:0,moi:0,lki:0,ovsi:2,ovi:0}; /* palette, mirrors, FX, motion, filter, overlay strength, overlay */
+export const sel={pi:0,mi:0,fi:0,moi:0,lki:0,ovsi:2,ovi:0,si:0}; /* palette, mirrors, FX, motion, filter, overlay strength, overlay, surface */
 
 export const mirrors=[0,3,4,6,8,12];
 export const FX=[{name:"glow",decay:.78,bloom:.55,ca:.004},{name:"trails",decay:.93,bloom:.75,ca:.008},{name:"clean",decay:0,bloom:0,ca:0}];
@@ -41,6 +41,10 @@ export const LOOKS=[
  {name:"Emboss",fx:14},
  {name:"Glass",fx:15}
 ];
+/* what the worlds' surfaces are made of: plain is one colour of the palette to a part of a shape; grain is the rings
+   of a tree, worked out in the scene shader from the place a ray lands (js/shaders.js), so a shape looks cut from a
+   block of timber. The grain takes its colours from the palette too: with the palette Wood it is brown. */
+export const SURFACES=[{name:"plain"},{name:"grain"}];
 export const OVS=[.15,.3,.5,.75,1];
 export const OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"}];
 export const TRANSITIONS=8;
@@ -51,4 +55,4 @@ sel.fi=calm?2:0; /* with reduced motion asked for, start with the clean look */
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={sel, mirrors, FX, MOTIONS, LOOKS, OVS, OVERLAYS, TRANSITIONS};
+export const __dbg={sel, mirrors, FX, SURFACES, MOTIONS, LOOKS, OVS, OVERLAYS, TRANSITIONS};

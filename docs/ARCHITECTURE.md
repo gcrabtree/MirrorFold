@@ -13,7 +13,7 @@ Features, in the order a user meets them:
 - **27 worlds.** 22 are surfaces found by sphere tracing a distance estimator; 3 (Nebula, Aurora, Lanterns) are volumetric; 2 (Mandelbrot zoom, Julia zoom) are flat pictures (section 6c).
 - **Free flight** with six degrees of freedom. Speed scales with distance to the nearest surface, so you cannot hit a wall.
 - **Kaleidoscope mirrors**: off, 3, 4, 6, 8 or 12 segments, applied to the ray direction.
-- **13 palettes** (7 available at once, 6 unlocked by finding orbs).
+- **14 palettes** (8 available at once, 6 unlocked by finding orbs).
 - **Feedback motions** (6), **filters** (17), **overlays** (7) and **transitions** (8).
 - **Music**: a built-in generative track, a user's audio file with a scrubber, the sound of another browser tab, the microphone, or tap tempo for music playing in another app. Three frequency bands drive different parts of the picture.
 - **Journey**: an autopilot that flies, and changes world, palette, mirrors, motion, filter and overlay on jittered clocks. What it may change is set by templates; sets play several templates in turn. Both are user-editable and stored in the browser.
@@ -215,6 +215,7 @@ for (int i = 0; i < STEPS; i++) {
 - Lighting: one directional light fixed relative to the camera (`uCam * (-0.5, 0.7, -0.5)`, normalised), a head-light term `nd*nd` where `nd = |dot(n, rd)|`, and a specular highlight (power 28).
 - Ambient occlusion is derived from step count: `ao = (1 - steps/STEPS)^1.5`. It is free and looks good in crevices.
 - Animated bands: `smoothstep(0.75, 1, 0.5 + 0.5*sin(24*orb.w - 1.2*uTime))`, brightened by the mid band.
+- **Surface grain** (`uSurf` 1, the Surface chooser, `SURFACES` in `state.js`, `sel.si`): the base colour is not one palette colour to a part of a shape but a wood grain worked out from the place the ray lands, coloured `pal(uHue + 0.12*orb.w + 0.5*dark) * (1 - 0.5*dark)`, so each ring runs through half the palette and ends in a darker line (the palette Wood is browns, which gives timber). The grain is `woodAt` in `js/shaders.js`. The place is turned into angles `q = p * 2*pi*n / period` (`uPer`, the world's period this frame; `n` the whole number nearest half the period, so a trunk runs along z about every 2 units), and the grain is built only from sines and cosines of whole multiples of `q`, so it repeats exactly where the world does and does not jump when the camera is wrapped. Rings: `fract(10*sqrt(2.02 - cos qx' - cos qy') + wobble)`, cubed, so each year darkens to a line. Rings finer than a pixel fade to their average (`sharp`). Three more samples tilt the normal so the dark lines stand proud; fine fibres (three sets of waves across the trunk) show close to. The rings' waves drift with the clock (`uTime`), grow with the middle band's pulse (`uMid`), and the rings step a third of a ring on the beat (`uBeat`); those reach the shader as uniforms, so both eyes of the VR viewer see the same, and Hold still, which gives the scene no clock and no sound, sees them stand still. On the grain the glowing bands, the rim light and the highlight are turned down. Journey can change it (the `surface` entry of a template: `plain` or `grain`; off means plain), behind a transition as mirrors are. Not in share spots or a pack's scene yet.
 - Fresnel rim, exponential fog (`exp(-FOG*t)`, `FOG` per world), a step-count glow, vignette.
 - Tone map `col/(1+0.2*col)` after an exposure of 1.35, saturation 1.4, a full smoothstep S-curve, `pow(col, 1.15)`, then gamma 1/2.2.
 
@@ -475,7 +476,7 @@ Not done: the land (it ignores the video; only the overlay way works over it), c
 
 Cosine palettes: `colour(x) = a + b*cos(2π*(c*x + d))`, four `vec3` parameters per palette. The shader's `pal()` reads them from uniforms `uPa..uPd`. The live values `palCur` ease toward the selected palette at rate 1.6 per second, so palette changes are smooth. The phase `uHue` drifts slowly and faster with treble.
 
-The first seven palettes are always available. The other six are unlocked one at a time by collecting orbs; the count is stored under `localStorage["mirrorfold"]`. Palettes added from packs follow the built-ins and are always available (see Packs in section 11).
+The first eight palettes are always available. The other six are unlocked one at a time by collecting orbs; the count is stored under `localStorage["mirrorfold"]`. Palettes added from packs follow the built-ins and are always available (see Packs in section 11).
 
 ## 10. Audio
 
@@ -539,7 +540,7 @@ and it fires when novelty exceeds 0.45, after a 5 s warm-up. After firing it hol
 
 ### Clocks
 
-`J` holds one clock per category: `world`, `palette`, `mirrors`, `motion`, `filter`, `overlay`, `land`. A land option is `"none"` or a landscape's `id` plus `" alone"` or `" over"`; templates saved before the land existed get `mode: "keep"`. `jReset(k)` sets the next firing time to `base * (0.8 + 0.4*random)`, so each change lands within a fifth either side of its target interval and the categories drift relative to each other.
+`J` holds one clock per category: `world`, `palette`, `mirrors`, `motion`, `filter`, `overlay`, `surface`, `land`. A surface option is `"plain"` or `"grain"`, and its off is plain. A land option is `"none"` or a landscape's `id` plus `" alone"` or `" over"`; templates saved before the land existed get `mode: "keep"`. `jReset(k)` sets the next firing time to `base * (0.8 + 0.4*random)`, so each change lands within a fifth either side of its target interval and the categories drift relative to each other.
 
 ### Templates
 
