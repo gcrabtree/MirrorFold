@@ -653,6 +653,120 @@ export const WORLDS=[
  "  return lay(p,40.0-9.0*uM)+0.7*lay(p*2.0+3.3,34.0)+0.06*exp(-3.0*abs(dot(sin(p*0.7854),cos(p.zxy*0.7854))));",
  "}"],
  de:function(){return .25}},
+/* The inside of a living cell, one cell to every 8 units, each the mirror image of its neighbours so that the walls
+   between them meet exactly. The wall is the cell's membrane, with a round opening in the middle of each side; in the
+   middle is the nucleus, a hollow ball with 26 pores; thin straight tubes run from the nucleus out to the wall.
+   For those the point is folded into one forty-eighth of the cell (its three distances from the middle, largest
+   first), so each shape is written once. Between the nucleus and the wall lie mitochondria and vesicles, which are
+   not folded: which block of the cell holds one, and how it lies, comes from a number worked out from the block's
+   place with whole numbers only, as in Tangle, so the chip and JavaScript agree. */
+{id:"cell",name:"Cell",hue:.86,fog:.1,maxd:24,speed:.9,start:[2.5,-.5,-.55],
+ period:function(){return [16,16,16]},
+ glsl:[
+ "float smx(float a,float b,float k){float h=max(k-abs(a-b),0.0)/k;return max(a,b)+h*h*k*0.25;}",
+ "float mo(float x,float y){return floor(mod(x+0.5,y));}",
+ "float map(vec3 p){",
+ "  vec3 q=abs(mod(p+4.0,16.0)-8.0)-4.0;",
+ "  vec3 a=abs(q);",
+ "  if(a.x<a.y)a.xy=a.yx;",
+ "  if(a.x<a.z)a.xz=a.zx;",
+ "  if(a.y<a.z)a.yz=a.zy;",
+ "  float r=length(q);",
+ /* the membrane: everything outside a box with round corners, less a round opening along each axis */
+ "  float rip=0.04*sin(3.0*q.x)*sin(3.0*q.y)*sin(3.0*q.z);",
+ "  vec3 b=a-2.35;",
+ "  float box=length(max(b,0.0))+min(b.x,0.0)-1.5;",
+ "  float d=smx(rip-box,1.1-length(a.yz),0.35);",
+ "  orb=vec4(0.3*a.y,0.2*a.z,0.3+4.0*rip,0.06+0.02*a.x);",
+ /* the nucleus: a thin shell, with a pore on each axis, each edge's diagonal and each corner's, and a ring round each pore */
+ "  float pr=0.26+0.05*uM;",
+ "  float e2=length(a-vec3(0.5,0.5,0.0)*(a.x+a.y));",
+ "  float e3=length(a-vec3(a.x+a.y+a.z)/3.0);",
+ "  float pd=min(length(a.yz),min(e2,e3));",
+ "  float nu=min(smx(abs(r-1.5)-0.06,pr-pd,0.1),length(vec2(pd-pr,r-1.5))-0.07);",
+ "  if(nu<d){d=nu;orb=vec4(0.4*pd,0.3*abs(r-1.5),clamp(1.0-2.0*pd,0.0,1.0),0.42+0.25*pd);}",
+ /* the tubes: two straight rods from the nucleus to the wall, which the fold makes 96 */
+ "  vec3 w=vec3(0.8313,0.5154,0.2078);",
+ "  float mt=length(a-w*clamp(dot(a,w),1.5,4.8))-0.03;",
+ "  w=vec3(0.6880,0.6192,0.3784);",
+ "  mt=min(mt,length(a-w*clamp(dot(a,w),1.5,5.8))-0.03);",
+ "  if(mt<d){d=mt;orb=vec4(0.1,0.0,0.6,0.7+0.12*r);}",
+ /* the mitochondria: the cell is cut into 4 by 4 by 4 blocks, and three in four of the 24 blocks in the middle of a side
+    hold one, a capsule lying one of six ways. Half of them are cut open along their length to show the plates inside.
+    A block's shape stays 0.15 inside its block, so no point is nearer a neighbour's shape than its block's side plus 0.15. */
+ "  vec3 c2=min(floor(q*0.5+2.0),3.0);vec3 f=q-(2.0*c2-3.0);vec3 e=abs(c2-1.5);",
+ "  float n=c2.x+4.0*c2.y+16.0*c2.z;float h=mo(n*(n+3.0),61.0);",
+ "  float mi=1.15-max(abs(f.x),max(abs(f.y),abs(f.z)));",
+ "  bool has=abs(e.x+e.y+e.z-2.5)<0.25&&mo(h,4.0)>0.5;",
+ "  if(has){",
+ "    float k=mo(floor((h+0.5)*0.25),3.0);float s=h>30.5?0.7071:-0.7071;",
+ "    vec3 u=vec3(0.7071,s,0.0);vec3 v=vec3(0.0,0.0,1.0);",
+ "    if(k>0.5){u=u.zxy;v=v.zxy;}",
+ "    if(k>1.5){u=u.zxy;v=v.zxy;}",
+ "    float t=dot(f,u);float cp=length(f-u*clamp(t,-0.55,0.55))-0.28;",
+ "    float pl=abs(mod(t+4.0,0.2)-0.1)-0.03;",
+ "    if(mo(floor((h+0.5)*0.125),2.0)>0.5)cp=min(max(abs(cp)-0.025,dot(f,v)),max(cp+0.06,pl));",
+ "    else cp+=0.012*cos(31.4159*t);",
+ "    if(cp<mi){mi=cp;if(mi<d)orb=vec4(0.5*abs(t),0.2,0.5+2.0*pl,0.22+0.25*t);}",
+ "  }",
+ "  d=min(d,mi);",
+ /* the vesicles: the cell is cut into 8 by 8 by 8 small blocks too, and about a third of those between the nucleus and
+    the wall, outside the mitochondria's blocks, hold a ball of one of four sizes, a little off the block's middle */
+ "  vec3 c1=min(floor(q+4.0),7.0);vec3 cc=c1-3.5;vec3 f1=q-cc;",
+ "  float n1=c1.x+8.0*c1.y+64.0*c1.z;float h1=mo(n1*(n1+3.0),61.0);",
+ "  float ve=0.7-max(abs(f1.x),max(abs(f1.y),abs(f1.z)));",
+ "  if(!has&&h1<21.5&&max(abs(cc.x),max(abs(cc.y),abs(cc.z)))<3.0&&dot(cc,cc)>4.41){",
+ "    vec3 o=0.07*(vec3(mo(h1,3.0),mo(floor((h1+0.5)/3.0),3.0),mo(floor((h1+0.5)/9.0),3.0))-1.0);",
+ "    float vs=length(f1-o)-(0.09+0.025*mo(h1,4.0)+0.015*uM);",
+ "    if(vs<ve){ve=vs;if(ve<d)orb=vec4(0.3,0.1,0.2,0.9+0.01*h1);}",
+ "  }",
+ "  d=min(d,ve);",
+ "  return 0.8*d;",
+ "}"],
+ de:function(x,y,z,m){
+  function smx(a,b,k){var h=Math.max(k-Math.abs(a-b),0)/k;return Math.max(a,b)+h*h*k*.25}
+  function mo(v,k){return Math.floor(md(v+.5,k))}
+  function rod(wx,wy,wz,far){var t=Math.max(1.5,Math.min(far,ax*wx+ay*wy+az*wz));return Math.hypot(ax-wx*t,ay-wy*t,az-wz*t)-.03}
+  var qx=tile(x,8),qy=tile(y,8),qz=tile(z,8),ax=Math.abs(qx),ay=Math.abs(qy),az=Math.abs(qz),t;
+  if(ax<ay){t=ax;ax=ay;ay=t}
+  if(ax<az){t=ax;ax=az;az=t}
+  if(ay<az){t=ay;ay=az;az=t}
+  var r=Math.hypot(qx,qy,qz);
+  var rip=.04*Math.sin(3*qx)*Math.sin(3*qy)*Math.sin(3*qz);
+  var bx=ax-2.35,by=ay-2.35,bz=az-2.35;
+  var box=Math.hypot(Math.max(bx,0),Math.max(by,0),Math.max(bz,0))+Math.min(bx,0)-1.5;
+  var d=smx(rip-box,1.1-Math.hypot(ay,az),.35);
+  var pr=.26+.05*m,s=.5*(ax+ay),c=(ax+ay+az)/3;
+  var pd=Math.min(Math.hypot(ay,az),Math.hypot(ax-s,ay-s,az),Math.hypot(ax-c,ay-c,az-c));
+  d=Math.min(d,smx(Math.abs(r-1.5)-.06,pr-pd,.1),Math.hypot(pd-pr,r-1.5)-.07);
+  d=Math.min(d,rod(.8313,.5154,.2078,4.8),rod(.6880,.6192,.3784,5.8));
+  var c2x=Math.min(Math.floor(qx*.5+2),3),c2y=Math.min(Math.floor(qy*.5+2),3),c2z=Math.min(Math.floor(qz*.5+2),3);
+  var fx=qx-(2*c2x-3),fy=qy-(2*c2y-3),fz=qz-(2*c2z-3);
+  var n=c2x+4*c2y+16*c2z,h=mo(n*(n+3),61);
+  var mi=1.15-Math.max(Math.abs(fx),Math.abs(fy),Math.abs(fz));
+  var has=Math.abs(Math.abs(c2x-1.5)+Math.abs(c2y-1.5)+Math.abs(c2z-1.5)-2.5)<.25&&mo(h,4)>.5;
+  if(has){
+    var k=mo(Math.floor((h+.5)*.25),3),sg=h>30.5?.7071:-.7071,ux=.7071,uy=sg,uz=0,vx=0,vy=0,vz=1;
+    if(k>.5){t=uz;uz=uy;uy=ux;ux=t;t=vz;vz=vy;vy=vx;vx=t}
+    if(k>1.5){t=uz;uz=uy;uy=ux;ux=t;t=vz;vz=vy;vy=vx;vx=t}
+    var tt=fx*ux+fy*uy+fz*uz,tc=Math.max(-.55,Math.min(.55,tt)),cp=Math.hypot(fx-ux*tc,fy-uy*tc,fz-uz*tc)-.28;
+    var pl=Math.abs(md(tt+4,.2)-.1)-.03;
+    if(mo(Math.floor((h+.5)*.125),2)>.5)cp=Math.min(Math.max(Math.abs(cp)-.025,fx*vx+fy*vy+fz*vz),Math.max(cp+.06,pl));
+    else cp+=.012*Math.cos(31.4159*tt);
+    mi=Math.min(mi,cp);
+  }
+  d=Math.min(d,mi);
+  var c1x=Math.min(Math.floor(qx+4),7),c1y=Math.min(Math.floor(qy+4),7),c1z=Math.min(Math.floor(qz+4),7);
+  var ccx=c1x-3.5,ccy=c1y-3.5,ccz=c1z-3.5,gx=qx-ccx,gy=qy-ccy,gz=qz-ccz;
+  var n1=c1x+8*c1y+64*c1z,h1=mo(n1*(n1+3),61);
+  var ve=.7-Math.max(Math.abs(gx),Math.abs(gy),Math.abs(gz));
+  if(!has&&h1<21.5&&Math.max(Math.abs(ccx),Math.abs(ccy),Math.abs(ccz))<3&&ccx*ccx+ccy*ccy+ccz*ccz>4.41){
+    gx-=.07*(mo(h1,3)-1);gy-=.07*(mo(Math.floor((h1+.5)/3),3)-1);gz-=.07*(mo(Math.floor((h1+.5)/9),3)-1);
+    ve=Math.min(ve,Math.hypot(gx,gy,gz)-(.09+.025*mo(h1,4)+.015*m));
+  }
+  d=Math.min(d,ve);
+  return .8*d;
+ }},
 /* The two zoom worlds are flat pictures, not spaces: js/zoom.js draws them and moves the view. They are marked as cloud
    worlds too, so that everything that needs a surface (the orb's check, the thrown light, the distance probe) leaves them alone. */
 {id:"mzoom",name:"Mandelbrot zoom",hue:.55,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,

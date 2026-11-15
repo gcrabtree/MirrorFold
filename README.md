@@ -13,7 +13,7 @@
 >
 > Mirrorfold is designed to avoid strobing, but it has **not** been tested or certified against any photosensitivity standard, and no setting makes it safe for everyone. It is not a medical device and nothing here is medical advice. It is provided "as is", without warranty of any kind, and you use it entirely at your own risk; see the [licence](LICENSE).
 
-Fly through endless fractal worlds in your browser. Twenty-six worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
+Fly through endless fractal worlds in your browser. Twenty-seven worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
 
 This project is inspired in part by the music visualizers from decades past… from Winamp plugins to the standalone visualizer MilkDrop. This has a familiar feel when in Journey mode (an autopilot that flies through the procedurally generated 3D worlds) while listening to music. 
 
@@ -31,7 +31,7 @@ Relax, unwind, and enjoy!
 
 **Try it: https://gcrabtree.github.io/MirrorFold/**
 
-![Contact sheet of all 26 worlds](docs/worlds.jpg)
+![Contact sheet of all 27 worlds](docs/worlds.jpg)
 
 The app is one page, one stylesheet and a folder of JavaScript modules. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
 
@@ -58,7 +58,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 
 ## What it does
 
-- **26 worlds.** Twenty-one are solid fractal surfaces; three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
+- **27 worlds.** Twenty-two are solid surfaces, all fractals but Cell (the inside of a living cell); three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
 - **Zooms a trillion times deep.** The two zoom worlds magnify the Mandelbrot set and Julia sets up to about a trillion times, on points where there is always something to see. See [The zoom worlds](#the-zoom-worlds).
 - **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
 - **Morph.** Each world slowly changes shape as you fly.
@@ -486,7 +486,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `js/` | The app, as about 53 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
-| `docs/worlds.jpg` | Contact sheet of all 26 worlds |
+| `docs/worlds.jpg` | Contact sheet of all 27 worlds |
 | `thumbs/` | The choosers' small pictures, one for each built-in world, palette, motion, filter, overlay, mirror setting, FX setting and landscape |
 | `lang/` | The lessons' words, one flat file for each language (`en.json`) |
 | `voice/` | The lessons' voice: one sound file for each step, and `index.json`, which records the words each was made from |
