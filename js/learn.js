@@ -6,16 +6,20 @@ import { master } from "./audio.js";
 import { $, toast } from "./dom.js";
 import { requestWorld } from "./choose.js";
 import { FIGS, snapTo } from "./figures.js";
+import { LOOK_FIGS } from "./figures-look.js";
+import { MORE_FIGS } from "./figures-more.js";
 import { SPACE_FIGS } from "./figures-space.js";
 import { WORLDS } from "./worlds.js";
 import { wakeHud } from "./input.js";
 import { lang, loadLang, t } from "./lang.js";
-import { PARTS, TRACKS, partKey, voiceName } from "./lessons.js";
+import { PARTS, TRACKS, chaptersOf, partKey, voiceName } from "./lessons.js";
 export let learnOpen=false;  /* the panel is showing */
 let panel,cv;                /* the panel and the drawing's canvas */
-let track=0,at=-1;           /* which track, and which of its steps is showing (-1 for the list of steps) */
+let track=0,at=-1;           /* which track, and which of its steps is showing (-1 for the index) */
+let lastAt=-1;               /* the step of that track last shown, which the index marks (-1 for none yet) */
 let fig=null,st=null;        /* the step's drawing and its state */
 let dragging=false;
+let liveAt=0;                /* when a drawing whose numbers change by themselves last had them written */
 let byKey=false;             /* a slider is being moved by the keyboard, so it is not pulled to key points (it could not step past one) */
 const STICK_PX=11;           /* how near a key point, in screen pixels, a dragged dot is pulled onto it */
 const STICK_PART=0.02;       /* the same for a slider, as a part of its whole range */
@@ -62,13 +66,14 @@ function readout(){
 /* Show a step of the track, or the list of steps for -1. */
 export function showStep(i,tr){
   var T,id,box,k;
-  if(tr!==undefined)track=Math.max(0,Math.min(TRACKS.length-1,tr));
+  if(tr!==undefined&&tr!==track){track=Math.max(0,Math.min(TRACKS.length-1,tr));lastAt=-1;}
   T=TRACKS[track];
   at=Math.max(-1,Math.min(T.steps.length-1,i));fig=null;st=null;dragging=false;
-  try{localStorage.setItem(AT_KEY,track+":"+at)}catch(_){}
+  if(at>=0)lastAt=at;
+  try{localStorage.setItem(AT_KEY,track+":"+lastAt+(at<0?":index":""))}catch(_){}
   $("lnHome").hidden=at>=0;$("lnStep").hidden=at<0;panel.scrollTop=0;
-  if(at<0){hush();return;}
-  id=T.steps[at];fig=FIGS[id]||SPACE_FIGS[id];st=fig.init();
+  if(at<0){hush();index();return;}
+  id=T.steps[at];fig=figOf(id);st=fig.init();
   $("lnCount").textContent=t("learn.count",at+1,T.steps.length);
   $("lnHead").textContent=t(partKey(T.id,id,"title"));
   $("lnText").textContent=t(partKey(T.id,id,"text"));
@@ -107,32 +112,48 @@ export function showStep(i,tr){
   $("lnNext").textContent=t(at===T.steps.length-1?"learn.list":"learn.next");
   readout();speak();
 }
-/* fill in the words that do not change from step to step, and the list of steps */
-function dress(){
+/* the drawing for a step, from whichever file holds it */
+export function figOf(id){return FIGS[id]||SPACE_FIGS[id]||MORE_FIGS[id]||LOOK_FIGS[id];}
+/* The index: every track, with its chapters, and in each chapter a button for each step. Tracks and chapters fold shut;
+   the ones holding the step last shown start open, and that step is marked. */
+function index(){
   var list=$("lnList");
+  list.textContent="";
+  TRACKS.forEach(function(T,ti){
+    var D=el("details","","lnTrack"),S=el("summary","");
+    S.appendChild(el("span",(ti+1)+". "+t("learn.track."+T.id)));S.appendChild(el("small",t("learn.steps",T.steps.length)));
+    D.appendChild(S);D.open=ti===track;
+    chaptersOf(T).forEach(function(C){
+      var d=el("details","","lnChap"),s=el("summary",""),i;
+      s.appendChild(el("span",t("learn.chapter."+T.id+"."+C.id)));s.appendChild(el("small",(C.from+1)+" – "+(C.from+C.n)));
+      d.appendChild(s);d.open=ti===track&&lastAt>=C.from&&lastAt<C.from+C.n;
+      for(i=C.from;i<C.from+C.n;i++)(function(i){
+        var here=ti===track&&i===lastAt,b=el("button",(i+1)+". "+t(partKey(T.id,T.steps[i],"title"))+(here?"  ("+t("learn.here")+")":""));
+        b.type="button";if(here)b.setAttribute("aria-current","step");
+        b.addEventListener("click",function(){showStep(i,ti)});d.appendChild(b);
+      })(i);
+      D.appendChild(d);
+    });
+    list.appendChild(D);
+  });
+}
+/* fill in the words that do not change from step to step */
+function dress(){
   $("lnTitle").textContent=t("learn.title");$("lnClose").textContent=t("learn.close");
   $("lnIntro").textContent=t("learn.intro");
   $("lnBack").textContent=t("learn.back");$("lnAll").textContent=t("learn.list");
   cv.setAttribute("aria-label",t("learn.figure"));
-  list.textContent="";
-  /* the list of steps: each track's name, then a button for each of its steps */
-  TRACKS.forEach(function(T,ti){
-    list.appendChild(el("h3",t("learn.track."+T.id)));
-    T.steps.forEach(function(id,i){
-      var b=el("button",(i+1)+". "+t(partKey(T.id,id,"title")));b.type="button";
-      b.addEventListener("click",function(){showStep(i,ti)});list.appendChild(b);
-    });
-  });
   setVoice(voiceOn);
 }
 /* Open the lessons, at the step the reader was last on. The words are fetched the first time. */
 export function openLearn(){
   loadLang(function(ok){
-    var was=-1,tr=0,m;
+    var was=-1,tr=0,m,home=true;
     if(!ok){toast("The lessons could not be loaded.");return;}
     learnOpen=true;panel.hidden=false;dress();
-    try{m=/^(\d+):(-?\d+)$/.exec(localStorage.getItem(AT_KEY)||"");if(m){tr=+m[1];was=+m[2];}}catch(_){}
-    showStep(was,tr);
+    try{m=/^(\d+):(-?\d+)(:index)?$/.exec(localStorage.getItem(AT_KEY)||"");if(m){tr=Math.min(TRACKS.length-1,+m[1]);was=+m[2];home=!!m[3]||was<0;}}catch(_){}
+    track=tr;lastAt=Math.min(was,TRACKS[tr].steps.length-1);
+    showStep(home?-1:lastAt,tr);
   });
 }
 export function closeLearn(){if(!learnOpen)return;hush();learnOpen=false;panel.hidden=true;wakeHud();}
@@ -144,6 +165,7 @@ export function learnFrame(now){
   if(W<2||H<2)return;
   if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}
   fig.draw(cv.getContext("2d"),W,H,st,now,t,d);
+  if(fig.live&&now-liveAt>150){liveAt=now;$("lnRead").textContent=fig.read(st,t).join("\n");} /* numbers that change by themselves */
 }
 function pointerAt(e,first){
   var r=cv.getBoundingClientRect();
@@ -185,7 +207,7 @@ window.addEventListener("keydown",function(e){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={openLearn, closeLearn, showStep, setVoice, learnFrame, readout, speak, hush, duck,
+export const __dbg={figOf, index, openLearn, closeLearn, showStep, setVoice, learnFrame, readout, speak, hush, duck,
   get learnOpen(){return learnOpen},set learnOpen(v){learnOpen=v}, get learnAt(){return at},set learnAt(v){at=v}, get learnFig(){return fig}, get learnSt(){return st},
   get voiceOn(){return voiceOn},set voiceOn(v){voiceOn=v}, get aud(){return aud},set aud(v){aud=v}, get ducked(){return ducked},set ducked(v){ducked=v},
   get learnTrack(){return track},set learnTrack(v){track=v}};

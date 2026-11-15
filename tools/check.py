@@ -111,7 +111,7 @@ setTimeout(function(){
   for(ti=0;ti<TRACKS.length;ti++){T=TRACKS[ti];
   for(i=0;i<T.steps.length;i++){
     showStep(i,ti);learnFrame(performance.now());f=learnFig;
-    if(f.ctl){learnSt[f.ctl[0].k]=f.ctl[0].max;if(f.changed)f.changed(learnSt);learnFrame(performance.now());}
+    if(f.ctl&&f.ctl.length){learnSt[f.ctl[0].k]=f.ctl[0].max;if(f.changed)f.changed(learnSt);learnFrame(performance.now());}
     if(f.drag){f.drag(200,120,learnSt,640,400,14,true);f.drag(210,130,learnSt,640,400,14,false);}
     if(f.keys)for(k=0;k<f.keys.length;k++){f.keys[k].set(learnSt);if(f.changed)f.changed(learnSt);learnFrame(performance.now());f.keys[k].label(learnSt,t);}
     if(f.key)f.key(1,1,learnSt);

@@ -465,7 +465,8 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const { LANGS, cleanLang, fill, pickLang } = await import("../js/lang.js");
   const { TRACKS, PARTS, partKey, narration, voiceName, sayHash } = await import("../js/lessons.js");
   const { FIGS: FIGS1, hopsOut, visits, sqr2, num } = await import("../js/figures.js");
-  const SP = await import("../js/figures-space.js"), FIGS = Object.assign({}, FIGS1, SP.SPACE_FIGS);
+  const SP = await import("../js/figures-space.js"), MO = await import("../js/figures-more.js"), LK = await import("../js/figures-look.js");
+  const FIGS = Object.assign({}, FIGS1, SP.SPACE_FIGS, MO.MORE_FIGS, LK.LOOK_FIGS), { chaptersOf } = await import("../js/lessons.js");
   const bad = [];
   for (const lg of LANGS) {
     const raw = JSON.parse(readFileSync(new URL("lang/" + lg + ".json", root), "utf8")), words = cleanLang(raw);
@@ -473,6 +474,7 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     let marks = {};
     try { marks = JSON.parse(readFileSync(new URL("voice/" + lg + "/index.json", root), "utf8")); } catch (_) { }
     for (const T of TRACKS) {
+      for (const C of chaptersOf(T)) if (!words["learn.chapter." + T.id + "." + C.id]) bad.push(lg + ": no name for the chapter " + T.id + "." + C.id);
       if (!words["learn.track." + T.id]) bad.push(lg + ": no name for the track " + T.id);
       for (const s of T.steps) {
         for (const p of PARTS) if (!words[partKey(T.id, s, p)]) bad.push(lg + ": no text " + partKey(T.id, s, p));
@@ -482,8 +484,8 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
       }
     }
     // every name the drawings and the panel ask for has text
-    const src = ["learn.js", "figures.js", "figures-space.js"].map(f => readFileSync(new URL("js/" + f, root), "utf8")).join("\n");
-    for (const m of src.matchAll(/"(learn\.[a-zA-Z.]+)"/g)) if (!m[1].endsWith(".") && !words[m[1]]) bad.push(lg + ": no text " + m[1]);
+    const src = ["learn.js", "figures.js", "figures-space.js", "figures-more.js", "figures-look.js"].map(f => readFileSync(new URL("js/" + f, root), "utf8")).join("\n");
+    for (const m of src.matchAll(/"(learn\.[a-zA-Z0-9.]+)"/g)) if (!m[1].endsWith(".") && !words[m[1]]) bad.push(lg + ": no text " + m[1]);
   }
   expect("every lesson step has its words, its drawing and an up-to-date voice (run tools/voice.py)", bad.length === 0, bad.join("; "));
   expect("a voice file's address is made of the language and the step's names", voiceName("en", "mandel", "square") === "voice/en/mandel-square.mp3");
@@ -505,6 +507,21 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
       SP.arrived(hit, near) && hit.every(e => e[1] > -1e-9) && !SP.arrived(miss, near) && Math.abs(Math.hypot(r[0], r[1]) - 1) < 1e-12);
     const L = SP.lampDir(60), V = SP.view();
     expect("the eye's three directions are at right angles and one unit long, and so is the lamp's", Math.abs(Math.hypot(...L) - 1) < 1e-12 && Math.abs(V.f[0] * V.r[0] + V.f[1] * V.r[1] + V.f[2] * V.r[2]) < 1e-12 && Math.abs(Math.hypot(...V.u) - 1) < 1e-12);
+  }
+  {
+    const all = TRACKS.flatMap(T => T.steps);
+    expect("no two steps share a name, and every track's chapters add up to its steps", new Set(all).size === all.length && TRACKS.every(T => T.chapters.reduce((a, c) => a + c[1], 0) === T.steps.length));
+    const { mirrors } = await import("../js/state.js");
+    expect("the kaleidoscope lesson offers the app's own numbers of mirrors", JSON.stringify(MO.KALE) === JSON.stringify(mirrors.filter(m => m > 0)));
+    expect("a path from a start: inside one it stays with c = 0, outside it leaves", MO.hopsFrom(0.9, 0, 0, 0, 100) === 0 && MO.hopsFrom(1.1, 0, 0, 0, 100) > 0);
+    expect("power 2 of the general rule is the Mandelbrot rule", [[-1, 0], [0.3, 0.5], [1, 1], [-0.75, 0.1]].every(c => MO.hopsPow(c[0], c[1], 2, 100, false) === hopsOut(c[0], c[1], 100)));
+    expect("an angle folds into the first wedge and back out", MO.wedgeFold(10, 3) === 10 && MO.wedgeFold(70, 3) === 50 && MO.wedgeFold(130, 3) === 10 && Math.abs(MO.wedgeFold(359, 4) - 1) < 1e-9);
+    expect("the carpet: solid block, a hole in the middle, a smaller one in the middle of a ninth", MO.carpetD(0.5, 0.2, 0) < 0 && MO.carpetD(0, 0, 1) > 0 && MO.carpetD(0.5, 0.2, 1) < 0 && MO.carpetD(2 / 3, 2 / 3, 2) > 0 && MO.carpetD(1.5, 0, 4) > 0);
+    const A = [.8, .4, .2];
+    expect("taking a mixture of three waves apart gives back the three amounts", A.every((a, k) => Math.abs(LK.bandOf(A, k) - a) < 1e-6));
+    expect("a palette's colour is three waves held between 0 and 1", LK.palAt({ a: [.5, .5, 2], b: [.5, .5, 0], c: [1, 1, 1], d: [0, .5, 0] }, 0).join() === "1,0,1");
+    expect("cutting to levels rounds down, and keeps 0 and 1", LK.cutTo(0, 4) === 0 && LK.cutTo(1, 4) === 1 && Math.abs(LK.cutTo(.63, 4) - 2 / 3) < 1e-12 && LK.cutTo(.49, 2) === 0);
+    expect("the bulge at zero strength, and outside its circle, leaves a square where it is", LK.bulgeFrom(100, 60, 0)[0] === 100 && LK.bulgeFrom(5, 5, .5)[2] === 1);
   }
   expect("numbers are written plainly", num(0.5) === "0.50" && num(-0.001) === "-0.0010" && num(-0.0000001, 2) !== "-0.00" && num(65536) === "65536");
 }

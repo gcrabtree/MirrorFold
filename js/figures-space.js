@@ -39,18 +39,23 @@ export function arrived(list,near){var e=list[list.length-1];return e[1]<near(e[
    largest room wins. Below zero is rock. With R1 = 1.25 and levels 0 to 3 this is the Foam world's sum, without its depth. */
 export function foamLevel(x,y,i,R1){var s=Math.pow(3,i);return ((i?0.92:R1)-Math.hypot(md(x*s,2)-1,md(y*s,2)-1))/s;}
 export function foam2(x,y,lo,hi,R1){var d=-1e5,i;for(i=lo;i<=hi;i++)d=Math.max(d,foamLevel(x,y,i,R1));return d;}
+/* the room at a place in one of the app's worlds, by the world's own distance function: worldD("foam") gives the function */
+export function worldD(id){
+  var i,w=null;
+  for(i=0;i<WORLDS.length;i++)if(WORLDS[i].id===id)w=WORLDS[i];
+  return function(x,y,z){return w.de(x,y,z,0);};
+}
 /* the room at a place in the Foam world itself */
 export function foamD(x,y,z){
-  var i;
-  if(!foamD.w)for(i=0;i<WORLDS.length;i++)if(WORLDS[i].id==="foam")foamD.w=WORLDS[i];
-  return foamD.w.de(x,y,z,0);
+  if(!foamD.f)foamD.f=worldD("foam");
+  return foamD.f(x,y,z);
 }
 function unit(v){var l=Math.hypot(v[0],v[1],v[2]);return [v[0]/l,v[1]/l,v[2]/l];}
 function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
 /* the eye's three directions: forward, right and up */
-export function view(){var f=unit(LOOK),r=unit(cross([0,1,0],f));return {f:f,r:r,u:cross(f,r)};}
+export function view(look){var f=unit(look||LOOK),r=unit(cross([0,1,0],f));return {f:f,r:r,u:cross(f,r)};}
 /* the direction of the lamp: it goes round the line of sight, a little behind the eye; a is in degrees */
-export function lampDir(a){var V=view(),c=Math.cos(a*Math.PI/180),s=Math.sin(a*Math.PI/180);return unit([V.r[0]*c+V.u[0]*s-V.f[0]*.6,V.r[1]*c+V.u[1]*s-V.f[1]*.6,V.r[2]*c+V.u[2]*s-V.f[2]*.6]);}
+export function lampDir(a,look){var V=view(look),c=Math.cos(a*Math.PI/180),s=Math.sin(a*Math.PI/180);return unit([V.r[0]*c+V.u[0]*s-V.f[0]*.6,V.r[1]*c+V.u[1]*s-V.f[1]*.6,V.r[2]*c+V.u[2]*s-V.f[2]*.6]);}
 /* the rows of sums for a walk: four moves around move k, the one being looked at marked */
 function moveRows(list,k,t){
   var out=[],i,n=list.length-1,from=Math.max(1,Math.min(k-2,n-3));
@@ -234,8 +239,9 @@ function fieldFig(o){
 }
 
 /* ---- a picture of the Foam world, with depth: every square's line of sight walked in safe moves ---- */
-function newShot(N,e){
-  var M=Math.round(N*5/8),G={N:N,M:M,e:e,far:new Float32Array(N*M),nx:new Float32Array(N*M),ny:new Float32Array(N*M),nz:new Float32Array(N*M),next:0,dirty:true,was:"",off:null,img:null};
+/* cfg says which world: D its distance function, eye where the eye starts, look the way it looks, far how far a line is followed */
+function newShot(N,e,cfg){
+  var M=Math.round(N*5/8),G={N:N,M:M,e:e,cfg:cfg,far:new Float32Array(N*M),nx:new Float32Array(N*M),ny:new Float32Array(N*M),nz:new Float32Array(N*M),next:0,dirty:true,was:"",off:null,img:null};
   G.far.fill(-2); /* -2: not asked yet; -1: its line hit nothing; otherwise how far its line went */
   G.off=document.createElement("canvas");G.off.width=N;G.off.height=M;G.img=G.off.getContext("2d").createImageData(N,M);
   return G;
@@ -243,13 +249,13 @@ function newShot(N,e){
 function shotNear(G){var pix=2*TANX/G.N;return function(far){return .6*pix*far+1e-4;};}
 /* the line of sight of square i: where it starts, and its direction */
 function shotRay(G,i){
-  var V=view(),u=((i%G.N+.5)/G.N*2-1)*TANX,v=(1-(Math.floor(i/G.N)+.5)/G.M*2)*TANX*G.M/G.N;
-  return {o:[1,1,1+G.e],d:unit([V.f[0]+u*V.r[0]+v*V.u[0],V.f[1]+u*V.r[1]+v*V.u[1],V.f[2]+u*V.r[2]+v*V.u[2]])};
+  var V=view(G.cfg.look),u=((i%G.N+.5)/G.N*2-1)*TANX,v=(1-(Math.floor(i/G.N)+.5)/G.M*2)*TANX*G.M/G.N,E=G.cfg.eye;
+  return {o:[E[0],E[1],E[2]+G.e],d:unit([V.f[0]+u*V.r[0]+v*V.u[0],V.f[1]+u*V.r[1]+v*V.u[1],V.f[2]+u*V.r[2]+v*V.u[2]])};
 }
-function shotWalk(G,i){var R=shotRay(G,i);return walkLine(foamD,R.o[0],R.o[1],R.o[2],R.d[0],R.d[1],R.d[2],shotNear(G),SHOT_FAR,110);}
+function shotWalk(G,i){var R=shotRay(G,i);return walkLine(G.cfg.D,R.o[0],R.o[1],R.o[2],R.d[0],R.d[1],R.d[2],shotNear(G),G.cfg.far,110);}
 /* ask one square: how far its line goes, and which way the wall faces where it arrives (from four tiny steps) */
 function shotAsk(G,i){
-  var R=shotRay(G,i),L=shotWalk(G,i),far=L[L.length-1][0],e,x,y,z,a,b,c,q,n;
+  var R=shotRay(G,i),L=shotWalk(G,i),far=L[L.length-1][0],e,x,y,z,a,b,c,q,n,foamD=G.cfg.D;
   G.dirty=true;
   if(!arrived(L,shotNear(G))){G.far[i]=-1;return;}
   G.far[i]=far;e=.5*2*TANX/G.N*far+2e-4;x=R.o[0]+R.d[0]*far;y=R.o[1]+R.d[1]*far;z=R.o[2]+R.d[2]*far;
@@ -261,9 +267,9 @@ function shotStep(G,least,ms){
   while(G.next<tot){shotAsk(G,G.next);G.next++;k++;if(k>=least&&(ms<=0||((k&31)===0&&performance.now()-t0>ms)))break;}
 }
 /* how bright a square is under a lamp: how well the wall's direction lines up with the lamp's, dimmed by distance */
-function shotLight(G,i,L){return (.12+.88*Math.max(0,G.nx[i]*L[0]+G.ny[i]*L[1]+G.nz[i]*L[2]))*Math.exp(-.16*G.far[i]);}
+function shotLight(G,i,L){return (.12+.88*Math.max(0,G.nx[i]*L[0]+G.ny[i]*L[1]+G.nz[i]*L[2]))*Math.exp(-G.cfg.fog*G.far[i]);}
 function shotPaint(g,w,h,G,lamp){
-  var i,c,b,P=G.img.data,tot=G.N*G.M,L=lamp<0?null:lampDir(lamp);
+  var i,c,b,P=G.img.data,tot=G.N*G.M,L=lamp<0?null:lampDir(lamp,G.cfg.look);
   if(G.dirty||G.was!==String(lamp)){
     for(i=0;i<tot;i++){
       if(G.far[i]<-1.5){P[i*4]=11;P[i*4+1]=6;P[i*4+2]=24;}
@@ -294,10 +300,13 @@ function walkWindow(g,w,h,d,L,k,left,t){
 }
 /* o.mode: "depth" paints by how far each line went, with a slider for the grid and a walk for the tapped square;
    "lit" paints by the lamp, with a slider for where the lamp is; "fly" has a slider that moves the eye forward */
+/* o.world, o.eye, o.look, o.far, o.fog: another world than Foam, and where the eye is in it; o.go: the step has the button that flies there */
 function shotFig(o){
+  var cfg=null;
   function size(s){return o.mode==="depth"?SHOTS[s.gi]:o.mode==="lit"?224:128;}
+  function CFG(){if(!cfg)cfg={D:worldD(o.world||"foam"),eye:o.eye||[1,1,1],look:o.look||LOOK,far:o.far||SHOT_FAR,fog:o.fog===undefined?.16:o.fog};return cfg;}
   return {
-    moves:true,world:o.mode==="fly"?"foam":"",
+    moves:true,world:o.mode==="fly"||o.go?(o.world||"foam"):"",
     ctl:o.mode==="depth"?[{k:"gi",min:0,max:SHOTS.length-1,step:1,label:function(s,t){return t("learn.c.grid",SHOTS[s.gi])}}]:
         o.mode==="lit"?[{k:"lamp",min:0,max:360,step:5,keys:[0,90,180,270,360],label:function(s,t){return t("learn.c.lamp",s.lamp)}}]:
         [{k:"e",min:0,max:2,step:.05,keys:[0,1,2],label:function(s,t){return t("learn.c.eye",num(s.e))}}],
@@ -307,7 +316,7 @@ function shotFig(o){
     changed:function(s){if(s.G&&(s.G.N!==size(s)||s.G.e!==s.e)){s.G=null;if(o.mode==="depth"){s.sel=-1;s.k=0;}}},
     draw:function(g,w,h,s,now,t,d){
       var G,cw,ch,i;
-      if(!s.G)s.G=newShot(size(s),s.e);
+      if(!s.G)s.G=newShot(size(s),s.e,CFG());
       G=s.G;
       shotStep(G,calm||o.mode==="fly"?G.N*G.M:Math.ceil(G.N*G.M/150),G.N<=32?0:8);
       shotPaint(g,w,h,G,o.mode==="depth"?-1:s.lamp);
@@ -338,7 +347,7 @@ function shotFig(o){
       if(o.mode==="depth"){L=shotWalk(G,s.sel);return out.concat(moveRows(L,s.k,t),[walkVerdict(L,arrived(L,shotNear(G)),t)]);}
       /* the lit picture: the sum that gives the tapped square its brightness */
       if(G.far[s.sel]<0)return [t(G.far[s.sel]<-1.5?"learn.s.tapWall":"learn.s.misses")];
-      Lm=lampDir(s.lamp);b=G.nx[s.sel]*Lm[0]+G.ny[s.sel]*Lm[1]+G.nz[s.sel]*Lm[2];
+      Lm=lampDir(s.lamp,CFG().look);b=G.nx[s.sel]*Lm[0]+G.ny[s.sel]*Lm[1]+G.nz[s.sel]*Lm[2];
       return [t("learn.s.nrm3",num(G.nx[s.sel]),num(G.ny[s.sel]),num(G.nz[s.sel])),t("learn.s.tol3",num(Lm[0]),num(Lm[1]),num(Lm[2])),
               t("learn.s.dot3",num(G.nx[s.sel]),num(Lm[0]),num(G.ny[s.sel]),num(Lm[1]),num(G.nz[s.sel]),num(Lm[2]),num(b)),
               b>0?t("learn.s.bright",num(b)):t("learn.s.dark")];
@@ -418,7 +427,10 @@ lamp:{
   }
 },
 lit:shotFig({mode:"lit"}),
-fly:shotFig({mode:"fly"})
+fly:shotFig({mode:"fly"}),
+/* two more of the app's worlds, for the fourth track: the same kind of picture, from inside them */
+sponge:shotFig({mode:"lit",world:"sponge",eye:[.05,.03,0],look:[.3,.12,.95],far:14,fog:.2,go:true}),
+bulb:shotFig({mode:"lit",world:"bulbs",eye:[1.7,.15,1.7],look:[-.7,-.05,-.7],far:22,fog:.12,go:true})
 };
 
 /* for the test tools and the browser console: every name in this file */

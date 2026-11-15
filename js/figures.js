@@ -20,7 +20,7 @@ export const INK="#f3ecff",DIM="rgba(243,236,255,.5)",FAINT="rgba(243,236,255,.1
 export const FONT="'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace";
 const GRIDS=[16,32,64,128,256,512];                              /* step 5: how many squares across */
 const LIMS=[1,2,3,4,5,6,7,8,10,12,15,20,30,50,100,200];          /* step 6: the limits its slider steps through */
-const REG={x0:-2.52,x1:1.0,y0:-1.1,y1:1.1};                      /* the part of the sheet that steps 5 and 6 show: 8 wide for every 5 high */
+export const REG={x0:-2.52,x1:1.0,y0:-1.1,y1:1.1};                      /* the part of the sheet that steps 5 and 6 show: 8 wide for every 5 high */
 
 /* ---- the arithmetic ---- */
 /* the square of the point (a,b): distance squared, angle doubled */
