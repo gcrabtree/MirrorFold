@@ -6,12 +6,12 @@ export const TRACKS=[
    steps:["once","minus","again","addc","cycles","bar","point","polar","sqpt","add","onehop","ring","shapes","ask","count","finer","patience"]},
   {id:"space",chapters:[["flat",4],["shape",7],["depth",6]],
    steps:["ray","safe","march","row","ball","hollow","repeat","join","small","both","levels","third","picture","facing","lamp","lit","fly"]},
-  {id:"deeper",chapters:[["zoom",2],["julia",2],["rules",2]],
-   steps:["zoom","baby","start","map","power","ship"]},
+  {id:"look",chapters:[["colour",6],["trails",4],["filters",6],["sound",4]],
+   steps:["rgb","wave","amp","freq","palette","paint","fade","grow","spin","motions","neg","fewer","mosaic","bulge","blur","edge","sound","mix","bands","drive"]},
   {id:"worlds",chapters:[["mirrors",4],["build",2],["depth",2]],
    steps:["mirror","mirror2","turn","kale","box","carpet","sponge","bulb"]},
-  {id:"look",chapters:[["colour",6],["trails",4],["filters",6],["sound",4]],
-   steps:["rgb","wave","amp","freq","palette","paint","fade","grow","spin","motions","neg","fewer","mosaic","bulge","blur","edge","sound","mix","bands","drive"]}
+  {id:"deeper",chapters:[["zoom",2],["julia",2],["rules",2]],
+   steps:["zoom","baby","start","map","power","ship"]}
 ];
 /* the chapters of a track: each has a name and so many of the track's steps, in order; its words are learn.chapter.<track>.<name> */
 export function chaptersOf(T){

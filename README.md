@@ -416,11 +416,11 @@ The second track, **From a flat picture to a world you can fly through**, has se
 
 The shape it builds is the Foam world, and the pictures in steps 13, 16 and 17 are made with that world's own distance sum, worked out in the page a square at a time. The last step has a button that closes the lessons and flies through Foam.
 
-Three more tracks follow, to be taken in any order after the first:
+Three more tracks follow. The last goes furthest and is the hardest:
 
-- **Deeper into the Mandelbrot set** (6 steps): looking closer and closer at the edge; the small copies of the whole set; Julia sets, where c is kept and the start is changed; the Mandelbrot set as the map of all Julia sets; other powers; and the Burning Ship, which folds before it squares.
-- **How the other worlds are made** (8 steps): a mirror as a thrown-away minus sign; two mirrors; turning the sheet; the kaleidoscope (the Mirrors button); the distance to a block; the carpet of holes inside holes; then the Sponge and Bulbs worlds with depth, each with a button to fly through it.
 - **Colour, trails, filters and sound** (20 steps): a colour as three numbers; a wave from a circle, lifted, sized, squeezed and slid; a palette as three waves (with the app's own palettes); the Mandelbrot picture coloured by one; trails as a picture that remembers, grows and turns (with the app's own motions); six filters, each a rule for every square (negative, fewer shades, mosaic, bulge, blur, edges); then sound as a wave, waves added, a mixture taken apart into low, middle and high, and one number pushing another.
+- **How the other worlds are made** (8 steps): a mirror as a thrown-away minus sign; two mirrors; turning the sheet; the kaleidoscope (the Mirrors button); the distance to a block; the carpet of holes inside holes; then the Sponge and Bulbs worlds with depth, each with a button to fly through it.
+- **Deeper into the Mandelbrot set** (6 steps): looking closer and closer at the edge; the small copies of the whole set; Julia sets, where c is kept and the start is changed; the Mandelbrot set as the map of all Julia sets; other powers; and the Burning Ship, which folds before it squares.
 
 The lessons open on an index: the five tracks, each folded shut until pressed, with its chapters inside, and the steps in each chapter. The step you were last on is marked.
 
