@@ -4,7 +4,7 @@
    While the panel is open the worlds are not drawn (frame() in loop.js draws the lesson instead). */
 import { master } from "./audio.js";
 import { $, toast } from "./dom.js";
-import { FIGS } from "./figures.js";
+import { FIGS, snapTo } from "./figures.js";
 import { wakeHud } from "./input.js";
 import { lang, loadLang, t } from "./lang.js";
 import { PARTS, TRACKS, partKey, voiceName } from "./lessons.js";
@@ -13,6 +13,9 @@ let panel,cv;                /* the panel and the drawing's canvas */
 let track=0,at=-1;           /* which track, and which of its steps is showing (-1 for the list of steps) */
 let fig=null,st=null;        /* the step's drawing and its state */
 let dragging=false;
+let byKey=false;             /* a slider is being moved by the keyboard, so it is not pulled to key points (it could not step past one) */
+const STICK_PX=11;           /* how near a key point, in screen pixels, a dragged dot is pulled onto it */
+const STICK_PART=0.02;       /* the same for a slider, as a part of its whole range */
 let voiceOn=false,aud=null;  /* the voice is wanted; the player */
 let ducked=-1;               /* the music's loudness before the voice turned it down (-1 when it has not) */
 const VOICE_KEY="mirrorfold-voice",AT_KEY="mirrorfold-learn";
@@ -44,6 +47,8 @@ function readout(){
   var i,rows=$("lnCtl").children;
   $("lnRead").textContent=fig&&fig.read?fig.read(st,t).join("\n"):"";
   for(i=0;fig&&fig.ctl&&i<fig.ctl.length;i++){rows[i].firstChild.textContent=fig.ctl[i].label(st,t);rows[i].lastChild.value=st[fig.ctl[i].k];}
+  rows=$("lnKeys").children;
+  for(i=0;fig&&fig.keys&&i<fig.keys.length;i++)rows[i].textContent=fig.keys[i].label(st,t);
 }
 /* Show a step of the track, or the list of steps for -1. */
 export function showStep(i){
@@ -63,8 +68,21 @@ export function showStep(i){
   (fig.ctl||[]).forEach(function(c){
     var row=el("label","","lnRow"),r=document.createElement("input");
     r.type="range";r.min=c.min;r.max=c.max;r.step=c.step;r.value=st[c.k];
-    r.addEventListener("input",function(){st[c.k]=+r.value;if(fig.changed)fig.changed(st);readout();});
+    r.addEventListener("keydown",function(){byKey=true});
+    r.addEventListener("pointerdown",function(){byKey=false});
+    r.addEventListener("input",function(){
+      var v=+r.value;
+      if(c.keys&&!byKey)v=snapTo(v,c.keys,(c.max-c.min)*STICK_PART);
+      st[c.k]=v;if(fig.changed)fig.changed(st);readout();
+    });
     row.appendChild(el("span",""));row.appendChild(r);box.appendChild(row);
+  });
+  /* a button for each key point */
+  box=$("lnKeys");box.textContent="";
+  (fig.keys||[]).forEach(function(k){
+    var b=el("button","");b.type="button";
+    b.addEventListener("click",function(){k.set(st);if(fig.changed)fig.changed(st);readout();});
+    box.appendChild(b);
   });
   $("lnBack").disabled=at===0;
   $("lnNext").textContent=t(at===T.steps.length-1?"learn.list":"learn.next");
@@ -104,10 +122,10 @@ export function learnFrame(now){
   if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}
   fig.draw(cv.getContext("2d"),W,H,st,now,t,d);
 }
-function pointerAt(e){
+function pointerAt(e,first){
   var r=cv.getBoundingClientRect();
   if(!fig||!fig.drag||!r.width)return;
-  fig.drag((e.clientX-r.left)/r.width*cv.width,(e.clientY-r.top)/r.height*cv.height,st,cv.width,cv.height);readout();
+  fig.drag((e.clientX-r.left)/r.width*cv.width,(e.clientY-r.top)/r.height*cv.height,st,cv.width,cv.height,STICK_PX*cv.width/r.width,first);readout();
 }
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
@@ -124,8 +142,8 @@ $("lnVoice").addEventListener("click",function(){setVoice(!voiceOn)});
 $("lnBack").addEventListener("click",function(){showStep(at-1)});
 $("lnAll").addEventListener("click",function(){showStep(-1)});
 $("lnNext").addEventListener("click",function(){showStep(at===TRACKS[track].steps.length-1?-1:at+1)});
-cv.addEventListener("pointerdown",function(e){dragging=true;try{cv.setPointerCapture(e.pointerId)}catch(_){}pointerAt(e);e.preventDefault();});
-cv.addEventListener("pointermove",function(e){if(dragging)pointerAt(e)});
+cv.addEventListener("pointerdown",function(e){dragging=true;try{cv.setPointerCapture(e.pointerId)}catch(_){}pointerAt(e,true);e.preventDefault();});
+cv.addEventListener("pointermove",function(e){if(dragging)pointerAt(e,false)});
 cv.addEventListener("pointerup",function(){dragging=false});
 cv.addEventListener("pointercancel",function(){dragging=false});
 /* While the panel is open the keys are the lesson's: Escape shuts it, the arrows move what the drawing lets you drag, and

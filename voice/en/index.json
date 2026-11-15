@@ -1,8 +1,19 @@
 {
- "mandel-addc": "64e83402",
- "mandel-hops": "375108bc",
+ "mandel-add": "14a3675b",
+ "mandel-addc": "154ecc32",
+ "mandel-again": "a326e214",
+ "mandel-ask": "ef6bb2b8",
+ "mandel-bar": "48417672",
+ "mandel-count": "18bb41be",
+ "mandel-cycles": "3a206beb",
+ "mandel-finer": "142c1d54",
+ "mandel-minus": "f72747ec",
+ "mandel-once": "b9528ecb",
+ "mandel-onehop": "5ca9dec4",
  "mandel-patience": "704fa5a3",
- "mandel-pixels": "066f8b74",
- "mandel-plane": "09f2dec3",
- "mandel-square": "69dda466"
+ "mandel-point": "ba259737",
+ "mandel-polar": "4dc423c0",
+ "mandel-ring": "3e02ad65",
+ "mandel-shapes": "eb18d1d2",
+ "mandel-sqpt": "35a379df"
 }

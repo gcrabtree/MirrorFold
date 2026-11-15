@@ -374,16 +374,29 @@ Mirrors, motions, filters, overlays, the land and **Hold still** all work on the
 
 **How it works**, in the second row of buttons and on the start card, opens lessons that explain how the pictures are made. They are for anyone with school arithmetic. Each step has a drawing to drag, a few sentences in plain words, something to try, and then the name mathematics gives the idea, so that a name such as "complex numbers" arrives after the idea is already familiar.
 
-The first track, **From one number to the Mandelbrot set**, has six steps:
+The first track, **From one number to the Mandelbrot set**, has seventeen small steps, one idea each:
 
-1. Multiply a number by itself, again and again: it shrinks, runs away or stays.
-2. Add the same number after every squaring: which numbers keep the answers close.
-3. Numbers with two parts: squaring a point squares its distance and doubles its angle.
-4. The same rule on the sheet: drag the added point and watch the hops.
-5. Ask the question for every square of a grid: the picture appears as the grid gets finer.
-6. How long to wait before giving up: the limit on the count, as a slider.
+1. Multiply a number by itself.
+2. Numbers below zero.
+3. Do it again, and again: shrinking, running away, staying.
+4. Add a number, c, after each squaring.
+5. Answers that never settle and never leave: cycles.
+6. Every c at once: the bar of those that stay close.
+7. A number with two parts: a point on a sheet.
+8. Distance and angle.
+9. Squaring a point: square the distance, double the angle.
+10. Adding points.
+11. The rule on the sheet, one hop at a time.
+12. The ring of no return.
+13. What the hops do when they stay.
+14. One square, one question: tap squares of a grid to ask them.
+15. Count the hops: colour by the count.
+16. A finer grid: the Mandelbrot set appears.
+17. How long to wait before giving up: the limit on the count.
 
-**Voice on** reads each step aloud. It is off until you turn it on, and the choice is remembered. The voice is a set of sound files made ahead of time from the same words (about 300 KB a step), fetched only for the step you are on; music plays more quietly while it speaks. **All steps** shows the list, and the app remembers the step you were on. While the lessons are open the world behind them is not drawn.
+Key values are sticky: a dragged dot or a slider is pulled onto them when it comes near, and each has a button under the drawing that goes straight to it. In the grid steps, a tapped square's hops are shown in a small window of their own, because the picture is a map of c and the hops are not places on it.
+
+**Voice on** reads each step aloud. It is off until you turn it on, and the choice is remembered. The voice is a set of sound files made ahead of time from the same words (about 250 KB a step), fetched only for the step you are on; music plays more quietly while it speaks. **All steps** shows the list, and the app remembers the step you were on. While the lessons are open the world behind them is not drawn.
 
 Only this first track exists so far. The lessons' words are in one flat file, `lang/en.json`; English is the only language so far, and the rest of the app's text is not in that file yet.
 

@@ -64,12 +64,24 @@ def main():
                 marks[it["lang"]] = {}
         if a.all or marks[it["lang"]].get(it["key"]) != it["hash"] or not os.path.exists(os.path.join(ROOT, it["file"])):
             todo.append(it)
+    # a sound file for a step that no longer exists is removed, and its mark with it
+    keep = {}
+    for it in wanted():
+        keep.setdefault(it["lang"], set()).add(it["key"])
+    for lg, keys in keep.items():
+        d = os.path.join(ROOT, "voice", lg)
+        for f in (os.listdir(d) if os.path.isdir(d) else []):
+            if f.endswith(".mp3") and f[:-4] not in keys:
+                os.unlink(os.path.join(d, f))
+                print("removed voice/%s/%s" % (lg, f))
+        if lg in marks:
+            marks[lg] = {k: v for k, v in marks[lg].items() if k in keys}
     if not todo:
         print("every voice file is up to date")
-        return
-    import numpy as np
-    import soundfile as sf
-    from kokoro import KPipeline
+    if todo:
+        import numpy as np
+        import soundfile as sf
+        from kokoro import KPipeline
     pipes = {}
     for it in todo:
         code, voice = VOICES[it["lang"]]

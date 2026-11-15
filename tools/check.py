@@ -106,12 +106,13 @@ setTimeout(function(){
 },2700);
 setTimeout(openLearn,2710);
 setTimeout(function(){
-  /* the lessons: every step opens with its words, draws without error, and its sliders and arrow keys work */
+  /* the lessons: every step opens with its words, draws without error, and its sliders, key-point buttons and arrow keys work */
   var out=[],i,k,f;
   for(i=0;i<TRACKS[0].steps.length;i++){
     showStep(i);learnFrame(performance.now());f=learnFig;
     if(f.ctl){learnSt[f.ctl[0].k]=f.ctl[0].max;if(f.changed)f.changed(learnSt);}
-    if(f.drag)f.drag(200,120,learnSt,640,400);
+    if(f.drag){f.drag(200,120,learnSt,640,400,14,true);f.drag(210,130,learnSt,640,400,14,false);}
+    if(f.keys)for(k=0;k<f.keys.length;k++){f.keys[k].set(learnSt);if(f.changed)f.changed(learnSt);learnFrame(performance.now());f.keys[k].label(learnSt,t);}
     if(f.key)f.key(1,1,learnSt);
     for(k=0;k<3;k++)learnFrame(performance.now()+k*16);
     readout();

@@ -198,3 +198,5 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
   .lnFig{flex:1.25}
   .lnWords{flex:1}
 }
+#lnKeys button{padding:9px 12px}
+#lnKeys:empty{display:none}
