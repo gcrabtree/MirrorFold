@@ -10,6 +10,8 @@
                                keys, the values the slider is pulled to when it comes near them
      keys                      a button for each key point: label(s,t) and set(s)
      changed(s)                called after a slider moves or a button is pressed
+     walk(s)                   for a drawing whose hops can be walked through one at a time: how many hops there are.
+                               s.k is the hop being looked at (0 for none); the drawing marks it, and read gives its arithmetic
      read(s,t)                 the lines of numbers shown under the drawing
    The arithmetic at the top needs no page, so the tests can use it. */
 import { calm } from "./dom.js";
@@ -73,6 +75,27 @@ function round(x,to){return Math.round(x/to)*to;}
 export function snapTo(v,keys,tol){var i;for(i=0;i<keys.length;i++)if(Math.abs(v-keys[i])<=tol)return keys[i];return v;}
 export function snapTo2(a,b,pts,tol){var i;for(i=0;i<pts.length;i++)if(Math.abs(a-pts[i][0])<=tol&&Math.abs(b-pts[i][1])<=tol)return pts[i];return [a,b];}
 function pt(a,b){return "("+String(a)+", "+String(b)+")";}
+/* a number to be added, written with its sign apart: "+ 0.300" or "- 0.500" */
+function signed(c){return (c<0?"- ":"+ ")+num(Math.abs(c),3);}
+/* The arithmetic of hop k of a path on the sheet, a line for each small sum: squaring the point, then adding c.
+   ring says whether to add how far from the middle it lands and which side of the ring that is. */
+export function hopMath(pts,k,ca,cb,t,ring){
+  var z=pts[k-1],q=sqr2(z[0],z[1]),w=pts[k],r=Math.sqrt(w[0]*w[0]+w[1]*w[1]),N=function(x){return num(x,3)};
+  return [t("learn.r.hopFrom",k,N(z[0]),N(z[1])),
+          t("learn.r.sqHead"),"  "+t("learn.r.across",N(z[0]),N(z[1]),N(q[0])),"  "+t("learn.r.up",N(z[0]),N(z[1]),N(q[1])),
+          t("learn.r.addHead"),"  "+t("learn.r.addA",N(q[0]),signed(ca),N(w[0])),"  "+t("learn.r.addU",N(q[1]),signed(cb),N(w[1])),
+          ring?t(r>2?"learn.r.landOut":"learn.r.landIn",N(w[0]),N(w[1]),num(r)):t("learn.r.land",N(w[0]),N(w[1]))];
+}
+/* The arithmetic of the hops of a path on the number line: four rows around hop k, the one being looked at marked.
+   c is the number added after each squaring, or null where nothing is added. */
+export function rowMath(xs,k,c,t){
+  var out=[],i,from=Math.max(1,Math.min(k-2,xs.length-4)),q,N=function(x){return num(x,c===null?2:3)};
+  for(i=from;i<from+4&&i<xs.length;i++){
+    q=xs[i-1]*xs[i-1];
+    out.push((i===k?"▸ ":"  ")+(c===null?t("learn.r.row1",i,N(xs[i-1]),N(q)):t("learn.r.row2",i,N(xs[i-1]),N(q),signed(c),N(xs[i]))));
+  }
+  return out;
+}
 /* the places a path that stays keeps returning to: sixteen of them, taken after it has had time to settle */
 export function settled(cx,cy){
   var x=0,y=0,n,q,out=[];
@@ -102,7 +125,7 @@ function numberLine(g,w,d,a,b,y){
   for(i=Math.ceil(a);i<=b;i++){x=w*(i-a)/(b-a);g.beginPath();g.moveTo(x,y-4*d);g.lineTo(x,y+4*d);g.stroke();g.fillText(String(i),x,y+8*d);}
 }
 /* the hops along a number line as arches from each answer to the next, and a small light that travels along the first few */
-function arches(g,w,d,a,b,y,xs,now,alpha,lit,pace){
+function arches(g,w,d,a,b,y,xs,now,alpha,lit,pace,hi){
   var i,x1,x2,cy,n=xs.length-1,ph,k,f,px,py;
   function X(v){return w*(clamp(v,-60,60)-a)/(b-a);}
   g.lineWidth=1.5*d;g.strokeStyle="rgba(95,240,255,"+alpha+")";
@@ -111,6 +134,11 @@ function arches(g,w,d,a,b,y,xs,now,alpha,lit,pace){
     g.beginPath();g.moveTo(x1,y);g.quadraticCurveTo((x1+x2)/2,cy,x2,y);g.stroke();
   }
   for(i=1;i<=n;i++)dot(g,X(xs[i]),y,2.5*d,INK);
+  if(hi>0&&hi<=n){ /* the hop being looked at: its arch drawn boldly, and no travelling light */
+    x1=X(xs[hi-1]);x2=X(xs[hi]);cy=y-2*Math.min(y*.42,Math.abs(x2-x1)*.5+8*d);
+    g.lineWidth=3*d;g.strokeStyle=INK;g.beginPath();g.moveTo(x1,y);g.quadraticCurveTo((x1+x2)/2,cy,x2,y);g.stroke();
+    dot(g,x1,y,4*d,INK);dot(g,x2,y,5.5*d,HOT);return;
+  }
   if(calm||n<1)return;
   lit=Math.min(lit,n);ph=(now/pace)%(lit+1.5);k=Math.floor(ph);if(k>=lit)return;
   f=ph-k;f=f*f*(3-2*f);
@@ -143,6 +171,14 @@ function hopLines(g,d,S,pts,stays){
   for(i=0;i<n;i++){if(i)g.lineTo(S.X(pts[i][0]),S.Y(pts[i][1]));else g.moveTo(S.X(pts[i][0]),S.Y(pts[i][1]));}
   g.stroke();
   for(i=0;i<n;i++)dot(g,S.X(pts[i][0]),S.Y(pts[i][1]),(stays&&i>=n-16?3.5:2)*d,stays&&i>=n-16?INK:"rgba(243,236,255,.6)");
+}
+/* hop k of a path in its two moves: a dashed line from where it was to that point's square, then the slide by c as an arrow */
+function hopMark(g,d,S,pts,k){
+  var z=pts[k-1],q=sqr2(z[0],z[1]),w=pts[k];
+  g.strokeStyle=INK;g.lineWidth=1.5*d;g.setLineDash([4*d,4*d]);g.beginPath();g.moveTo(S.X(z[0]),S.Y(z[1]));g.lineTo(S.X(q[0]),S.Y(q[1]));g.stroke();g.setLineDash([]);
+  dot(g,S.X(z[0]),S.Y(z[1]),4*d,INK);dot(g,S.X(q[0]),S.Y(q[1]),3*d,INK);
+  arrow(g,S.X(q[0]),S.Y(q[1]),S.X(w[0]),S.Y(w[1]),d,HOT,false);
+  dot(g,S.X(w[0]),S.Y(w[1]),5*d,HOT);
 }
 
 /* ---- a grid of squares, each asked the question (the last four steps) ---- */
@@ -182,13 +218,14 @@ function gridPaint(g,w,h,G,lim,two){
 function regSheet(w,h){return sheet(w,h,(REG.x0+REG.x1)/2,0,(REG.y1-REG.y0)/2);}
 /* A small window with one square's hops in it. The picture is a map of c, and the hops are not places on that map, so
    they are never drawn on it. The window sits on the side away from the square. */
-function inset(g,w,h,d,G,sel,t){
+function inset(g,w,h,d,G,sel,t,k){
   var c=cellC(G,sel),n=hopsOut(c[0],c[1],HOPMAX),sz=Math.round(h*.52),x=(sel%G.N<G.N/2)?w-sz-8*d:8*d,y=8*d,S=sheet(sz,sz,0,0,2.5);
   g.save();
   g.fillStyle="rgba(11,6,24,.95)";g.fillRect(x,y,sz,sz);g.strokeStyle=INK;g.lineWidth=d;g.strokeRect(x,y,sz,sz);
   g.beginPath();g.rect(x,y,sz,sz);g.clip();g.translate(x,y);
-  ringOf(g,d,S,2);hopLines(g,d,S,path(c[0],c[1],n?n+1:HOPMAX),!n);
-  dot(g,S.X(c[0]),S.Y(c[1]),4*d,HOT);
+  var pts=path(c[0],c[1],n?n:HOPMAX);
+  ringOf(g,d,S,2);hopLines(g,d,S,pts,!n&&!k);
+  if(k>0&&k<pts.length)hopMark(g,d,S,pts,k);else dot(g,S.X(c[0]),S.Y(c[1]),4*d,HOT);
   g.fillStyle=DIM;words(g,d,10);g.textAlign="left";g.textBaseline="top";g.fillText(t("learn.f.inset"),6*d,5*d);
   g.restore();
 }
@@ -204,12 +241,13 @@ function squareFig(o){
   var A=o.lo<0?-2.2:-0.4,B=4.4;
   return {
     keys:o.keys.map(function(v){return keyOf("x",v)}),
-    init:function(){return {x:o.x}},
+    init:function(){return {x:o.x,k:0}},
+    walk:o.many?function(s){return this.list(s).length-1}:null,
     list:function(s){var xs=[s.x],x=s.x,n=o.many?13:2;while(xs.length<n&&Math.abs(x)<1e6){x=x*x;xs.push(x);}return xs;},
     draw:function(g,w,h,s,now,t,d){
       var y=h*.66,xs=this.list(s),X=function(v){return w*(v-A)/(B-A)};
       clear(g,w,h);numberLine(g,w,d,A,B,y);
-      arches(g,w,d,A,B,y,xs,now,.7,o.many?6:1,o.many?900:1400);
+      arches(g,w,d,A,B,y,xs,now,.7,o.many?6:1,o.many?900:1400,o.many?s.k:0);
       if(!o.many){dot(g,X(xs[1]),y,5*d,HOT);g.fillStyle=HOT;words(g,d,12);g.textAlign="center";g.textBaseline="top";g.fillText(num(xs[1]),X(xs[1]),y+24*d);}
       handle(g,X(s.x),y,d,COOL);
       g.fillStyle=COOL;words(g,d,12);g.textAlign="center";g.textBaseline="bottom";g.fillText(num(s.x),X(s.x),y-16*d);
@@ -219,8 +257,7 @@ function squareFig(o){
     read:function(s,t){
       var x=s.x,a=Math.abs(x),q=x*x,one=Math.abs(a-1)<1e-9;
       if(!o.many)return [t("learn.r.times",num(x),num(q)),x<0?t("learn.r.plus"):Math.abs(q-x)<1e-9?t("learn.r.same"):q<x?t("learn.r.smaller"):t("learn.r.bigger")];
-      return [this.list(s).slice(0,7).map(function(v){return num(v)}).join(" → ")+" → …",
-              a===0||(one&&x>0)?t("learn.r.stays"):one?t("learn.r.lands"):a<1?t("learn.r.shrinks"):t("learn.r.runs")];
+      return rowMath(this.list(s),s.k,null,t).concat([a===0||(one&&x>0)?t("learn.r.stays"):one?t("learn.r.lands"):a<1?t("learn.r.shrinks"):t("learn.r.runs")]);
     }
   };
 }
@@ -231,12 +268,13 @@ function addcFig(o){
   return {
     ctl:[{k:"c",min:LO,max:HI,step:0.005,keys:o.keys,label:function(s,t){return t("learn.c.c",num(s.c,3))}}],
     keys:o.keys.map(function(v){return keyOf("c",v,"learn.c.c")}),
-    init:function(){return {c:o.c,bar:null,barW:0}},
+    init:function(){return {c:o.c,bar:null,barW:0,k:0}},
+    walk:function(s){return this.list(s,o.tail?24:60).length-1},
     list:function(s,n){var xs=[0],x=0;while(xs.length<=n&&Math.abs(x)<1e6){x=x*x+s.c;xs.push(x);}return xs;},
     draw:function(g,w,h,s,now,t,d){
       var y=h*.56,xs=this.list(s,o.tail?24:60),i,c,by=h*.84,bh=10*d,x,T,X=function(v){return w*(v-A)/(B-A)};
       clear(g,w,h);numberLine(g,w,d,A,B,y);
-      arches(g,w,d,A,B,y,xs,now,o.tail?.22:.32,24,500);
+      arches(g,w,d,A,B,y,xs,now,o.tail?.22:.32,24,500,s.k);
       dot(g,X(0),y,4*d,COOL);
       if(o.tail){T=settled(s.c,0);for(i=0;i<T.length;i++){dot(g,X(T[i][0]),y,6*d,INK);}}
       /* c: a marker under the line, where the first hop lands */
@@ -253,7 +291,7 @@ function addcFig(o){
     },
     drag:function(u,v,s,w,h,tol){s.c=clamp(snapTo(round(A+u/w*(B-A),.005),o.keys,tol/w*(B-A)),LO,HI);},
     key:function(dx,dy,s){s.c=clamp(round(s.c+dx*.005,.005),LO,HI);},
-    read:function(s,t){return [this.list(s,6).map(function(x){return num(x)}).join(" → ")+" → …",verdict(s.c,0,t,false)];}
+    read:function(s,t){return rowMath(this.list(s,o.tail?24:60),s.k,s.c,t).concat([verdict(s.c,0,t,false)]);}
   };
 }
 /* One point on the sheet. o.mode: "parts" shows across and up, "polar" its distance and angle, "sq" its square as well.
@@ -303,9 +341,10 @@ function pointFig(o){
       var q=sqr2(s.a,s.b),D=function(x,y){return num(Math.sqrt(x*x+y*y))},th=Math.atan2(s.b,s.a)*180/Math.PI;
       if(o.mode==="parts")return [t("learn.r.parts",num(s.a),num(s.b)),t("learn.r.point",num(s.a),num(s.b))];
       if(o.mode==="polar")return [t("learn.r.point",num(s.a),num(s.b)),t("learn.r.polar",D(s.a,s.b),Math.round(th)),t("learn.r.pyth",num(s.a),num(s.b),D(s.a,s.b))];
-      return [t("learn.r.point",num(s.a),num(s.b))+"   "+t("learn.r.polar",D(s.a,s.b),Math.round(th)),
-              t("learn.r.sq",num(q[0]),num(q[1]))+"   "+t("learn.r.polar",D(q[0],q[1]),Math.round(2*th)),
-              t("learn.r.across",num(s.a),num(s.b),num(q[0])),t("learn.r.up",num(s.a),num(s.b),num(q[1]))];
+      return [t("learn.r.point",num(s.a),num(s.b))+": "+t("learn.r.polar",D(s.a,s.b),Math.round(th)),
+              "  "+t("learn.r.dist2",D(s.a,s.b),D(q[0],q[1])),"  "+t("learn.r.ang2",Math.round(th),Math.round(2*th)),
+              t("learn.r.sq",num(q[0]),num(q[1]))+": "+t("learn.r.byParts"),
+              "  "+t("learn.r.across",num(s.a),num(s.b),num(q[0])),"  "+t("learn.r.up",num(s.a),num(s.b),num(q[1]))];
     }
   };
 }
@@ -314,26 +353,23 @@ function pointFig(o){
 function hopFig(o){
   var P=o.keys.map(function(k){return [k[0],k[1]]}),LIM=o.step?1.1:2.2;
   return {
-    ctl:o.step?[{k:"n",min:1,max:8,step:1,label:function(s,t){return t("learn.c.hops",s.n)}}]:null,
     keys:o.keys.map(function(k){return keyAt(k,k[2])}),
-    init:function(){return {a:o.a,b:o.b,n:1}},
+    init:function(){return {a:o.a,b:o.b,k:o.step?1:0}},
+    /* how many hops there are to walk through: up to the one that leaves the ring, or all that are followed */
+    walk:function(s){return o.step?8:(hopsOut(s.a,s.b,HOPMAX)||HOPMAX)},
     S:function(w,h){return o.step?sheet(w,h,0,0,1.5):sheet(w,h,-0.5,0,2.3)},
     draw:function(g,w,h,s,now,t,d){
       var S=this.S(w,h),n=hopsOut(s.a,s.b,HOPMAX),pts,z,q,k;
       clear(g,w,h);axes(g,w,h,d,S);
       if(o.step){
-        pts=path(s.a,s.b,s.n);k=pts.length-1;hopLines(g,d,S,pts.slice(0,k),false);
-        /* the last hop in its two moves: to the square, then the slide by c */
-        z=pts[k-1];q=sqr2(z[0],z[1]);
-        g.strokeStyle=INK;g.lineWidth=1.5*d;g.setLineDash([4*d,4*d]);g.beginPath();g.moveTo(S.X(z[0]),S.Y(z[1]));g.lineTo(S.X(q[0]),S.Y(q[1]));g.stroke();g.setLineDash([]);
-        dot(g,S.X(q[0]),S.Y(q[1]),3*d,INK);
-        arrow(g,S.X(q[0]),S.Y(q[1]),S.X(pts[k][0]),S.Y(pts[k][1]),d,HOT,false);
-        dot(g,S.X(pts[k][0]),S.Y(pts[k][1]),5*d,INK);
+        /* only the hops so far, the last of them in its two moves */
+        pts=path(s.a,s.b,Math.max(1,s.k));k=pts.length-1;hopLines(g,d,S,pts.slice(0,k),false);hopMark(g,d,S,pts,k);
       }else{
         ringOf(g,d,S,2);
         g.fillStyle=DIM;words(g,d,10);g.textAlign="center";g.textBaseline="bottom";g.fillText(t("learn.f.ring"),S.X(0),S.Y(2)-3*d);
-        pts=path(s.a,s.b,n?n:HOPMAX);hopLines(g,d,S,pts,!n);
-        if(n&&o.ring){z=pts[pts.length-1];dot(g,S.X(z[0]),S.Y(z[1]),6*d,HOT);g.fillStyle=HOT;words(g,d,11);g.textAlign="left";g.textBaseline="top";g.fillText(t("learn.f.out"),S.X(z[0])+9*d,S.Y(z[1])+6*d);}
+        pts=path(s.a,s.b,n?n:HOPMAX);hopLines(g,d,S,pts,!n&&!s.k);
+        if(s.k>0&&s.k<pts.length)hopMark(g,d,S,pts,s.k);
+        else if(n&&o.ring){z=pts[pts.length-1];dot(g,S.X(z[0]),S.Y(z[1]),6*d,HOT);g.fillStyle=HOT;words(g,d,11);g.textAlign="left";g.textBaseline="top";g.fillText(t("learn.f.out"),S.X(z[0])+9*d,S.Y(z[1])+6*d);}
       }
       handle(g,S.X(s.a),S.Y(s.b),d,HOT);
       g.fillStyle=HOT;words(g,d,12);g.textAlign="left";g.textBaseline="bottom";g.fillText("c",S.X(s.a)+14*d,S.Y(s.b)-8*d);
@@ -346,10 +382,10 @@ function hopFig(o){
     drag:function(u,v,s,w,h,tol){var S=this.S(w,h);this.set(s,S.x(u),S.y(v),tol/S.k);},
     key:function(dx,dy,s){this.set(s,s.a+dx*.005,s.b+dy*.005,0);},
     read:function(s,t){
-      var pts,k,z,q;
-      if(!o.step)return [t("learn.r.cpt",num(s.a,3),num(s.b,3)),verdict(s.a,s.b,t,true)];
-      pts=path(s.a,s.b,s.n);k=pts.length-1;z=pts[k-1];q=sqr2(z[0],z[1]);
-      return [t("learn.r.hopsq",k,num(z[0]),num(z[1]),num(q[0]),num(q[1])),t("learn.r.hopadd",num(s.a),num(s.b),num(pts[k][0]),num(pts[k][1]))];
+      var pts,out=[t("learn.r.cpt",num(s.a,3),num(s.b,3))];
+      if(!o.step)out.push(verdict(s.a,s.b,t,true));
+      if(s.k>0){pts=path(s.a,s.b,s.k);if(s.k<pts.length)out=out.concat(hopMath(pts,s.k,s.a,s.b,t,!o.step));}
+      return out;
     }
   };
 }
@@ -359,9 +395,11 @@ function gridFig(o){
   return {
     ctl:o.mode==="finer"?[{k:"gi",min:0,max:GRIDS.length-1,step:1,label:function(s,t){return t("learn.c.grid",GRIDS[s.gi])}}]:null,
     keys:o.mode==="ask"?[{label:function(s,t){return t("learn.k.askAll")},set:function(s){s.all=true}}]:[],
-    init:function(){return {gi:0,G:null,sel:-1,all:false}},
+    init:function(){return {gi:0,G:null,sel:-1,all:false,k:0}},
+    /* the hops of the chosen square can be walked through */
+    walk:function(s){var c;if(s.sel<0||!s.G)return 0;c=cellC(s.G,s.sel);return hopsOut(c[0],c[1],HOPMAX)||HOPMAX;},
     size:function(s){return o.mode==="finer"?GRIDS[s.gi]:o.N},
-    changed:function(s){if(s.G&&s.G.N!==this.size(s)){s.G=null;s.sel=-1;}},
+    changed:function(s){if(s.G&&s.G.N!==this.size(s)){s.G=null;s.sel=-1;s.k=0;}},
     draw:function(g,w,h,s,now,t,d){
       var G,i,cw,ch;
       if(!s.G)s.G=newGrid(this.size(s));
@@ -378,10 +416,10 @@ function gridFig(o){
       }
       if(s.sel>=0){
         g.strokeStyle=INK;g.lineWidth=2*d;g.strokeRect((s.sel%G.N)*cw,Math.floor(s.sel/G.N)*ch,cw,ch);
-        inset(g,w,h,d,G,s.sel,t);
+        inset(g,w,h,d,G,s.sel,t,s.k);
       }
     },
-    pick:function(s,i){s.sel=i;if(o.mode==="ask")gridAsk(s.G,i);},
+    pick:function(s,i){if(i!==s.sel)s.k=0;s.sel=i;if(o.mode==="ask")gridAsk(s.G,i);},
     drag:function(u,v,s,w,h){var G=s.G;if(G)this.pick(s,clamp(Math.floor(u/w*G.N),0,G.N-1)+G.N*clamp(Math.floor(v/h*G.M),0,G.M-1));},
     key:function(dx,dy,s){
       var G=s.G,x,y,i;if(!G)return;
@@ -392,7 +430,10 @@ function gridFig(o){
       var N=this.size(s),M=Math.round(N*5/8),c,out=[];
       if(o.mode==="finer")out.push(t("learn.r.grid",N,M,N*M));
       if(o.mode==="ask")out.push(t("learn.r.asked",s.G?s.G.asked:0,N*M));
-      if(s.sel>=0&&s.G){c=cellC(s.G,s.sel);out.push(t("learn.r.cpt",num(c[0],3),num(c[1],3)),verdict(c[0],c[1],t,true));}
+      if(s.sel>=0&&s.G){
+        c=cellC(s.G,s.sel);out.push(t("learn.r.cpt",num(c[0],3),num(c[1],3)),verdict(c[0],c[1],t,true));
+        if(s.k>0)out=out.concat(hopMath(path(c[0],c[1],s.k),s.k,c[0],c[1],t,true));
+      }
       else out.push(t("learn.r.tap"));
       return out;
     }
@@ -462,4 +503,4 @@ patience:{
 };
 
 /* for the test tools and the browser console: every name in this file */
-export const __dbg={HOPMAX, GRIDS, LIMS, REG, sqr2, hopsOut, visits, path, settled, snapTo, snapTo2, hopColour, num, verdict, FIGS, newGrid, gridStep, gridAsk, gridPaint, cellC};
+export const __dbg={HOPMAX, GRIDS, LIMS, REG, sqr2, hopsOut, visits, path, settled, hopMath, rowMath, snapTo, snapTo2, hopColour, num, verdict, FIGS, newGrid, gridStep, gridAsk, gridPaint, cellC};

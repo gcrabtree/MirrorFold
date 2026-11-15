@@ -200,3 +200,6 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
 }
 #lnKeys button{padding:9px 12px}
 #lnKeys:empty{display:none}
+#lnWalk[hidden]{display:none}
+#lnWalk button{padding:9px 12px;border-color:var(--cool)}
+#lnHopAt{font-size:12px;color:var(--ink-dim);min-width:9em;text-align:center}

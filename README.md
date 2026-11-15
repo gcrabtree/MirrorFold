@@ -394,7 +394,7 @@ The first track, **From one number to the Mandelbrot set**, has seventeen small 
 16. A finer grid: the Mandelbrot set appears.
 17. How long to wait before giving up: the limit on the count.
 
-Key values are sticky: a dragged dot or a slider is pulled onto them when it comes near, and each has a button under the drawing that goes straight to it. In the grid steps, a tapped square's hops are shown in a small window of their own, because the picture is a map of c and the hops are not places on it.
+Key values are sticky: a dragged dot or a slider is pulled onto them when it comes near, and each has a button under the drawing that goes straight to it. Under each drawing the arithmetic is written out as sums, not only the answers. Wherever a rule is repeated, **Next hop** and **Previous hop** walk through the hops one at a time: the drawing marks the hop, and its sums are shown. In the grid steps, a tapped square's hops are shown in a small window of their own, because the picture is a map of c and the hops are not places on it.
 
 **Voice on** reads each step aloud. It is off until you turn it on, and the choice is remembered. The voice is a set of sound files made ahead of time from the same words (about 250 KB a step), fetched only for the step you are on; music plays more quietly while it speaks. **All steps** shows the list, and the app remembers the step you were on. While the lessons are open the world behind them is not drawn.
 

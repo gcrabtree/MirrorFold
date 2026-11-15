@@ -47,6 +47,12 @@ function readout(){
   var i,rows=$("lnCtl").children;
   $("lnRead").textContent=fig&&fig.read?fig.read(st,t).join("\n"):"";
   for(i=0;fig&&fig.ctl&&i<fig.ctl.length;i++){rows[i].firstChild.textContent=fig.ctl[i].label(st,t);rows[i].lastChild.value=st[fig.ctl[i].k];}
+  if(fig&&fig.walk){ /* which hop is being looked at, and whether there is one before it and after it */
+    i=fig.walk(st);st.k=Math.max(0,Math.min(i,st.k));
+    $("lnHopAt").textContent=st.k?t("learn.hopAt",st.k,i):t("learn.hopAll");
+    $("lnPrevHop").disabled=st.k<=0;$("lnNextHop").disabled=st.k>=i;
+    $("lnRead").textContent=fig.read(st,t).join("\n");
+  }
   rows=$("lnKeys").children;
   for(i=0;fig&&fig.keys&&i<fig.keys.length;i++)rows[i].textContent=fig.keys[i].label(st,t);
 }
@@ -84,6 +90,7 @@ export function showStep(i){
     b.addEventListener("click",function(){k.set(st);if(fig.changed)fig.changed(st);readout();});
     box.appendChild(b);
   });
+  $("lnWalk").hidden=!fig.walk;
   $("lnBack").disabled=at===0;
   $("lnNext").textContent=t(at===T.steps.length-1?"learn.list":"learn.next");
   readout();speak();
@@ -93,6 +100,7 @@ function dress(){
   var T=TRACKS[track],list=$("lnList");
   $("lnTitle").textContent=t("learn.title");$("lnClose").textContent=t("learn.close");
   $("lnIntro").textContent=t("learn.intro");$("lnTrack").textContent=t("learn.track."+T.id);
+  $("lnPrevHop").textContent=t("learn.prevHop");$("lnNextHop").textContent=t("learn.nextHop");
   $("lnBack").textContent=t("learn.back");$("lnAll").textContent=t("learn.list");
   cv.setAttribute("aria-label",t("learn.figure"));
   list.textContent="";
@@ -139,6 +147,8 @@ try{voiceOn=localStorage.getItem(VOICE_KEY)==="on"}catch(_){}
 $("bLearn").addEventListener("click",openLearn);
 $("lnClose").addEventListener("click",closeLearn);
 $("lnVoice").addEventListener("click",function(){setVoice(!voiceOn)});
+$("lnPrevHop").addEventListener("click",function(){if(st){st.k--;readout();}});
+$("lnNextHop").addEventListener("click",function(){if(st){st.k++;readout();}});
 $("lnBack").addEventListener("click",function(){showStep(at-1)});
 $("lnAll").addEventListener("click",function(){showStep(-1)});
 $("lnNext").addEventListener("click",function(){showStep(at===TRACKS[track].steps.length-1?-1:at+1)});
