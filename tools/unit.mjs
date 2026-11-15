@@ -418,17 +418,38 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("the recording clock reads minutes and seconds", recClock(0) === "0:00" && recClock(75.9) === "1:15" && recClock(-3) === "0:00");
 }
 
-// ---- Sprites: fading, where they make for, and the shader's count of them
+// ---- Sprites: fading, where they arrive, turning, keeping clear of surfaces, and the shader's count of them
 {
-  const { flitFade, flitAim, NFLIT, FLIT_IN, FLIT_OUT } = flitsM;
+  const { flitFade, flitAim, flitTurn, flitSlide, flitMove, NFLIT, FLIT_IN, FLIT_OUT } = flitsM, near = (a, b) => a.every((x, i) => Math.abs(x - b[i]) < 1e-9);
   expect("a sprite is unseen as it arrives and as it leaves, and full between", flitFade(0, 6) === 0 && flitFade(6, 6) === 0 && flitFade(3, 6) === 1);
   expect("a sprite fades in and out evenly, never past full", Math.abs(flitFade(FLIT_IN / 2, 6) - 0.5) < 1e-12 && Math.abs(flitFade(6 - FLIT_OUT / 2, 6) - 0.5) < 1e-12 && flitFade(-1, 6) === 0 && flitFade(9, 6) === 0);
   let okAim = true;
-  for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) { const a = flitAim(i / 10, j / 10, 1 - j / 10); if (!(a[0] >= 2.5 && a[0] <= 7 && Math.abs(a[1]) <= 0.45 * a[0] + 1e-12 && Math.abs(a[2]) <= 0.3 * a[0] + 1e-12)) okAim = false; }
-  expect("a sprite makes for a place ahead of the camera and inside the view", okAim);
+  for (let i = 0; i <= 10; i++) for (let j = 0; j <= 10; j++) { const a = flitAim(i / 10, j / 10, 1 - j / 10); if (!(a[0] >= 3 && a[0] <= 9 && Math.abs(a[1]) <= 0.45 * a[0] + 1e-12 && Math.abs(a[2]) <= 0.3 * a[0] + 1e-12)) okAim = false; }
+  expect("a sprite arrives ahead of the camera and inside the view", okAim);
+  expect("a turned heading is one unit long, and a push that cancels it leaves it alone", near(flitTurn([0, 0, 1], 1, 0, 0), [Math.SQRT1_2, 0, Math.SQRT1_2]) && near(flitTurn([0, 0, 1], 0, 0, -1), [0, 0, 1]));
+  expect("a heading into a surface slides along it, and one away from it is left alone", near(flitSlide([0.6, -0.8, 0], [0, 1, 0]), [1, 0, 0]) && near(flitSlide([0.6, 0.8, 0], [0, 1, 0]), [0.6, 0.8, 0]));
   const { fragSource } = await import("../js/shaders.js"), { WORLDS } = await import("../js/worlds.js");
   const src = fragSource(WORLDS[0]);
-  expect("the scene shader has a line for each sprite, and no more", src.includes("uniform vec4 uFl[" + NFLIT + "],uFlT[" + NFLIT + "];") && src.includes("uFl[" + (NFLIT - 1) + "].w>0.0") && !src.includes("uFl[" + NFLIT + "].w"));
+  expect("the scene shader has a line for each sprite, and no more", src.includes("uniform vec4 uFl[" + NFLIT + "];uniform float uFlA[" + NFLIT + "];") && src.includes("uFl[" + (NFLIT - 1) + "].w>0.0") && !src.includes("uFl[" + NFLIT + "].w"));
+  // twenty seconds of flight in several worlds, from an open place: a sprite must never be inside a surface, and must keep moving
+  let bad = [];
+  for (const id of ["sponge", "citadel", "julia", "foam", "thicket", "cell"]) {
+    const w = WORLDS.find(x => x.id === id), m = 0.3, per = w.period(m), de = (x, y, z, mm) => w.de(x, y, z, mm);
+    for (let trial = 0; trial < 4; trial++) {
+      let p = null, best = -1;
+      for (let k = 0; k < 200; k++) { const q = [0, 1, 2].map(i => (Math.random() - 0.5) * per[i]), d = de(q[0], q[1], q[2], m); if (d > best) { best = d; p = q; } }
+      const s = Math.max(0.01, Math.min(0.6, best * (0.3 + 0.7 * Math.random())));
+      const f = { p: p.slice(), h: [0, 0, 1], wob: [0, 0, 0], r: 0.07 * s, age: 0, life: 99, zig: 1, burst: 0, wait: 0 };
+      let moved = 0, worst = 1e9;
+      for (let n = 0; n < 1200; n++) {
+        const b = f.p.slice(); flitMove(f, de, m, s, w.speed, per, 1 / 60);
+        let st = 0; for (let i = 0; i < 3; i++) { let q = f.p[i] - b[i]; q -= per[i] * Math.floor(q / per[i] + 0.5); st += q * q; }
+        moved += Math.sqrt(st); worst = Math.min(worst, de(f.p[0], f.p[1], f.p[2], m) / f.r);
+      }
+      if (!(worst > 1) || !(moved > 2 * s)) bad.push(id + " nearest " + worst.toFixed(2) + " sizes, went " + (moved / s).toFixed(1));
+    }
+  }
+  expect("a sprite keeps clear of the surfaces and keeps moving, in six worlds", bad.length === 0, bad.join("; "));
 }
 
 // ---- Throw a light: bouncing

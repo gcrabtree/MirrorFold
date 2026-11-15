@@ -39,18 +39,16 @@ export function fragSource(w){
 "}"
   ].concat(w.glsl,[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
-/* A sprite: a glowing head at o.xyz of size o.w with a tail along tl.xyz that thins to a quarter, seen along the ray if
-   nothing is in front of it. s is how far along the tail the ray passes nearest (0 at the head), found in closed form;
-   tl.w is how strongly the sprite shows. There are six (NFLIT in js/flits.js; a test holds the two equal), each named
-   by a fixed number below, since a shader here may not pick from a list by a number worked out as it runs. */
-"uniform vec4 uFl[6],uFlT[6];",
-"vec3 flit(vec4 o,vec4 tl,vec3 ro,vec3 rd,float tmax,float hue){",
-"  vec3 v=tl.xyz;vec3 w0=ro-o.xyz;float b=dot(rd,v),c=dot(v,v),d=dot(rd,w0),e=dot(v,w0);",
-"  float s=clamp((e-b*d)/max(c-b*b,1e-9),0.0,1.0);",
-"  vec3 q=o.xyz+v*s;float tc=dot(q-ro,rd);",
+/* A sprite: a small dot of light at o.xyz of size o.w, seen along the ray if nothing is in front of it: a disc with a
+   faint halo, a times as strong, in the palette's own colour at hue, so it changes with the palette and drifts with it. There are six (NFLIT in js/flits.js; a test holds the two
+   equal), each named by a fixed number below, since a shader here may not pick from a list by a number worked out as
+   it runs. */
+"uniform vec4 uFl[6];uniform float uFlA[6];",
+"vec3 flit(vec4 o,float a,vec3 ro,vec3 rd,float tmax,float hue){",
+"  vec3 oc=o.xyz-ro;float tc=dot(oc,rd);",
 "  if(tc<=0.0||tc>=tmax)return vec3(0.0);",
-"  vec3 dv=ro+rd*tc-q;float R=o.w*(1.0-0.75*s);float R2=R*R;float d2=dot(dv,dv);",
-"  return (vec3(1.0-smoothstep(R2*0.3,R2,d2))+mix(vec3(1.0),pal(uHue+hue),0.75)*(exp(-d2/(R2*8.0))*0.8+exp(-d2/(R2*70.0))*0.2))*tl.w*(1.0-0.5*s);",
+"  float R2=o.w*o.w;float d2=max(dot(oc,oc)-tc*tc,0.0);",
+"  return pal(uHue+hue)*((1.0-smoothstep(R2*0.5,R2,d2))*0.95+exp(-d2/(R2*6.0))*0.25)*a;",
 "}",
 /* a glowing ball at o.xyz of size o.w, seen along the ray, if nothing is in front of it: a bright core and a soft halo in a palette colour */
 "vec3 ball(vec4 o,vec3 ro,vec3 rd,float tmax,float hue){",
@@ -244,12 +242,12 @@ export function fragSource(w){
 "#ifndef FLAT",
 "  if(uOrb.w>0.0)col+=ball(uOrb,ro,rd,tmax,0.15)*(0.85+0.15*sin(uTime*2.5));",
 "  if(uSpark.w>0.0)col+=ball(uSpark,ro,rd,tmax,0.6);", /* the thrown light, in another of the palette's colours */
-"  if(uFl[0].w>0.0)col+=flit(uFl[0],uFlT[0],ro,rd,tmax,0.30);",
-"  if(uFl[1].w>0.0)col+=flit(uFl[1],uFlT[1],ro,rd,tmax,0.47);",
-"  if(uFl[2].w>0.0)col+=flit(uFl[2],uFlT[2],ro,rd,tmax,0.64);",
-"  if(uFl[3].w>0.0)col+=flit(uFl[3],uFlT[3],ro,rd,tmax,0.81);",
-"  if(uFl[4].w>0.0)col+=flit(uFl[4],uFlT[4],ro,rd,tmax,0.98);",
-"  if(uFl[5].w>0.0)col+=flit(uFl[5],uFlT[5],ro,rd,tmax,1.15);",
+"  if(uFl[0].w>0.0)col+=flit(uFl[0],uFlA[0],ro,rd,tmax,0.30);",
+"  if(uFl[1].w>0.0)col+=flit(uFl[1],uFlA[1],ro,rd,tmax,0.47);",
+"  if(uFl[2].w>0.0)col+=flit(uFl[2],uFlA[2],ro,rd,tmax,0.64);",
+"  if(uFl[3].w>0.0)col+=flit(uFl[3],uFlA[3],ro,rd,tmax,0.81);",
+"  if(uFl[4].w>0.0)col+=flit(uFl[4],uFlA[4],ro,rd,tmax,0.98);",
+"  if(uFl[5].w>0.0)col+=flit(uFl[5],uFlA[5],ro,rd,tmax,1.15);",
 "#endif",
 "  col*=clamp(1.0-0.16*r*r,0.35,1.0)*(1.0-uVr.x*smoothstep(1.5,1.8,r));",
 "  col*=1.35;col=col/(1.0+0.2*col);",

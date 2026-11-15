@@ -190,7 +190,7 @@ The controls fade after five seconds and come back when you touch the picture.
 | Button | What it does |
 |---|---|
 | Orbs | Shows or hides the orbs. |
-| Sprites | Shows or hides the sprites: six small lights with tails that fly with you. Each darts from place to place ahead of you, steers round the surfaces, fades in when it arrives and out when it leaves, and swells on the beat. A wall in front of one hides it. There are none in a world from a pack, in the zoom worlds, over the land alone or with a video filling the screen. With reduced motion asked for they start switched off. |
+| Sprites | Shows or hides the sprites: six small dots of light, in the palette's colours, that wander through the world on paths of their own. Each drifts along slowly, turning a little all the time, now and then zigs off a new way, steers clear of the surfaces, fades in when it arrives and out when it leaves, and swells on the beat. A wall in front of one hides it. There are none in a world from a pack, in the zoom worlds, over the land alone or with a video filling the screen. With reduced motion asked for they start switched off. |
 | Detail | Steps through auto, sharp and fast. See [Performance](#performance). |
 | Stats | Shows a readout in the top left corner: pictures drawn each second and the slowest one, how long the page's own script takes for each picture, the sharpness and size of the picture, the name of the graphics chip drawing it, and a trial of the distance probe (how long the page waits for the chip to answer one question, and the chip's answer beside the script's). Useful when the picture stutters. |
 | Fullscreen | Fills the screen. |
