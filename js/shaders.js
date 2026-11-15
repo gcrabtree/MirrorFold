@@ -25,6 +25,13 @@ export function fragSource(w){
    The rings' waves move: they drift slowly with the clock, grow with the middle of the sound, and the rings step
    outward a third of a ring on the beat. Hold still gives the scene no clock and no sound, so they stand still for it. */
 "uniform float uSurf;uniform vec3 uPer;",
+/* For the surfaces made of blocks (dots, tiles, wire, cells): how many blocks fit the world's period along each axis,
+   a whole number, at about k blocks to a unit, so that the pattern repeats where the world does; and a chance number,
+   or three, for a block. Blocks are counted round the period (mod) before the chance is taken, so the block one period
+   on gets the same. JavaScript has no copy of these, so a sine hash will do. */
+"vec3 sfN(float k){return max(floor(uPer*k+0.5),1.0);}",
+"float sfH(vec3 c){return fract(sin(dot(c,vec3(127.1,311.7,74.7)))*43758.5453);}",
+"vec3 sfH3(vec3 c){return fract(sin(vec3(dot(c,vec3(127.1,311.7,74.7)),dot(c,vec3(269.5,183.3,246.1)),dot(c,vec3(113.5,271.9,124.6))))*43758.5453);}",
 "float woodAt(vec3 q){",
 "  float w=0.5*sin(q.z+1.3*sin(2.0*q.x+q.y+0.21*uTime)+0.13*uTime)+0.3*sin(2.0*q.z+3.0*q.y+1.0-0.17*uTime)+0.15*sin(5.0*q.x-3.0*q.z+0.11*uTime);",
 "  float g=fract(10.0*sqrt(2.02-cos(q.x+0.15*sin(q.z))-cos(q.y+0.15*cos(q.z)))+(0.9+1.6*uMid)*w-0.35*uBeat);",
@@ -158,8 +165,8 @@ export function fragSource(w){
 "    float fres=pow(1.0-nd,3.0);",
 "    vec3 base=pal(uHue+tr.w*0.8+0.25*tr.x);",
 "    base=mix(base,pal(uHue+0.35+tr.y*1.5),0.5*clamp(tr.z*2.0,0.0,1.0));",
-"    float wood=0.0;",
-"    if(uSurf>0.5){", /* the grain: each ring runs through half the palette from pale wood to dark line, and the line is darkened too; rings too fine for a pixel fade to their average, so far wood does not sparkle */
+"    float wood=0.0,quiet=0.0,shine=1.0;vec3 glow=vec3(0.0);", /* for the surfaces: grain's dulling, how far the glowing bands are turned down, how much the highlight is turned up, and light the surface gives off */
+"    if(uSurf>0.5&&uSurf<1.5){", /* the grain: each ring runs through half the palette from pale wood to dark line, and the line is darkened too; rings too fine for a pixel fade to their average, so far wood does not sparkle */
 "      wood=1.0;vec3 wm=max(floor(uPer*0.5+0.5),1.0)*6.28318/uPer;vec3 wq=p*wm;",
 "      float sharp=clamp(0.016/(uPix*t),0.0,1.0);",
 "      float wd=woodAt(wq);vec3 we=wm*0.004;",
@@ -168,6 +175,40 @@ export function fragSource(w){
 "      float fib=(sin(97.0*wq.x+31.0*wq.y+sin(wq.z))+sin(89.0*wq.y-41.0*wq.x-sin(2.0*wq.z))+sin(67.0*wq.x-71.0*wq.y))*0.4*clamp(0.003/(uPix*t)-0.3,0.0,1.0);", /* fine fibres along the trunk: three sets of waves across it that do not line up, so they show as specks on a cut end and streaks along a side, and only close to */
 "      wd=mix(0.22,wd,sharp);",
 "      base=pal(uHue+0.12*tr.w+0.5*wd)*(1.0-0.5*wd)*(1.0+0.14*fib)*(0.8+0.3*clamp(tr.x,0.0,1.0));",
+"    }else if(uSurf>1.5&&uSurf<2.5){", /* dots: balls set through space in two grids, one in the gaps of the other; where a surface cuts one there is a round dot in the palette's opposite colour with a dark border. The balls grow on the beat. */
+"      vec3 sn=sfN(6.0);vec3 su=p*sn/uPer+0.37;float sa=1.5*uPix*t*sn.x/uPer.x+0.01;",
+"      float sd=min(length(fract(su)-0.5),length(fract(su+0.5)-0.5));float sr=0.25+0.12*uBeat;",
+"      vec3 dc=pal(uHue+0.5+0.12*tr.w);", /* a dark border first, out to the ball's edge, then the dot's own colour inside it */
+"      base=mix(base,dc*0.1,1.0-smoothstep(sr-sa,sr+sa,sd));base=mix(base,dc,1.0-smoothstep(sr-0.07-sa,sr-0.07+sa,sd));quiet=0.7;",
+"    }else if(uSurf>2.5&&uSurf<3.5){", /* tiles: space cut into blocks, each its own shade of the palette, with dark joints where a surface crosses from one block to the next (not counting the axis the surface faces, or a whole face would be joint). Some tiles light up, more with the high notes. */
+"      vec3 sn=sfN(3.0);vec3 su=p*sn/uPer+0.37;vec3 sc=floor(su);vec3 sf=su-sc;float sa=uPix*t*sn.x/uPer.x;",
+"      vec3 se=min(sf,1.0-sf)+step(0.7,abs(n));float sg=smoothstep(0.03,0.05+2.0*sa,min(se.x,min(se.y,se.z)));",
+"      float sh=sfH(mod(sc+0.5,sn));",
+"      base=pal(uHue+0.1*tr.w+0.45*sh)*(0.75+0.25*fract(sh*7.3))*(0.25+0.75*sg);",
+"      glow=pal(uHue+0.5+sh)*smoothstep(0.6,1.0,0.5+0.5*sin(6.28318*sh*17.0+0.7*uTime))*sg*(0.12+1.2*uHi);quiet=1.0;",
+"    }else if(uSurf>3.5&&uSurf<4.5){", /* marble: pale stone tinted by the palette, with dark veins where a wave, pushed about by slower waves, crosses zero. The veins drift, wander further with the middle of the sound and thicken on the beat. */
+"      vec3 sq=p*max(floor(uPer*0.5+0.5),1.0)*6.28318/uPer;",
+"      float tb=sin(2.0*sq.y+1.7*sin(sq.z+2.0*sq.x)+0.1*uTime)+0.5*sin(4.0*sq.z+3.0*sq.x+2.0*sin(3.0*sq.y)-0.13*uTime)+0.25*sin(8.0*sq.x-5.0*sq.y+3.0*sin(2.0*sq.z));",
+"      float vein=pow(1.0-abs(sin(3.0*sq.x+sq.z+(2.2+1.5*uMid)*tb)),6.0-3.5*uBeat);",
+"      vein=mix(0.18,vein,clamp(0.016/(uPix*t),0.0,1.0));",
+"      base=mix(mix(vec3(0.8),base,0.3),pal(uHue+0.5+0.12*tr.w)*0.3,vein);quiet=1.0;",
+"    }else if(uSurf>4.5&&uSurf<5.5){", /* wire: the surface goes dark and the joints of a finer set of blocks glow in the palette's colour, with a slow wave of light running along them. The lines thicken with the middle of the sound and brighten on the beat. */
+"      vec3 sn=sfN(5.0);vec3 sf=fract(p*sn/uPer+0.37);float sa=uPix*t*sn.x/uPer.x;",
+"      vec3 se=min(sf,1.0-sf)+step(0.7,abs(n));float sw=0.03+0.03*uMid;",
+"      float ln=(1.0-smoothstep(sw,sw+0.02+2.0*sa,min(se.x,min(se.y,se.z))))*0.05/(0.05+3.0*sa);",
+"      vec3 sq=p*max(floor(uPer*0.5+0.5),1.0)*6.28318/uPer;",
+"      base*=0.1;glow=pal(uHue+0.5+0.15*tr.w)*ln*(0.55+0.45*sin(sq.x+sq.y+sq.z-1.5*uTime))*(0.7+uBeat);quiet=1.0;",
+"    }else if(uSurf>5.5&&uSurf<6.5){", /* cells: a point is put by chance in every block, and each place belongs to the nearest point; each cell has its own colour of the palette and a dark edge. The edges widen on the beat and the cells brighten in turn with the middle of the sound. */
+"      vec3 sn=sfN(3.0);vec3 su=p*sn/uPer+0.37;vec3 sc=floor(su);vec3 sf=su-sc;float sa=uPix*t*sn.x/uPer.x;",
+"      float f1=9.0,f2=9.0,id=0.0;",
+"      for(int i=-1;i<=1;i++)for(int j=-1;j<=1;j++)for(int m=-1;m<=1;m++){",
+"        vec3 so=vec3(float(i),float(j),float(m));vec3 hh=sfH3(mod(sc+so+0.5,sn));float sd=length(so+hh-sf);",
+"        if(sd<f1){f2=f1;f1=sd;id=hh.x;}else if(sd<f2)f2=sd;",
+"      }",
+"      float edge=smoothstep(0.03+0.06*uBeat,0.06+0.06*uBeat+2.0*sa,f2-f1);",
+"      base=pal(uHue+0.1*tr.w+0.5*id)*(0.3+0.7*edge)*(0.8+0.5*uMid*(0.5+0.5*sin(6.28318*id*9.0+uTime)));quiet=1.0;",
+"    }else if(uSurf>6.5){", /* pearl: the colour comes from the way the surface faces and how squarely it is seen, not from where it is, so it slides over a shape as you pass, like oil on water. It shifts with the middle of the sound. */
+"      base=mix(vec3(0.7),pal(uHue+1.3*(1.0-nd)+0.5*dot(n,vec3(0.36,0.80,0.48))+0.2*tr.w+0.3*uMid+0.03*uTime),0.7);shine=2.2;quiet=0.6;",
 "    }",
 "    float vk=0.0,lit=0.05+0.7*dif+0.4*nd*nd;", /* how much of the surface's colour is the video, and how brightly the surface is lit */
 "    if(uVidK.x>0.5){",
@@ -180,8 +221,8 @@ export function fragSource(w){
 "    float bands=smoothstep(0.75,1.0,0.5+0.5*sin(tr.w*24.0-uTime*1.2));",
 "    float ao=max(1.0-gw,0.0);ao*=sqrt(ao);",
 "    col=base*lit*ao;",
-"    col+=pal(uHue+0.5+tr.w)*bands*(0.5+0.9*uMid)*ao*(1.0-vk)*(1.0-0.85*wood);", /* the glowing bands give way to the video, and are faint on wood */
-"    col+=fres*pal(uHue+0.2+t*0.08)*0.4*ao*(1.0-0.8*wood)+spec*(0.5+1.4*uHi)*ao*(1.0-0.65*wood);", /* wood shines less */
+"    col+=pal(uHue+0.5+tr.w)*bands*(0.5+0.9*uMid)*ao*(1.0-vk)*(1.0-0.85*wood)*(1.0-quiet);", /* the glowing bands give way to the video, and are faint on wood */
+"    col+=fres*pal(uHue+0.2+t*0.08)*0.4*ao*(1.0-0.8*wood)+spec*(0.5+1.4*uHi)*ao*(1.0-0.65*wood)*shine+glow*ao*(1.0-vk);", /* wood shines less, pearl more; tiles and wire give off light */
 "    col=mix(fogc,col,exp(-FOG*t));",
 "  }",
 "  col+=pal(uHue+0.7+r*0.1)*gw*gw*gw*0.22;",
