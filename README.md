@@ -394,11 +394,33 @@ The first track, **From one number to the Mandelbrot set**, has seventeen small 
 16. A finer grid: the Mandelbrot set appears.
 17. How long to wait before giving up: the limit on the count.
 
-Key values are sticky: a dragged dot or a slider is pulled onto them when it comes near, and each has a button under the drawing that goes straight to it. Under each drawing the arithmetic is written out as sums, not only the answers. Wherever a rule is repeated, **Next hop** and **Previous hop** walk through the hops one at a time: the drawing marks the hop, and its sums are shown. In the grid steps, a tapped square's hops are shown in a small window of their own, because the picture is a map of c and the hops are not places on it.
+The second track, **From a flat picture to a world you can fly through**, has seventeen more:
+
+1. One line of sight for each square: a flat world seen from above, and its picture, one row of squares.
+2. How far is the nearest thing?
+3. Walk the line in safe moves.
+4. Paint the row.
+5. The distance to a round pillar, as a sum.
+6. Turn it inside out: a bubble in solid rock.
+7. One bubble in every cell, by a remainder.
+8. Bubbles that join up.
+9. The same thing, three times smaller.
+10. Big bubbles and small bubbles together.
+11. Again and again: four sizes.
+12. A third number: depth.
+13. A picture of a world with depth.
+14. Which way does a wall face?
+15. Light from a lamp.
+16. The lit picture.
+17. Move the eye, and you are flying.
+
+The shape it builds is the Foam world, and the pictures in steps 13, 16 and 17 are made with that world's own distance sum, worked out in the page a square at a time. The last step has a button that closes the lessons and flies through Foam.
+
+Key values are sticky: a dragged dot or a slider is pulled onto them when it comes near, and each has a button under the drawing that goes straight to it. Under each drawing the arithmetic is written out as sums, not only the answers. Wherever a rule is repeated, **Next hop** and **Previous hop** walk through the hops one at a time: the drawing marks the hop, and its sums are shown. In the second track the same buttons walk a line of sight one safe move at a time. In the grid steps, a tapped square's hops are shown in a small window of their own, because the picture is a map of c and the hops are not places on it.
 
 **Voice on** reads each step aloud. It is off until you turn it on, and the choice is remembered. The voice is a set of sound files made ahead of time from the same words (about 250 KB a step), fetched only for the step you are on; music plays more quietly while it speaks. **All steps** shows the list, and the app remembers the step you were on. While the lessons are open the world behind them is not drawn.
 
-Only this first track exists so far. The lessons' words are in one flat file, `lang/en.json`; English is the only language so far, and the rest of the app's text is not in that file yet.
+Two tracks exist so far; a third, on colour, motions, filters and sound, is planned. The lessons' words are in one flat file, `lang/en.json`; English is the only language so far, and the rest of the app's text is not in that file yet.
 
 ## Orbs and share links
 
@@ -453,7 +475,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 |---|---|
 | `index.html` | The page's markup |
 | `css/app.css` | The styling |
-| `js/` | The app, as about 50 modules; the architecture document lists what each holds |
+| `js/` | The app, as about 51 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 26 worlds |

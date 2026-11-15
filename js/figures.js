@@ -16,8 +16,8 @@
    The arithmetic at the top needs no page, so the tests can use it. */
 import { calm } from "./dom.js";
 export const HOPMAX=200;   /* how many hops are tried before a point counts as never leaving */
-const INK="#f3ecff",DIM="rgba(243,236,255,.5)",FAINT="rgba(243,236,255,.14)",HOT="#ff5fd2",COOL="#5ff0ff",BACK="#0b0618";
-const FONT="'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace";
+export const INK="#f3ecff",DIM="rgba(243,236,255,.5)",FAINT="rgba(243,236,255,.14)",HOT="#ff5fd2",COOL="#5ff0ff",BACK="#0b0618";
+export const FONT="'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace";
 const GRIDS=[16,32,64,128,256,512];                              /* step 5: how many squares across */
 const LIMS=[1,2,3,4,5,6,7,8,10,12,15,20,30,50,100,200];          /* step 6: the limits its slider steps through */
 const REG={x0:-2.52,x1:1.0,y0:-1.1,y1:1.1};                      /* the part of the sheet that steps 5 and 6 show: 8 wide for every 5 high */
@@ -69,14 +69,14 @@ function verdict(cx,cy,t,ring){
   p=visits(cx,cy);
   return p===1?t("learn.r.one"):p>1?t("learn.r.many",p):t("learn.r.none");
 }
-function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
-function round(x,to){return Math.round(x/to)*to;}
+export function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+export function round(x,to){return Math.round(x/to)*to;}
 /* Key points are sticky: a value within tol of one of them becomes it. The same for a point on the sheet. */
 export function snapTo(v,keys,tol){var i;for(i=0;i<keys.length;i++)if(Math.abs(v-keys[i])<=tol)return keys[i];return v;}
 export function snapTo2(a,b,pts,tol){var i;for(i=0;i<pts.length;i++)if(Math.abs(a-pts[i][0])<=tol&&Math.abs(b-pts[i][1])<=tol)return pts[i];return [a,b];}
-function pt(a,b){return "("+String(a)+", "+String(b)+")";}
+export function pt(a,b){return "("+String(a)+", "+String(b)+")";}
 /* a number to be added, written with its sign apart: "+ 0.300" or "- 0.500" */
-function signed(c){return (c<0?"- ":"+ ")+num(Math.abs(c),3);}
+export function signed(c){return (c<0?"- ":"+ ")+num(Math.abs(c),3);}
 /* The arithmetic of hop k of a path on the sheet, a line for each small sum: squaring the point, then adding c.
    ring says whether to add how far from the middle it lands and which side of the ring that is. */
 export function hopMath(pts,k,ca,cb,t,ring){
@@ -104,13 +104,13 @@ export function settled(cx,cy){
 }
 
 /* ---- drawing helpers ---- */
-function clear(g,w,h){g.fillStyle=BACK;g.fillRect(0,0,w,h);}
-function words(g,d,size){g.font=(size*d)+"px "+FONT;}
-function dot(g,x,y,r,col){g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,6.2832);g.fill();}
+export function clear(g,w,h){g.fillStyle=BACK;g.fillRect(0,0,w,h);}
+export function words(g,d,size){g.font=(size*d)+"px "+FONT;}
+export function dot(g,x,y,r,col){g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,6.2832);g.fill();}
 /* a dot that can be dragged: filled, with a ring round it */
-function handle(g,x,y,d,col){dot(g,x,y,6*d,col);g.strokeStyle=col;g.lineWidth=1.5*d;g.beginPath();g.arc(x,y,11*d,0,6.2832);g.stroke();}
+export function handle(g,x,y,d,col){dot(g,x,y,6*d,col);g.strokeStyle=col;g.lineWidth=1.5*d;g.beginPath();g.arc(x,y,11*d,0,6.2832);g.stroke();}
 /* a line with an arrow head, from one pixel to another */
-function arrow(g,x1,y1,x2,y2,d,col,dash){
+export function arrow(g,x1,y1,x2,y2,d,col,dash){
   var a=Math.atan2(y2-y1,x2-x1),L=Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)),r=Math.min(9*d,L*.5);
   g.strokeStyle=col;g.fillStyle=col;g.lineWidth=1.8*d;if(dash)g.setLineDash([5*d,4*d]);
   g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke();g.setLineDash([]);
@@ -147,13 +147,13 @@ function arches(g,w,d,a,b,y,xs,now,alpha,lit,pace,hi){
   dot(g,px,py,4*d,HOT);
 }
 /* a view of the flat sheet: its middle and half its height; gives pixel positions and back again */
-function sheet(w,h,cx,cy,hh){
+export function sheet(w,h,cx,cy,hh){
   var k=h/(2*hh);
   return {k:k,X:function(x){return w/2+(x-cx)*k},Y:function(y){return h/2-(y-cy)*k},
           x:function(u){return cx+(u-w/2)/k},y:function(v){return cy-(v-h/2)/k}};
 }
 /* the two lines through the middle, a faint line at each whole number, and the whole numbers along the line across */
-function axes(g,w,h,d,S){
+export function axes(g,w,h,d,S){
   var i,p;
   g.lineWidth=d;words(g,d,10);g.textAlign="center";g.textBaseline="top";
   for(i=-4;i<=4;i++){
@@ -232,9 +232,9 @@ function inset(g,w,h,d,G,sel,t,k){
 
 /* ---- the kinds of drawing; each step below is one of them with its own settings ---- */
 /* a button that sets one field of the state to a key value */
-function keyOf(k,v,lab){return {label:function(s,t){return lab?t(lab,String(v)):String(v)},set:function(s){s[k]=v}};}
+export function keyOf(k,v,lab){return {label:function(s,t){return lab?t(lab,String(v)):String(v)},set:function(s){s[k]=v}};}
 /* a button that puts the point (or c) of a drawing on the sheet at a key point; lab is a name for the words, or none for the numbers */
-function keyAt(p,lab){return {label:function(s,t){return lab?t(lab):pt(p[0],p[1])},set:function(s){s.a=p[0];s.b=p[1]}};}
+export function keyAt(p,lab){return {label:function(s,t){return lab?t(lab):pt(p[0],p[1])},set:function(s){s.a=p[0];s.b=p[1]}};}
 
 /* Squaring on a number line. o: x the start, lo the lowest start allowed, many for squaring over and over, keys */
 function squareFig(o){

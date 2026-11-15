@@ -2,7 +2,8 @@
    under learn.<track>.<step>.title, .text, .do and .name; its drawing is the entry of FIGS (figures.js) with the step's name;
    its voice is one sound file, made ahead of time by tools/voice.py from those same words. Nothing here needs the page. */
 export const TRACKS=[
-  {id:"mandel",steps:["once","minus","again","addc","cycles","bar","point","polar","sqpt","add","onehop","ring","shapes","ask","count","finer","patience"]}
+  {id:"mandel",steps:["once","minus","again","addc","cycles","bar","point","polar","sqpt","add","onehop","ring","shapes","ask","count","finer","patience"]},
+  {id:"space",steps:["ray","safe","march","row","ball","hollow","repeat","join","small","both","levels","third","picture","facing","lamp","lit","fly"]}
 ];
 /* the four pieces of text a step has, in the order they are shown and spoken */
 export const PARTS=["title","text","do","name"];

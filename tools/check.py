@@ -107,18 +107,19 @@ setTimeout(function(){
 setTimeout(openLearn,2710);
 setTimeout(function(){
   /* the lessons: every step opens with its words, draws without error, and its sliders, key-point buttons and arrow keys work */
-  var out=[],i,k,f;
-  for(i=0;i<TRACKS[0].steps.length;i++){
-    showStep(i);learnFrame(performance.now());f=learnFig;
-    if(f.ctl){learnSt[f.ctl[0].k]=f.ctl[0].max;if(f.changed)f.changed(learnSt);}
+  var out=[],i,k,f,T,ti;
+  for(ti=0;ti<TRACKS.length;ti++){T=TRACKS[ti];
+  for(i=0;i<T.steps.length;i++){
+    showStep(i,ti);learnFrame(performance.now());f=learnFig;
+    if(f.ctl){learnSt[f.ctl[0].k]=f.ctl[0].max;if(f.changed)f.changed(learnSt);learnFrame(performance.now());}
     if(f.drag){f.drag(200,120,learnSt,640,400,14,true);f.drag(210,130,learnSt,640,400,14,false);}
     if(f.keys)for(k=0;k<f.keys.length;k++){f.keys[k].set(learnSt);if(f.changed)f.changed(learnSt);learnFrame(performance.now());f.keys[k].label(learnSt,t);}
     if(f.key)f.key(1,1,learnSt);
-    if(f.walk){$("lnNextHop").click();$("lnNextHop").click();$("lnPrevHop").click();learnFrame(performance.now());}
+    if(f.walk){readout();$("lnNextHop").click();$("lnNextHop").click();$("lnPrevHop").click();learnFrame(performance.now());}
     for(k=0;k<3;k++)learnFrame(performance.now()+k*16);
     readout();
-    out.push(TRACKS[0].steps[i]+":"+($("lnText").textContent.length>80&&$("lnHead").textContent.indexOf("learn.")<0?"words":"NO-WORDS")+":"+$("lnRead").textContent.split("\n").length);
-  }
+    out.push(T.steps[i]+":"+($("lnText").textContent.length>80&&$("lnHead").textContent.indexOf("learn.")<0?"w":"NO-WORDS")+$("lnRead").textContent.split("\n").length);
+  }}
   log("lessons open="+learnOpen+" "+out.join(" ")+" missing="+(document.getElementById("learn").textContent.match(/learn\.[a-z]+\.[a-zA-Z.]+/)||["none"])[0]);
   closeLearn();log("lessons shut="+$("learn").hidden);
 },2740);

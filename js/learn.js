@@ -4,7 +4,10 @@
    While the panel is open the worlds are not drawn (frame() in loop.js draws the lesson instead). */
 import { master } from "./audio.js";
 import { $, toast } from "./dom.js";
+import { requestWorld } from "./choose.js";
 import { FIGS, snapTo } from "./figures.js";
+import { SPACE_FIGS } from "./figures-space.js";
+import { WORLDS } from "./worlds.js";
 import { wakeHud } from "./input.js";
 import { lang, loadLang, t } from "./lang.js";
 import { PARTS, TRACKS, partKey, voiceName } from "./lessons.js";
@@ -49,7 +52,7 @@ function readout(){
   for(i=0;fig&&fig.ctl&&i<fig.ctl.length;i++){rows[i].firstChild.textContent=fig.ctl[i].label(st,t);rows[i].lastChild.value=st[fig.ctl[i].k];}
   if(fig&&fig.walk){ /* which hop is being looked at, and whether there is one before it and after it */
     i=fig.walk(st);st.k=Math.max(0,Math.min(i,st.k));
-    $("lnHopAt").textContent=st.k?t("learn.hopAt",st.k,i):t("learn.hopAll");
+    $("lnHopAt").textContent=st.k?t(fig.moves?"learn.moveAt":"learn.hopAt",st.k,i):t(fig.moves?"learn.moveAll":"learn.hopAll");
     $("lnPrevHop").disabled=st.k<=0;$("lnNextHop").disabled=st.k>=i;
     $("lnRead").textContent=fig.read(st,t).join("\n");
   }
@@ -57,13 +60,15 @@ function readout(){
   for(i=0;fig&&fig.keys&&i<fig.keys.length;i++)rows[i].textContent=fig.keys[i].label(st,t);
 }
 /* Show a step of the track, or the list of steps for -1. */
-export function showStep(i){
-  var T=TRACKS[track],id,box,k;
+export function showStep(i,tr){
+  var T,id,box,k;
+  if(tr!==undefined)track=Math.max(0,Math.min(TRACKS.length-1,tr));
+  T=TRACKS[track];
   at=Math.max(-1,Math.min(T.steps.length-1,i));fig=null;st=null;dragging=false;
-  try{localStorage.setItem(AT_KEY,String(at))}catch(_){}
+  try{localStorage.setItem(AT_KEY,track+":"+at)}catch(_){}
   $("lnHome").hidden=at>=0;$("lnStep").hidden=at<0;panel.scrollTop=0;
   if(at<0){hush();return;}
-  id=T.steps[at];fig=FIGS[id];st=fig.init();
+  id=T.steps[at];fig=FIGS[id]||SPACE_FIGS[id];st=fig.init();
   $("lnCount").textContent=t("learn.count",at+1,T.steps.length);
   $("lnHead").textContent=t(partKey(T.id,id,"title"));
   $("lnText").textContent=t(partKey(T.id,id,"text"));
@@ -90,34 +95,44 @@ export function showStep(i){
     b.addEventListener("click",function(){k.set(st);if(fig.changed)fig.changed(st);readout();});
     box.appendChild(b);
   });
+  /* a step about a world has a button that goes and flies through it */
+  if(fig.world){
+    k=el("button",t("learn.fly"),"advGo");k.type="button";
+    k.addEventListener("click",function(){var j;for(j=0;j<WORLDS.length;j++)if(WORLDS[j].id===fig.world){closeLearn();requestWorld(j);return;}});
+    box.appendChild(k);
+  }
   $("lnWalk").hidden=!fig.walk;
+  $("lnPrevHop").textContent=t(fig.moves?"learn.prevMove":"learn.prevHop");$("lnNextHop").textContent=t(fig.moves?"learn.nextMove":"learn.nextHop");
   $("lnBack").disabled=at===0;
   $("lnNext").textContent=t(at===T.steps.length-1?"learn.list":"learn.next");
   readout();speak();
 }
 /* fill in the words that do not change from step to step, and the list of steps */
 function dress(){
-  var T=TRACKS[track],list=$("lnList");
+  var list=$("lnList");
   $("lnTitle").textContent=t("learn.title");$("lnClose").textContent=t("learn.close");
-  $("lnIntro").textContent=t("learn.intro");$("lnTrack").textContent=t("learn.track."+T.id);
-  $("lnPrevHop").textContent=t("learn.prevHop");$("lnNextHop").textContent=t("learn.nextHop");
+  $("lnIntro").textContent=t("learn.intro");
   $("lnBack").textContent=t("learn.back");$("lnAll").textContent=t("learn.list");
   cv.setAttribute("aria-label",t("learn.figure"));
   list.textContent="";
-  T.steps.forEach(function(id,i){
-    var b=el("button",(i+1)+". "+t(partKey(T.id,id,"title")));b.type="button";
-    b.addEventListener("click",function(){showStep(i)});list.appendChild(b);
+  /* the list of steps: each track's name, then a button for each of its steps */
+  TRACKS.forEach(function(T,ti){
+    list.appendChild(el("h3",t("learn.track."+T.id)));
+    T.steps.forEach(function(id,i){
+      var b=el("button",(i+1)+". "+t(partKey(T.id,id,"title")));b.type="button";
+      b.addEventListener("click",function(){showStep(i,ti)});list.appendChild(b);
+    });
   });
   setVoice(voiceOn);
 }
 /* Open the lessons, at the step the reader was last on. The words are fetched the first time. */
 export function openLearn(){
   loadLang(function(ok){
-    var was=-1;
+    var was=-1,tr=0,m;
     if(!ok){toast("The lessons could not be loaded.");return;}
     learnOpen=true;panel.hidden=false;dress();
-    try{was=parseInt(localStorage.getItem(AT_KEY),10);if(!(was>=0))was=-1;}catch(_){}
-    showStep(was);
+    try{m=/^(\d+):(-?\d+)$/.exec(localStorage.getItem(AT_KEY)||"");if(m){tr=+m[1];was=+m[2];}}catch(_){}
+    showStep(was,tr);
   });
 }
 export function closeLearn(){if(!learnOpen)return;hush();learnOpen=false;panel.hidden=true;wakeHud();}

@@ -15,5 +15,22 @@
  "mandel-polar": "4dc423c0",
  "mandel-ring": "9a4943ad",
  "mandel-shapes": "eb18d1d2",
- "mandel-sqpt": "35a379df"
+ "mandel-sqpt": "35a379df",
+ "space-ball": "886780c3",
+ "space-both": "d1c2261c",
+ "space-facing": "5d272ea9",
+ "space-fly": "5460c5e1",
+ "space-hollow": "701e6ca0",
+ "space-join": "c2893ec4",
+ "space-lamp": "00644512",
+ "space-levels": "c7e2ca44",
+ "space-lit": "933bb74c",
+ "space-march": "8087121e",
+ "space-picture": "d72b9e80",
+ "space-ray": "7d92a610",
+ "space-repeat": "aa87a667",
+ "space-row": "b3eec931",
+ "space-safe": "0305ec88",
+ "space-small": "e293e55c",
+ "space-third": "57931122"
 }

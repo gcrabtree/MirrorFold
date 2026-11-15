@@ -464,7 +464,8 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const { existsSync, readFileSync } = await import("node:fs"), root = new URL("../", import.meta.url);
   const { LANGS, cleanLang, fill, pickLang } = await import("../js/lang.js");
   const { TRACKS, PARTS, partKey, narration, voiceName, sayHash } = await import("../js/lessons.js");
-  const { FIGS, hopsOut, visits, sqr2, num } = await import("../js/figures.js");
+  const { FIGS: FIGS1, hopsOut, visits, sqr2, num } = await import("../js/figures.js");
+  const SP = await import("../js/figures-space.js"), FIGS = Object.assign({}, FIGS1, SP.SPACE_FIGS);
   const bad = [];
   for (const lg of LANGS) {
     const raw = JSON.parse(readFileSync(new URL("lang/" + lg + ".json", root), "utf8")), words = cleanLang(raw);
@@ -481,7 +482,7 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
       }
     }
     // every name the drawings and the panel ask for has text
-    const src = ["learn.js", "figures.js"].map(f => readFileSync(new URL("js/" + f, root), "utf8")).join("\n");
+    const src = ["learn.js", "figures.js", "figures-space.js"].map(f => readFileSync(new URL("js/" + f, root), "utf8")).join("\n");
     for (const m of src.matchAll(/"(learn\.[a-zA-Z.]+)"/g)) if (!m[1].endsWith(".") && !words[m[1]]) bad.push(lg + ": no text " + m[1]);
   }
   expect("every lesson step has its words, its drawing and an up-to-date voice (run tools/voice.py)", bad.length === 0, bad.join("; "));
@@ -493,6 +494,18 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a path settles on 1 place at c = 0, 2 at -1, 3 at -1.755", visits(0, 0) === 1 && visits(-1, 0) === 2 && visits(-1.755, 0) === 3 && visits(1, 0) === -1);
   const q = sqr2(0, 1);
   expect("the point one unit straight up squares to minus one", q[0] === -1 && q[1] === 0);
+  {
+    // the lessons' Foam is the app's Foam: the flat sum agrees with the world's own distance function on the sheet through bubble middles
+    const foam = (await import("../js/worlds.js")).WORLDS.find(w => w.id === "foam");
+    let worst = 0;
+    for (let i = 0; i < 400; i++) { const x = Math.sin(i * 1.7) * 3, y = Math.cos(i * 2.3) * 3; worst = Math.max(worst, Math.abs(SP.foam2(x, y, 0, 3, 1.25) - foam.de(x, y, 1, 0))); }
+    expect("the lessons' bubble sum on a flat sheet is the Foam world's own, cut through the middle of its bubbles", worst < 1e-9, "worst " + worst);
+    const near = () => 0.01, hit = SP.walkLine(SP.flatD, 0, -2.1, 0, 0, 1, 0, near, 8, 80), r = SP.flatRay(0, 9), miss = SP.walkLine(SP.flatD, 0, -2.1, 0, -1, 0, 0, near, 8, 80);
+    expect("a walk in safe moves arrives at a pillar, never passes through one, and gives up on a line that hits nothing",
+      SP.arrived(hit, near) && hit.every(e => e[1] > -1e-9) && !SP.arrived(miss, near) && Math.abs(Math.hypot(r[0], r[1]) - 1) < 1e-12);
+    const L = SP.lampDir(60), V = SP.view();
+    expect("the eye's three directions are at right angles and one unit long, and so is the lamp's", Math.abs(Math.hypot(...L) - 1) < 1e-12 && Math.abs(V.f[0] * V.r[0] + V.f[1] * V.r[1] + V.f[2] * V.r[2]) < 1e-12 && Math.abs(Math.hypot(...V.u) - 1) < 1e-12);
+  }
   expect("numbers are written plainly", num(0.5) === "0.50" && num(-0.001) === "-0.0010" && num(-0.0000001, 2) !== "-0.00" && num(65536) === "65536");
 }
 
