@@ -39,7 +39,22 @@ export function linkEnd(j,names){
   return {prog:p,U:U};
 }
 export function link(fs,names){return linkEnd(linkStart(fs),names);}
-const WORLD_U=["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uSurf","uPer","uFl","uFlA","uPe","uJit","uSpark","uRef","uZ","uZn","uZo","uZs","uDoor","uDoorN","uDoorT","uDoorC","uPk"];
+const WORLD_U=["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uSurf","uPer","uFl","uFlA","uPe","uJit","uSpark","uRef","uZ","uZn","uZo","uZs","uDoor","uDoorN","uDoorT","uDoorC","uPk","uPkZ","uPkO","uMw"];
+/* The built-in worlds' programs come in sets: one for each way of making them (with the chrome surface in them, with
+   the shapes mixed; see fragSource). Only one set is in use. Changing the set puts away each world's program, the half
+   made one and its distance probe under the old set's name and brings out what was made under the new one, if
+   anything; the rest are then made when they are needed, as at the start. */
+let progSet="";
+export function setProgSet(key,worlds){
+  var i,w,v;
+  if(key===progSet)return;
+  for(i=0;i<worlds.length;i++){
+    w=worlds[i];if(w.pack)continue;
+    w.sets=w.sets||{};w.sets[progSet]={prog:w.prog,U:w.U,job:w.job,probe:w.probe};
+    v=w.sets[key]||{};w.prog=v.prog;w.U=v.U;w.job=v.job||null;w.probe=v.probe;
+  }
+  progSet=key;
+}
 /* start on a world's program ahead of need; false if there is nothing to start */
 export function buildStart(w){
   if(w.prog||w.job||w.pack||(w.flat&&!zoomOk()))return false;
@@ -71,5 +86,5 @@ try{
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={overlayProg, FS_COPY, FINAL_U, filterProg, sh, link, linkStart, linkReady, linkEnd, WORLD_U, buildStart, buildReady, build, get par(){return par},set par(v){par=v}, bindTex, passTo, get vsObj(){return vsObj},set vsObj(v){vsObj=v},
+export const __dbg={overlayProg, FS_COPY, FINAL_U, filterProg, sh, link, linkStart, linkReady, linkEnd, WORLD_U, setProgSet, get progSet(){return progSet}, buildStart, buildReady, build, get par(){return par},set par(v){par=v}, bindTex, passTo, get vsObj(){return vsObj},set vsObj(v){vsObj=v},
   get pTrail(){return pTrail},set pTrail(v){pTrail=v}, get pDown(){return pDown},set pDown(v){pDown=v}, get pBlur(){return pBlur},set pBlur(v){pBlur=v}, get pFinal(){return pFinal},set pFinal(v){pFinal=v}, get pCopy(){return pCopy},set pCopy(v){pCopy=v}};

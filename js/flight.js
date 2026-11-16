@@ -6,6 +6,7 @@ import { calm } from "./dom.js";
 import { heard } from "./song.js";
 import { still } from "./still.js";
 import { packD, packFrame } from "./pack-worlds.js";
+import { pkDeep, pkZoom } from "./packing.js";
 
 export function doBoost(){cam.boost=1;}
 export function deAt(x,y,z,m){
@@ -22,6 +23,7 @@ export function measure(fr){
   var dist=pk?packD[0]:Math.abs(deAt(cam.pos[0],cam.pos[1],cam.pos[2],m));
   cam.boost*=Math.exp(-dt*1.2);if(cam.boost<0.01)cam.boost=0;
   if(heard.drop&&morph===2&&!calm&&!still)cam.boost=Math.max(cam.boost,0.6); /* a drop in the music: a surge forward, as an orb gives */
+  if(pkDeep(w))wSpeed*=pkZoom(cam.pos,w.grid); /* the descent: the top speed grows with the surroundings, so that it is the same before and after the camera is moved out */
   fr.w=w;fr.wSpeed=wSpeed;fr.pk=pk;fr.dist=dist;
 }
 

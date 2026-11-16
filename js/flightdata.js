@@ -7,7 +7,7 @@ export const FL_DT=0.5;          /* seconds between two samples of the camera */
 export const FL_MAX=240;         /* the longest flight, in seconds: about ten thousand letters of link */
 export const FL_BYTES=15;        /* bytes in a sample: seven numbers of two bytes and the world's place in the list */
 export const FL_TURN=200*Math.PI; /* the morph's clock comes round in this time (both of its waves do), so it is stored within it */
-export const FL_KINDS=["world","palette","mirrors","motion","filter","overlay","surface","land","packing"];
+export const FL_KINDS=["world","palette","mirrors","motion","filter","overlay","surface","land","packing","pulse","shapes"];
 
 function cross(a,b){return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
 function unit(v){var l=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/l,v[1]/l,v[2]/l];}

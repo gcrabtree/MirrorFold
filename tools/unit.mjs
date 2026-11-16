@@ -691,12 +691,12 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
 
 // ---- flying together (js/together.js)
 {
-  const { tgClean, tgPlace, TG_MAX, TG_TURN, TG_KINDS } = togetherM, J = JSON.stringify, none = { pa: "", lk: "", mi: "", mo: "", ov: "", sf: "", ld: "", pk: "" };
+  const { tgClean, tgPlace, TG_MAX, TG_TURN, TG_KINDS } = togetherM, J = JSON.stringify, none = { pa: "", lk: "", mi: "", mo: "", ov: "", sf: "", ld: "", pk: "", pu: "", sh: "" };
   expect("a guest's message comes through as its world and its place", J(tgClean(J({ w: "sponge", q: [0.1, -0.5, 0.5], extra: "<b>" }), false)) === J({ w: "sponge", q: [0.1, -0.5, 0.5] }));
   expect("a host's message comes through as its world, morph clock and the others", J(tgClean(J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }), true)) === J(Object.assign({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }, none)));
-  const all = { pa: "Wood", lk: "Neon", mi: "6", mo: "Melt", ov: "Rings", sf: "marble", ld: "canyon over", pk: "nested" };
+  const all = { pa: "Wood", lk: "Neon", mi: "6", mo: "Melt", ov: "Rings", sf: "marble", ld: "canyon over", pk: "nested", pu: "wave", sh: "one kind" };
   expect("and with everything the host's Journey changes, by name", J(tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, all, { zz: "x" })), true)) === J(Object.assign({ w: "a", mt: 1, o: [] }, all)));
-  expect("one of those that is not a short name drops the message", [{ pa: 7 }, { pa: "x".repeat(41) }, { lk: ["Neon"] }, { lk: "" }, { pa: null }, { mi: 6 }, { mo: {} }, { ov: "x".repeat(41) }, { sf: false }, { ld: 0 }, { pk: 2 }].every(x => tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, x)), true) === null));
+  expect("one of those that is not a short name drops the message", [{ pa: 7 }, { pa: "x".repeat(41) }, { lk: ["Neon"] }, { lk: "" }, { pa: null }, { mi: 6 }, { mo: {} }, { ov: "x".repeat(41) }, { sf: false }, { ld: 0 }, { pk: 2 }, { pu: 1 }, { sh: ["mixed"] }].every(x => tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, x)), true) === null));
   expect("the host's message names every kind Journey changes but the world, which it names as w", J(TG_KINDS.map(k => k[1]).sort()) === J(flightM.FL_KINDS.filter(k => k !== "world").sort()));
   const spot = [0.1, -0.5, 0.5, 0, 0, 1, 0, 1, 0];
   expect("a word about going to a spot comes through: from the host with who said it, from a guest with who it is for", J(tgClean(J({ c: "come", f: 2, extra: 1 }), true)) === J({ c: "come", f: 2, to: -1, w: "", p: null }) && J(tgClean(J({ c: "no", to: 0, f: 3 }), false)) === J({ c: "no", f: 0, to: 0, w: "", p: null }));
@@ -770,43 +770,86 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
 
 // ---- packing: how the worlds made of one shape repeated set their copies out (js/packing.js)
 {
-  const pk = await import("../js/packing.js"), { WORLDS } = await import("../js/worlds.js"), { tile } = await import("../js/dom.js"), { fragSource } = await import("../js/shaders.js");
-  const { pkBox } = pk.__dbg, packed = WORLDS.filter(w => w.packs);
+  const pk = await import("../js/packing.js"), { WORLDS } = await import("../js/worlds.js"), { tile } = await import("../js/dom.js"), sh = await import("../js/shaders.js"), { fragSource } = sh;
+  const { pkBox } = pk.__dbg, packed = WORLDS.filter(w => w.packs), names = pk.PACKINGS.map(k => k.name);
   let sd = 5; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
-  expect("eight worlds are made of one shape repeated, and each has a distance worked out here", packed.length === 8 && packed.every(w => typeof w.de === "function" && !w.volume && !w.flat));
-  expect("only those worlds' shaders carry the packing", WORLDS.every(w => (fragSource(w).indexOf("uniform float uPk;") >= 0) === !!w.packs));
+  expect("eight worlds are made of one shape repeated, and each has its shape both ways, its radius, its grid and two other kinds to be mixed with",
+    packed.length === 8 && packed.every(w => typeof w.de === "function" && typeof w.sde === "function" && Array.isArray(w.shape) && w.rad > 0 && w.grid > 0 && !w.volume && !w.flat &&
+      w.mix.length === 2 && w.mix.every(id => id !== w.id && packed.some(x => x.id === id)) && w.mix[0] !== w.mix[1]));
+  expect("only those worlds' shaders carry the packing", WORLDS.every(w => (fragSource(w).indexOf("uniform float uPk,") >= 0) === !!w.packs));
+  expect("the packings are these seven, the descent last", names.join() === "grid,scattered,nested,sponge,helix,shells,descent" && pk.PK_DEEP === 6);
   const g = pk.pkP(7.3, -2.1, 0.4, 3.4, 1.42);
   expect("the grid is the old one: a copy every P, each the mirror of its neighbour", pk.packing === 0 && g[3] === 0 && g[0] === tile(7.3, 3.4) && g[1] === tile(-2.1, 3.4) && g[2] === tile(0.4, 3.4) && pk.pkD(0.37) === 0.37);
-  expect("the grid's period is twice P, and a packing's is that for each of its large boxes", pk.pkPer(3).join() === "6,6,6" && (pk.setPackingNow(2), pk.pkPer(3).join()) === "24,24,24" && pk.pkMul(packed[0]) === pk.PK_N && pk.pkMul(WORLDS[0]) === 1);
+  const pers = names.map((_, i) => (pk.setPackingNow(i), pk.pkPer(1).map(v => Math.round(v * 100) / 100).join()));
+  expect("each packing's period, for a grid of 1", pers.join(" ") === "2,2,2 8,8,8 8,8,8 9,9,9 4,4,3 3.2,3.2,3.2 12,12,12", pers.join(" "));
+  expect("what is sized by the period is sized alike in every packing", names.every((_, i) => (pk.setPackingNow(i), Math.abs(Math.min(...packed[0].period(0)) / 2 / pk.pkMul(packed[0]) - packed[0].grid) < 1e-9)) && pk.pkMul(WORLDS[0]) === 1);
   const bad = [];
-  for (let mode = 1; mode < pk.PACKINGS.length; mode++) {
+  // the three packings worked out from boxes: what a box holds stays inside it, clear of its walls by the gap, and the boxes come in the sizes the packing has
+  for (let mode = 1; mode < 4; mode++) {
     pk.setPackingNow(mode);
-    // what a box holds stays inside it, clear of its walls by the gap, and the boxes come in the sizes the packing has
-    const o = new Array(12), sizes = {}; let out = 0, empty = 0;
+    const o = new Array(14), sizes = {}; let out = 0, empty = 0;
     for (let i = 0; i < 3000; i++) {
-      const P = 3.4, R = 1.42; pkBox(rnd() * 80 - 40, rnd() * 80 - 40, rnd() * 80 - 40, P, R, o);
+      const P = 3.4; pkBox(rnd() * 80 - 40, rnd() * 80 - 40, rnd() * 80 - 40, P, o);
       sizes[o[11] / P] = 1; empty += o[5];
-      for (let k = 0; k < 3; k++) if (Math.abs(o[k] - o[8 + k]) + o[3] * R > 0.5 * o[11] - pk.PK_GAP * P + 1e-9) out++;
+      for (let k = 0; k < 3; k++) if (Math.abs(o[k] - o[8 + k]) + o[3] > 0.5 * o[11] - pk.PK_GAP * P + 1e-9) out++;
     }
-    if (out) bad.push(pk.PACKINGS[mode].name + ": " + out + " copies reach their box's walls");
-    if (Object.keys(sizes).sort().join() !== (mode === 1 ? "1" : "0.5,1,2")) bad.push(pk.PACKINGS[mode].name + ": box sizes " + Object.keys(sizes).sort().join());
-    if (!(empty > 150 && empty < 750)) bad.push(pk.PACKINGS[mode].name + ": " + empty + " of 3000 boxes empty");
-    for (const w of packed) {
-      const per = w.period(0); let np = 0, over = 0, low = 0;
-      for (let i = 0; i < 400; i++) {
-        const x = rnd() * 60 - 30, y = rnd() * 60 - 30, z = rnd() * 60 - 30, m = rnd() * 2 - 1;
-        pk.setPkPlain(false); const a = w.de(x, y, z, m), b = w.de(x + per[0], y - 2 * per[1], z + 3 * per[2], m);
-        pk.setPkPlain(true); const p = w.de(x, y, z, m), p2 = w.de(x - per[0], y + per[1], z, m);
-        if (Math.abs(a - b) > 1e-6 || Math.abs(p - p2) > 1e-6) np++;
-        if (p > a + 1e-9 && a < 0.5 * per[0] / (2 * pk.PK_N) - 1e-9) over++; // the shader's answer may pass JavaScript's only where JavaScript stops at half a grid step
-        if (a > 0 && p <= 0) low++;
+    if (out) bad.push(names[mode] + ": " + out + " copies reach their box's walls");
+    if (Object.keys(sizes).sort().join() !== ["1", "0.5,1,2", "1,3"][mode - 1]) bad.push(names[mode] + ": box sizes " + Object.keys(sizes).sort().join());
+    if (!(mode === 3 ? empty > 900 && empty < 1500 : empty > 150 && empty < 750)) bad.push(names[mode] + ": " + empty + " of 3000 boxes empty");
+  }
+  // every packing, with the shapes of one kind and together, then mixed and in a wave
+  for (const opt of [[false, false], [true, true]]) {
+    pk.setPkWave(opt[0]); pk.setPkMix(opt[1]); pk.pkTick(123.4);
+    for (let mode = 1; mode < names.length; mode++) {
+      pk.setPackingNow(mode);
+      for (const w of packed) {
+        const per = w.period(0), tag = names[mode] + (opt[1] ? " mixed, wave " : " ") + w.id; let np = 0, over = 0, low = 0, thru = 0, kinds = {};
+        for (let i = 0; i < 300; i++) {
+          const x = rnd() * 60 - 30, y = rnd() * 60 - 30, z = rnd() * 60 - 30, m = rnd() * 2 - 1;
+          pk.setPkPlain(false); const a = w.de(x, y, z, m);
+          pk.setPkPlain(true); const p = w.de(x, y, z, m);
+          kinds[pk.pkP(x, y, z, w.grid, 1, 1, 1, m)[4]] = 1;
+          if (mode < pk.PK_DEEP) { // it repeats exactly
+            pk.setPkPlain(false); const b = w.de(x + per[0], y - 2 * per[1], z + 3 * per[2], m);
+            pk.setPkPlain(true); const p2 = w.de(x - per[0], y + per[1], z, m);
+            if (Math.abs(a - b) > 1e-6 || Math.abs(p - p2) > 1e-6) np++;
+          } else if (Math.abs(w.de(3 * x, 3 * y, 3 * z, m) - 3 * p) > 1e-6 * (1 + Math.abs(p)) || Math.abs(w.de(x / 9, y / 9, z / 9, m) - p / 9) > 1e-6 * (1 + Math.abs(p))) np++; // the descent is the same three times larger
+          if (mode < 4 && p > a + 1e-9 && a < 0.5 * w.grid - 1e-9) over++; // the shader's answer may pass JavaScript's only where JavaScript stops at half a grid step
+          if (mode > 3 && Math.abs(p - a) > 1e-12) over++; // where there are no boxes the two answer alike
+          if (a > 0 && p <= 0) low++;
+          // a step as long as the shader's distance, any way, must not end inside a shape
+          if (p > 0.02) for (let t = 0; t < 3; t++) {
+            let u = rnd() * 2 - 1, f = rnd() * 6.2831853, r = Math.sqrt(1 - u * u), q = w.de(x + p * r * Math.cos(f), y + p * r * Math.sin(f), z + p * u, m);
+            if (q < -0.03 * Math.max(1, p)) thru++;
+          }
+        }
+        if (np || over || low || thru) bad.push(tag + ": " + np + " not repeating, " + over + " where the shader's distance and the open space disagree, " + low + " where it is inside and the open space is not, " + thru + " steps that end inside a shape");
+        if (opt[1] && Object.keys(kinds).sort().join() !== "0,1,2") bad.push(tag + ": kinds " + Object.keys(kinds).join());
+        if (!opt[1] && Object.keys(kinds).join() !== "0") bad.push(tag + ": kinds " + Object.keys(kinds).join());
       }
-      if (np || over || low) bad.push(pk.PACKINGS[mode].name + " " + w.id + ": " + np + " not repeating, " + over + " where the shader's distance passes the open space, " + low + " where it is inside and the open space is not");
     }
   }
-  pk.setPkPlain(false); pk.setPackingNow(0);
-  expect("in each packing every copy keeps inside its box, the worlds repeat exactly, and the shader's distance never passes the open space", bad.length === 0, bad.join("; "));
+  pk.setPkPlain(false); pk.setPkWave(false); pk.setPkMix(false); pk.setPackingNow(0);
+  expect("in each packing every copy keeps inside its box, the worlds repeat exactly (the descent three times larger), a step as long as the shader's distance never ends in a shape, and mixed shapes are of three kinds", bad.length === 0, bad.join("; "));
   expect("a packing that is not in the list is the grid", (pk.setPackingNow(9), pk.packing) === 0 && (pk.setPackingNow(-1), pk.packing) === 0);
+  // the wave: together, a copy's morph is the morph; in a wave it is the morph of some seconds ago
+  const T = 77.7, mAt = t => Math.sin(t * 0.09) + 0.15 * Math.sin(t * 0.31);
+  pk.pkTick(T);
+  expect("together, every copy is at the morph's own point", pk.pkMo(0.321, 12) === 0.321);
+  pk.setPkWave(true);
+  expect("in a wave, a copy is where the morph was that many seconds ago", [0, 3.3, 17.5, 35].every(f => Math.abs(pk.pkMo(9, f) - mAt(T - f)) < 1e-12));
+  pk.setPkWave(false);
+  // the descent: the camera is kept between two distances from the centre, and its surroundings measured by one number
+  const cp = [0.3, -0.2, 0.1];
+  expect("a camera near the centre of the descent is moved three times as far out, one far out a third as far, and one between is left", pk.pkJump(cp, 2) === 3 && Math.abs(cp[0] - 0.9) < 1e-12 &&
+    (cp[0] = 0, cp[1] = 9.5, cp[2] = 0, Math.abs(pk.pkJump(cp, 2) - 1 / 3) < 1e-12) && Math.abs(cp[1] - 9.5 / 3) < 1e-12 && pk.pkJump(cp, 2) === 1 && pk.pkJump([0, 0, 0], 2) === 1);
+  expect("and the stretch runs from 1 to 3 across that range", Math.abs(pk.pkZoom([0, 3, 0], 2) - 1) < 1e-12 && Math.abs(pk.pkZoom([0, 0, 8.999], 2) - 2.99967) < 1e-4);
+  // the programs: mixed shapes put three shapes in a world's shader, and chrome is in it only when asked for
+  const jl = packed.find(w => w.id === "julia"), plain = fragSource(jl);
+  pk.setPkMix(true); const mixed = fragSource(jl); pk.setPkMix(false);
+  sh.setChrome(true); const chr = fragSource(jl), chrCloud = fragSource(WORLDS.find(w => w.volume && !w.flat)); sh.setChrome(false);
+  expect("a mixed world's shader holds its own shape and two others, a plain one only its own", plain.indexOf("float sh0(") > 0 && plain.indexOf("float sh1(") < 0 && mixed.indexOf("float sh2(") > 0 && mixed.indexOf("SHAPE") < 0);
+  expect("the chrome surface is in the shaders only while it is in use, and never in a cloud world's", plain.indexOf("#define CHROME") < 0 && chr.indexOf("#define CHROME") > 0 && chrCloud.indexOf("#define CHROME") < 0);
 }
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {

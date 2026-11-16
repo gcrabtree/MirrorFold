@@ -1,5 +1,5 @@
 /* The groups of controls that open one at a time, opening the setup panel, and the remaining buttons. */
-import { scene } from "./choose.js";
+import { progSync, scene } from "./choose.js";
 import { $, toast } from "./dom.js";
 import { press, wakeHud } from "./input.js";
 import { adv, openAdv } from "./journey-panel.js";
@@ -22,7 +22,11 @@ export function setMenu(name){
   $("hud").setAttribute("data-menu",menu);
 }
 export function setFx(i){sel.fi=FX[i]?i:0;$("bFx").textContent="FX "+FX[sel.fi].name;}
-export function setSurface(i){sel.si=SURFACES[i]?i:0;$("bSurf").textContent="Surface "+SURFACES[sel.si].name;}
+export function setSurface(i){
+  sel.si=SURFACES[i]?i:0;
+  if(!progSync()){sel.si=0;progSync();toast("The chrome surface does not work on this device.");} /* chrome is in a set of programs of its own (js/programs.js) */
+  $("bSurf").textContent="Surface "+SURFACES[sel.si].name;
+}
 
 
 

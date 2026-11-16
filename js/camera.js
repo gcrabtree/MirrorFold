@@ -4,6 +4,7 @@ import { calm } from "./dom.js";
 import { keys, stick } from "./input.js";
 import { landMode } from "./land.js";
 import { started } from "./loop.js";
+import { pkDeep, pkJump } from "./packing.js";
 import { still } from "./still.js";
 import { stereo } from "./vr.js";
 export const cam={
@@ -82,6 +83,9 @@ export function move(fr){
     var dl=per[i]*Math.floor(cam.pos[i]/per[i]+.5); /* every world repeats, so wrapping by one period is invisible */
     cam.pos[i]-=dl;
   }
+  /* the descent: the world is the same three times larger, so a camera that has come in near the centre is moved three times as far out, and its speed with it; nothing shows */
+  fr.jump=pkDeep(w)?pkJump(cam.pos,w.grid):1;
+  if(fr.jump!==1)for(i=0;i<3;i++)cam.vel[i]*=fr.jump;
   cam.curSpeed=Math.hypot(cam.vel[0],cam.vel[1],cam.vel[2]);
   fr.mx=mx;fr.my=my;fr.mz=mz;fr.vf=vf;fr.per=per;
   fr.spN=Math.min(1,cam.curSpeed/(wSpeed*cam.baseSpeed+1e-6)); /* speed as a part of the most this world allows */

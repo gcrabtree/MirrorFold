@@ -5,7 +5,7 @@
 import { scene } from "./choose.js";
 import { clock, morphValue } from "./clock.js";
 import { gl } from "./dom.js";
-import { packing } from "./packing.js";
+import { packing, pkMix, pkMw, pkWave } from "./packing.js";
 import { bindTex, link, pCopy, passTo } from "./programs.js";
 import { fragSource } from "./shaders.js";
 import { tA, target } from "./targets.js";
@@ -25,7 +25,7 @@ export function probeBuild(w){
 "  float v=clamp((map(p)+8.0)/16.0,0.0,0.999999);",
 "  vec3 e=fract(v*vec3(1.0,255.0,65025.0));e.xy-=e.yz/255.0;",
 "  gl_FragColor=vec4(e,1.0);",
-"}"].join("\n"),["uPts","uM","uTime","uPk"]);}catch(e){w.probe=null;}
+"}"].join("\n"),["uPts","uM","uTime","uPk","uPkO","uMw"]);}catch(e){w.probe=null;}
   return w.probe;
 }
 export function probe(w,m,n){ /* the distances at the first n points in probePts go into probeOut; false if this world cannot be probed */
@@ -33,6 +33,7 @@ export function probe(w,m,n){ /* the distances at the first n points in probePts
   var P=probeBuild(w),i;if(!P)return false;
   if(!probeT)probeT=target(16,1);
   passTo(probeT,P);gl.uniform3fv(P.U.uPts,probePts);gl.uniform1f(P.U.uM,m);gl.uniform1f(P.U.uTime,clock.time);gl.uniform1f(P.U.uPk,packing);
+  if(w.packs){var mw=pkMw();gl.uniform2f(P.U.uPkO,pkWave?1:0,pkMix?1:0);gl.uniform4f(P.U.uMw,mw[0],mw[1],mw[2],mw[3]);}
   gl.drawArrays(gl.TRIANGLES,0,3);
   gl.readPixels(0,0,16,1,gl.RGBA,gl.UNSIGNED_BYTE,probePx);
   for(i=0;i<n;i++)probeOut[i]=(probePx[4*i]/255+probePx[4*i+1]/65025+probePx[4*i+2]/16581375)*16-8;

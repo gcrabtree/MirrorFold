@@ -1,7 +1,7 @@
 /* Journey: templates and sets, their storage, the clocks that say when to change something, and the autopilot. */
 import { cam, norm } from "./camera.js";
-import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay, setPacking } from "./choose.js";
-import { PACKINGS, packing } from "./packing.js";
+import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay, setMix, setPacking, setPulse } from "./choose.js";
+import { PACKINGS, packing, pkDeep, pkMix, pkWave } from "./packing.js";
 import { clock } from "./clock.js";
 import { setSurface } from "./controls.js";
 import { $, toast } from "./dom.js";
@@ -62,7 +62,7 @@ export function allS(){return BUILTIN_S.concat(store.sets)}
 export function findT(n){var a=allT();for(var i=0;i<a.length;i++)if(a[i].name===n)return a[i];return null;}
 export function findS(n){var a=allS();for(var i=0;i<a.length;i++)if(a[i].name===n)return a[i];return null;}
 
-export function jCur(k){return k==="world"?scene.world.id:k==="palette"?PALETTES[sel.pi].name:k==="mirrors"?String(mirrors[sel.mi]):k==="motion"?MOTIONS[sel.moi].name:k==="filter"?LOOKS[sel.lki].name:k==="surface"?SURFACES[sel.si].name:k==="packing"?PACKINGS[packing].name:k==="land"?(landMode?LK[landKind].id+(landMode===2?" over":" alone"):"none"):OVERLAYS[sel.ovi].name;}
+export function jCur(k){return k==="world"?scene.world.id:k==="palette"?PALETTES[sel.pi].name:k==="mirrors"?String(mirrors[sel.mi]):k==="motion"?MOTIONS[sel.moi].name:k==="filter"?LOOKS[sel.lki].name:k==="surface"?SURFACES[sel.si].name:k==="packing"?PACKINGS[packing].name:k==="pulse"?(pkWave?"wave":"together"):k==="shapes"?(pkMix?"mixed":"one kind"):k==="land"?(landMode?LK[landKind].id+(landMode===2?" over":" alone"):"none"):OVERLAYS[sel.ovi].name;}
 export function jNone(k){return k==="mirrors"?"0":k==="surface"?"plain":"none";}
 function jIndex(k,key){var o=catOf(k).opts;for(var i=0;i<o.length;i++)if(o[i][0]===key)return i;return -1;}
 export function jApply(k,key,now){ /* false means it could not start yet (a transition is running) and should be retried. With now, a change that would go behind a transition is made at once (a recorded flight setting up its start). */
@@ -72,6 +72,8 @@ export function jApply(k,key,now){ /* false means it could not start yet (a tran
   if(k==="mirrors")return warpThen(function(){setMirrors(i)});
   if(k==="surface")return warpThen(function(){setSurface(i)}); /* behind a transition, as mirrors are: the whole picture changes at once */
   if(k==="packing")return warpThen(function(){setPacking(i)}); /* every shape moves, so it is done out of sight, and the camera is put in open space */
+  if(k==="pulse")return warpThen(function(){setPulse(i===1)}); /* the shapes change at once, so these two are done out of sight too */
+  if(k==="shapes")return warpThen(function(){setMix(i===1)});
   if(k==="land")return warpThen(function(){
     var sp=key.split(" "),kk;for(kk=0;kk<LK.length;kk++)if(LK[kk].id===sp[0])setLandKind(kk);
     setLand(key==="none"?0:sp[1]==="over"?2:1);
@@ -122,7 +124,7 @@ export function jLess(){
   if(jApply(k,jPick(k,c,cur,jPool(k,c))))jReset(k);else J[k].t=J[k].next+1; /* a transition is running: change as soon as it ends */
   toast("Less of "+JNAME[k]+" "+name+".");
 }
-export const JNAME={world:"the world",palette:"the palette",mirrors:"mirrors",motion:"the motion",filter:"the filter",overlay:"the overlay",surface:"the surface",land:"the land",packing:"the packing"};
+export const JNAME={world:"the world",palette:"the palette",mirrors:"mirrors",motion:"the motion",filter:"the filter",overlay:"the overlay",surface:"the surface",land:"the land",packing:"the packing",pulse:"the pulse",shapes:"the shapes"};
 export function applyTemplate(t,announce){
   jt=t;
   CATS.forEach(function(c){
@@ -184,6 +186,11 @@ export function autopilot(fr){
     var dR=pk?packD[1]:pd(1,0),dL=pk?packD[2]:pd(-1,0),dU=pk?packD[3]:pd(0,1),dD=pk?packD[4]:pd(0,-1);
     cam.lookX+=((dR-dL)/(dR+dL+1e-6)*1.1+0.22*Math.sin(clock.time*0.13)+0.12*Math.sin(clock.time*0.37+1.3))*dt*hands;
     cam.lookY+=((dD-dU)/(dD+dU+1e-6)*1.1+0.16*Math.sin(clock.time*0.11+2.0)+0.10*Math.sin(clock.time*0.29))*dt*hands;
+    if(pkDeep(fr.w)){ /* the descent: lean toward the centre, so that the flight goes in */
+      var cr=Math.hypot(cam.pos[0],cam.pos[1],cam.pos[2])||1,cx=-(cam.pos[0]*cam.R[0]+cam.pos[1]*cam.R[1]+cam.pos[2]*cam.R[2])/cr,cy=-(cam.pos[0]*cam.Up[0]+cam.pos[1]*cam.Up[1]+cam.pos[2]*cam.Up[2])/cr,cn;
+      if(cam.pos[0]*cam.F[0]+cam.pos[1]*cam.F[1]+cam.pos[2]*cam.F[2]>0){cn=Math.hypot(cx,cy)||1;cx/=cn;cy/=cn;} /* facing away from it: turn round */
+      cam.lookX+=0.9*cx*dt*hands;cam.lookY-=0.9*cy*dt*hands;
+    }
   }
 }
 
@@ -212,7 +219,7 @@ export function stepJourney(dt){
   }
 }
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */
-export const J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22},surface:{base:45},land:{base:80},packing:{base:90}};
+export const J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22},surface:{base:45},land:{base:80},packing:{base:90},pulse:{base:120},shapes:{base:150}};
 export function jReset(k){J[k].t=0;J[k].next=J[k].base*(0.8+0.4*Math.random());}
 function jResetAll(){for(var k in J)jReset(k);}
 
@@ -220,7 +227,7 @@ function jResetAll(){for(var k in J)jReset(k);}
 export function init(){
 jResetAll();
 /* ---------- journey templates ----------
-   A template sets, for each of nine categories, whether a journey leaves it alone, forces it off, or changes it at random,
+   A template sets, for each of eleven categories, whether a journey leaves it alone, forces it off, or changes it at random,
    how often, and from which options. A set plays several templates in turn. */
 CATS=[
  {k:"world",label:"Worlds",every:55,modes:["keep","random"],opts:WORLDS.map(function(w){return [w.id,w.name]})},
@@ -233,7 +240,10 @@ CATS=[
  /* the land: "none", or a landscape's id followed by " alone" or " over" (over the world) */
  {k:"land",label:"Land",every:80,modes:["off","keep","random"],opts:[].concat.apply([["none","none"]],LK.map(function(K){var n=K.name.replace("Land is ","");return [[K.id+" alone",n+", alone"],[K.id+" over",n+", over the world"]]}))},
  /* how the worlds made of one shape repeated set their copies out; it shows only in those worlds */
- {k:"packing",label:"Packing",every:90,modes:["keep","random"],opts:PACKINGS.map(function(o){return [o.name,o.name]})}
+ {k:"packing",label:"Packing",every:90,modes:["keep","random"],opts:PACKINGS.map(function(o){return [o.name,o.name]})},
+ /* in those worlds: whether the copies change shape together or in a wave, and whether they are all one kind */
+ {k:"pulse",label:"Pulse",every:120,modes:["keep","random"],opts:[["together","together"],["wave","wave"]]},
+ {k:"shapes",label:"Shapes",every:150,modes:["keep","random"],opts:[["one kind","one kind"],["mixed","mixed"]]}
 ];
 BUILTIN_T=[
  {name:"Classic",mirrors:{mode:"off"}},

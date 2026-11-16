@@ -99,7 +99,7 @@ export function cleanWorld(src){
    one that is not known is passed over. Nothing here is used as an address or put on the page as markup. */
 export function cleanScene(src){
   if(!src||typeof src!=="object"||Array.isArray(src))return null;
-  if(typeof src.spot!=="string"||!/^[a-z]{1,40}-[0-9a-z]{16}$/.test(src.spot))return null;
+  if(typeof src.spot!=="string"||!/^[a-z]{1,40}-[0-9a-z]{16,17}$/.test(src.spot))return null;
   var out={spot:src.spot},names=["palette","motion","filter","overlay"],i,v;
   for(i=0;i<names.length;i++){
     v=src[names[i]];if(v===undefined||v===null)continue;

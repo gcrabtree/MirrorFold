@@ -44,6 +44,7 @@ export function stepSpark(fr){
   U[0]=U[1]=U[2]=U[3]=0;
   if(spark.life<=0)return;
   if(sparkBar(w)){spark.life=0;return;}
+  if(fr.jump!==1)for(i=0;i<3;i++){spark.p[i]*=fr.jump;spark.v[i]*=fr.jump;} /* the descent: it is moved out with the camera */
   if(!still){
     spark.life-=dt;
     for(i=0;i<3;i++)spark.p[i]+=spark.v[i]*dt;

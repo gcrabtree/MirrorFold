@@ -143,6 +143,7 @@ export function stepFlits(fr){
   var dt=fr.dt,m=fr.m,w=fr.w,per=fr.per,s=Math.max(0.01,Math.min(0.6,fr.dist)),k,i,f,q,a,t;
   var de=function(x,y,z2,mm){return w.de(x,y,z2,mm)};
   for(k=0;k<NFLIT;k++){flitU[4*k]=flitU[4*k+1]=flitU[4*k+2]=flitU[4*k+3]=0;flitA[k]=0;}
+  if(fr.jump!==1)for(k=0;k<NFLIT;k++)for(i=0;i<3;i++)flits[k].p[i]*=fr.jump; /* the descent: they are moved out with the camera */
   if(!flitsOn||!started||flitBar(w)){for(k=0;k<NFLIT;k++)flits[k].wait=0.5+2*Math.random();return;}
   for(k=0;k<NFLIT;k++){
     f=flits[k];

@@ -48,6 +48,7 @@ export function collectOrb(){
 export function stepOrb(fr){
   var dt=fr.dt,m=fr.m,w=fr.w,per=fr.per,i;
   var orbU=fr.orbU;orbU[0]=orbU[1]=orbU[2]=orbU[3]=0;
+  if(scene.orb&&fr.jump!==1){for(i=0;i<3;i++)scene.orb.p[i]*=fr.jump;scene.orb.r*=fr.jump;} /* the descent: the orb is moved out with the camera */
   if(scene.orb&&orbsOn&&started&&!vidAlone()&&!w.flat){ /* a zoom world is a flat picture: nowhere to hide an orb */
     /* with the video filling the screen there is no world to find an orb in */
     var oq=[0,0,0],od=0;

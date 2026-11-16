@@ -6,6 +6,7 @@
 import { cam } from "./camera.js";
 import { scene, setWorldNow } from "./choose.js";
 import { clock } from "./clock.js";
+import { pkDeep } from "./packing.js";
 import { $, toast } from "./dom.js";
 import { FL_BYTES, FL_DT, FL_KINDS, FL_MAX, flAt, flPack, flSample, flUnpack, flWrite } from "./flightdata.js";
 import { press, wakeHud } from "./input.js";
@@ -32,6 +33,7 @@ function label(){
 /* Start recording: note everything that is showing, and with the built-in music start a new song whose number is kept. */
 export function flightRecStart(){
   if(tape)return;
+  if(pkDeep(scene.world)){toast("A flight cannot be recorded in the descent: its places are moved outward as it goes. Choose another packing.");return;}
   stopPlay("");
   tape={t:0,next:0,n:0,bytes:new Uint8Array((FL_MAX/FL_DT+2)*FL_BYTES),ev:[],worlds:[],was:{},seed:0};
   FL_KINDS.forEach(function(k){tape.was[k]=jCur(k);tape.ev.push([0,k,tape.was[k]]);});
@@ -55,6 +57,7 @@ export function flightRecStop(){
 function recFrame(fr){
   var w=scene.world,i,k,now;
   if(still)return;
+  if(pkDeep(w)){flightRecStop();toast("The recording ended where the descent began: a flight cannot be recorded in it.");return;}
   for(i=0;i<FL_KINDS.length;i++){
     k=FL_KINDS[i];now=jCur(k);
     /* a change made behind a transition happened at the transition's peak, half a second after it was asked for; it is noted at the asking, so that played back it lands at the same moment */

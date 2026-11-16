@@ -10,7 +10,7 @@
    Only worlds with surfaces and a distance worked out here can have one: not a zoom, a cloud or a pack world. */
 import { cam } from "./camera.js";
 import { requestWorld, scene, setWorldNow } from "./choose.js";
-import { packing } from "./packing.js";
+import { packing, pkDeep } from "./packing.js";
 import { $, toast } from "./dom.js";
 import { flightPlaying } from "./flightplay.js";
 import { press, wakeHud } from "./input.js";
@@ -95,7 +95,7 @@ export function doorBox(c,r,fov,w,h){
 function doorMay(i){
   var to=WORLDS[i];
   return started&&!door&&!still&&!stereo&&!landMode&&!vidAlone()&&tr.warpDir===0&&!tgGuest()&&!flightPlaying()&&
-    doorWorld(scene.world)&&doorWorld(to)&&to!==scene.world;
+    doorWorld(scene.world)&&doorWorld(to)&&to!==scene.world&&!pkDeep(scene.world)&&!pkDeep(to); /* not in the descent, where a ring would have to be moved out with the camera */
 }
 /* Open a doorway from here to world number i. With warp, the world is changed the old way if nobody goes through.
    False if there cannot be one; true once it is on its way (it appears when a place has been found for it). */

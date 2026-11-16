@@ -3,6 +3,7 @@ import { scrubFollow } from "./audio.js";
 import { move, steering, turn } from "./camera.js";
 import { scene } from "./choose.js";
 import { clock, morphValue, tickClock } from "./clock.js";
+import { pkTick } from "./packing.js";
 import { morph } from "./controls.js";
 import { $, canvas, errBox, toast } from "./dom.js";
 import { measure } from "./flight.js";
@@ -55,6 +56,7 @@ const notes={
   uz:0,                        /* the forward part of it before any drift or autopilot is added */
   lx:0,ly:0,gr:0,              /* how far the view turned this frame, across and up and down, and how far two fingers twisted it */
   per:null,spN:0,              /* the world's period, and speed as a part of the most the world allows */
+  jump:1,                      /* the descent: what the camera's place was multiplied by this frame, 1 for no move (js/packing.js) */
   orbU:[0,0,0,0],              /* where to draw the orb, and its size (0 for none) */
   sparkU:[0,0,0,0],            /* the same for the thrown light */
   fx:null,wHue:0,              /* the FX setting and the world's hue shift */
@@ -83,6 +85,7 @@ function frame(now){
   togetherClock(notes); /* flying together: a guest takes the host's world and morph (js/together.js) */
   stepWarp(dt);
   notes.m=morphValue();
+  pkTick(clock.morphT); /* the packing's wave needs the morph's clock, to work out the morph some seconds ago (js/packing.js) */
 
   /* flying */
   measure(notes);

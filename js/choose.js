@@ -2,15 +2,17 @@
 import { cam } from "./camera.js";
 import { morphValue } from "./clock.js";
 import { $, calm, errBox, toast } from "./dom.js";
+import { press } from "./input.js";
 import { wakeHud } from "./input.js";
 import { started } from "./loop.js";
 import { spawnOrb } from "./orbs.js";
 import { deMany } from "./pack-worlds.js";
-import { PACKINGS, packing, pkOn, setPackingNow } from "./packing.js";
+import { PACKINGS, packing, pkDeep, pkMix, pkOn, pkWave, setPackingNow, setPkMix, setPkWave } from "./packing.js";
 import { fillPalettes, setPalette } from "./palettes.js";
-import { build } from "./programs.js";
+import { build, setProgSet } from "./programs.js";
+import { setChrome } from "./shaders.js";
 import { applySpot, fromHash } from "./spots.js";
-import { LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
+import { LOOKS, MOTIONS, OVERLAYS, OVS, SURFACES, mirrors, sel } from "./state.js";
 import { beginWarp, tr, warpThen } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 import { zoomEnter } from "./zoom.js";
@@ -47,6 +49,7 @@ export function fillWorlds(){selWorld.textContent="";WORLDS.forEach(function(w,i
 function placeCam(w){
   var fixed=w.start&&!pkOn(w),m=morphValue();
   cam.pos=fixed?w.start.slice():[0,0,0];cam.vel=[0,0,0];
+  if(pkDeep(w)){cam.pos=[.12*w.grid,.08*w.grid,2.5*w.grid];cam.F=[0,0,-1];cam.R=[-1,0,0];cam.Up=[0,1,0];return;} /* the descent: between two cages, looking in along one of the six ways through */
   if(!fixed||w.de(cam.pos[0],cam.pos[1],cam.pos[2],m)<0.02){
     var per=w.period(m),best=-1,ns=w.pack?96:300,sc=new Float32Array(3*ns),k;
     for(k=0;k<3*ns;k++)sc[k]=(Math.random()-.5)*per[k%3];
@@ -62,6 +65,39 @@ export function setPacking(i){
   $("bPack").textContent="Packing "+PACKINGS[packing].name;
   try{localStorage.setItem("mirrorfold-packing",PACKINGS[packing].name)}catch(_){}
   if(w&&w.packs&&was!==packing){placeCam(w);spawnOrb();}
+}
+/* The programs in use are the set for what is chosen now: the chrome surface, and mixed shapes (js/programs.js). The
+   world in use is made at once if it has not been made that way yet. False if it cannot be made. */
+export function progSync(){
+  var c=SURFACES[sel.si].name==="chrome";
+  setChrome(c);setProgSet((pkMix?"m":"")+(c?"c":""),WORLDS);
+  if(scene.world&&!scene.world.pack){try{build(scene.world)}catch(_){return false;}}
+  return true;
+}
+/* The pulse: the copies in a packing change shape together, or in a wave (js/packing.js). Kept in this browser. Each
+   copy's shape changes at once, so the camera is put in open space again. */
+export function setPulse(on){
+  var w=scene.world,was=pkWave;
+  setPkWave(on);
+  $("bPulse").textContent="Pulse "+(pkWave?"wave":"together");press($("bPulse"),pkWave);
+  try{localStorage.setItem("mirrorfold-pulse",pkWave?"wave":"together")}catch(_){}
+  if(w&&pkOn(w)&&was!==pkWave){placeCam(w);spawnOrb();}
+}
+/* The shapes: all one kind, or mixed, where the world's own shape shares the space with two others. Kept in this
+   browser. Mixed needs a larger program for each world, made when it is first wanted. */
+export function setMix(on){
+  var w=scene.world,was=pkMix;
+  setPkMix(on);
+  if(!progSync()){setPkMix(false);progSync();toast("Mixed shapes do not work on this device.");}
+  $("bMix").textContent="Shapes "+(pkMix?"mixed":"one kind");press($("bMix"),pkMix);
+  try{localStorage.setItem("mirrorfold-shapes",pkMix?"mixed":"one kind")}catch(_){}
+  if(w&&pkOn(w)&&was!==pkMix){placeCam(w);spawnOrb();}
+}
+/* The user's choice of either: behind a transition where it shows, and with a word of why nothing is seen where it does not. */
+function requestOpt(set,on,name){
+  var fn=function(){set(on)};
+  if(!pkOn(scene.world)){fn();toast(name+" is set. It shows in every packing but the grid, in "+WORLDS.filter(function(w){return w.packs}).map(function(w){return w.name}).join(", ")+".");return;}
+  if(!started||calm||!warpThen(fn))fn();
 }
 /* The user's choice of packing: behind a transition in a world it changes, and with a word of why nothing is seen in one it does not. */
 export function requestPacking(i){
@@ -104,6 +140,9 @@ selLook.addEventListener("change",function(){setLook(+this.value);wakeHud()});
 fillWorlds();
 fillPalettes();
 (function(){var s="",i;try{s=localStorage.getItem("mirrorfold-packing")||""}catch(_){}for(i=0;i<PACKINGS.length;i++)if(PACKINGS[i].name===s)setPackingNow(i);setPacking(packing);})();
+(function(){var a="",b="";try{a=localStorage.getItem("mirrorfold-pulse")||"";b=localStorage.getItem("mirrorfold-shapes")||""}catch(_){}setPulse(a==="wave");setMix(b==="mixed");})();
+$("bPulse").addEventListener("click",function(){requestOpt(setPulse,!pkWave,"Pulse "+(pkWave?"together":"wave"));wakeHud()});
+$("bMix").addEventListener("click",function(){requestOpt(setMix,!pkMix,"Shapes "+(pkMix?"one kind":"mixed"));wakeHud()});
 selWorld.addEventListener("change",function(){requestWorld(+this.value);wakeHud()});
 $("selPal").addEventListener("change",function(){setPalette(+this.value);wakeHud()});
 (function(){
@@ -121,4 +160,4 @@ window.addEventListener("hashchange",function(){
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={setOvS, scene, fillMotions, fillLooks, fillOverlays, setOverlay, setMotion, setLook, fillWorlds, setWorldNow, requestWorld,
-  setMirrors, placeCam, setPacking, requestPacking, get selMusic(){return selMusic},set selMusic(v){selMusic=v}, get selJT(){return selJT},set selJT(v){selJT=v}, get selWorld(){return selWorld},set selWorld(v){selWorld=v}, get selOv(){return selOv},set selOv(v){selOv=v}, get selMotion(){return selMotion},set selMotion(v){selMotion=v}, get selLook(){return selLook},set selLook(v){selLook=v}};
+  setMirrors, placeCam, setPacking, requestPacking, progSync, setPulse, setMix, requestOpt, get selMusic(){return selMusic},set selMusic(v){selMusic=v}, get selJT(){return selJT},set selJT(v){selJT=v}, get selWorld(){return selWorld},set selWorld(v){selWorld=v}, get selOv(){return selOv},set selOv(v){selOv=v}, get selMotion(){return selMotion},set selMotion(v){selMotion=v}, get selLook(){return selLook},set selLook(v){selLook=v}};
