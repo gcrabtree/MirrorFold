@@ -189,7 +189,7 @@ export function stepJourney(dt){
     var ck=CATS[ci].k,cf=jt[ck];
     if(cf.mode==="off"){if(jCur(ck)!==jNone(ck))jApply(ck,jNone(ck));continue;}
     if(cf.mode!=="random")continue;
-    if(ck==="world"&&tgGuest())continue; /* flying together as a guest: the host chooses the world */
+    if((ck==="world"||ck==="palette"||ck==="filter")&&tgGuest())continue; /* flying together as a guest: the host chooses the world, palette and filter */
     var due=J[ck].t>J[ck].next;
     if(ck==="world"&&cf.trigger==="sound"&&liveAudio()){ /* wait for the music to shift, but never forever */
       due=((soundChanged||heard.drop)&&J.world.t>Math.max(10,cf.every*0.25))||J.world.t>cf.every*2.5;

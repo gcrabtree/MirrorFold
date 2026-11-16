@@ -688,7 +688,14 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
 {
   const { tgClean, tgPlace, tgPack, tgUnpack, TG_MAX, TG_TURN } = togetherM, J = JSON.stringify;
   expect("a guest's message comes through as its world and its place", J(tgClean(J({ w: "sponge", q: [0.1, -0.5, 0.5], extra: "<b>" }), false)) === J({ w: "sponge", q: [0.1, -0.5, 0.5] }));
-  expect("a host's message comes through as its world, morph clock and the others", J(tgClean(J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }), true)) === J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }));
+  expect("a host's message comes through as its world, morph clock and the others", J(tgClean(J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }), true)) === J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]], pa: "", lk: "" }));
+  expect("and with the host's palette and filter, by name", J(tgClean(J({ w: "a", mt: 1, o: [], pa: "Wood", lk: "Neon" }), true)) === J({ w: "a", mt: 1, o: [], pa: "Wood", lk: "Neon" }));
+  expect("a palette or filter that is not a short name drops the message", [{ pa: 7 }, { pa: "x".repeat(41) }, { lk: ["Neon"] }, { lk: "" }, { pa: null }].every(x => tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, x)), true) === null));
+  {
+    const { tgMusicSdp } = togetherM, sd = "v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111 63\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=rtpmap:63 red/48000/2\r\na=fmtp:63 111/111\r\n", out = tgMusicSdp(sd);
+    expect("the music line of a session description is set for music, and nothing else is touched", out === sd.replace("useinbandfec=1", "useinbandfec=1;stereo=1;sprop-stereo=1;maxaveragebitrate=128000"), out);
+    expect("doing it twice changes nothing more, and a description with no music line is left alone", tgMusicSdp(out) === out && tgMusicSdp("v=0\r\nm=application 9\r\n") === "v=0\r\nm=application 9\r\n");
+  }
   const badG = ["", "{", "null", "7", J([1]), J({ w: "", q: [0, 0, 0] }), J({ w: "x".repeat(41), q: [0, 0, 0] }), J({ w: 5, q: [0, 0, 0] }), J({ w: "a", q: [0, 0] }), J({ w: "a", q: [0, 0, 0.6] }), J({ w: "a", q: [0, 0, "0"] }), J({ w: "a", q: [0, 0, null] }), J({ w: "a", q: "000" }), '{"w":"a","q":[0,0,1e999]}', J({ w: "a", q: [0, 0, 0], pad: "x".repeat(2000) })];
   expect("a guest's message with anything wrong in it is dropped", badG.every(b => tgClean(b, false) === null) && tgClean(7, false) === null && tgClean(null, false) === null, badG.map((b, i) => tgClean(b, false) === null ? "" : i).join(","));
   const h = o => J(Object.assign({ w: "a", mt: 1, o: [] }, o));

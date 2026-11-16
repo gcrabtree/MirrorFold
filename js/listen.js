@@ -1,5 +1,5 @@
 /* Sound in: choosing where the music comes from, listening to a tab or the microphone, tap tempo, and reading the sound each frame. */
-import { ac, analyser, cap, ensureAudio, fbins, master, pPause, pPlay, player } from "./audio.js";
+import { ac, analyser, bus, cap, ensureAudio, fbins, master, pPause, pPlay, player } from "./audio.js";
 import { selMusic } from "./choose.js";
 import { clock } from "./clock.js";
 import { songStep } from "./song.js";
@@ -12,6 +12,25 @@ export let musicMode="off",beat=0,level=0; /* where the sound comes from, and th
 let taps=[],tapInt=0,tapAt=0;
 export let soundChanged;
 let canTab, canMic, detectChange;
+const friend={stream:null,node:null,el:null}; /* music sent by the host while flying together: the stream, its way into the sound, and an unheard player that keeps the browser feeding it */
+
+/* The host's music has arrived (a stream), or is gone (null). While there is one the Music list has "Host's music",
+   and it is chosen when it arrives. It goes in where the app's own music does, so it is heard and the picture follows it. */
+export function setFriendSound(stream){
+  var o=selMusic.querySelector('option[value="friend"]');
+  if(friend.node){try{friend.node.disconnect()}catch(_){}friend.node=null;}
+  if(friend.el){try{friend.el.srcObject=null}catch(_){}friend.el=null;}
+  friend.stream=stream||null;
+  if(!stream){if(o)selMusic.removeChild(o);if(musicMode==="friend")setMusic("off");return;}
+  if(!o){o=document.createElement("option");o.value="friend";o.textContent="Host's music";selMusic.appendChild(o);}
+  setMusic("friend");
+}
+function friendPlay(on){
+  if(friend.node){try{friend.node.disconnect()}catch(_){}friend.node=null;}
+  if(!on||!friend.stream)return;
+  if(!friend.el){friend.el=new Audio();friend.el.muted=true;friend.el.srcObject=friend.stream;try{var p=friend.el.play();if(p&&p.catch)p.catch(function(){})}catch(_){}} /* some browsers give a stream from another browser no sound until something plays it, even unheard */
+  friend.node=ac.createMediaStreamSource(friend.stream);friend.node.connect(bus);
+}
 
 function stopListening(){
   cap.tok++;
@@ -46,15 +65,18 @@ function startListening(mode){
 function listening(){return (musicMode==="tab"||musicMode==="mic")&&!!cap.node;}
 export function setMusic(mode){
   if((mode==="tab"&&!canTab)||(mode==="mic"&&!canMic))mode="off";
+  if(mode==="friend"&&!friend.stream)mode="off";
   if(mode==="video"&&!vidFile()){mode="off";$("rowVideo").hidden=false;toast("Choose a video file first.");}
   if(mode!=="off"&&mode!=="tap"&&!ensureAudio()){mode="off";errBox.textContent="This browser cannot play audio here.";}
   if(cap.stream||musicMode==="tab"||musicMode==="mic")stopListening();
+  friendPlay(false);
   musicMode=mode;selMusic.value=mode;
   $("rowTap").hidden=mode!=="tap";$("rowFile").hidden=mode!=="file";
   try{
     if(mode==="built"){pPause();ac.resume();startBuilt();}
     else if(mode==="file"){stopBuilt();ac.resume();if(player.mode)pPlay();}
     else if(mode==="video"){stopBuilt();pPause();ac.resume();}
+    else if(mode==="friend"){stopBuilt();pPause();ac.resume();friendPlay(true);}
     else if(mode==="tab"||mode==="mic"){stopBuilt();pPause();ac.resume();startListening(mode);}
     else{ /* off and tap make no sound: release the audio session so music from another app keeps playing */
       if(ac){stopBuilt();pPause();ac.suspend();}
@@ -87,7 +109,7 @@ function bandStep(o,raw,dt,gain){
   o.lv+=(x-o.lv)*Math.min(1,dt*(x>o.lv?10:2));
 }
 function bandAvg(a,b){var t=0;for(var i=a;i<=b;i++)t+=fbins[i];return t/((b-a+1)*255);}
-export function liveAudio(){return (musicMode==="built"||musicMode==="file"||musicMode==="video"||listening())&&!!analyser&&!!ac&&ac.state==="running";}
+export function liveAudio(){return (musicMode==="built"||musicMode==="file"||musicMode==="video"||(musicMode==="friend"&&!!friend.node)||listening())&&!!analyser&&!!ac&&ac.state==="running";}
 /* A major change in the sound: the last second or so differs sharply from the last several, in loudness or in
    the balance of low to high. It fires once, then takes the new sound as normal. */
 function makeChangeDetector(){
@@ -174,6 +196,6 @@ soundChanged=false,detectChange=makeChangeDetector();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={stopListening, startListening, listening, setMusic, tap, bands, bandStep, bandAvg, liveAudio, makeChangeDetector,
+export const __dbg={friend, setFriendSound, friendPlay, stopListening, startListening, listening, setMusic, tap, bands, bandStep, bandAvg, liveAudio, makeChangeDetector,
   readMusic, soundFrame, waveBuf, updateWave, get musicMode(){return musicMode},set musicMode(v){musicMode=v}, get beat(){return beat},set beat(v){beat=v}, get level(){return level},set level(v){level=v}, get taps(){return taps},set taps(v){taps=v}, get tapInt(){return tapInt},set tapInt(v){tapInt=v}, get tapAt(){return tapAt},set tapAt(v){tapAt=v},
   get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get waveTex(){return waveTex},set waveTex(v){waveTex=v}, get tbins(){return tbins},set tbins(v){tbins=v}};

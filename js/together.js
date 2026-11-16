@@ -3,12 +3,17 @@
    who invites sends a tgLink, the one who joins sends a reply back, and pasting the reply in connects them. The link and
    the reply hold each side's network addresses, which is what lets the browsers find each other.
    The one who invites is the host: the host's world and morph are everyone's, so that all fly through the same shapes,
-   and the host passes each guest's place on to the others. Everyone keeps their own palette, filters and flight. */
+   and the host passes each guest's place on to the others. The host's palette and filter are everyone's too, each
+   time the host changes them, and the host's music is sent to the guests as sound (the same connection carries it),
+   so all hear one song and each picture moves to it. Everyone keeps their own flight and the rest of their look. */
+import { ac, analyser, ensureAudio } from "./audio.js";
 import { cam } from "./camera.js";
 import { requestWorld, scene } from "./choose.js";
 import { clock } from "./clock.js";
 import { $, toast } from "./dom.js";
 import { press, wakeHud } from "./input.js";
+import { jApply, jCur } from "./journey.js";
+import { musicMode, setFriendSound } from "./listen.js";
 import { started } from "./loop.js";
 import { still } from "./still.js";
 import { tr } from "./warp.js";
@@ -25,6 +30,32 @@ export let tgRole="";          /* "" alone, "host" having invited, "guest" havin
 const conns=[];                /* host: one for each guest (the connection, its channel, the guest's number). guest: the one to the host */
 const others=[];               /* the people to draw, by number: the world they are in, their place as parts of its repeat, where they are drawn now, and when last heard */
 let sendT=0,hostW="",hostT=-1,waitJoin="",lastJoin="";
+let hostPal="",hostLook=""; /* guest: the palette and filter the host last named, so that each is taken up once, when the host changes it */
+let tap=null,tapGain=null;  /* host: the app's sound as a stream to send, and the gain that shuts it while the microphone is the source */
+
+/* The host's sound as a stream for the guests: whatever the picture is listening to (the built-in music, a file, a
+   shared tab), taken where the analyser hears it. Null if this browser has no sound. */
+function tgTap(){
+  if(tap)return tap;
+  if(!ensureAudio())return null;
+  try{tapGain=ac.createGain();analyser.connect(tapGain);tap=ac.createMediaStreamDestination();tapGain.connect(tap);}catch(_){tap=null;}
+  return tap;
+}
+/* A session description with its music line set for music: two channels and a fuller sound than the speech it is
+   made for by default. Only the line for the Opus sound format is touched, and only by adding to it. */
+export function tgMusicSdp(sdp){
+  var m=/a=rtpmap:(\d+) opus\/48000\/2/.exec(sdp);
+  if(!m)return sdp;
+  return sdp.replace(new RegExp("(a=fmtp:"+m[1]+" [^\\r\\n]*)"),function(all,line){
+    return line.indexOf("stereo=")>=0?line:line+";stereo=1;sprop-stereo=1;maxaveragebitrate=128000";
+  });
+}
+/* set this side's description, with the music line set for music if the browser takes it that way, and as it was if not */
+function tgSetLocal(pc,d){
+  var better={type:d.type,sdp:tgMusicSdp(d.sdp)};
+  if(better.sdp===d.sdp)return pc.setLocalDescription(d);
+  return pc.setLocalDescription(better).catch(function(){return pc.setLocalDescription(d);});
+}
 
 function tgB64(bytes){var s="",i;for(i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
 function tgUnb64(t){var s=atob(t.replace(/-/g,"+").replace(/_/g,"/")),o=new Uint8Array(s.length),i;for(i=0;i<s.length;i++)o[i]=s.charCodeAt(i);return o;}
@@ -76,12 +107,13 @@ export function tgClean(text,fromHost){
       return {w:m.w,q:m.q.slice()};
     }
     if(typeof m.mt!=="number"||!isFinite(m.mt)||m.mt<0||m.mt>TG_TURN+1||!Array.isArray(m.o)||m.o.length>TG_MAX)return null;
+    if((m.pa!==undefined&&!tgName(m.pa))||(m.lk!==undefined&&!tgName(m.lk)))return null;
     for(i=0;i<m.o.length;i++){
       e=m.o[i];
       if(!Array.isArray(e)||e.length!==5||e[0]!==Math.floor(e[0])||e[0]<0||e[0]>TG_MAX||!tgName(e[1])||!tgPart(e[2])||!tgPart(e[3])||!tgPart(e[4]))return null;
       o.push([e[0],e[1],e[2],e[3],e[4]]);
     }
-    return {w:m.w,mt:m.mt,o:o};
+    return {w:m.w,mt:m.mt,o:o,pa:m.pa||"",lk:m.lk||""};
   }catch(_){return null;}
 }
 /* note where someone is: their number, the world they are in, their place as parts of its repeat, and the time */
@@ -119,13 +151,16 @@ function tgShow(){
 /* a new connection, and what to do when its channel opens, speaks and closes */
 function tgLink(c,dc){
   c.dc=dc;
-  dc.onopen=function(){c.open=true;toast(tgRole==="host"?"Your friend has joined.":"Connected. You are flying together.");if(tgRole==="guest"){tgSay("Flying together. The host's world is yours too.");$("tgCode").value="";}tgShow();};
+  dc.onopen=function(){c.open=true;toast(tgRole==="host"?"Your friend has joined.":"Connected. You are flying together.");if(tgRole==="guest"){tgSay("Flying together. The host's world, palette, filter and music are yours too.");$("tgCode").value="";}tgShow();};
   dc.onclose=function(){tgDrop(c);};
   dc.onmessage=function(e){
     var m=tgClean(e.data,tgRole==="guest"),i;
     if(!m)return;
     if(tgRole==="host"){tgHeard(c.id,m.w,m.q,clock.time);return;}
     hostW=m.w;hostT=m.mt;
+    /* the host's palette and filter, each taken up when the host changes it; a name this page does not have is passed over */
+    if(m.pa&&m.pa!==hostPal){hostPal=m.pa;jApply("palette",m.pa);}
+    if(m.lk&&m.lk!==hostLook){hostLook=m.lk;jApply("filter",m.lk);}
     for(i=0;i<m.o.length;i++)tgHeard(m.o[i][0],m.o[i][1],[m.o[i][2],m.o[i][3],m.o[i][4]],clock.time);
   };
 }
@@ -136,7 +171,8 @@ function tgDrop(c){
   try{c.pc.close()}catch(_){}
   for(k=others.length-1;k>=0;k--)if(tgRole==="guest"||others[k].id===c.id)others.splice(k,1);
   if(c.open)toast(tgRole==="guest"?"The host has left. You are flying alone.":"A friend has left.");
-  if(tgRole==="guest"||!conns.length){tgRole="";hostW="";hostT=-1;tgSay("Fly with a friend: invite them with a link.");}
+  if(tgRole==="guest")setFriendSound(null);
+  if(tgRole==="guest"||!conns.length){tgRole="";hostW="";hostT=-1;hostPal=hostLook="";tgSay("Fly with a friend: invite them with a link.");}
   tgShow();
 }
 /* everything the browser has found out about how to reach it, or what it has after four seconds */
@@ -159,8 +195,9 @@ export function tgInvite(){
   for(i=conns.length-1;i>=0;i--)if(!conns[i].open&&!conns[i].answered){try{conns[i].pc.close()}catch(_){}conns.splice(i,1);} /* an invitation nobody answered is replaced */
   pc=new RTCPeerConnection({iceServers:TG_ICE});c={pc:pc,dc:null,id:id,open:false,answered:false};conns.push(c);
   tgRole="host";tgLink(c,pc.createDataChannel("mirrorfold"));
+  if(tgTap())tap.stream.getAudioTracks().forEach(function(t){pc.addTrack(t,tap.stream);}); /* the host's music goes to this guest as sound */
   tgSay("Making the invitation...");tgShow();
-  return pc.createOffer().then(function(o){return pc.setLocalDescription(o);}).then(function(){return tgGathered(pc);}).then(function(){
+  return pc.createOffer().then(function(o){return tgSetLocal(pc,o);}).then(function(){return tgGathered(pc);}).then(function(){
     return tgPack("o",pc.localDescription.sdp);
   }).then(function(text){
     var url=location.href.split("#")[0]+"#join="+text;
@@ -189,8 +226,9 @@ export function tgJoin(text){
     tgLeave();
     pc=new RTCPeerConnection({iceServers:TG_ICE});c={pc:pc,dc:null,id:0,open:false,answered:true};conns.push(c);
     tgRole="guest";pc.ondatachannel=function(e){tgLink(c,e.channel);};
+    pc.ontrack=function(e){if(e.track&&e.track.kind==="audio"){setFriendSound(e.streams&&e.streams[0]?e.streams[0]:new MediaStream([e.track]));toast("Playing the host's music. Choose another under Music to use your own.");}};
     tgSay("Making your reply...");tgShow();
-    return pc.setRemoteDescription({type:"offer",sdp:m.s}).then(function(){return pc.createAnswer();}).then(function(a){return pc.setLocalDescription(a);}).then(function(){return tgGathered(pc);}).then(function(){
+    return pc.setRemoteDescription({type:"offer",sdp:m.s}).then(function(){return pc.createAnswer();}).then(function(a){return tgSetLocal(pc,a);}).then(function(){return tgGathered(pc);}).then(function(){
       return tgPack("a",pc.localDescription.sdp);
     }).then(function(reply){
       $("tgCode").value=reply;
@@ -203,10 +241,11 @@ export function tgLeave(){
   var cs=conns.slice(),i;
   conns.length=0;others.length=0;
   for(i=0;i<cs.length;i++){try{cs[i].dc&&cs[i].dc.close()}catch(_){}try{cs[i].pc.close()}catch(_){}}
-  tgRole="";hostW="";hostT=-1;
+  if(tgRole==="guest")setFriendSound(null);
+  tgRole="";hostW="";hostT=-1;hostPal=hostLook="";
   tgSay("Fly with a friend: invite them with a link.");
 }
-/* True while this page is a guest that has heard from its host: Journey then leaves the choice of world to the host. */
+/* True while this page is a guest that has heard from its host: Journey then leaves the choice of world, palette and filter to the host. */
 export function tgGuest(){return tgRole==="guest"&&hostT>=0;}
 /* A step of the frame, after the clocks. A guest takes the host's world, and eases its morph's clock to the host's, so
    that both fly through the same shapes. An invitation in the page's address is taken up once the start card is left. */
@@ -222,6 +261,7 @@ export function togetherClock(fr){
 export function stepTogether(fr){
   var w=fr.w,per=fr.per,k,i,o,c,q,msg,list,s=Math.max(0.01,Math.min(0.6,fr.dist)),ok=!!per&&!w.flat&&!w.pack;
   if(!tgRole){for(k=0;k<4*TG_MAX;k++)peerU[k]=0;return;}
+  if(tapGain)tapGain.gain.value=musicMode==="mic"?0:1; /* the microphone hears the host's room, which is not music to send on */
   sendT+=fr.dt;
   if(sendT>=TG_EVERY&&per){
     sendT=0;q=[0,0,0];
@@ -232,7 +272,7 @@ export function stepTogether(fr){
       else{
         list=[[0,w.id,q[0],q[1],q[2]]];
         others.forEach(function(x){if(x.id!==c.id&&clock.time-x.seen<TG_GONE&&list.length<TG_MAX)list.push([x.id,x.w,x.q[0],x.q[1],x.q[2]]);});
-        msg={w:w.id,mt:Math.round((((clock.morphT%TG_TURN)+TG_TURN)%TG_TURN)*100)/100,o:list};
+        msg={w:w.id,mt:Math.round((((clock.morphT%TG_TURN)+TG_TURN)%TG_TURN)*100)/100,o:list,pa:jCur("palette"),lk:jCur("filter")};
       }
       try{c.dc.send(JSON.stringify(msg))}catch(_){}
     }
@@ -270,5 +310,5 @@ window.addEventListener("hashchange",tgFromAddress);
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={tgHeard, tgLink, tgDrop, tgSay, tgShow, tgCopy, tgPart, tgName, tgPipe, tgGathered, tgB64, tgUnb64, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_ICE, conns, others, tgPack, tgUnpack, tgClean, tgPlace, tgInvite, tgAnswer, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
+export const __dbg={tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, get hostPal(){return hostPal}, get hostLook(){return hostLook}, tgHeard, tgLink, tgDrop, tgSay, tgShow, tgCopy, tgPart, tgName, tgPipe, tgGathered, tgB64, tgUnb64, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_ICE, conns, others, tgPack, tgUnpack, tgClean, tgPlace, tgInvite, tgAnswer, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
   get peerU(){return peerU},set peerU(v){peerU=v}, get tgRole(){return tgRole},set tgRole(v){tgRole=v}, get hostW(){return hostW},set hostW(v){hostW=v}, get hostT(){return hostT},set hostT(v){hostT=v}};
