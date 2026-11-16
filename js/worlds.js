@@ -818,7 +818,8 @@ export const WORLDS=[
    like a windpipe, joined by eight knuckled rods. Where four tunnels meet stands a spine of four vertebrae to the
    unit, joined to the larger rings by tendons, and between each two tunnels runs a pair of ribbed hoses. The morph
    swells one ring as it shrinks the other, as if the cage breathed. The joins are rounded (bmS), and the swellings
-   make the distance a little too large in places, so three quarters of it is used. */
+   make the distance a little too large in places, so three quarters of it is used; the spine's, whose discs are the
+   steepest swellings, is cut again to 0.58 of that. */
 {id:"biomech",name:"Biomech",hue:.47,fog:.19,maxd:16,speed:.6,start:[.25,.1,.2],
  period:function(){return [3.2,3.2,1]},
  glsl:[
@@ -835,7 +836,7 @@ export const WORLDS=[
  "  if(ds<d)w=0.24;",
  "  d=bmS(d,ds,0.07);",
  "  vec2 c=abs(q.xy)-1.6;float vb=0.5+0.5*cos(25.1327412*q.z);", /* the spine at the nearest corner */
- "  float dv=length(c)-(0.2+0.13*vb*vb);",
+ "  float dv=(length(c)-(0.2+0.13*vb*vb))*0.58;", /* a vertebra's side is steep: its radius changes about twice as fast as the place along the spine, so this alone is taken much shorter, or rays step through the discs and the far ones tear */
  "  float dt=max(length(vec2((abs(q.x)-abs(q.y))*0.7071068,q.z))-0.05,1.07+0.06*uM-rho);", /* a tendon from the larger ring out to the spine */
  "  if(dt<d)w=0.30;",
  "  d=bmS(d,dt,0.08);",
@@ -858,7 +859,7 @@ export const WORLDS=[
   var ds=Math.hypot(rho*Math.cos(af)-1.09,rho*Math.sin(af))-(.045+.02*Math.cos(12.5663706*qz));
   d=S(d,ds,.07);
   var cx=Math.abs(qx)-1.6,cy=Math.abs(qy)-1.6,vb=.5+.5*Math.cos(25.1327412*qz);
-  var dv=Math.hypot(cx,cy)-(.2+.13*vb*vb);
+  var dv=(Math.hypot(cx,cy)-(.2+.13*vb*vb))*.58;
   var dt=Math.max(Math.hypot((Math.abs(qx)-Math.abs(qy))*.7071068,qz)-.05,1.07+.06*m-rho);
   d=S(d,dt,.08);
   d=S(d,dv,.08);
