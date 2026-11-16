@@ -28,7 +28,8 @@ export const TG_MAX=3;        /* how many others can be seen; the scene shader h
 export const TG_EVERY=0.1;    /* seconds between the messages each side sends */
 export const TG_GONE=5;       /* seconds without a message after which someone is no longer shown */
 export const TG_TURN=200*Math.PI; /* the morph's clock comes round in this time */
-export const TG_WAIT=30;      /* seconds a joining may take before it is given up */
+export const TG_WAIT=30;      /* seconds a joining may take before it is given up, once the two have each other's descriptions */
+export const TG_WAIT_HOST=170; /* seconds a guest waits for the host's description: a phone stops the host's page while they are in another app sending the link, and it answers only when they come back */
 export const TG_ASK=20;       /* seconds a request to come or to go stays open for its answer */
 /* What the host's messages name besides the world, and the kind of Journey change each is: a guest takes each up when the host changes it. */
 export const TG_KINDS=[["pa","palette"],["lk","filter"],["mi","mirrors"],["mo","motion"],["ov","overlay"],["sf","surface"],["ld","land"],["pk","packing"],["pu","pulse"],["sh","shapes"]];
@@ -207,7 +208,7 @@ function tgWord(n){var a=new Uint8Array(n),s="",i;crypto.getRandomValues(a);for(
 function tgRoomUrl(code,role){return roomsAt.replace(/^http/,"ws").replace(/\/+$/,"")+"/room/"+code+"?role="+role+(role==="host"?"&key="+roomKey:"");}
 function tgSdp(s){return typeof s==="string"&&s.length<=10000&&s.indexOf("v=0")===0;}
 /* What the meeting point passes on, checked. To the host (host true): {t:"o", g, s}, a guest's name in the room and
-   its description. To a guest: {t:"a", s}, the host's description, {t:"n"}, no room left, or {t:"e"}, the host has
+   its description. To a guest ({t:"h"}: the host's page has come back, send your description again): {t:"a", s}, the host's description, {t:"n"}, no room left, or {t:"e"}, the host has
    gone. Anything else is null.
    A description is only ever handed to the browser's own connection, which reads it as an address list and nothing
    else; a guest's name is only ever sent back to the meeting point. */
@@ -221,7 +222,7 @@ export function tgSignal(text,host){
       if(m.t!=="o"||typeof m.g!=="string"||!/^[a-z0-9]{1,16}$/.test(m.g)||!tgSdp(m.s))return null;
       return {t:"o",g:m.g,s:m.s};
     }
-    if(m.t==="n"||m.t==="e")return {t:m.t};
+    if(m.t==="n"||m.t==="e"||m.t==="h")return {t:m.t};
     if(m.t!=="a"||!tgSdp(m.s))return null;
     return {t:"a",s:m.s};
   }catch(_){return null;}
@@ -422,13 +423,14 @@ function tgFail(c){
   if(!was&&c.mine)tgLog(tgRole,"RESULT: "+tgVerdict(c.mine,c.theirs||[]));
   tgDrop(c);
   if(was)return;
-  if(guest)tgSay(c.met?"Could not connect: "+why:"The meeting point did not answer. Try the link again.");
+  if(guest)tgSay(c.met?"Could not connect: "+why:"Your friend's page did not answer. It has to be open and in front on their device. Try the link again.");
   else toast("A friend tried to join and could not connect: "+why);
 }
 /* give a joining TG_WAIT seconds, and end it at once if the browser says the two cannot reach each other */
-function tgWatch(c){
+function tgWatch(c,secs){
   c.pc.onconnectionstatechange=function(){if(c.pc.connectionState==="failed")tgFail(c);};
-  c.timer=setTimeout(function(){if(!c.open)tgFail(c);},TG_WAIT*1000);
+  clearTimeout(c.timer);
+  c.timer=setTimeout(function(){if(!c.open)tgFail(c);},(secs||TG_WAIT)*1000);
 }
 /* everything the browser has found out about how to reach it, or what it has after four seconds */
 function tgGathered(pc){
@@ -473,10 +475,11 @@ function tgPing(){if(sock&&sockUp){try{sock.send("p")}catch(_){}}}
    The host's music goes to them as sound, on the line their description asked for. */
 function tgAdmit(s,g,sdp){
   var used={},id=0,i,c,pc;
+  conns.filter(function(x){return x.g===g&&!x.open}).forEach(function(x){tgLog("host","the same friend's description again: starting afresh with them");tgDrop(x);}); /* a guest sends again when this page comes back from behind another app */
   conns.forEach(function(x){used[x.id]=1});
   for(i=1;i<=TG_MAX;i++)if(!used[i]&&!id)id=i;
   if(!id){try{s.send(JSON.stringify({t:"n",g:g}))}catch(_){}return;}
-  pc=new RTCPeerConnection({iceServers:TG_ICE});c={pc:pc,dc:null,id:id,open:false,met:true};conns.push(c);
+  pc=new RTCPeerConnection({iceServers:TG_ICE});c={pc:pc,dc:null,id:id,open:false,met:true,g:g};conns.push(c);
   pc.ondatachannel=function(e){tgLink(c,e.channel);};
   tgDebug(c,"host");tgTheirs(c,"host",sdp);
   tgWatch(c);
@@ -513,8 +516,9 @@ export function tgJoin(text){
   tgLines.length=0;tgT0=Date.now();tgDebug(c,"guest");
   try{pc.addTransceiver("audio",{direction:"recvonly"});}catch(_){} /* a line for the host's music to come in on */
   pc.ontrack=function(e){if(e.track&&e.track.kind==="audio"){setFriendSound(e.streams&&e.streams[0]?e.streams[0]:new MediaStream([e.track]));toast("Playing the host's music. Choose another under Music to use your own.");}};
-  tgWatch(c);
+  tgWatch(c,TG_WAIT_HOST);
   tgSay("Joining your friend...");tgShow();
+  setTimeout(function(){if(conns.indexOf(c)>=0&&!c.met)tgSay("Waiting for your friend's page to answer. If they left Mirrorfold to send you the link, you are joined when they go back to it.");},6000);
   return pc.createOffer().then(function(o){return tgSetLocal(pc,o);}).then(function(){return tgGathered(pc);}).then(function(){
     return new Promise(function(done){
       var s;
@@ -525,7 +529,8 @@ export function tgJoin(text){
         var m=tgSignal(e.data,false);
         if(!m)tgLog("guest","the meeting point passed on a message of "+String(e.data).length+" letters: NOT USABLE"+tgWhyNot(e.data));
         if(!m||c.met)return;
-        c.met=true;
+        if(m.t==="h"){tgLog("guest","the host's page has come back: offer sent again");try{s.send(JSON.stringify({t:"o",s:pc.localDescription.sdp}))}catch(_){}return;}
+        c.met=true;tgWatch(c);
         tgLog("guest","meeting point answered: "+(m.t==="a"?"the host's description":m.t==="n"?"the flight is full":"the invitation has ended"));
         if(m.t==="a")tgTheirs(c,"guest",m.s);
         if(m.t==="n"){done(end("Four people is the most, and your friend's flight is full."));return;}
@@ -609,6 +614,8 @@ tgSay("Fly with a friend: invite them with a link.");
 $("bTg").addEventListener("click",function(){var open=$("rowTg").hidden;$("rowTg").hidden=!open;press(this,open||!!tgRole);if(open)tgShow();wakeHud();});
 $("bTgInvite").addEventListener("click",function(){tgInvite();wakeHud();});
 $("bTgGo").addEventListener("click",function(){tgCopyLink();wakeHud();});
+/* a phone stops a page that is not in front, and its connection to the room then only looks open: on coming back the host takes its room afresh at once, which also has the room ask anyone waiting to send again */
+document.addEventListener("visibilitychange",function(){if(!document.hidden&&tgRole==="host"&&room){var old=sock;sockTries=0;tgRoomOpen();if(old){try{old.close()}catch(_){}}}});
 document.addEventListener("visibilitychange",function(){if(tgRole)tgLog(tgRole,document.hidden?"THE PAGE WAS HIDDEN (another tab or app is in front; a phone may stop it now)":"the page is showing again"+(tgRole==="host"?"; meeting point "+(sockUp?"still connected":"not connected"):""));});
 $("bTgLog").addEventListener("click",function(){tgCopyReport();wakeHud();});
 $("bTgLeave").addEventListener("click",function(){tgLeave();tgShow();toast("You are flying alone.");wakeHud();});
@@ -622,6 +629,6 @@ window.addEventListener("hashchange",tgFromAddress);
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={tgWhyNot, tgLog, tgLines, tgAddr, tgCand, tgCands, tgCount, tgSplit, tgVerdict, tgDebug, tgTheirs, tgPaths, tgReport, tgCopyReport, tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, hostHas, TG_ASK, TG_KINDS, TG_ASKS, tgUnitPart, tgWho, tgSpot, tgPut, tgTell, tgGoTo, tgAsked, tgCall, tgAskGo, tgAnswer, tgForget, get tgAskNow(){return ask}, get tgWant(){return want}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
+export const __dbg={TG_WAIT_HOST, tgWhyNot, tgLog, tgLines, tgAddr, tgCand, tgCands, tgCount, tgSplit, tgVerdict, tgDebug, tgTheirs, tgPaths, tgReport, tgCopyReport, tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, hostHas, TG_ASK, TG_KINDS, TG_ASKS, tgUnitPart, tgWho, tgSpot, tgPut, tgTell, tgGoTo, tgAsked, tgCall, tgAskGo, tgAnswer, tgForget, get tgAskNow(){return ask}, get tgWant(){return want}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
   get peerU(){return peerU},set peerU(v){peerU=v}, get tgRole(){return tgRole},set tgRole(v){tgRole=v}, get hostW(){return hostW},set hostW(v){hostW=v}, get hostT(){return hostT},set hostT(v){hostT=v},
   get tgRoomsAt(){return roomsAt},set tgRoomsAt(v){roomsAt=v}, get tgRoomNow(){return room}, get tgSockUp(){return sockUp}};

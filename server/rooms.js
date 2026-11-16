@@ -5,18 +5,21 @@
 
    A room is a code of letters the host's page makes up. The host keeps one connection to the room open while the
    invitation stands. A guest opens one, sends its description, is sent the host's back, and is cut off.
+   A phone stops a page that is not in front, and a host has to leave the page to send the link. Its connection then
+   looks open and hears nothing. So when the host's page comes back and takes its room again, every guest still
+   waiting is told ("h") and may send its description once more.
    Nothing is kept: when the host goes, the room is gone.
 
    What keeps it small and safe to leave running:
    - only pages from the addresses in ORIGINS may use it;
    - one address may open at most PER_MINUTE connections a minute (a rough count, kept per copy of this script);
-   - a guest has GUEST_MS to finish, may send one message, and at most GUESTS wait in a room at once;
+   - a guest has GUEST_MS to finish, may send one message (and one more each time the host comes back), and at most GUESTS wait in a room at once;
    - a room lasts at most HOST_MS; no message may be longer than MAX letters. */
 import { DurableObject } from "cloudflare:workers";
 
 const MAX = 12000;
 const GUESTS = 6;
-const GUEST_MS = 60 * 1000;
+const GUEST_MS = 180 * 1000;
 const HOST_MS = 12 * 60 * 60 * 1000;
 const PER_MINUTE = 30;
 const ROOM = /^\/room\/([a-z2-9]{6,12})$/;
@@ -79,6 +82,12 @@ export class Room extends DurableObject {
       if (!refuse) {
         this.ctx.acceptWebSocket(server, ["host"]);
         server.serializeAttachment({ r: "host", key: key, at: now });
+        /* what a waiting guest sent may have gone to a connection that was not listening: each may send again */
+        for (const g of this.ctx.getWebSockets("guest")) {
+          const a = g.deserializeAttachment() || {};
+          a.sent = false; g.serializeAttachment(a);
+          try { g.send('{"t":"h"}'); } catch (_) {}
+        }
       }
     } else {
       if (!hosts.length) refuse = 4404;

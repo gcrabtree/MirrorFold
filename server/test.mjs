@@ -21,7 +21,11 @@ say("the guest gets the answer and is let go",g.log[0]===JSON.stringify({t:"a",s
 const g2=await open("abcdefgh?role=guest");g2.send(JSON.stringify({t:"o",s:sdp}));g2.send(JSON.stringify({t:"o",s:sdp}));await wait(400);say("a guest's second message cuts it off",g2.closed===4400,g2.closed);
 const g3=await open("abcdefgh?role=guest");g3.send("x".repeat(13000));await wait(400);say("a long message cuts a guest off",g3.closed===4400,g3.closed);
 const g4=await open("abcdefgh?role=guest");g4.send(JSON.stringify({t:"o",s:sdp}));await wait(300);const o4=JSON.parse(h.log[h.log.length-1]);h.send(JSON.stringify({t:"n",g:o4.g}));await wait(300);say("the host can say there is no room left",g4.log[0]==='{"t":"n"}',g4.log);
+const gw=await open("abcdefgh?role=guest");gw.send(JSON.stringify({t:"o",s:sdp}));await wait(300);
 const hb=await open("abcdefgh?role=host&key=kkkkkkkk");await wait(400);say("the same host coming back takes the room again",hb.readyState===1&&h.closed===4409,[hb.readyState,h.closed]);
+say("a guest that was waiting is told the host is back",gw.log[0]==="{\"t\":\"h\"}"&&gw.closed===undefined,[gw.log,gw.closed]);
+gw.send(JSON.stringify({t:"o",s:sdp}));await wait(300);const ow=JSON.parse(hb.log[hb.log.length-1]||"null");say("and may send its description again, which the host now gets",ow&&ow.t==="o"&&ow.s===sdp&&gw.closed===undefined,gw.closed);
+hb.send(JSON.stringify({t:"a",g:ow.g,s:"v=0 answer"}));await wait(300);say("and is answered",gw.log[1]===JSON.stringify({t:"a",s:"v=0 answer"})&&gw.closed===1000,[gw.log,gw.closed]);hb.log.length=0;
 const g5=await open("abcdefgh?role=guest");g5.send(JSON.stringify({t:"o",s:sdp}));await wait(300);say("and gets the next guest",hb.log.length===1,hb.log.length);
 const waiting=[];for(let i=0;i<7;i++)waiting.push(await open("abcdefgh?role=guest"));await wait(400);say("no more than six wait at once (4429)",waiting.filter(x=>x.closed===4429).length===2&&waiting.filter(x=>x.readyState===1).length===5,waiting.map(x=>x.closed));
 hb.close();await wait(500);say("when the host goes, those waiting are told",waiting.slice(0,5).every(x=>x.log[0]==="{\"t\":\"e\"}"),waiting.map(x=>x.closed));

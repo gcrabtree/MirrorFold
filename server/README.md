@@ -37,7 +37,7 @@ To take it down: `npx wrangler delete`.
 
 - Only pages from the addresses in `ORIGINS` may use it. This stops other websites from using it. It does not stop a program that pretends to be the site, which is what the other limits are for.
 - One network address may open at most 30 connections a minute. The count is kept by each running copy of the script, so it is rough.
-- A guest may send one message, has one minute, and at most six wait in a room at once.
+- A guest may send one message (and one more each time the host's page comes back), has three minutes, and at most six wait in a room at once. Three minutes, because a phone stops the host's page while its owner is in another app sending the link, and the guest has to be able to wait for them to come back.
 - A room lasts at most twelve hours, and no message may be longer than 12,000 letters.
 - A room's code is eight letters and digits made up by the host's page. The host's page also holds a secret key, so that only it can take its room back after a broken connection.
 
