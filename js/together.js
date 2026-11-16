@@ -5,14 +5,18 @@
    joined: their page hands its description to the room, the host's page hands one back, and from then on the meeting
    point is not used. It never sees a place, a world or a note of the music.
    The one who invites is the host: the host's world and morph are everyone's, so that all fly through the same shapes,
-   and the host passes each guest's place on to the others. The host's palette and filter are everyone's too, each
-   time the host changes them, and the host's music is sent to the guests as sound (the same connection carries it),
-   so all hear one song and each picture moves to it. Everyone keeps their own flight and the rest of their look. */
+   and the host passes each guest's place on to the others. The rest of what the host's Journey changes is everyone's
+   too (palette, filter, mirrors, motion, overlay, surface, land), each taken up when the host changes it, and the
+   host's music is sent to the guests as sound (the same connection carries it), so all hear one song and each picture
+   moves to it. Everyone keeps their own flight.
+   Anyone can ask to be brought to a friend's spot, or call a friend to theirs. The one asked is shown the request and
+   chooses; nobody is moved without having agreed, on their own page, to that move. */
 import { ac, analyser, ensureAudio } from "./audio.js";
 import { cam } from "./camera.js";
 import { requestWorld, scene } from "./choose.js";
 import { clock } from "./clock.js";
 import { $, toast } from "./dom.js";
+import { flightPlaying } from "./flightplay.js";
 import { press, wakeHud } from "./input.js";
 import { jApply, jCur } from "./journey.js";
 import { musicMode, setFriendSound } from "./listen.js";
@@ -25,6 +29,12 @@ export const TG_EVERY=0.1;    /* seconds between the messages each side sends */
 export const TG_GONE=5;       /* seconds without a message after which someone is no longer shown */
 export const TG_TURN=200*Math.PI; /* the morph's clock comes round in this time */
 export const TG_WAIT=30;      /* seconds a joining may take before it is given up */
+export const TG_ASK=20;       /* seconds a request to come or to go stays open for its answer */
+/* What the host's messages name besides the world, and the kind of Journey change each is: a guest takes each up when the host changes it. */
+export const TG_KINDS=[["pa","palette"],["lk","filter"],["mi","mirrors"],["mo","motion"],["ov","overlay"],["sf","surface"],["ld","land"]];
+/* The words about going to someone's spot: "come" (come to me), "join" (may I come to you), "coming" (yes to come),
+   "here" (this is my place: the answer to coming, and the yes to join), "no". */
+export const TG_ASKS=["come","join","coming","here","no"];
 /* The meeting point's address (server/README.md says how to make one). With none, nobody can be invited. */
 export const TG_ROOMS="https://mirrorfold-rooms.mirrorfold.workers.dev";
 /* The server asked, once, "what is my address as seen from outside?" when a description is made. Without it
@@ -36,7 +46,11 @@ export let tgRole="";          /* "" alone, "host" having invited, "guest" havin
 const conns=[];                /* host: one for each guest (the connection, its channel, the guest's number). guest: the one to the host */
 const others=[];               /* the people to draw, by number: the world they are in, their place as parts of its repeat, where they are drawn now, and when last heard */
 let sendT=0,hostW="",hostT=-1,waitJoin="",lastJoin="";
-let hostPal="",hostLook=""; /* guest: the palette and filter the host last named, so that each is taken up once, when the host changes it */
+const hostHas={};           /* guest: what the host last named of each kind in TG_KINDS, so that each is taken up once, when the host changes it */
+let ask=null;               /* a friend's request waiting for this user's answer: the word, who asks (their number), and when it lapses */
+let want=null;              /* this page has agreed to go to a friend's spot and waits to be told the place: who from (-1 for anyone), and when it lapses */
+let called=0;               /* until when this page's own call to come here stands */
+let perNow=null;            /* the world's period this frame, or null where there is no place to share (a zoom or pack world) */
 let tap=null,tapGain=null;  /* host: the app's sound as a stream to send, and the gain that shuts it while the microphone is the source */
 let roomsAt="";             /* the meeting point in use: TG_ROOMS, unless a test has put its own here */
 let room="",roomKey="";     /* host: the code of the room that is open, and the secret that lets this page alone take it again after a break */
@@ -92,28 +106,47 @@ export function tgSignal(text,host){
   }catch(_){return null;}
 }
 function tgPart(x){return typeof x==="number"&&isFinite(x)&&x>=-0.5&&x<=0.5;}
+function tgUnitPart(x){return typeof x==="number"&&isFinite(x)&&x>=-1&&x<=1;}
+function tgWho(x){return typeof x==="number"&&x===Math.floor(x)&&x>=0&&x<=TG_MAX;}
 function tgName(x){return typeof x==="string"&&x.length>0&&x.length<=40;}
 /* A message from the other side, checked: from a guest {w, q}, its world and its place as parts of the repeat; from the
    host {w, mt, o}, the host's world and morph clock and everyone else as [number, world, three parts]. Anything else
-   is null. Only numbers in range and names that are then looked up among this page's own worlds come through. */
+   is null. Only numbers in range and names that are then looked up among this page's own lists come through.
+   A word about going to someone's spot is {c, f, to, w, p}: the word (one of TG_ASKS), who it is from (the host says;
+   0 from a guest, whose number the host knows), who it is for (-1 for everyone), and with "here" the world and the
+   place: three parts of the repeat, then the facing and up directions. */
 export function tgClean(text,fromHost){
-  var m,o=[],i,e;
+  var m,o=[],i,e,a;
   try{
     if(typeof text!=="string"||text.length>2000)return null;
     m=JSON.parse(text);
-    if(!m||typeof m!=="object"||!tgName(m.w))return null;
+    if(!m||typeof m!=="object")return null;
+    if(m.c!==undefined){
+      if(typeof m.c!=="string"||TG_ASKS.indexOf(m.c)<0)return null;
+      a={c:m.c,f:0,to:-1,w:"",p:null};
+      if(fromHost){if(!tgWho(m.f))return null;a.f=m.f;}
+      if(m.to!==undefined){if(!tgWho(m.to))return null;a.to=m.to;}
+      if(m.c==="here"){
+        if(!tgName(m.w)||!Array.isArray(m.p)||m.p.length!==9||!m.p.slice(0,3).every(tgPart)||!m.p.slice(3).every(tgUnitPart))return null;
+        a.w=m.w;a.p=m.p.slice();
+      }
+      return a;
+    }
+    if(!tgName(m.w))return null;
     if(!fromHost){
       if(!Array.isArray(m.q)||m.q.length!==3||!m.q.every(tgPart))return null;
       return {w:m.w,q:m.q.slice()};
     }
     if(typeof m.mt!=="number"||!isFinite(m.mt)||m.mt<0||m.mt>TG_TURN+1||!Array.isArray(m.o)||m.o.length>TG_MAX)return null;
-    if((m.pa!==undefined&&!tgName(m.pa))||(m.lk!==undefined&&!tgName(m.lk)))return null;
+    for(i=0;i<TG_KINDS.length;i++)if(m[TG_KINDS[i][0]]!==undefined&&!tgName(m[TG_KINDS[i][0]]))return null;
     for(i=0;i<m.o.length;i++){
       e=m.o[i];
       if(!Array.isArray(e)||e.length!==5||e[0]!==Math.floor(e[0])||e[0]<0||e[0]>TG_MAX||!tgName(e[1])||!tgPart(e[2])||!tgPart(e[3])||!tgPart(e[4]))return null;
       o.push([e[0],e[1],e[2],e[3],e[4]]);
     }
-    return {w:m.w,mt:m.mt,o:o,pa:m.pa||"",lk:m.lk||""};
+    a={w:m.w,mt:m.mt,o:o};
+    for(i=0;i<TG_KINDS.length;i++)a[TG_KINDS[i][0]]=m[TG_KINDS[i][0]]||"";
+    return a;
   }catch(_){return null;}
 }
 /* note where someone is: their number, the world they are in, their place as parts of its repeat, and the time */
@@ -136,11 +169,85 @@ export function tgPlace(at,q,per,camPos,dt){
   }
   return o;
 }
+/* A place as sent with "here", made into a camera: {pos, F, Up, R}, or null if the directions are not ones a camera can have. */
+export function tgSpot(p,per){
+  var F=[p[3],p[4],p[5]],U=[p[6],p[7],p[8]],R,l=Math.hypot(F[0],F[1],F[2]);
+  if(l<0.5)return null;
+  F=[F[0]/l,F[1]/l,F[2]/l];
+  R=[U[1]*F[2]-U[2]*F[1],U[2]*F[0]-U[0]*F[2],U[0]*F[1]-U[1]*F[0]];l=Math.hypot(R[0],R[1],R[2]);
+  if(l<0.1)return null;
+  R=[R[0]/l,R[1]/l,R[2]/l];
+  return {pos:[p[0]*per[0],p[1]*per[1],p[2]*per[2]],F:F,Up:[F[1]*R[2]-F[2]*R[1],F[2]*R[0]-F[0]*R[2],F[0]*R[1]-F[1]*R[0]],R:R};
+}
+function tgPut(c,m){if(c&&c.open&&c.dc&&c.dc.readyState==="open"){try{c.dc.send(JSON.stringify(m))}catch(_){}}}
+/* Say a word about going to someone's spot, to one person (their number) or to everyone (-1). "here" carries this
+   camera's place; where there is none to give (a zoom or pack world) "no" is said in its stead. */
+function tgTell(word,to){
+  var m={c:word},i,r=function(x){return Math.round(x*1000)/1000;};
+  if(word==="here"){
+    if(!perNow){m.c="no";}
+    else{
+      m.w=scene.world.id;m.p=[];
+      for(i=0;i<3;i++){m.p[i]=cam.pos[i]/perNow[i];m.p[i]-=Math.round(m.p[i]);m.p[i]=Math.round(m.p[i]*1e5)/1e5;}
+      m.p.push(r(cam.F[0]),r(cam.F[1]),r(cam.F[2]),r(cam.Up[0]),r(cam.Up[1]),r(cam.Up[2]));
+    }
+  }
+  if(tgRole==="guest"){if(to>=0)m.to=to;tgPut(conns[0],m);return;}
+  m.f=0;
+  for(i=0;i<conns.length;i++)if(to<0||conns[i].id===to)tgPut(conns[i],m);
+}
+/* Go to the place a friend has sent, if this page is in the same world and the world has places. */
+function tgGoTo(m){
+  var w=scene.world,s;
+  if(m.w!==w.id||!perNow||flightPlaying()){toast("You are not in the same world as your friend yet. Ask again in a moment.");return;}
+  s=tgSpot(m.p,perNow);
+  if(!s)return;
+  cam.pos=s.pos;cam.F=s.F;cam.Up=s.Up;cam.R=s.R;cam.vel=[0,0,0];
+  toast("You are at your friend's spot.");
+}
+/* A word about going to someone's spot has arrived, from the person with number m.f. A request is only shown, for this
+   user to answer. A place is only gone to if this page is waiting for one from that person: after its own user asked
+   to go, or agreed to come. */
+function tgAsked(m){
+  var now=Date.now();
+  if(m.c==="come"||m.c==="join"){
+    if(ask&&now<ask.until)return;
+    ask={c:m.c,f:m.f,until:now+TG_ASK*1000};
+    setTimeout(tgShow,TG_ASK*1000+200);
+    toast(m.c==="come"?"Your friend asks you to come to their spot.":"Your friend asks to come to your spot.");
+    tgShow();wakeHud();
+  }else if(m.c==="coming"){
+    if(now<called){toast("Your friend is coming.");tgTell("here",m.f);}
+  }else if(m.c==="no"){
+    if(now<called||(want&&now<want.until))toast("Your friend stayed where they are.");
+  }else if(m.c==="here"){
+    if(!want||now>want.until||(want.f>=0&&want.f!==m.f))return;
+    want=null;tgGoTo(m);
+  }
+}
+/* The buttons: call friends here, ask to go to a friend, and the answer to a friend's request. */
+function tgCall(){called=Date.now()+(TG_ASK+10)*1000;tgTell("come",-1);toast("Asked your friend to come to you.");}
+function tgAskGo(){want={f:-1,until:Date.now()+(TG_ASK+10)*1000};tgTell("join",-1);toast("Asked your friend if you can come to them.");}
+function tgAnswer(yes){
+  var a=ask;
+  ask=null;tgShow();
+  if(!a||Date.now()>a.until)return;
+  if(!yes){tgTell("no",a.f);return;}
+  if(a.c==="come"){want={f:a.f,until:Date.now()+10000};tgTell("coming",a.f);}
+  else{tgTell("here",a.f);toast(perNow?"Your friend is coming to you.":"There is no spot to share in this world.");}
+}
+function tgForget(){var k;for(k in hostHas)delete hostHas[k];ask=null;want=null;called=0;}
 function tgSay(t){$("tgSay").textContent=t;}
 function tgLinkText(){return location.href.split("#")[0]+"#room="+room;}
 function tgShow(){
-  var n=conns.filter(function(c){return c.open}).length,host=tgRole==="host",inv=host&&!!room;
+  var n=conns.filter(function(c){return c.open}).length,host=tgRole==="host",inv=host&&!!room,asking=!!ask&&Date.now()<ask.until&&n>0;
   $("rowTg").hidden=false;press($("bTg"),true);
+  $("bTgCome").hidden=!n;$("bTgJoin").hidden=!n;
+  $("tgAsk").hidden=!asking;
+  if(asking){
+    $("tgAskSay").textContent=ask.c==="come"?"Your friend asks you to come to their spot.":"Your friend asks to come to your spot.";
+    $("bTgYes").textContent=ask.c==="come"?"Go to them":"Let them come";
+  }
   $("bTgLeave").hidden=!tgRole;
   $("bTgInvite").hidden=tgRole==="guest"||inv;
   $("tgCode").hidden=!inv;$("bTgGo").hidden=!inv;
@@ -152,16 +259,23 @@ function tgShow(){
 /* a new connection, and what to do when its channel opens, speaks and closes */
 function tgLink(c,dc){
   c.dc=dc;
-  dc.onopen=function(){c.open=true;clearTimeout(c.timer);toast(tgRole==="host"?"Your friend has joined.":"Connected. You are flying together.");if(tgRole==="guest")tgSay("Flying together. The host's world, palette, filter and music are yours too.");tgShow();};
+  dc.onopen=function(){c.open=true;clearTimeout(c.timer);toast(tgRole==="host"?"Your friend has joined.":"Connected. You are flying together.");if(tgRole==="guest")tgSay("Flying together. The host's world, its Journey's changes and its music are yours too.");tgShow();};
   dc.onclose=function(){tgDrop(c);};
   dc.onmessage=function(e){
-    var m=tgClean(e.data,tgRole==="guest"),i;
+    var m=tgClean(e.data,tgRole==="guest"),i,k,r;
     if(!m)return;
+    if(m.c){
+      if(tgRole==="guest"){tgAsked(m);return;}
+      /* the host passes a guest's word on to whoever it is for, saying who it is from, and takes it itself if it is for the host or for everyone */
+      m.f=c.id;r={c:m.c,f:c.id};if(m.p){r.w=m.w;r.p=m.p;}
+      for(i=0;i<conns.length;i++)if(conns[i]!==c&&(m.to<0||conns[i].id===m.to))tgPut(conns[i],r);
+      if(m.to<=0)tgAsked(m);
+      return;
+    }
     if(tgRole==="host"){tgHeard(c.id,m.w,m.q,clock.time);return;}
     hostW=m.w;hostT=m.mt;
-    /* the host's palette and filter, each taken up when the host changes it; a name this page does not have is passed over */
-    if(m.pa&&m.pa!==hostPal){hostPal=m.pa;jApply("palette",m.pa);}
-    if(m.lk&&m.lk!==hostLook){hostLook=m.lk;jApply("filter",m.lk);}
+    /* what the host's Journey has changed, each kind taken up when the host changes it (and tried again if a transition was in the way); a name this page does not have is passed over */
+    for(i=0;i<TG_KINDS.length;i++){k=TG_KINDS[i];if(m[k[0]]&&m[k[0]]!==hostHas[k[0]]&&jApply(k[1],m[k[0]]))hostHas[k[0]]=m[k[0]];}
     for(i=0;i<m.o.length;i++)tgHeard(m.o[i][0],m.o[i][1],[m.o[i][2],m.o[i][3],m.o[i][4]],clock.time);
   };
 }
@@ -175,7 +289,8 @@ function tgDrop(c){
   for(k=others.length-1;k>=0;k--)if(tgRole==="guest"||others[k].id===c.id)others.splice(k,1);
   if(c.open)toast(tgRole==="guest"?"The host has left. You are flying alone.":"A friend has left.");
   if(tgRole==="guest")setFriendSound(null);
-  if(tgRole==="guest"||(!conns.length&&!room)){tgRole="";hostW="";hostT=-1;hostPal=hostLook="";tgSay("Fly with a friend: invite them with a link.");}
+  if(!conns.length)tgForget();
+  if(tgRole==="guest"||(!conns.length&&!room)){tgRole="";hostW="";hostT=-1;tgSay("Fly with a friend: invite them with a link.");}
   tgShow();
 }
 /* A joining that came to nothing: the connection is dropped, and whoever was waiting is told which half failed. */
@@ -301,10 +416,10 @@ export function tgLeave(){
   if(tgRole==="guest")setFriendSound(null);
   clearTimeout(sockTimer);sock=null;sockUp=false;room="";roomKey="";
   if(s){try{s.close()}catch(_){}}
-  tgRole="";hostW="";hostT=-1;hostPal=hostLook="";
+  tgRole="";hostW="";hostT=-1;tgForget();
   tgSay("Fly with a friend: invite them with a link.");
 }
-/* True while this page is a guest that has heard from its host: Journey then leaves the choice of world, palette and filter to the host. */
+/* True while this page is a guest that has heard from its host: its own Journey then changes nothing, since the host's does. */
 export function tgGuest(){return tgRole==="guest"&&hostT>=0;}
 /* A step of the frame, after the clocks. A guest takes the host's world, and eases its morph's clock to the host's, so
    that both fly through the same shapes. An invitation in the page's address is taken up once the start card is left. */
@@ -319,6 +434,7 @@ export function togetherClock(fr){
    out where to draw each of them. Nobody is drawn in a zoom world or a pack world, or from another world. */
 export function stepTogether(fr){
   var w=fr.w,per=fr.per,k,i,o,c,q,msg,list,s=Math.max(0.01,Math.min(0.6,fr.dist)),ok=!!per&&!w.flat&&!w.pack;
+  perNow=ok?per:null;
   if(!tgRole){for(k=0;k<4*TG_MAX;k++)peerU[k]=0;return;}
   if(tapGain)tapGain.gain.value=musicMode==="mic"?0:1; /* the microphone hears the host's room, which is not music to send on */
   sendT+=fr.dt;
@@ -331,7 +447,8 @@ export function stepTogether(fr){
       else{
         list=[[0,w.id,q[0],q[1],q[2]]];
         others.forEach(function(x){if(x.id!==c.id&&clock.time-x.seen<TG_GONE&&list.length<TG_MAX)list.push([x.id,x.w,x.q[0],x.q[1],x.q[2]]);});
-        msg={w:w.id,mt:Math.round((((clock.morphT%TG_TURN)+TG_TURN)%TG_TURN)*100)/100,o:list,pa:jCur("palette"),lk:jCur("filter")};
+        msg={w:w.id,mt:Math.round((((clock.morphT%TG_TURN)+TG_TURN)%TG_TURN)*100)/100,o:list};
+        for(i=0;i<TG_KINDS.length;i++)msg[TG_KINDS[i][0]]=jCur(TG_KINDS[i][1]);
       }
       try{c.dc.send(JSON.stringify(msg))}catch(_){}
     }
@@ -361,12 +478,16 @@ $("bTg").addEventListener("click",function(){var open=$("rowTg").hidden;$("rowTg
 $("bTgInvite").addEventListener("click",function(){tgInvite();wakeHud();});
 $("bTgGo").addEventListener("click",function(){tgCopyLink();wakeHud();});
 $("bTgLeave").addEventListener("click",function(){tgLeave();tgShow();toast("You are flying alone.");wakeHud();});
+$("bTgCome").addEventListener("click",function(){tgCall();wakeHud();});
+$("bTgJoin").addEventListener("click",function(){tgAskGo();wakeHud();});
+$("bTgYes").addEventListener("click",function(){tgAnswer(true);wakeHud();});
+$("bTgNo").addEventListener("click",function(){tgAnswer(false);wakeHud();});
 setInterval(tgPing,25000);
 tgFromAddress();
 window.addEventListener("hashchange",tgFromAddress);
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, get hostPal(){return hostPal}, get hostLook(){return hostLook}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
+export const __dbg={tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, hostHas, TG_ASK, TG_KINDS, TG_ASKS, tgUnitPart, tgWho, tgSpot, tgPut, tgTell, tgGoTo, tgAsked, tgCall, tgAskGo, tgAnswer, tgForget, get tgAskNow(){return ask}, get tgWant(){return want}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
   get peerU(){return peerU},set peerU(v){peerU=v}, get tgRole(){return tgRole},set tgRole(v){tgRole=v}, get hostW(){return hostW},set hostW(v){hostW=v}, get hostT(){return hostT},set hostT(v){hostT=v},
   get tgRoomsAt(){return roomsAt},set tgRoomsAt(v){roomsAt=v}, get tgRoomNow(){return room}, get tgSockUp(){return sockUp}};

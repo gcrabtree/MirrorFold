@@ -686,11 +686,23 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
 
 // ---- flying together (js/together.js)
 {
-  const { tgClean, tgPlace, TG_MAX, TG_TURN } = togetherM, J = JSON.stringify;
+  const { tgClean, tgPlace, TG_MAX, TG_TURN, TG_KINDS } = togetherM, J = JSON.stringify, none = { pa: "", lk: "", mi: "", mo: "", ov: "", sf: "", ld: "" };
   expect("a guest's message comes through as its world and its place", J(tgClean(J({ w: "sponge", q: [0.1, -0.5, 0.5], extra: "<b>" }), false)) === J({ w: "sponge", q: [0.1, -0.5, 0.5] }));
-  expect("a host's message comes through as its world, morph clock and the others", J(tgClean(J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }), true)) === J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]], pa: "", lk: "" }));
-  expect("and with the host's palette and filter, by name", J(tgClean(J({ w: "a", mt: 1, o: [], pa: "Wood", lk: "Neon" }), true)) === J({ w: "a", mt: 1, o: [], pa: "Wood", lk: "Neon" }));
-  expect("a palette or filter that is not a short name drops the message", [{ pa: 7 }, { pa: "x".repeat(41) }, { lk: ["Neon"] }, { lk: "" }, { pa: null }].every(x => tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, x)), true) === null));
+  expect("a host's message comes through as its world, morph clock and the others", J(tgClean(J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }), true)) === J(Object.assign({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }, none)));
+  const all = { pa: "Wood", lk: "Neon", mi: "6", mo: "Melt", ov: "Rings", sf: "marble", ld: "canyon over" };
+  expect("and with everything the host's Journey changes, by name", J(tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, all, { zz: "x" })), true)) === J(Object.assign({ w: "a", mt: 1, o: [] }, all)));
+  expect("one of those that is not a short name drops the message", [{ pa: 7 }, { pa: "x".repeat(41) }, { lk: ["Neon"] }, { lk: "" }, { pa: null }, { mi: 6 }, { mo: {} }, { ov: "x".repeat(41) }, { sf: false }, { ld: 0 }].every(x => tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, x)), true) === null));
+  expect("the host's message names every kind Journey changes but the world, which it names as w", J(TG_KINDS.map(k => k[1]).sort()) === J(flightM.FL_KINDS.filter(k => k !== "world").sort()));
+  const spot = [0.1, -0.5, 0.5, 0, 0, 1, 0, 1, 0];
+  expect("a word about going to a spot comes through: from the host with who said it, from a guest with who it is for", J(tgClean(J({ c: "come", f: 2, extra: 1 }), true)) === J({ c: "come", f: 2, to: -1, w: "", p: null }) && J(tgClean(J({ c: "no", to: 0, f: 3 }), false)) === J({ c: "no", f: 0, to: 0, w: "", p: null }));
+  expect("and a place comes through with its world, three parts and two directions", J(tgClean(J({ c: "here", f: 0, to: 1, w: "sponge", p: spot }), true)) === J({ c: "here", f: 0, to: 1, w: "sponge", p: spot }));
+  const badA = [{ c: "jump", f: 0 }, { c: 7, f: 0 }, { c: "come" }, { c: "come", f: 4 }, { c: "come", f: -1 }, { c: "come", f: 0.5 }, { c: "come", f: "0" }, { c: "no", f: 0, to: 9 }, { c: "no", f: 0, to: "1" }, { c: "here", f: 0 }, { c: "here", f: 0, w: "a" }, { c: "here", f: 0, w: "", p: spot }, { c: "here", f: 0, w: "a", p: spot.slice(0, 8) }, { c: "here", f: 0, w: "a", p: [0.6].concat(spot.slice(1)) }, { c: "here", f: 0, w: "a", p: spot.slice(0, 8).concat([2]) }, { c: "here", f: 0, w: "a", p: spot.slice(0, 8).concat(["0"]) }, { c: "here", f: 0, w: "a", p: "x" }];
+  expect("a word about a spot with anything wrong in it is dropped", badA.every(b => tgClean(J(b), true) === null), badA.map((b, i) => tgClean(J(b), true) === null ? "" : i).join(","));
+  {
+    const { tgSpot } = togetherM, c = tgSpot([0.25, -0.5, 0, 0, 0, 2, 0.3, 1, 0.4], [4, 2, 8]), dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    expect("a place becomes a camera: in the world's units, facing as sent, with up and right square to it", c && J(c.pos) === J([1, -1, 0]) && J(c.F) === J([0, 0, 1]) && Math.abs(dot(c.Up, c.F)) < 1e-12 && Math.abs(dot(c.R, c.F)) < 1e-12 && Math.abs(dot(c.R, c.Up)) < 1e-12 && Math.abs(Math.hypot(...c.Up) - 1) < 1e-12 && c.Up[1] > 0.9 && c.R[0] > 0.9, J(c));
+    expect("directions no camera can have give nothing", tgSpot([0, 0, 0, 0, 0, 0, 0, 1, 0], [1, 1, 1]) === null && tgSpot([0, 0, 0, 0, 0, 1, 0, 0, 1], [1, 1, 1]) === null);
+  }
   {
     const { tgMusicSdp } = togetherM, sd = "v=0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111 63\r\na=rtpmap:111 opus/48000/2\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=rtpmap:63 red/48000/2\r\na=fmtp:63 111/111\r\n", out = tgMusicSdp(sd);
     expect("the music line of a session description is set for music, and nothing else is touched", out === sd.replace("useinbandfec=1", "useinbandfec=1;stereo=1;sprop-stereo=1;maxaveragebitrate=128000"), out);
