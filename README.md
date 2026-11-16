@@ -13,7 +13,7 @@
 >
 > Mirrorfold is designed to avoid strobing, but it has **not** been tested or certified against any photosensitivity standard, and no setting makes it safe for everyone. It is not a medical device and nothing here is medical advice. It is provided "as is", without warranty of any kind, and you use it entirely at your own risk; see the [licence](LICENSE).
 
-Fly through endless fractal worlds in your browser. Twenty-seven worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
+Fly through endless fractal worlds in your browser. Twenty-eight worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
 
 This project is inspired in part by the music visualizers from decades past… from Winamp plugins to the standalone visualizer MilkDrop. This has a familiar feel when in Journey mode (an autopilot that flies through the procedurally generated 3D worlds) while listening to music. 
 
@@ -31,7 +31,7 @@ Relax, unwind, and enjoy!
 
 **Try it: https://gcrabtree.github.io/MirrorFold/**
 
-![Contact sheet of all 27 worlds](docs/worlds.jpg)
+![Contact sheet of all 28 worlds](docs/worlds.jpg)
 
 The app is one page, one stylesheet and a folder of JavaScript modules. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
 
@@ -58,7 +58,8 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 
 ## What it does
 
-- **27 worlds.** Twenty-two are solid surfaces, all fractals but Cell (the inside of a living cell); three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
+- **28 worlds.** Twenty-three are solid surfaces, all fractals but Cell (the inside of a living cell) and Biomech (see below); three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
+- **Biomech**, a world in homage to the biomechanical paintings of H. R. Giger: an endless hall of tunnels whose walls are rib cages, with spines where the tunnels meet, tendons between ribs and spines, and ribbed hoses running alongside. The cages breathe with the morph. Nothing of his is copied; it is built from the kinds of thing he painted. With it come three near-grey palettes that are open from the start (**Gunmetal**, **Tallow**, **Verdigris**), the **ribbed** surface, the **Airbrush** filter and the **Biomech** journey template, all of which work in every other world too.
 - **Zooms a trillion times deep.** The two zoom worlds magnify the Mandelbrot set and Julia sets up to about a trillion times, on points where there is always something to see. See [The zoom worlds](#the-zoom-worlds).
 - **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
 - **Morph.** Each world changes shape as you fly. With music playing, the song decides the shape: a quiet passage opens the world out, a full one folds it dense, and a drop gives a surge forward.
@@ -169,12 +170,12 @@ The controls fade after five seconds and come back when you touch the picture.
 | Control | What it does |
 |---|---|
 | Feedback motion | none, Melt, Vortex, Tunnel, Implode, Ripple, Drift. Each one smears the previous frame in a different way. |
-| Filter | none, Echo, Neon, Solar, Negative, Poster, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl, Thermal, CRT, Halftone, Contour, Noir, Comic, Two-tone, Tape, Streaks, Emboss, Glass. The last six were made with video in mind. |
+| Filter | none, Echo, Neon, Solar, Negative, Poster, Mosaic, Liquid, Prism, Quad, Tiles, Bulge, Twirl, Thermal, CRT, Halftone, Contour, Noir, Comic, Two-tone, Tape, Streaks, Emboss, Glass, Airbrush. The six before Airbrush were made with video in mind. **Airbrush** takes nearly all the colour out and leaves the light: cool in the shadows, warm in the highlights, as if the picture were sprayed in greys. |
 | Overlay | none, Ring, Scope, Spectrum, Spokes, Rings, Spiral, Orbit. These draw the sound on top of the picture. |
 | Overlay strength | 15%, 30%, 50%, 75% or 100%. |
 | Mirrors | Opens a chooser: off, 3, 4, 6, 8 or 12 segments. The M key steps through them. |
 | FX | Opens a chooser: glow, trails or clean. Sets the base amount of trail and bloom. |
-| Surface | Opens a chooser of what the worlds' surfaces are made of, all in the palette's colours. **Plain** gives each part of a shape one colour. **Grain** is the rings of a tree, as if every shape were carved from a block of timber (choose the palette Wood for browns); the rings' waves drift slowly, grow with the music and step on the beat. **Dots** are round dots with a dark border that grow on the beat. **Tiles** are blocks of different shades with dark joints, and some light up with the high notes. **Marble** is pale stone with dark veins that drift and thicken on the beat. **Wire** is a dark surface with a glowing grid that brightens on the beat. **Cells** are irregular patches with dark edges that widen on the beat. **Pearl** is a sheen whose colour slides over a shape as you pass. It changes the solid worlds only: the three glowing worlds and the two zoom worlds have no surfaces. **Chrome** is dark polished metal that shows the other shapes in it: a second ray is followed from every surface, so it costs up to twice as much to draw, and **Detail auto** may make the picture less sharp while it is on. It has its own programs, made when it is first chosen. In a world from a pack it is the same as plain. |
+| Surface | Opens a chooser of what the worlds' surfaces are made of, all in the palette's colours. **Plain** gives each part of a shape one colour. **Grain** is the rings of a tree, as if every shape were carved from a block of timber (choose the palette Wood for browns); the rings' waves drift slowly, grow with the music and step on the beat. **Dots** are round dots with a dark border that grow on the beat. **Tiles** are blocks of different shades with dark joints, and some light up with the high notes. **Marble** is pale stone with dark veins that drift and thicken on the beat. **Wire** is a dark surface with a glowing grid that brightens on the beat. **Cells** are irregular patches with dark edges that widen on the beat. **Pearl** is a sheen whose colour slides over a shape as you pass. It changes the solid worlds only: the three glowing worlds and the two zoom worlds have no surfaces. **Ribbed** covers every surface in fine ridges like the rings of a hose, takes most of the colour out and makes it shine, so shapes read as dull metal or bone. **Chrome** is dark polished metal that shows the other shapes in it: a second ray is followed from every surface, so it costs up to twice as much to draw, and **Detail auto** may make the picture less sharp while it is on. It has its own programs, made when it is first chosen. In a world from a pack it is the same as plain. |
 | Packing | Opens a chooser of how the worlds made of one shape repeated set their copies out: Citadel, Bulbs, Shards, Crystal, Julia, Hive, Mandelbrot and Pyrite. The other worlds are not changed by it. **Grid** is a copy at every step along straight rows, each the mirror of the one beside it, with flat empty lanes between. **Scattered** has copies all of one size, each moved off its place and turned its own way, with about one place in eight left empty. **Nested** has copies of three sizes: space is cut into large boxes, some of them cut into eight, and some of those into eight again, with one copy to a box. **Sponge** has small copies set out as a sponge, with square holes right through it that you can fly along, and one large copy at the heart of each block. **Helix** has two strands of copies winding up round an open middle. **Shells** has cages of twenty copies, one inside another round a centre without end, each a third the size of the one outside it and turned a little. **Descent** is a single nest of such cages that has no largest or smallest: the world is the same three times larger, so as you fly in the page moves you three times as far out, where everything looks the same, and you can go in for ever. Journey leans toward the middle there. In the descent there is no doorway, and a flight cannot be recorded; friends flying together may show a cage in or out from where they are. Changing the packing happens behind a transition and puts you down in open space, since every shape moves. The choice is kept in this browser, and a share link, a recorded flight and Fly together carry it. |
 | Inside out | Off or on. On, open space and solid are swapped in every world that has surfaces. The swap is made a little way out from the shapes: the new walls stand at a fixed distance from the old shapes (three tenths of the most open space the world has), and everything nearer the old shapes than that, the shapes themselves included, is open. So you fly in and around where the shapes were, and what was the middle of the open space is solid. The walls are smoother than the shapes were, and keep their colours. The open space is a layer no thicker than that distance, so flight is slower, a great deal slower in tight worlds such as Sponge. Changing it puts you in open space again, behind a transition. It is carried by share links, recorded flights and Fly together, and Journey can change it (it is left as set by default). Not in a zoom, cloud or pack world, or in the descent packing. |
 | Light shafts | Off (the default) or on. The open space gets a faint haze which is lit only where the way toward the light is clear, so light falls in beams through the gaps between shapes, brightest when you look toward the light. The light comes from one direction fixed in the world. It shows most in open worlds with dark space between the shapes (Julia, Halls); in a bright enclosed world such as Sponge there is little to see. It is heavier to draw: up to thirty more distance sums for each pixel. The first time it is chosen each world's program is made again, which takes a moment. Not in a zoom or cloud world. |
@@ -340,7 +341,7 @@ A **template** says what Journey may change and how often. For each of world, pa
 
 A **set** plays several templates in turn, each for a number of minutes.
 
-Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, Calm, Landscapes, Follow the music. Built-in set: Grand tour.
+Built-in templates: Classic, Everything, Clean flight, MilkDrop, Kaleidoscope, Calm, Biomech, Landscapes, Follow the music. **Biomech** keeps to the Biomech world and three others made of rods and webs (Web, Thicket, Tangle), the near-grey palettes, the ribbed, chrome, pearl and plain surfaces and the Airbrush and Noir filters, with no mirrors, motions or overlays. Built-in set: Grand tour.
 
 Turn Journey on and press **Edit journeys** to make your own. Built-in templates cannot be edited; use **Duplicate** to start from one. Your templates and sets are saved in your browser only. To keep a copy or move them to another device, save them as a pack; see [Library and packs](#library-and-packs).
 
@@ -521,7 +522,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `js/` | The app, as about 67 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
-| `docs/worlds.jpg` | Contact sheet of all 27 worlds |
+| `docs/worlds.jpg` | Contact sheet of all 28 worlds |
 | `thumbs/` | The choosers' small pictures, one for each built-in world, palette, motion, filter, overlay, mirror setting, FX setting and landscape |
 | `lang/` | The lessons' words, one flat file for each language (`en.json`) |
 | `voice/` | The lessons' voice: one sound file for each step, and `index.json`, which records the words each was made from |

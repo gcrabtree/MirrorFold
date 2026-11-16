@@ -18,18 +18,23 @@ export const PALETTES=[
  {name:"Candy",a:[.7,.5,.6],b:[.3,.4,.4],c:[1,1,1],d:[0,.3,.6]},
  {name:"Toxic",a:[.3,.5,.05],b:[.3,.5,.05],c:[1,1,1],d:[.15,0,.5]},
  {name:"Gold",a:[.5,.4,.15],b:[.5,.4,.2],c:[1,1,1],d:[0,.05,.3]},
- {name:"Ultraviolet",a:[.35,.1,.55],b:[.35,.1,.45],c:[1,1,1],d:[.1,.5,0]}
+ {name:"Ultraviolet",a:[.35,.1,.55],b:[.35,.1,.45],c:[1,1,1],d:[.1,.5,0]},
+ /* three near-greys for the Biomech world: cold steel, old bone, and green bronze. They are open from the start (open:true), not found by orbs */
+ {name:"Gunmetal",a:[.36,.40,.41],b:[.33,.35,.34],c:[1,1,1],d:[0,.02,.05],open:true},
+ {name:"Tallow",a:[.42,.36,.25],b:[.38,.32,.22],c:[1,1,1],d:[0,.03,.08],open:true},
+ {name:"Verdigris",a:[.20,.35,.30],b:[.20,.30,.26],c:[1,1,1],d:[.06,0,.11],open:true}
 ];
 export const BASE_PALS=8;
+export const ORB_PALS=6; /* how many palettes after those are opened by finding orbs */
 export const NPAL=PALETTES.length;
 /* a built-in palette is open once its orb is found; palettes from a pack are always open */
-export function palOpen(i){return i<BASE_PALS+unlocked||i>=NPAL;}
+export function palOpen(i){return i<BASE_PALS+unlocked||i>=NPAL||!!(PALETTES[i]&&PALETTES[i].open);}
 /* give a shader the palette in use (its four uniforms uPa, uPb, uPc, uPd) */
 export function setPal(U){gl.uniform3fv(U.uPa,palCur.a);gl.uniform3fv(U.uPb,palCur.b);gl.uniform3fv(U.uPc,palCur.c);gl.uniform3fv(U.uPd,palCur.d);}
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 /* an orb was collected: count it, and unlock the next palette if any are left. True if one was unlocked. */
-export function orbCounted(){orbsFound++;if(unlocked<NPAL-BASE_PALS){unlocked++;return true;}return false;}
+export function orbCounted(){orbsFound++;if(unlocked<ORB_PALS){unlocked++;return true;}return false;}
 export let palCur;
 export function saveProgress(){try{localStorage.setItem("mirrorfold",JSON.stringify({u:unlocked,n:orbsFound}))}catch(_){}}
 export function fillPalettes(){
@@ -60,9 +65,9 @@ export function easePalette(dt){
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 palCur={a:PALETTES[0].a.slice(),b:PALETTES[0].b.slice(),c:PALETTES[0].c.slice(),d:PALETTES[0].d.slice()};
-try{var sv=JSON.parse(localStorage.getItem("mirrorfold")||"{}");unlocked=Math.max(0,Math.min(NPAL-BASE_PALS,sv.u|0));orbsFound=sv.n|0;}catch(_){}
+try{var sv=JSON.parse(localStorage.getItem("mirrorfold")||"{}");unlocked=Math.max(0,Math.min(ORB_PALS,sv.u|0));orbsFound=sv.n|0;}catch(_){}
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={PALETTES, BASE_PALS, NPAL, palOpen, setPal, orbCounted, saveProgress, fillPalettes, labelPalettes, setPalette,
+export const __dbg={PALETTES, ORB_PALS, BASE_PALS, NPAL, palOpen, setPal, orbCounted, saveProgress, fillPalettes, labelPalettes, setPalette,
   randomPalette, easePalette, get unlocked(){return unlocked},set unlocked(v){unlocked=v}, get orbsFound(){return orbsFound},set orbsFound(v){orbsFound=v}, get palCur(){return palCur},set palCur(v){palCur=v}};

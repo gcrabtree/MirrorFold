@@ -291,14 +291,24 @@ export function fragSource(w){
 "      }",
 "      float edge=smoothstep(0.03+0.06*uBeat,0.06+0.06*uBeat+2.0*sa,f2-f1);",
 "      base=pal(uHue+0.1*tr.w+0.5*id)*(0.3+0.7*edge)*(0.8+0.5*uMid*(0.5+0.5*sin(6.28318*id*9.0+uTime)));quiet=1.0;",
-"    }else if(uSurf>6.5){", /* pearl: the colour comes from the way the surface faces and how squarely it is seen, not from where it is, so it slides over a shape as you pass, like oil on water. It shifts with the middle of the sound. */
+"    }else if(uSurf>8.5){", /* ribbed: fine ridges run across the surface like the rings of a hose, wavering a little, with a wider swell under them; the colour is mostly taken out, so the surface reads as dull metal or bone, and it shines */
+"      vec3 rm=max(floor(uPer*0.5+0.5),1.0)*6.28318/uPer;vec3 rq=sp*rm;",
+"      float sharp=clamp(0.02/(uPix*t),0.0,1.0);",
+"      float ra=24.0*rq.z+8.0*rq.x+8.0*rq.y+1.5*sin(2.0*rq.x-rq.y)+1.5*sin(2.0*rq.y+rq.z);",
+"      float rv=0.5+0.5*sin(ra);float rc=cos(ra);",
+"      vec3 rg=rc*(vec3(8.0,8.0,24.0)+1.5*cos(2.0*rq.x-rq.y)*vec3(2.0,-1.0,0.0)+1.5*cos(2.0*rq.y+rq.z)*vec3(0.0,2.0,1.0))*rm;", /* which way the ridges rise, for tilting the surface */
+"      n=normalize(n-0.012*sharp*(rg-n*dot(rg,n)));",
+"      rv=mix(0.5,rv,sharp);float sw=0.5+0.5*sin(3.0*rq.x+2.0*rq.y+rq.z+0.6*uMid);",
+"      vec3 rb=base*(0.5+0.6*rv)*(0.75+0.25*sw);",
+"      base=mix(vec3(dot(rb,vec3(0.299,0.587,0.114))),rb,0.4);shine=2.4;quiet=0.9;",
+"    }else if(uSurf>6.5&&uSurf<7.5){", /* pearl: the colour comes from the way the surface faces and how squarely it is seen, not from where it is, so it slides over a shape as you pass, like oil on water. It shifts with the middle of the sound. */
 "      base=mix(vec3(0.7),pal(uHue+1.3*(1.0-nd)+0.5*dot(n,vec3(0.36,0.80,0.48))+0.2*tr.w+0.3*uMid+0.03*uTime),0.7);shine=2.2;quiet=0.6;",
 "    }",
 "#ifdef CHROME",
 /* chrome: a second ray is followed from the surface the way a mirror would send it, and what it meets is shown in the
    surface: the shape it hits in its own colours, darker in the folds and faded by the distance, or the dark of the
    distance. The metal itself is dark and tinted by the palette, and shines more at a glancing angle. */
-"    if(uSurf>7.5){",
+"    if(uSurf>7.5&&uSurf<8.5){",
 "      vec3 rr=reflect(rd,n);vec3 rp=p+n*(3.0*e);float rt=4.0*e;float rs=0.0;float rh=0.0;float rd2=0.0;",
 "      for(int i=0;i<RSTEPS;i++){",
 "        rd2=map(rp+rr*rt);",
@@ -550,7 +560,7 @@ VR_GLSL,
 "    else if(uFx<3.5)cw*=mix(0.5,1.0,smoothstep(0.0,0.5,length(cw)));", /* bulge: the middle swells */
 "    else{float ta=2.0*sin(uTime*0.25)*max(0.6-length(cw),0.0);float tcs=cos(ta),tsn=sin(ta);cw=vec2(tcs*cw.x-tsn*cw.y,tsn*cw.x+tcs*cw.y);}", /* twirl: winds and unwinds */
 "  }",
-"  if(uFx>14.5){vec2 gt=fract(cw*vec2(uAsp,1.0)*9.0)-0.5;cw+=gt*0.035;}", /* glass: a grid of small lenses */
+"  if(uFx>14.5&&uFx<15.5){vec2 gt=fract(cw*vec2(uAsp,1.0)*9.0)-0.5;cw+=gt*0.035;}", /* glass: a grid of small lenses */
 "  if(uLiq>0.0)cw+=uLiq*vec2(sin(cw.y*14.0+uTime*1.3),cos(cw.x*12.0-uTime*1.1));",
 "  if(uMos>0.0){vec2 n=vec2(uMos*uAsp,uMos);cw=(floor(cw*n)+0.5)/n;}",
 "  if(uVr<1.5)break;",
@@ -611,6 +621,9 @@ VR_GLSL,
 "      col=clamp(t*0.94+0.03+0.03*(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233))+floor(uTime*10.0))*43758.5453)-0.5),0.0,1.0);",
 "    }else if(uFx<13.5){", /* streaks: the bright parts run down the picture */
 "      for(int i=1;i<9;i++){vec3 s=texture2D(uT,tw+vec2(0.0,float(i)*uPx.y*7.0)).rgb;col=max(col,s*smoothstep(0.45,0.8,dot(s,LW))*(1.0-float(i)/9.0));}",
+"    }else if(uFx>15.5){", /* airbrush: the brightness with more contrast, tinted cool where dark and warm where light, and only a little of the colour kept */
+"      float ab=smoothstep(0.0,0.62,lum);ab=mix(ab,ab*ab*(3.0-2.0*ab),0.5);",
+"      col=mix(mix(vec3(0.50,0.60,0.58),vec3(1.0,0.96,0.88),ab)*ab,col,0.10);",
 "    }",
 "  }",
 "  col+=texture2D(uB,tw).rgb*uBloom;",

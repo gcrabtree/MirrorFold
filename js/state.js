@@ -39,12 +39,13 @@ export const LOOKS=[
  {name:"Tape",fx:12},
  {name:"Streaks",fx:13},
  {name:"Emboss",fx:14},
- {name:"Glass",fx:15}
+ {name:"Glass",fx:15},
+ {name:"Airbrush",fx:16} /* nearly all the colour taken out, cool in the shadows and warm in the lights, as if sprayed in greys */
 ];
 /* what the worlds' surfaces are made of: plain is one colour of the palette to a part of a shape; grain is the rings
    of a tree, worked out in the scene shader from the place a ray lands (js/shaders.js), so a shape looks cut from a
    block of timber. The grain takes its colours from the palette too: with the palette Wood it is brown. */
-export const SURFACES=[{name:"plain"},{name:"grain"},{name:"dots"},{name:"tiles"},{name:"marble"},{name:"wire"},{name:"cells"},{name:"pearl"},{name:"chrome"}];
+export const SURFACES=[{name:"plain"},{name:"grain"},{name:"dots"},{name:"tiles"},{name:"marble"},{name:"wire"},{name:"cells"},{name:"pearl"},{name:"chrome"},{name:"ribbed"}];
 export const OVS=[.15,.3,.5,.75,1];
 export const OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"}];
 export const TRANSITIONS=8;

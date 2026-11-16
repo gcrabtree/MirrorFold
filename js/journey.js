@@ -258,6 +258,9 @@ BUILTIN_T=[
  {name:"Kaleidoscope",mirrors:{mode:"random",set:["3","4","6","8","12"]},motion:{mode:"off"},filter:{mode:"random",set:["none","Quad","Tiles","Twirl","Prism"]},overlay:{mode:"off"}},
  {name:"Calm",world:{every:90,set:["coral","julia","aurora","nebula","gates","halls","temple"]},palette:{every:40},mirrors:{mode:"off"},
   motion:{mode:"random",every:50,set:["none","Melt","Drift"]},filter:{mode:"random",every:60,set:["none","Liquid"]},overlay:{mode:"off"}},
+ /* the Biomech world and what goes with it: near-grey palettes, the ribbed and chrome surfaces, the Airbrush filter */
+ {name:"Biomech",world:{every:80,set:["biomech","web","thicket","tangle"]},palette:{every:35,set:["Gunmetal","Tallow","Verdigris","Bone"]},mirrors:{mode:"off"},
+  motion:{mode:"off"},filter:{mode:"random",every:60,set:["Airbrush","none","Noir"]},overlay:{mode:"off"},surface:{mode:"random",every:50,set:["ribbed","plain","chrome","pearl"]}},
  {name:"Landscapes",world:{every:70},mirrors:{mode:"off"},land:{mode:"random",every:80}},
  {name:"Follow the music",world:{trigger:"sound",every:45},mirrors:{mode:"random",none:"75"},motion:{mode:"random"},overlay:{mode:"random",set:["Ring","Scope","Spectrum","Spokes"]},surface:{mode:"random"}}
 ].map(function(t){return normT(t,true)});

@@ -812,6 +812,61 @@ export const WORLDS=[
  }},
 /* The two zoom worlds are flat pictures, not spaces: js/zoom.js draws them and moves the view. They are marked as cloud
    worlds too, so that everything that needs a surface (the orb's check, the thrown light, the distance probe) leaves them alone. */
+/* Biomech: an endless hall of ribbed tunnels, in homage to the biomechanical paintings of H. R. Giger. Nothing of his
+   is copied; it is made of the kinds of thing he painted: rib cages, spines, hoses. Along z run tunnels, one to each
+   3.2 by 3.2 of x and y. A tunnel's wall is a cage: two rings to each unit of z, their thickness cut into segments
+   like a windpipe, joined by eight knuckled rods. Where four tunnels meet stands a spine of four vertebrae to the
+   unit, joined to the larger rings by tendons, and between each two tunnels runs a pair of ribbed hoses. The morph
+   swells one ring as it shrinks the other, as if the cage breathed. The joins are rounded (bmS), and the swellings
+   make the distance a little too large in places, so three quarters of it is used. */
+{id:"biomech",name:"Biomech",hue:.47,fog:.19,maxd:16,speed:.6,start:[.25,.1,.2],
+ period:function(){return [3.2,3.2,1]},
+ glsl:[
+ "float bmS(float a,float b,float k){float h=clamp(0.5+0.5*(b-a)/k,0.0,1.0);return mix(b,a,h)-k*h*(1.0-h);}",
+ "float map(vec3 p){",
+ "  vec3 q=vec3(mod(p.x+1.6,3.2)-1.6,mod(p.y+1.6,3.2)-1.6,mod(p.z+0.5,1.0)-0.5);",
+ "  float rho=length(q.xy);float a=atan(q.y,q.x);float w=0.10;",
+ "  float seg=0.016*cos(12.0*a);",
+ "  float d=length(vec2(rho-(1.12+0.06*uM),q.z))-(0.085+seg);", /* the larger ring, in the middle of each unit */
+ "  float d1=length(vec2(rho-(1.02-0.05*uM),0.5-abs(q.z)))-(0.065-seg);", /* the smaller, at its ends */
+ "  if(d1<d){d=d1;w=0.16;}",
+ "  float af=mod(a+0.3926991,0.7853982)-0.3926991;", /* the eight rods: one is worked out, and the angle folded onto it */
+ "  float ds=length(vec2(rho*cos(af)-1.09,rho*sin(af)))-(0.045+0.02*cos(12.5663706*q.z));",
+ "  if(ds<d)w=0.24;",
+ "  d=bmS(d,ds,0.07);",
+ "  vec2 c=abs(q.xy)-1.6;float vb=0.5+0.5*cos(25.1327412*q.z);", /* the spine at the nearest corner */
+ "  float dv=length(c)-(0.2+0.13*vb*vb);",
+ "  float dt=max(length(vec2((abs(q.x)-abs(q.y))*0.7071068,q.z))-0.05,1.07+0.06*uM-rho);", /* a tendon from the larger ring out to the spine */
+ "  if(dt<d)w=0.30;",
+ "  d=bmS(d,dt,0.08);",
+ "  if(dv<d)w=0.36+0.06*vb;",
+ "  d=bmS(d,dv,0.08);",
+ "  vec2 e=vec2(abs(q.x)-1.6,q.y);vec2 f=vec2(abs(q.y)-1.6,q.x);if(dot(f,f)<dot(e,e))e=f;", /* the pair of hoses between this tunnel and the nearest neighbour */
+ "  float dh=length(vec2(e.x,abs(e.y)-0.13))-(0.085+0.012*cos(62.8318531*q.z));",
+ "  if(dh<d){d=dh;w=0.52+0.04*cos(62.8318531*q.z);}",
+ "  orb=vec4(0.5+0.5*cos(12.0*a),0.3*vb,0.25,w);",
+ "  return 0.75*d;",
+ "}"],
+ de:function(x,y,z,m){
+  var S=function(a,b,k){var h=Math.max(0,Math.min(1,.5+.5*(b-a)/k));return b+(a-b)*h-k*h*(1-h);};
+  var qx=md(x+1.6,3.2)-1.6,qy=md(y+1.6,3.2)-1.6,qz=md(z+.5,1)-.5;
+  var rho=Math.hypot(qx,qy),a=Math.atan2(qy,qx),seg=.016*Math.cos(12*a);
+  var d=Math.hypot(rho-(1.12+.06*m),qz)-(.085+seg);
+  var d1=Math.hypot(rho-(1.02-.05*m),.5-Math.abs(qz))-(.065-seg);
+  if(d1<d)d=d1;
+  var af=md(a+.3926991,.7853982)-.3926991;
+  var ds=Math.hypot(rho*Math.cos(af)-1.09,rho*Math.sin(af))-(.045+.02*Math.cos(12.5663706*qz));
+  d=S(d,ds,.07);
+  var cx=Math.abs(qx)-1.6,cy=Math.abs(qy)-1.6,vb=.5+.5*Math.cos(25.1327412*qz);
+  var dv=Math.hypot(cx,cy)-(.2+.13*vb*vb);
+  var dt=Math.max(Math.hypot((Math.abs(qx)-Math.abs(qy))*.7071068,qz)-.05,1.07+.06*m-rho);
+  d=S(d,dt,.08);
+  d=S(d,dv,.08);
+  var ex=cx,ey=qy,fx=cy,fy=qx;if(fx*fx+fy*fy<ex*ex+ey*ey){ex=fx;ey=fy;}
+  var dh=Math.hypot(ex,Math.abs(ey)-.13)-(.085+.012*Math.cos(62.8318531*qz));
+  if(dh<d)d=dh;
+  return .75*d;
+ }},
 {id:"mzoom",name:"Mandelbrot zoom",hue:.55,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,
  period:function(){return [4,4,4]},glsl:[],de:function(){return .2}},
 {id:"jzoom",name:"Julia zoom",hue:.1,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,julia:true,
