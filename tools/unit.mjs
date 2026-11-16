@@ -78,6 +78,9 @@ for (let i = 0; i < 2000; i++) { const n = jPick("motion", {}, cur, ["a", "b", "
 expect("subset pick never repeats and reaches every option", !repeat && seen.size === 3);
 expect("single option stays put", jPick("motion", {}, "a", ["a"]) === "a");
 expect("empty option list changes nothing", jPick("motion", {}, "a", []) === "a");
+{ let back = false; for (let i = 0; i < 500; i++) if (jPick("world", {}, "a", ["a", "b", "c"], "b") !== "c") back = true;
+  expect("Journey does not pick the world it just left", !back);
+  expect("unless it is the only other one", jPick("world", {}, "a", ["a", "b"], "b") === "b"); }
 
 // ---- VR viewer head turn: angles are (alpha, beta, gamma, screen rotation) in degrees; the result is in
 // screen axes (x right, y up, z toward the viewer), in degrees here for reading
@@ -746,6 +749,8 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("the ring is never bigger than the space round it allows", [[0.5, 0, 0], [-0.8, 3, 1], [0, 0, 7]].every(p => { const d = doorAhead(slab, p, F, R, Up, 20); return d && d.r <= 0.45 * slab(...d.p) + 1e-9; }));
   expect("facing a wall close to, it goes to one side where there is room, or nowhere", (() => { const d = doorAhead(slab, [0.9, 0, 0], [1, 0, 0], [0, 0, -1], Up, 20); return d === null || slab(...d.p) >= d.r / 0.45 - 1e-9; })());
   expect("inside something solid there is no doorway", doorAhead((x, y, z) => -1, [0, 0, 0], F, R, Up, 20) === null);
+  expect("the way to a ring is clear along the open slab", doorsM.doorClear(slab, [0, 0, 0], [0, 0, 5], 0.2) === true);
+  expect("and not clear through the slab's wall", doorsM.doorClear(slab, [0, 0, 0], [5, 0, 0], 0.2) === false);
   let sd = 5; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
   const sp = doorSpot(slab, [8, 8, 8], rnd);
   expect("the far end is the most open place found, with a ring that fits it", sp && Math.abs(sp.q[0]) < 0.2 && Math.abs(sp.r - 0.45 * slab(...sp.q)) < 1e-12 && sp.q.every(x => Math.abs(x) <= 4), J(sp));

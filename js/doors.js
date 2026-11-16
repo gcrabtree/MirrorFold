@@ -6,7 +6,7 @@
    the other world from q + s*x, where s is how much bigger the open space is there; both ends face the same way.
    Journey changes world through a doorway when it is flying (the autopilot is steered into it), and Open a doorway
    makes one by hand. A doorway closes if nobody goes through, or if the morph shuts the space at either end. After
-   going through, the way back stays open behind for a few seconds.
+   going through, the way back stays open behind for a few seconds; behind Journey's own flight it closes at once.
    Only worlds with surfaces and a distance worked out here can have one: not a zoom, a cloud or a pack world. */
 import { cam } from "./camera.js";
 import { requestWorld, scene, setWorldNow } from "./choose.js";
@@ -26,6 +26,7 @@ import { tr } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 export const DOOR_LIFE=40;   /* seconds a doorway waits to be flown through */
 export const DOOR_BACK=10;   /* seconds the way back stays open behind */
+export const DOOR_BACK_J=2;  /* the same while Journey is flying: it closes at once, so that the autopilot cannot turn round and go back through */
 export const DOOR_TRY=6;     /* seconds spent looking for room to put one before giving up */
 export const doorU=new Float32Array(4); /* for the shader: the ring's middle (the copy nearest the camera) and its size now; 0 for none */
 export const doorN=new Float32Array(3); /* the way the ring faces */
@@ -133,17 +134,30 @@ function doorThrough(fr,rel){
   fr.w=d.to;fr.wSpeed=d.to.speed;fr.pk=false;fr.per=per;fr.dist=Math.abs(d.to.de(cam.pos[0],cam.pos[1],cam.pos[2],fr.m));
   door={to:d.from,from:d.to,p:d.q,n:d.n,r:d.r*d.s,q:d.p,s:1/d.s,open:1,age:0,back:true,warp:false,wait:false,shut:false,was:null,chk:0,pk:packing};
 }
-/* A step of the frame, after the autopilot: while Journey flies and a doorway stands ahead, turn toward its middle. One that has been passed is closed. */
-export function doorSteer(fr){
-  var d=door,v,z,k;
-  if(!d||d.wait||d.back||d.shut||!fr.travel||still)return;
-  v=doorWrap([d.p[0]-cam.pos[0],d.p[1]-cam.pos[1],d.p[2]-cam.pos[2]],fr.w.period(fr.m));
-  if(dot(v,d.n)>0){d.shut=true;return;} /* the camera is behind it */
-  v=unit(v);z=dot(v,cam.F);
-  if(z<0.1)return;
-  k=function(x){return Math.max(-1.4,Math.min(1.4,2.6*x));};
-  cam.lookX+=k(dot(v,cam.R))*fr.dt*fr.hands;cam.lookY-=k(dot(v,cam.Up))*fr.dt*fr.hands;
+/* Is the straight way from the camera to a place off by v clear? de is the world's distance, r the room wanted round the line. */
+export function doorClear(de,pos,v,r){
+  var k,u;
+  for(k=1;k<=4;k++){u=k/5;if(de(pos[0]+v[0]*u,pos[1]+v[1]*u,pos[2]+v[2]*u)<r)return false;}
+  return true;
 }
+/* A step of the frame, in the autopilot's place: while Journey flies and a doorway stands ahead, turn toward its middle.
+   True if the way to it is clear, and then the autopilot is left out this frame, so that nothing pulls the flight off
+   the ring. If something is in the way it only leans toward the ring and the autopilot steers too. One that has been
+   passed is closed. */
+export function doorSteer(fr){
+  var d=door,v,u,z,m=fr.m,own,g,lim;
+  if(!d||d.wait||d.back||d.shut||!fr.travel||still)return false;
+  v=doorWrap([d.p[0]-cam.pos[0],d.p[1]-cam.pos[1],d.p[2]-cam.pos[2]],fr.w.period(fr.m));
+  if(dot(v,d.n)>0){d.shut=true;return false;} /* the camera is behind it */
+  u=unit(v);z=dot(u,cam.F);
+  if(z<0.1)return false;
+  own=doorClear(function(x,y,z){return d.from.de(x,y,z,m);},cam.pos,v,0.4*d.r);
+  g=own?5:2.6;lim=own?2.2:1.4;
+  cam.lookX+=Math.max(-lim,Math.min(lim,g*dot(u,cam.R)))*fr.dt*fr.hands;cam.lookY-=Math.max(-lim,Math.min(lim,g*dot(u,cam.Up)))*fr.dt*fr.hands;
+  return own;
+}
+/* Is a doorway of Journey's standing, not yet gone through? Journey does not ask for another world meanwhile. */
+export function doorOwed(){return !!door&&door.warp&&!door.back;}
 /* A step of the frame, after the camera has moved: find a waiting doorway its place, open or close it, take the camera
    through if it has crossed the ring, and say where to draw it. Under Hold still nothing about it changes. */
 export function stepDoor(fr){
@@ -167,7 +181,7 @@ export function stepDoor(fr){
     d.chk=0;
     if(d.from.de(d.p[0],d.p[1],d.p[2],m)<1.2*d.r||d.to.de(d.q[0],d.q[1],d.q[2],m)<1.2*d.r*d.s)d.shut=true;
   }
-  if(d.age>(d.back?DOOR_BACK:DOOR_LIFE))d.shut=true;
+  if(d.age>(d.back?(fr.travel?DOOR_BACK_J:DOOR_BACK):DOOR_LIFE))d.shut=true;
   d.open+=((d.shut?0:1)-d.open)*(1-Math.exp(-fr.dt*(d.shut?5:2.5)));
   if(d.shut&&d.open<0.03){doorEnd();return;}
   doorU[0]=cam.pos[0]-rel[0];doorU[1]=cam.pos[1]-rel[1];doorU[2]=cam.pos[2]-rel[2];doorU[3]=d.r*d.open;
@@ -206,5 +220,5 @@ $("bDoor").addEventListener("click",function(){doorByHand();wakeHud();});
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={DOOR_LIFE, DOOR_BACK, DOOR_TRY, doorU, doorN, doorWorld, doorWrap, doorAhead, doorSpot, doorCross, doorBox, doorMay, doorOpen, doorEnd, doorPlace, doorThrough, doorSteer, stepDoor, doorView, doorByHand,
+export const __dbg={DOOR_LIFE, DOOR_BACK, DOOR_BACK_J, DOOR_TRY, doorClear, doorOwed, doorU, doorN, doorWorld, doorWrap, doorAhead, doorSpot, doorCross, doorBox, doorMay, doorOpen, doorEnd, doorPlace, doorThrough, doorSteer, stepDoor, doorView, doorByHand,
   get doorsOn(){return doorsOn},set doorsOn(v){doorsOn=v}, get door(){return door},set door(v){door=v}};

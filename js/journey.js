@@ -12,7 +12,7 @@ import { LK } from "./landscapes.js";
 import { liveAudio, soundChanged } from "./listen.js";
 import { heard } from "./song.js";
 import { tgGuest } from "./together.js";
-import { doorOpen, doorsOn } from "./doors.js";
+import { doorOpen, doorOwed, doorsOn } from "./doors.js";
 import { packD } from "./pack-worlds.js";
 import { PALETTES, palOpen, setPalette } from "./palettes.js";
 import { LOOKS, MOTIONS, OVERLAYS, SURFACES, mirrors, sel } from "./state.js";
@@ -23,6 +23,8 @@ import { tr, warpThen as warpLater } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 export let jt; /* the template in use */
 export let journey=false;   /* Journey is on */
+let jWas="";                 /* the world in use at Journey's last step */
+let jFrom="";                /* the world left most recently: Journey does not go straight back to it */
 export let jLast="";         /* the category Journey changed most recently, for Less like this */
 export let jMove="travel";  /* "travel" flies and steers for you; "drift" leaves the flying to you and only changes the scenery */
 export function jtReset(){jt=BUILTIN_T[0];}
@@ -88,15 +90,16 @@ export function jPool(k,cfg){
   });
   return out.length?out:flat;
 }
-export function jPick(k,cfg,cur,pool){
+export function jPick(k,cfg,cur,pool,not){
   if(!pool.length)return cur;
   if(k==="mirrors"&&cfg.none!=="even"&&pool.indexOf("0")>=0){ /* weighted toward no mirrors */
     var rest=pool.filter(function(x){return x!=="0"});
     if(!rest.length||Math.random()<(cfg.none==="50"?0.5:0.75))return "0";
     return pickWeighted(rest,liked,Math.random());
   }
-  var others=pool.filter(function(x){return x!==cur});
+  var others=pool.filter(function(x){return x!==cur}),fresh;
   if(!others.length)return pool[0];
+  if(not){fresh=others.filter(function(x){return x!==not});if(fresh.length)others=fresh;} /* not is passed over if there is anything else: the world just left */
   return pickWeighted(others,liked,Math.random()); /* an even chance each, unless More like this or Less like this has said otherwise */
   function liked(x){return tasteOf(taste,k,x)}
 }
@@ -187,6 +190,9 @@ export function autopilot(fr){
 /* Run Journey's clocks: move on through a set, and change whatever the template says is due. */
 export function stepJourney(dt){
   for(var jk in J)J[jk].t+=dt;
+  /* The world has changed, however it came about: its clock starts again from the arrival. A doorway is asked for long
+     before it is gone through, and without this the next one could open a few seconds into the new world. */
+  if(scene.world.id!==jWas){if(jWas){jFrom=jWas;jReset("world");}jWas=scene.world.id;}
   if(jset){jset.t+=dt;if(jset.t>jset.len)advanceSet();}
   for(var ci=0;ci<CATS.length;ci++){
     var ck=CATS[ci].k,cf=jt[ck];
@@ -198,7 +204,8 @@ export function stepJourney(dt){
       due=((soundChanged||heard.drop)&&J.world.t>Math.max(10,cf.every*0.25))||J.world.t>cf.every*2.5;
     }
     if(!due)continue;
-    var pick=jPick(ck,cf,jCur(ck),jPool(ck,cf));
+    if(ck==="world"&&(doorOwed()||tr.warpDir!==0))continue; /* a change of world is already on its way */
+    var pick=jPick(ck,cf,jCur(ck),jPool(ck,cf),ck==="world"?jFrom:"");
     /* a new world while Journey is flying: through a doorway where there can be one (js/doors.js), which changes the world the old way itself if it is not gone through */
     if(ck==="world"&&doorsOn&&jMove==="travel"&&pick!==jCur(ck)&&doorOpen(jIndex(ck,pick),true)){jReset(ck);jLast=ck;continue;}
     if(jApply(ck,pick)){jReset(ck);jLast=ck;}
@@ -260,7 +267,7 @@ $("advForget").addEventListener("click",function(){var n=tasteCount();tasteClear
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
+export const __dbg={jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, get jWas(){return jWas},set jWas(v){jWas=v}, get jFrom(){return jFrom},set jFrom(v){jFrom=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
   findT, findS, jCur, jNone, jIndex, jApply, jPool, jPick, applyTemplate, advanceSet,
   selectJourney, fillJT, setJMove, setJourney, autopilot, stepJourney, J, jReset, jResetAll, get jt(){return jt},set jt(v){jt=v},
   get journey(){return journey},set journey(v){journey=v}, get jMove(){return jMove},set jMove(v){jMove=v}, get CATS(){return CATS},set CATS(v){CATS=v}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v}, get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get jset(){return jset},set jset(v){jset=v}};

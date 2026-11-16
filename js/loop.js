@@ -90,7 +90,7 @@ function frame(now){
   midiFrame(notes);
   steering(notes,journey&&jMove==="travel"&&!still);
   if(journey&&started&&!still){
-    if(notes.travel){autopilot(notes);doorSteer(notes);} /* a doorway ahead draws the autopilot into it (js/doors.js) */
+    if(notes.travel&&!doorSteer(notes))autopilot(notes); /* a doorway ahead with a clear way to it is steered into, and the autopilot left out (js/doors.js) */
     stepJourney(dt);
   }
   turn(notes);
