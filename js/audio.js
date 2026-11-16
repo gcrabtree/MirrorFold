@@ -2,6 +2,7 @@
 import { $, errBox, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { musicMode } from "./listen.js";
+import { mediaFile } from "./media.js";
 export let ac=null, master=null, analyser=null, fbins=null, scrubbing;
 export let bus=null, audioEl=null, elNode=null, objUrl=null, scrub, scrubFill, scrubThumb,
   tLabel, scrubFr, lastSeek, elErr=false;
@@ -62,7 +63,7 @@ export function pPause(){
   }else if(player.mode==="el"&&audioEl){audioEl.pause();}
   syncPlayBtn();
 }
-function pSeek(t){
+export function pSeek(t){
   var d=pDur();if(!(d>0))return;
   t=Math.max(0,Math.min(d-0.05,t));
   if(player.mode==="buf"){
@@ -171,6 +172,7 @@ scrub.addEventListener("keydown",function(e){
 $("fileIn").addEventListener("change",function(){
   var f=this.files&&this.files[0];if(!f)return;
   if(!ensureAudio()){errBox.textContent="This browser cannot play audio here.";return;}
+  mediaFile(f.name); /* its name is noted, to go with pictures made while it plays (js/media.js) */
   errBox.textContent="";
   pPause();if(audioEl)audioEl.pause();
   var tk=++player.token;player.mode=null;player.buf=null;player.offset=0;

@@ -5,6 +5,7 @@ import { ac, bus } from "./audio.js";
 import { $, calm, errBox, gl, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { musicMode, setMusic } from "./listen.js";
+import { mediaVideo } from "./media.js";
 import { bindTex, link, passTo } from "./programs.js";
 import { freeT, target } from "./targets.js";
 
@@ -72,6 +73,8 @@ function stopSource(){
   if(url){try{URL.revokeObjectURL(url)}catch(_){}url=null;}
   vidOn=false;lastT=-1;
 }
+/* how far into the video file it is, in seconds; 0 for the camera or none */
+export function vidTime(){return el&&!stream&&isFinite(el.currentTime)?el.currentTime:0;}
 export function videoOff(){stopSource();if(musicMode==="video")setMusic("off");label();}
 function element(){
   if(el)return el;
@@ -160,6 +163,7 @@ $("bVideo").addEventListener("click",function(){
 });
 $("vidIn").addEventListener("change",function(){
   var f=this.files&&this.files[0];if(!f)return;
+  mediaVideo(f.name); /* its name is noted, to go with pictures made while it plays (js/media.js) */
   errBox.textContent="";kind=f.type;var u=URL.createObjectURL(f);videoFrom(u);url=u;
   /* the video's sound becomes the music only if nothing else is playing; otherwise the music carries on and the video is silent */
   if(musicMode==="off")setMusic("video");
@@ -177,7 +181,7 @@ label();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={VMODES, VAMT, FS_SCENE, tV, mNew, mOut, FS_MEAN, VW, FS_VID, label,
+export const __dbg={vidTime, VMODES, VAMT, FS_SCENE, tV, mNew, mOut, FS_MEAN, VW, FS_VID, label,
   setVidMode, vidFile, vidAlone, videoSound, videoScene, setVidAmt, stopSource, videoOff, element, videoFrom,
   useCamera, videoFrame, videoUniforms, get vidMode(){return vidMode},set vidMode(v){vidMode=v}, get vidAmt(){return vidAmt},set vidAmt(v){vidAmt=v}, get vidOn(){return vidOn},set vidOn(v){vidOn=v}, get kind(){return kind},set kind(v){kind=v}, get sound(){return sound},set sound(v){sound=v}, get node(){return node},set node(v){node=v}, get musicBefore(){return musicBefore},set musicBefore(v){musicBefore=v},
   get pScene(){return pScene},set pScene(v){pScene=v}, get el(){return el},set el(v){el=v}, get url(){return url},set url(v){url=v}, get stream(){return stream},set stream(v){stream=v}, get raw(){return raw},set raw(v){raw=v}, get blank(){return blank},set blank(v){blank=v}, get pVid(){return pVid},set pVid(v){pVid=v}, get cur(){return cur},set cur(v){cur=v}, get asp(){return asp},set asp(v){asp=v}, get lastT(){return lastT},set lastT(v){lastT=v},

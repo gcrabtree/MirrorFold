@@ -53,6 +53,8 @@ import * as mLap from "./lap.js";
 import * as mLw from "./lightwave.js";
 import * as mQr from "./qr.js";
 import * as mPh from "./photo.js";
+import * as mMed from "./media.js";
+import * as mSend from "./send.js";
 import * as mMidi from "./midi.js";
 import * as mZ from "./zoom.js";
 import * as mPre from "./preload.js";
@@ -65,7 +67,7 @@ import * as mFigM from "./figures-more.js";
 import * as mFigL from "./figures-look.js";
 import * as mLearn from "./learn.js";
 import * as m32 from "./loop.js";
-const mods=[m0,mZ,m1,mPk,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,mT,m19,m20,m21,mG,m22,m23,m24,m25,m26,mSong,m27,m28,m29,m30,m31,mS,mP,mR,mK,mFl,mFd,mFp,mTg,mDoor,mRib,mLap,mLw,mQr,mPh,mMidi,mPre,mPick,mLang,mLes,mFig,mFigS,mFigM,mFigL,mLearn,m32,mM,mV];
+const mods=[m0,mZ,m1,mPk,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,mT,m19,m20,m21,mG,m22,m23,m24,m25,m26,mSong,m27,m28,m29,m30,m31,mS,mP,mR,mK,mFl,mFd,mFp,mTg,mDoor,mRib,mLap,mLw,mQr,mPh,mMed,mSend,mMidi,mPre,mPick,mLang,mLes,mFig,mFigS,mFigM,mFigL,mLearn,m32,mM,mV];
 /* an init that cannot go on (no WebGL, or no shader compiles) has already put a message on the page, and stops start-up by throwing "stop" */
 try{for(const m of mods)if(m.init)m.init();}catch(e){if(e.message!=="stop")throw e;}
 /* window.MF gives the test tools and the console every internal name, as the single script's closure used to */

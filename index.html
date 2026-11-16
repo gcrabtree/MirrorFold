@@ -73,13 +73,15 @@
   <div class="row menu" id="menuShare" hidden>
     <button id="bShot" type="button">Save picture</button>
     <button id="bPhoto" type="button" aria-pressed="false">Photo mode</button>
-    <button id="bCard" type="button">Save postcard</button>
+    <button id="bCard" type="button">Make a postcard</button>
     <button id="bCode" type="button">Go to a code</button>
     <button id="bRec" type="button" aria-pressed="false">Record video</button>
     <button id="bLap" type="button" aria-pressed="false">Record a loop</button>
     <button id="bShare" type="button">Share spot</button>
     <button id="bFlight" type="button" aria-pressed="false">Record flight</button>
     <button id="bTg" type="button" aria-pressed="false">Fly together</button>
+    <button id="bPlaying" type="button">What's playing?</button>
+    <button id="bMediaShare" type="button" aria-pressed="true">Music named in what I share: yes</button>
     <button id="bLib" type="button">Gallery and library</button>
   </div>
   <div class="row menu" id="menuMore" hidden>
@@ -110,6 +112,13 @@
     <button id="bVidMode" type="button">Video on the surfaces</button>
     <button id="bVidAmt" type="button">Video strength 85%</button>
     <button id="bVidPlay" type="button" hidden>Pause video</button>
+  </div>
+  <div class="row" id="rowSend" hidden>
+    <span id="sendSay" role="status"></span>
+    <button id="bSendShare" type="button" hidden>Share</button>
+    <button id="bSendSave" type="button">Save</button>
+    <button id="bSendReddit" type="button">Post to Reddit</button>
+    <button id="bSendClose" type="button">Close</button>
   </div>
   <div class="row" id="rowPhoto" hidden>
     <label class="btn slide" for="phFov">Zoom <input id="phFov" type="range" min="-100" max="100" step="1" value="0"></label>

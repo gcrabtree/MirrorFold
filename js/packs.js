@@ -95,6 +95,31 @@ export function cleanWorld(src){
   while((m=re.exec(out.code)))cost*=Math.max(1,+m[1]);
   return cost>16?null:out;
 }
+export const MEDIA_KINDS=["built","file","video","note","tap"]; /* where the music came from */
+/* text someone else may have written, made safe to show: one line, no control characters, at most 80 letters */
+export function mediaLine(s){
+  if(typeof s!=="string")return "";
+  return s.replace(/[\u0000-\u001f\u007f]/g," ").replace(/\s+/g," ").trim().slice(0,80);
+}
+/* What was playing, checked: {kind, title, at, seed, bpm, video:{title, at}} with only the parts that are there, or
+   null. It may have come from a file someone else made, so every part is held to what it can be. */
+export function cleanMedia(src){
+  var out={},t,n=function(v,lo,hi){return typeof v==="number"&&isFinite(v)&&v>=lo&&v<=hi;};
+  if(!src||typeof src!=="object"||Array.isArray(src))return null;
+  if(MEDIA_KINDS.indexOf(src.kind)<0)return null;
+  out.kind=src.kind;
+  if(src.title!==undefined){t=mediaLine(src.title);if(t)out.title=t;}
+  if(src.at!==undefined){if(!n(src.at,0,86400))return null;out.at=Math.round(src.at*10)/10;}
+  if(src.seed!==undefined){if(!n(src.seed,1,4294967295)||src.seed!==Math.floor(src.seed))return null;out.seed=src.seed;}
+  if(src.bpm!==undefined){if(!n(src.bpm,20,400))return null;out.bpm=Math.round(src.bpm);}
+  if(src.video!==undefined){
+    if(!src.video||typeof src.video!=="object"||Array.isArray(src.video))return null;
+    t=mediaLine(src.video.title);
+    if(src.video.at!==undefined&&!n(src.video.at,0,86400))return null;
+    out.video={at:Math.round((src.video.at||0)*10)/10};if(t)out.video.title=t;
+  }
+  return out;
+}
 /* A scene: a place (as Share spot writes it) and the look that goes with it. Names are looked up when it is used;
    one that is not known is passed over. Nothing here is used as an address or put on the page as markup. */
 export function cleanScene(src){
@@ -117,6 +142,9 @@ export function cleanScene(src){
   if(src.land!==undefined&&src.land!==null){
     if(typeof src.land!=="string"||!/^(none|[a-z]{1,20} (alone|over))$/.test(src.land))return null;
     out.land=src.land;
+  }
+  if(src.media!==undefined&&src.media!==null){ /* what was playing: shown as plain text, and its numbers used only to move the music; one that is not right is left out, and the scene kept */
+    v=cleanMedia(src.media);if(v)out.media=v;
   }
   return out;
 }
@@ -171,4 +199,4 @@ export function driven(mo,f,def,t,b,m,h,scale){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={MOTION_LIM, DRIVE_TO, DRIVE_BY, cleanDrive, driven, cleanScene, cleanAbout, cleanName, cleanPalette, cleanCode, cleanFilter, cleanOverlay, cleanWorld, cleanMotion};
+export const __dbg={MEDIA_KINDS, mediaLine, cleanMedia, MOTION_LIM, DRIVE_TO, DRIVE_BY, cleanDrive, driven, cleanScene, cleanAbout, cleanName, cleanPalette, cleanCode, cleanFilter, cleanOverlay, cleanWorld, cleanMotion};

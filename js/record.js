@@ -3,9 +3,13 @@ import { ac, master } from "./audio.js";
 import { scene } from "./choose.js";
 import { $, canvas, toast } from "./dom.js";
 import { press, wakeHud } from "./input.js";
+import { mediaNow, mediaSlug, mediaText } from "./media.js";
+import { sendOffer } from "./send.js";
+import { encodeSpot } from "./spots.js";
 export const REC_MAX=300;  /* seconds: the recording is held in memory until it is saved, so it stops itself after five minutes */
 export const REC_TYPES=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm","video/mp4"];
 let rec=null,parts=[],t0=0,timer=0,sndTap=null;
+let made=null; /* what was playing when the recording began, and the spot it began at, for the file's name and for sharing */
 
 /* the first kind of video file this browser can record, or "" */
 export function recType(can){for(var i=0;i<REC_TYPES.length;i++)if(can(REC_TYPES[i]))return REC_TYPES[i];return "";}
@@ -28,7 +32,7 @@ export function recStart(){
     }
     rec=new MediaRecorder(stream,type?{mimeType:type,videoBitsPerSecond:8000000}:{videoBitsPerSecond:8000000});
   }catch(e){rec=null;untap();toast("This browser cannot record the picture.");return false;}
-  parts=[];
+  parts=[];made={media:mediaNow(),spot:encodeSpot(),world:scene.world.name};
   rec.ondataavailable=function(e){if(e.data&&e.data.size)parts.push(e.data)};
   rec.onstop=function(){recSave(new Blob(parts,{type:(rec&&rec.mimeType)||type||"video/webm"}));parts=[];rec=null;untap();clearInterval(timer);press($("bRec"),false);recLabel();};
   rec.onerror=function(){toast("The recording failed.");recStop();};
@@ -39,10 +43,13 @@ export function recStop(){if(rec&&rec.state!=="inactive")rec.stop();}
 function untap(){if(sndTap){try{master.disconnect(sndTap)}catch(_){}sndTap=null;}}
 function recSave(blob){
   if(!blob.size){toast("Nothing was recorded.");return;}
+  /* the file's name says what was playing when the recording began and the moment in it, since a browser cannot write that inside a video */
+  var m=made||{},slug=mediaSlug(m.media),name="mirrorfold-"+scene.world.id+(slug?"-"+slug:"")+(/mp4/.test(blob.type)?".mp4":".webm"),said=mediaText(m.media);
   var a=document.createElement("a"),url=URL.createObjectURL(blob);
-  a.href=url;a.download="mirrorfold-"+scene.world.id+(/mp4/.test(blob.type)?".mp4":".webm");document.body.appendChild(a);a.click();document.body.removeChild(a);
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(function(){URL.revokeObjectURL(url)},10000);
-  toast("Video saved: "+recClock((performance.now()-t0)/1000)+".");
+  toast("Video saved: "+recClock((performance.now()-t0)/1000)+"."+(said?" It began at "+said+", which is in the file's name.":""));
+  sendOffer({blob:blob,name:name,type:blob.type||"video/webm",what:"Video",title:(m.world||scene.world.name)+" in Mirrorfold"+(said?", to "+said:""),text:(m.world||scene.world.name)+" in Mirrorfold"+(said?", to "+said:"")+".",link:m.spot?location.href.split("#")[0]+"#"+m.spot:""});
 }
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */

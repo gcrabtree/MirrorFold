@@ -8,7 +8,9 @@
 import { scene } from "./choose.js";
 import { $, canvas, isTouch, toast } from "./dom.js";
 import { press, wakeHud } from "./input.js";
-import { loadPack, packOfScene } from "./pack-io.js";
+import { mediaText } from "./media.js";
+import { packOfScene } from "./pack-io.js";
+import { sendOffer } from "./send.js";
 import { PALETTES } from "./palettes.js";
 import { asciiJson, pictureCard, pictureMake, pngPut } from "./picture.js";
 import { qrMake } from "./qr.js";
@@ -90,7 +92,7 @@ export function cardCode(text){
 }
 /* Draw a postcard from the finished picture: the picture, and under it a dark strip with the world's name, the code,
    and the QR code of the link. Returns the new canvas. */
-function cardDraw(src,code,url,name,line){
+function cardDraw(src,code,url,name,line,line2){
   var W=src.width,H=src.height,q=qrMake(url),s=Math.max(72,Math.round(0.13*Math.min(W,H)),q?Math.ceil(3*(q.n+4)/0.76):0),c=document.createElement("canvas"),g,px,qs,x0,y0,x,y,pad=Math.round(s*0.12),tx; /* the strip is tall enough for the QR code's squares to be three pixels each, which a phone's camera can read */
   c.width=W;c.height=H+s;g=c.getContext("2d");
   g.drawImage(src,0,0);
@@ -103,27 +105,33 @@ function cardDraw(src,code,url,name,line){
     for(y=0;y<q.n;y++)for(x=0;x<q.n;x++)if(q.m[y*q.n+x])g.fillRect(x0+(x+2)*px,y0+(y+2)*px,px,px);
   }
   g.textBaseline="alphabetic";g.fillStyle="#f3eefc";
-  g.font="600 "+Math.round(s*0.30)+"px system-ui, -apple-system, 'Segoe UI', sans-serif";
-  g.fillText(name,tx,H+Math.round(s*0.40),q?x0-2*pad:W-2*pad);
+  g.font="600 "+Math.round(s*0.25)+"px system-ui, -apple-system, 'Segoe UI', sans-serif";
+  g.fillText(name,tx,H+Math.round(s*0.33),q?x0-2*pad:W-2*pad);
   g.fillStyle="#b9add4";
-  g.font=Math.round(s*0.17)+"px system-ui, -apple-system, 'Segoe UI', sans-serif";
-  g.fillText(line,tx,H+Math.round(s*0.63),q?x0-2*pad:W-2*pad);
+  g.font=Math.round(s*0.14)+"px system-ui, -apple-system, 'Segoe UI', sans-serif";
+  g.fillText(line,tx,H+Math.round(s*0.52),q?x0-2*pad:W-2*pad);
+  g.fillText(line2||"",tx,H+Math.round(s*0.70),q?x0-2*pad:W-2*pad); /* what was playing, or how to use the code */
   g.fillStyle="#f3eefc";
-  g.font=Math.round(s*0.17)+"px ui-monospace, Menlo, Consolas, monospace";
-  g.fillText(cardSpaced(code),tx,H+Math.round(s*0.88),q?x0-2*pad:W-2*pad);
+  g.font=Math.round(s*0.15)+"px ui-monospace, Menlo, Consolas, monospace";
+  g.fillText(cardSpaced(code),tx,H+Math.round(s*0.90),q?x0-2*pad:W-2*pad);
   return c;
 }
 /* Save a postcard of the next finished frame. The file also holds the scene, as Save picture's does, so loading it comes back here too. */
 function cardSave(){
-  var code=encodeSpot(),url=location.href.split("#")[0]+"#"+code,w=scene.world,text=asciiJson(packOfScene());
+  var code=encodeSpot(),url=location.href.split("#")[0]+"#"+code,w=scene.world,pk=packOfScene(),text=asciiJson(pk),said=mediaText(pk.scene.media);
   pictureCard(function(src){
-    var c=cardDraw(src,code,url,w.name,"Mirrorfold, palette "+PALETTES[sel.pi].name+". Scan, or type this under Go to a code:");
+    var c=cardDraw(src,code,url,w.name,"Mirrorfold, palette "+PALETTES[sel.pi].name,said?"Made to "+said:"Scan, or type this under Go to a code:");
     if(!c.toBlob){toast("The postcard could not be made in this browser.");return;}
     c.toBlob(function(blob){
       var rd;
       if(!blob){toast("The postcard could not be made in this browser.");return;}
       rd=new FileReader();
-      rd.onload=function(){var b=new Uint8Array(rd.result);download(pngPut(b,"mirrorfold",text)||b,"mirrorfold-"+w.id+"-postcard.png");toast("Postcard saved. Its code is "+cardSpaced(code)+".");};
+      rd.onload=function(){
+        var b=new Uint8Array(rd.result),title=w.name+" in Mirrorfold"+(said?", to "+said:"");
+        /* the postcard is offered, to share or to save (js/send.js); the scene is in the file as it is in Save picture's */
+        sendOffer({blob:new Blob([pngPut(b,"mirrorfold",text)||b],{type:"image/png"}),name:"mirrorfold-"+w.id+"-postcard.png",type:"image/png",what:"Postcard",title:title,text:title+".",link:url});
+        toast("Postcard made. Its code is "+cardSpaced(code)+".");
+      };
       rd.onerror=function(){toast("The postcard could not be made in this browser.")};
       rd.readAsArrayBuffer(blob);
     },"image/png");

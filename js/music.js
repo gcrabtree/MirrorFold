@@ -23,6 +23,7 @@ const PLAN=[["intro",8],["build",8],["drop",16],["break",8],["build",8],["drop",
 const seq={on:false,timer:0,next:0,step:0};
 let C=null,M=null,song=null; /* the audio context in use, the nodes made for it, and the song being played */
 
+let songFrom=0; /* the number the song now playing was made from */
 let songSeed=0; /* 0: songs are made by chance. Otherwise the number the next song is made from, so that a recorded flight can have its song again */
 /* a chance number for making a song: from the seed if there is one (each use moves the seed on), else by chance */
 function songRand(){
@@ -120,6 +121,8 @@ function impact(t,f){ /* the boom on a drop */
 
 /* ---- the song ---- */
 function newSong(){
+  if(!songSeed)songSeed=(1+Math.floor(Math.random()*4294967294))>>>0; /* a song made by chance still has a number, so that it can be had again */
+  songFrom=songSeed;
   var s={root:[45,48,50,52,43,47][rnd(6)],prog:PROGS[rnd(PROGS.length)],gate:GATES[rnd(GATES.length)],rolling:songRand()<0.5,
     arpHits:[9,11,13][rnd(3)],arpShape:rnd(3),tune:[],bars:[]},i,d=4+rnd(3);
   PLAN.forEach(function(p){for(i=0;i<p[1];i++)s.bars.push({sec:p[0],i:i,n:p[1]});});
@@ -196,6 +199,16 @@ export function restartBuilt(seed){
   songSeed=seed>>>0;song=newSong();seq.step=0;
   if(seq.on&&C)seq.next=C.currentTime+0.15;
 }
+/* the song playing and how far into it, for noting with a picture (js/media.js); null if the built-in music is not on */
+export function builtNow(){
+  if(!seq.on||!song)return null;
+  return {seed:songFrom,at:(seq.step%(song.bars.length*16))*STEP};
+}
+/* play the song that a number gives, from a time in it */
+export function builtGo(seed,at){
+  restartBuilt(seed);
+  seq.step=Math.max(0,Math.min(song.bars.length*16-1,Math.floor((at||0)/STEP)));
+}
 export function stopBuilt(){
   if(M)M.out.gain.setTargetAtTime(0,C.currentTime,0.15);
   seq.on=false;clearInterval(seq.timer);
@@ -213,7 +226,7 @@ export function musicRender(ctx,bars){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={BPM, STEP, SCALE, PROGS, GATES, PLAN, seq, rnd, hz, degree,
+export const __dbg={builtNow, builtGo, get songFrom(){return songFrom}, BPM, STEP, SCALE, PROGS, GATES, PLAN, seq, rnd, hz, degree,
   euclid, gain, filter, graph, env, osc, hiss, kick, clap, hat,
   bass, arp, lead, pad, riser, impact, newSong, chordAt, playStep, tick,
   startBuilt, restartBuilt, songRand, stopBuilt, musicFollowsSpeed, musicRender, get C(){return C},set C(v){C=v}, get M(){return M},set M(v){M=v}, get song(){return song},set song(v){song=v}};

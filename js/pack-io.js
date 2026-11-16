@@ -7,6 +7,7 @@ import { advFill, advPick, advS, advT, mk } from "./journey-panel.js";
 import { BUILTIN_S, BUILTIN_T, adopt, catOf, fillJT, findS, findT, jCur, journey, saveStore, selectJourney, store } from "./journey.js";
 import { setLand, setLandKind } from "./land.js";
 import { LK } from "./landscapes.js";
+import { mediaGo, mediaNow } from "./media.js";
 import { NLOOK, NMOT, NOV, addToLibrary, myFilters, myOverlays, myWorlds, saveLibrary, worldDrop } from "./library.js";
 import { NWORLD } from "./pack-worlds.js";
 import { cleanFilter, cleanMotion, cleanName, cleanOverlay, cleanPalette, cleanScene, cleanWorld } from "./packs.js";
@@ -38,8 +39,10 @@ export function packSummary(k){ /* "2 palettes, 1 filter and 3 templates": only 
 }
 /* The scene showing now: the place, as Share spot writes it, and the look by name. */
 export function sceneNow(){
-  return {spot:encodeSpot(),palette:PALETTES[sel.pi].name,motion:MOTIONS[sel.moi].name,filter:LOOKS[sel.lki].name,overlay:OVERLAYS[sel.ovi].name,
-          mirrors:mirrors[sel.mi],fx:FX[sel.fi].name,land:jCur("land")};
+  var s={spot:encodeSpot(),palette:PALETTES[sel.pi].name,motion:MOTIONS[sel.moi].name,filter:LOOKS[sel.lki].name,overlay:OVERLAYS[sel.ovi].name,
+          mirrors:mirrors[sel.mi],fx:FX[sel.fi].name,land:jCur("land")},m=mediaNow();
+  if(m)s.media=m; /* what was playing and the moment in it, unless the user has that switched off (js/media.js) */
+  return s;
 }
 /* A pack that holds the scene and whatever it uses that is not built in, so that someone else can open it. Save picture puts this in the file. */
 export function packOfScene(){
@@ -72,6 +75,7 @@ export function goScene(sc){
       else for(j=0;j<LK.length;j++)if(LK[j].id===sp[0]){setLandKind(j);setLand(sp[1]==="over"?2:1);}
     }
     scene.lastHash=sc.spot;try{location.hash=sc.spot}catch(_){}
+    if(sc.media)setTimeout(function(){mediaGo(sc.media)},2800); /* after the message about the scene has been read */
   });
   return true;
 }

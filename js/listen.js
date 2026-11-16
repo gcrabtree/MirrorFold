@@ -10,6 +10,8 @@ import { OVERLAYS, sel } from "./state.js";
 import { vidFile, videoSound } from "./video.js";
 export let musicMode="off",beat=0,level=0; /* where the sound comes from, and the two numbers the picture reads: a pulse that decays, and how loud the low end is */
 let taps=[],tapInt=0,tapAt=0;
+/* the tempo tapped, in beats a minute; 0 for none */
+export function tapBpm(){return tapInt>0?Math.round(60/tapInt):0;}
 export let soundChanged;
 let canTab, canMic, detectChange;
 const friend={stream:null,node:null,el:null}; /* music sent by the host while flying together: the stream, its way into the sound, and an unheard player that keeps the browser feeding it */
@@ -196,6 +198,6 @@ soundChanged=false,detectChange=makeChangeDetector();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={friend, setFriendSound, friendPlay, stopListening, startListening, listening, setMusic, tap, bands, bandStep, bandAvg, liveAudio, makeChangeDetector,
+export const __dbg={tapBpm, friend, setFriendSound, friendPlay, stopListening, startListening, listening, setMusic, tap, bands, bandStep, bandAvg, liveAudio, makeChangeDetector,
   readMusic, soundFrame, waveBuf, updateWave, get musicMode(){return musicMode},set musicMode(v){musicMode=v}, get beat(){return beat},set beat(v){beat=v}, get level(){return level},set level(v){level=v}, get taps(){return taps},set taps(v){taps=v}, get tapInt(){return tapInt},set tapInt(v){tapInt=v}, get tapAt(){return tapAt},set tapAt(v){tapAt=v},
   get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get waveTex(){return waveTex},set waveTex(v){waveTex=v}, get tbins(){return tbins},set tbins(v){tbins=v}};

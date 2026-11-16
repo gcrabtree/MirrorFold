@@ -51,6 +51,7 @@ A pack may also hold one `scene`: a place and the look that goes with it. Loadin
 | Field | Meaning | Allowed |
 |---|---|---|
 | `spot` | The world and place, exactly as **Share spot** writes it after the `#` in a link | a world id of lower-case letters, a hyphen, then 16 to 18 letters and digits; required |
+| `media` | What was playing when the scene was saved, for showing and for putting the music back at that moment: `kind` (one of `built`, `file`, `video`, `note`, `tap`), `title` (plain text, one line, cut to 80 characters), `at` (seconds into it, 0 to 86400), `seed` (the built-in song's number, a whole number from 1 to 4294967295), `bpm` (20 to 400) and `video` (`title` and `at` for a video file playing beside the music) | optional; if anything in it is wrong it is left out and the scene kept |
 | `palette`, `motion`, `filter`, `overlay` | Names of the ones to use | 1 to 28 plain characters each |
 | `mirrors` | Number of mirror segments | 0 to 12; only 0, 3, 4, 6, 8 and 12 exist |
 | `fx` | The FX setting | `"glow"`, `"trails"` or `"clean"` |
