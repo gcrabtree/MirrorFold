@@ -1,5 +1,6 @@
 /* The worlds: each one's shader distance function beside the same function in JavaScript. */
 import { fr, md, tile } from "./dom.js";
+import { pkD, pkP, pkPer } from "./packing.js";
 
 /* ---------- the worlds ----------
    Each has a GLSL distance estimator (map), the same estimator in JS (de) for the
@@ -101,11 +102,11 @@ export const WORLDS=[
   return .8*Math.hypot(x,y,z)/Math.abs(dr);
  }},
 {id:"citadel",name:"Citadel",hue:.12,fog:.16,maxd:18,speed:.8,start:[1.5,.2,1.5],
- period:function(){return [6,6,6]},
+ packs:true,period:function(){return pkPer(3)},
  glsl:[
  "#define P 3.0",
  "float map(vec3 p){",
- "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  p=pkP(p,P,1.85);if(pkO>0.0){orb=vec4(1.0);return pkO;}",
  "  float a1=0.12+0.1*uM;float a2=0.08-0.07*uM;",
  "  float c1=cos(a1),s1=sin(a1),c2=cos(a2),s2=sin(a2);",
  "  float s=1.0;orb=vec4(1000.0);",
@@ -121,10 +122,10 @@ export const WORLDS=[
  "    if(p.z<-1.0)p.z+=2.0;",
  "    s*=3.0;",
  "  }",
- "  return 0.9*length(max(abs(p)-1.0,0.0))/s;",
+ "  return pkD(0.9*length(max(abs(p)-1.0,0.0))/s);",
  "}"],
  de:function(x,y,z,m){
-  var P=3;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var q=pkP(x,y,z,3,1.85);if(q[3]>0)return q[3];x=q[0];y=q[1];z=q[2];
   var a1=.12+.1*m,a2=.08-.07*m,c1=Math.cos(a1),s1=Math.sin(a1),c2=Math.cos(a2),s2=Math.sin(a2),s=1,t;
   for(var i=0;i<6;i++){
     x=Math.abs(x);y=Math.abs(y);z=Math.abs(z);
@@ -137,7 +138,7 @@ export const WORLDS=[
     if(z<-1)z+=2;
     s*=3;
   }
-  return .9*Math.hypot(Math.max(Math.abs(x)-1,0),Math.max(Math.abs(y)-1,0),Math.max(Math.abs(z)-1,0))/s;
+  return pkD(.9*Math.hypot(Math.max(Math.abs(x)-1,0),Math.max(Math.abs(y)-1,0),Math.max(Math.abs(z)-1,0))/s);
  }},
 {id:"coral",name:"Coral",hue:.9,fog:.11,maxd:26,speed:1.3,start:[0,0,0],
  period:function(){var t=2*Math.PI;return [t,t,t]},
@@ -161,11 +162,11 @@ export const WORLDS=[
   return .42*d;
  }},
 {id:"bulbs",name:"Bulbs",hue:.42,fog:.12,maxd:22,speed:1.0,start:[1.7,.15,1.7],
- period:function(){return [6.8,6.8,6.8]},
+ packs:true,period:function(){return pkPer(3.4)},
  glsl:[
  "#define P 3.4",
  "float map(vec3 p){",
- "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  p=pkP(p,P,1.28);if(pkO>0.0){orb=vec4(1.0);return pkO;}",
  "  vec3 z=p;float dr=1.0;float r=0.0;float pw=8.0+1.5*uM;orb=vec4(1000.0);",
  "  for(int i=0;i<6;i++){",
  "    r=max(length(z),1e-6);",
@@ -178,10 +179,10 @@ export const WORLDS=[
  "    orb=min(orb,vec4(abs(z),dot(z,z)));",
  "  }",
  "  orb.w=min(orb.w,1.5);",
- "  return 0.5*log(r)*r/dr;",
+ "  return pkD(0.5*log(r)*r/dr);",
  "}"],
  de:function(x,y,z,m){
-  var P=3.4;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var q=pkP(x,y,z,3.4,1.28);if(q[3]>0)return q[3];x=q[0];y=q[1];z=q[2];
   var zx=x,zy=y,zz=z,dr=1,r=0,pw=8+1.5*m;
   for(var i=0;i<6;i++){
     r=Math.max(Math.hypot(zx,zy,zz),1e-6);
@@ -190,14 +191,14 @@ export const WORLDS=[
     dr=zr*pw*dr+1;zr*=r;
     zx=zr*Math.sin(th)*Math.cos(ph)+x;zy=zr*Math.sin(th)*Math.sin(ph)+y;zz=zr*Math.cos(th)+z;
   }
-  return .5*Math.log(r)*r/dr;
+  return pkD(.5*Math.log(r)*r/dr);
  }}
 ,{id:"shards",name:"Shards",hue:.6,fog:.13,maxd:22,speed:.9,start:[1.5,.2,1.5],
- period:function(){return [6,6,6]},
+ packs:true,period:function(){return pkPer(3)},
  glsl:[
  "#define P 3.0",
  "float map(vec3 p){",
- "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  p=pkP(p,P,1.82);if(pkO>0.0){orb=vec4(1.0);return pkO;}",
  "  float a1=0.35*uM;float c1=cos(a1),s1=sin(a1);",
  "  float s=1.0;orb=vec4(1000.0);",
  "  for(int i=0;i<7;i++){",
@@ -208,10 +209,10 @@ export const WORLDS=[
  "    orb=min(orb,vec4(abs(p),dot(p,p)*0.5));",
  "    p=p*2.0-1.0;s*=2.0;",
  "  }",
- "  return 0.9*(length(p)-1.5)/s;",
+ "  return pkD(0.9*(length(p)-1.5)/s);",
  "}"],
  de:function(x,y,z,m){
-  var P=3;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var q=pkP(x,y,z,3,1.82);if(q[3]>0)return q[3];x=q[0];y=q[1];z=q[2];
   var a1=.35*m,c1=Math.cos(a1),s1=Math.sin(a1),s=1,t;
   for(var i=0;i<7;i++){
     if(x+y<0){t=-y;y=-x;x=t}
@@ -220,14 +221,14 @@ export const WORLDS=[
     t=c1*x-s1*y;y=s1*x+c1*y;x=t;
     x=2*x-1;y=2*y-1;z=2*z-1;s*=2;
   }
-  return .9*(Math.hypot(x,y,z)-1.5)/s;
+  return pkD(.9*(Math.hypot(x,y,z)-1.5)/s);
  }},
 {id:"crystal",name:"Crystal",hue:.2,fog:.13,maxd:22,speed:.9,start:[1.5,.2,1.5],
- period:function(){return [6,6,6]},
+ packs:true,period:function(){return pkPer(3)},
  glsl:[
  "#define P 3.0",
  "float map(vec3 p){",
- "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  p=pkP(p,P,1.1);if(pkO>0.0){orb=vec4(1.0);return pkO;}",
  "  float a1=0.12*uM;float a2=0.1-0.08*uM;",
  "  float c1=cos(a1),s1=sin(a1),c2=cos(a2),s2=sin(a2);",
  "  float s=1.0;orb=vec4(1000.0);",
@@ -241,10 +242,10 @@ export const WORLDS=[
  "    p.yz=vec2(c2*p.y-s2*p.z,s2*p.y+c2*p.z);",
  "    p=p*2.0;p.x-=1.0;s*=2.0;",
  "  }",
- "  return 0.85*(length(p)-0.9)/s;",
+ "  return pkD(0.85*(length(p)-0.9)/s);",
  "}"],
  de:function(x,y,z,m){
-  var P=3;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var q=pkP(x,y,z,3,1.1);if(q[3]>0)return q[3];x=q[0];y=q[1];z=q[2];
   var a1=.12*m,a2=.1-.08*m,c1=Math.cos(a1),s1=Math.sin(a1),c2=Math.cos(a2),s2=Math.sin(a2),s=1,t;
   for(var i=0;i<6;i++){
     x=Math.abs(x);y=Math.abs(y);z=Math.abs(z);
@@ -255,14 +256,14 @@ export const WORLDS=[
     t=c2*y-s2*z;z=s2*y+c2*z;y=t;
     x=2*x-1;y=2*y;z=2*z;s*=2;
   }
-  return .85*(Math.hypot(x,y,z)-.9)/s;
+  return pkD(.85*(Math.hypot(x,y,z)-.9)/s);
  }},
 {id:"julia",name:"Julia",hue:.05,fog:.12,maxd:22,speed:1.0,start:[1.7,.15,1.7],
- period:function(){return [6.8,6.8,6.8]},
+ packs:true,period:function(){return pkPer(3.4)},
  glsl:[
  "#define P 3.4",
  "float map(vec3 p){",
- "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  p=pkP(p,P,1.42);if(pkO>0.0){orb=vec4(1.0);return pkO;}",
  "  vec4 z=vec4(p,0.0);",
  "  vec4 c=0.45*cos(vec4(0.5,3.9,1.4,1.1)+1.2*uM*vec4(1.0,1.3,0.9,1.7))-vec4(0.3,0.0,0.0,0.0);",
  "  float md2=1.0;float mz2=dot(z,z);orb=vec4(1000.0);",
@@ -274,10 +275,10 @@ export const WORLDS=[
  "    if(mz2>4.0)break;",
  "  }",
  "  orb.w=min(orb.w,1.5);",
- "  return 0.25*sqrt(mz2/max(md2,1e-9))*log(max(mz2,1e-9));",
+ "  return pkD(0.25*sqrt(mz2/max(md2,1e-9))*log(max(mz2,1e-9)));",
  "}"],
  de:function(x,y,z,m){
-  var P=3.4;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var q=pkP(x,y,z,3.4,1.42);if(q[3]>0)return q[3];x=q[0];y=q[1];z=q[2];
   var ph=[.5,3.9,1.4,1.1],mu=[1,1.3,.9,1.7],c=[0,0,0,0];
   for(var j=0;j<4;j++)c[j]=.45*Math.cos(ph[j]+1.2*m*mu[j]);c[0]-=.3;
   var a=x,b=y,cc=z,d=0,md2=1,mz2=a*a+b*b+cc*cc;
@@ -287,7 +288,7 @@ export const WORLDS=[
     a=na;b=nb;cc=nc;d=nd;mz2=a*a+b*b+cc*cc+d*d;
     if(mz2>4)break;
   }
-  return .25*Math.sqrt(mz2/Math.max(md2,1e-9))*Math.log(Math.max(mz2,1e-9));
+  return pkD(.25*Math.sqrt(mz2/Math.max(md2,1e-9))*Math.log(Math.max(mz2,1e-9)));
  }},
 {id:"web",name:"Web",hue:.48,fog:.16,maxd:16,speed:.55,start:[.8,.45,.1],
  period:function(){return [2,2,2]},
@@ -374,11 +375,11 @@ export const WORLDS=[
   return .8*Math.hypot(x,y,z)/Math.abs(dr);
  }},
 {id:"hive",name:"Hive",hue:.08,fog:.15,maxd:18,speed:.8,start:[1.5,.2,1.5],
- period:function(){return [6,6,6]},
+ packs:true,period:function(){return pkPer(3)},
  glsl:[
  "#define P 3.0",
  "float map(vec3 p){",
- "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  p=pkP(p,P,1.86);if(pkO>0.0){orb=vec4(1.0);return pkO;}",
  "  float s=1.0;float f=1.1+0.25*uM;orb=vec4(1000.0);",
  "  for(int i=0;i<5;i++){",
  "    p=abs(p);",
@@ -391,10 +392,10 @@ export const WORLDS=[
  "    orb=min(orb,vec4(abs(p)*0.5,r2*0.3));",
  "    float k=clamp(f/r2,1.0,2.2);p*=k;s*=3.0*k;",
  "  }",
- "  return 0.6*length(max(abs(p)-1.0,0.0))/s;",
+ "  return pkD(0.6*length(max(abs(p)-1.0,0.0))/s);",
  "}"],
  de:function(x,y,z,m){
-  var P=3;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var q=pkP(x,y,z,3,1.86);if(q[3]>0)return q[3];x=q[0];y=q[1];z=q[2];
   var s=1,f=1.1+.25*m,t;
   for(var i=0;i<5;i++){
     x=Math.abs(x);y=Math.abs(y);z=Math.abs(z);
@@ -406,7 +407,7 @@ export const WORLDS=[
     var r2=Math.max(x*x+y*y+z*z,1e-6),k=Math.max(1,Math.min(2.2,f/r2));
     x*=k;y*=k;z*=k;s*=3*k;
   }
-  return .6*Math.hypot(Math.max(Math.abs(x)-1,0),Math.max(Math.abs(y)-1,0),Math.max(Math.abs(z)-1,0))/s;
+  return pkD(.6*Math.hypot(Math.max(Math.abs(x)-1,0),Math.max(Math.abs(y)-1,0),Math.max(Math.abs(z)-1,0))/s);
  }},
 {id:"gates",name:"Gates",hue:.58,fog:.1,maxd:26,speed:1.2,start:[0,0,.5],
  period:function(){return [8,8,16]},
@@ -458,11 +459,11 @@ export const WORLDS=[
 /* The Mandelbrot set, taken into quaternions: z starts at a small seed, the point itself is c, and z = z*z + c.
    With no seed this is the flat set turned about its long axis; the morph moves the seed, which pulls it out of round. */
 {id:"mandel",name:"Mandelbrot",hue:.62,fog:.12,maxd:22,speed:1.0,start:[1.7,.15,1.7],
- period:function(){return [6.8,6.8,6.8]},
+ packs:true,period:function(){return pkPer(3.4)},
  glsl:[
  "#define P 3.4",
  "float map(vec3 p){",
- "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  p=pkP(p,P,1.5);if(pkO>0.0){orb=vec4(1.0);return pkO;}",
  "  vec4 c=vec4(p.x-0.75,p.y,p.z,0.0);",
  "  vec4 z=vec4(0.10*uM,0.14*sin(1.3*uM+0.5),0.0,0.10*cos(0.9*uM));",
  "  float md=0.0;float mz2=dot(z,z);orb=vec4(1000.0);",
@@ -474,10 +475,10 @@ export const WORLDS=[
  "    if(mz2>64.0)break;",
  "  }",
  "  orb.w=min(orb.w,1.5);",
- "  return 0.25*sqrt(mz2)/md*log(max(mz2,1e-9));",
+ "  return pkD(0.25*sqrt(mz2)/md*log(max(mz2,1e-9)));",
  "}"],
  de:function(x,y,z,m){
-  var P=3.4;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var q=pkP(x,y,z,3.4,1.5);if(q[3]>0)return q[3];x=q[0];y=q[1];z=q[2];
   var c0=x-.75,a=.10*m,b=.14*Math.sin(1.3*m+.5),cc=0,d=.10*Math.cos(.9*m);
   var dm=0,mz2=a*a+b*b+cc*cc+d*d;
   for(var i=0;i<12;i++){
@@ -486,7 +487,7 @@ export const WORLDS=[
     a=na;b=nb;cc=nc;d=nd;mz2=a*a+b*b+cc*cc+d*d;
     if(mz2>64)break;
   }
-  return .25*Math.sqrt(mz2)/dm*Math.log(Math.max(mz2,1e-9));
+  return pkD(.25*Math.sqrt(mz2)/dm*Math.log(Math.max(mz2,1e-9)));
  }},
 /* Pipes that never end: every unit cell holds three quarter rings joining the middles of its six faces, turned one of
    eight ways by a number worked out from the cell's place. The number uses whole-number sums only, so the chip and
@@ -605,11 +606,11 @@ export const WORLDS=[
  }},
 /* Cubes with smaller cubes on their eight corners, and smaller ones on theirs. */
 {id:"pyrite",name:"Pyrite",hue:.11,fog:.13,maxd:22,speed:.9,start:[2,.3,2],
- period:function(){return [8,8,8]},
+ packs:true,period:function(){return pkPer(4)},
  glsl:[
  "#define P 4.0",
  "float map(vec3 p){",
- "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  p=pkP(p,P,1.92);if(pkO>0.0){orb=vec4(1.0);return pkO;}",
  "  float a1=0.25+0.3*uM;float c1=cos(a1),s1=sin(a1);",
  "  float s=1.0;float d=1e5;orb=vec4(1000.0);",
  "  for(int i=0;i<4;i++){",
@@ -621,10 +622,10 @@ export const WORLDS=[
  "    orb=min(orb,vec4(abs(p),dot(p,p)));",
  "    p*=2.6;s*=2.6;",
  "  }",
- "  return 0.9*d;",
+ "  return pkD(0.9*d);",
  "}"],
  de:function(x,y,z,m){
-  var P=4;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var q=pkP(x,y,z,4,1.92);if(q[3]>0)return q[3];x=q[0];y=q[1];z=q[2];
   var a1=.25+.3*m,c1=Math.cos(a1),s1=Math.sin(a1),s=1,d=1e5,t;
   for(var i=0;i<4;i++){
     var bx=Math.abs(x)-.5,by=Math.abs(y)-.5,bz=Math.abs(z)-.5;
@@ -634,7 +635,7 @@ export const WORLDS=[
     t=c1*y-s1*z;z=s1*y+c1*z;y=t;
     x*=2.6;y*=2.6;z*=2.6;s*=2.6;
   }
-  return .9*d;
+  return pkD(.9*d);
  }},
 /* Soft lights hanging in the dark at two sizes, one to a cell, each a little off its cell's middle and slowly swaying. */
 {id:"lanterns",name:"Lanterns",hue:.6,fog:0,maxd:1,speed:.6,start:[.3,.2,.1],volume:true,

@@ -3,7 +3,7 @@
 mirror setting, FX setting and landscape. They go in thumbs/ as 240x150 JPEGs named by js/picker.js's thumbName.
 
   python3 tools/thumbs.py              # all of them (several minutes: software rendering)
-  python3 tools/thumbs.py world        # one kind: world, palette, motion, filter, overlay, mirrors, fx, surface, land
+  python3 tools/thumbs.py world        # one kind: world, palette, motion, filter, overlay, mirrors, fx, surface, land, packing
   python3 tools/thumbs.py world-foam   # one picture
 
 Run it after adding or changing a world, palette, motion, filter, overlay or landscape. tools/unit.mjs fails
@@ -23,7 +23,7 @@ DARK = "aurora"     # overlays are light drawn on top, so they are shown on a da
 LISTS = r'''
 import {WORLDS} from "./js/worlds.js"; import {PALETTES} from "./js/palettes.js";
 import {MOTIONS,LOOKS,OVERLAYS,FX,SURFACES,mirrors} from "./js/state.js"; import * as land from "./js/landscapes.js";
-import {thumbName} from "./js/picker.js";
+import {thumbName} from "./js/picker.js"; import {PACKINGS} from "./js/packing.js";
 const o=[]; const add=(kind,key,world,js,slow)=>o.push({file:thumbName(kind,key),world,js,slow:!!slow});
 WORLDS.forEach(w=>add("world",w.id,w.id,""));
 PALETTES.forEach((p,i)=>add("palette",p.name,"REF","unlocked=99;setPalette("+i+")"));
@@ -33,6 +33,7 @@ OVERLAYS.forEach((v,i)=>add("overlay",v.name,"DARK","setOverlay("+i+");setOvS(4)
 mirrors.forEach((m,i)=>add("mirrors",m,"REF","setMirrors("+i+")"));
 FX.forEach((f,i)=>add("fx",f.name,"REF","fi="+i,true));
 SURFACES.forEach((f,i)=>add("surface",f.name,"REF","setSurface("+i+")"));
+PACKINGS.forEach((f,i)=>add("packing",f.name,"julia","setPacking("+i+")"));
 land.init(); /* the list of landscapes is made at start-up */
 land.LK.forEach((k,i)=>add("land",k.id,"sponge","setLand(1);setLandKind("+i+")"+(k.id==="ball"?";cam.lookY=0.8":"")));
 console.log(JSON.stringify(o));

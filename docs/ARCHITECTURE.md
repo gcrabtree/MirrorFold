@@ -55,6 +55,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/main.js` | Loads every file below, runs each one's `init()` in this order, then publishes `window.MF` |
 | `js/dom.js` | `$`, the canvas, the WebGL context, touch and reduced-motion detection, `STEPS`, `toast` |
 | `js/worlds.js` | `WORLDS`: each world's GLSL `map` beside its JavaScript `de` |
+| `js/packing.js` | Packing: how the worlds made of one shape repeated set their copies out. `PACKINGS`, `packing`, the shader's half (`PACK_GLSL`: `pkB`, `pkP`, `pkD`) and JavaScript's (`pkP`, `pkD`, `pkAcross`, `pkWide`) |
 | `js/zoom.js` | The two zoom worlds: where the view is, the reference paths, the targets, the tour, and their share links |
 | `js/palettes.js` | `PALETTES`, which are unlocked, `setPalette`, and `palCur`, the palette in use easing toward the chosen one |
 | `js/packs.js` | The cleaners: `cleanName`, `cleanPalette`, `cleanMotion`, `cleanCode`, `cleanFilter`, `cleanOverlay`, `cleanWorld` |
@@ -269,7 +270,7 @@ Two requirements matter more than anything else when adding or changing a world:
 
 ### Shared building blocks
 
-- **Mirror tiling.** `p = abs(mod(p + P/2, 2P) - P) - P/2` reflects space into a cell of width `P` centred on the origin. It makes any bounded fractal endless with period `2P`, and, unlike plain `mod`, keeps the distance field continuous and exact: the nearest surface to a point is always in its own cell, because a mirror image is never closer than the original. JS helper: `tile(x, P)`.
+- **Mirror tiling.** `p = abs(mod(p + P/2, 2P) - P) - P/2` reflects space into a cell of width `P` centred on the origin. It makes any bounded fractal endless with period `2P`, and, unlike plain `mod`, keeps the distance field continuous and exact: the nearest surface to a point is always in its own cell, because a mirror image is never closer than the original. JS helper: `tile(x, P)`. The eight worlds that are one bounded shape repeated (`packs: true`) do not call it themselves: they call `pkP`, which is this tiling in the packing Grid and something else in the others (next section).
 - **Triangle-wave fold.** `p = abs(mod(p + c, 4c) - 2c) - c` equals a box fold `clamp(p,-c,c)*2 - p` (up to sign) near the origin but is periodic with period `4c`. It turns clamp-fold fractals, which are bounded, into endless ones.
 - **Sphere inversion.** `k = s / dot(p,p); p *= k; scale *= k`, optionally clamped. The running `scale` is the derivative used to turn the final primitive distance into a world-space distance.
 - **KIFS folds.** `p = abs(p)` plus conditional swizzle swaps reflect space into a fundamental domain before a scale-and-offset step.
@@ -310,11 +311,33 @@ Tangle's cell number is worked out with whole numbers below 2^24 and `floor(mod(
 
 Octave multipliers in Coral are integers (3, 9) so the sum stays periodic at 2π. The Gates twist rate is `2π/16` so the field repeats exactly every 16 units of z.
 
+### Packing
+
+`js/packing.js`. Eight worlds are one bounded shape repeated: Citadel, Bulbs, Shards, Crystal, Julia, Hive, Mandelbrot, Pyrite (`packs: true`). How the copies are set out is the packing (`packing`, an index into `PACKINGS`; chosen with the Packing button, kept in `localStorage["mirrorfold-packing"]`, set only through `setPacking` in `js/choose.js`).
+
+- **Grid** (0) is the mirror tiling above, unchanged: period `2P`.
+- **Scattered** (1) cuts space into boxes of width `P` and puts one copy in each.
+- **Nested** (2) starts from boxes of width `2P`. A box is left whole or cut into eight (`PK_SPLIT0` of 251), and each of those eight is left whole or cut again (`PK_SPLIT1`), so the boxes are `2P`, `P` and `P/2` wide.
+
+In both, a copy is sized so that the ball of radius `R` that holds the shape (measured for each world over the whole morph, and passed to `pkP`) is `PK_FILL` of half its box; it is moved off the middle of the box by a chance amount on each axis, as far as the room allows while leaving `PK_GAP * P` clear at the walls; it is turned by two chance angles; and about one box in eight is empty (`PK_EMPTY`). The largest boxes do not line up: each layer of them is slid along y, and each row within a layer along x, by a chance amount, so no flat lane is left in those two directions, and the lane between layers is only twice the gap thick.
+
+**Chance numbers.** Everything a box gets comes from `pkh` and a chain of six more numbers, each 0 to 250, made from the box's whole-number place counted round the period (`pkm`, which is Tangle's `mo`). Every product stays under 2^17, so the chip's 32-bit numbers and JavaScript's doubles agree exactly. The period is `PK_N` (4) of the largest boxes: `8P`, where the grid's is `2P`. `pkPer(P)` gives it, and those worlds' `period` calls it, so the period changes with the packing. `pkMul(w)` is how many times longer than the grid's it is, for things sized from the period (the orb).
+
+**The distance.** `pkP(p, P, R)` finds the box (`pkB`), and returns the place within its copy: moved, turned, and divided by the copy's size `pkS`. The world then works out its shape as before and ends with `pkD(d)`, which multiplies by `pkS`. Three things keep it right and cheap:
+
+- *Nothing leaves its box.* The answer is never more than the distance to the box's nearest wall plus the gap (`pkW`), because that is the least the distance to anything in another box can be.
+- *Far from the copy the shape is not worked out.* Beyond `PK_FAR` (1.5) times `R` from its middle the distance is taken to the ball that holds it, and `pkP` sets `pkO` to the finished answer; the world's `map` returns it at once. The worlds' own estimates were only ever used within about that range, and some go wrong beyond it. In an empty box the answer is the wall limit alone.
+- *Open space looks across one wall.* Where that finished answer would be held back by the wall, `pkP` looks up the one box across the nearest wall and takes instead the least of: the ball that holds that box's copy, and the gap plus the distance to the nearest of this box's next wall, that box's sides and that box's far end. A ray running along a wall then takes long steps. (Before this, such rays took a hundred short ones and showed as lines across the picture, through the step-count glow and shading.)
+
+**JavaScript's half** uses the same numbers and gives the same answer as the shader when `pkPlain` is set, which is how `tools/probe.py` compares them, once in each packing. Otherwise, where the wall would hold the answer back, it looks in all the boxes within half a grid step (`pkWide`, 27 places, which finds them all because no box is narrower than that) and returns the nearest ball, or half a grid step if none is nearer. That is the open space as it is, which flight speed, the autopilot, the sprites and the orb need: the shader's limit would read as a wall where there is none. So for these worlds `de` is not the same number as `map` in open space: it is never less, and they agree wherever either is near a surface.
+
+**What carries it.** Changing the packing moves every shape, so `setPacking` puts the camera in open space again (`placeCam`) and `requestPacking` does it behind a transition. It is a Journey category (`packing`, left as set by default), one of the kinds a recorded flight notes (`FL_KINDS`) and a host sends to guests (`TG_KINDS`, `pk`), part of what Hold still compares, and in a share spot's second character. A doorway is closed if the packing changes while it stands, and both of its passes get the same `uPk`.
+
 ### Adding a world: checklist
 
 1. Add an entry to `WORLDS` with `glsl` and a matching `de`.
 2. Fill `orb` in `map` (start it at `vec4(1000.0)`, take a `min` each iteration, keep `orb.w` roughly in 0..1).
-3. Give an exact `period`. If the fractal is bounded, mirror-tile it.
+3. Give an exact `period`. If the fractal is bounded, mirror-tile it; or, to have it take the packings, measure the radius of the ball that holds it over the whole morph and follow the eight worlds that call `pkP` and `pkD`.
 4. Pick `start` in open space, or use `null` to have 300 random points sampled for the largest distance.
 5. Add the id to any built-in template sets that should include it (templates with `set: null` include everything automatically).
 6. Update the world count in the start card text.
@@ -566,7 +589,7 @@ With Morph set to "follows song" (`morph` 2 in `controls.js`, the default) the m
 
 ### Clocks
 
-`J` holds one clock per category: `world`, `palette`, `mirrors`, `motion`, `filter`, `overlay`, `surface`, `land`. A surface option is a name from `SURFACES` (`"plain"`, `"grain"`, `"dots"` and so on), and its off is plain. A land option is `"none"` or a landscape's `id` plus `" alone"` or `" over"`; templates saved before the land existed get `mode: "keep"`. `jReset(k)` sets the next firing time to `base * (0.8 + 0.4*random)`, so each change lands within a fifth either side of its target interval and the categories drift relative to each other.
+`J` holds one clock per category: `world`, `palette`, `mirrors`, `motion`, `filter`, `overlay`, `surface`, `land`, `packing`. A packing option is a name from `PACKINGS` (`"grid"`, `"scattered"`, `"nested"`), and shows only in the worlds it changes. A surface option is a name from `SURFACES` (`"plain"`, `"grain"`, `"dots"` and so on), and its off is plain. A land option is `"none"` or a landscape's `id` plus `" alone"` or `" over"`; templates saved before the land existed get `mode: "keep"`. `jReset(k)` sets the next firing time to `base * (0.8 + 0.4*random)`, so each change lands within a fifth either side of its target interval and the categories drift relative to each other.
 
 ### Templates
 
@@ -580,7 +603,7 @@ With Morph set to "follows song" (`morph` 2 in `controls.js`, the default) the m
   overlay: { mode: "keep",   every: 22, set: null } }
 ```
 
-- `mode`: `off` forces the category to none every frame; `keep` leaves it as the user set it; `random` changes it on the clock. Worlds and palettes have only `keep` and `random`.
+- `mode`: `off` forces the category to none every frame; `keep` leaves it as the user set it; `random` changes it on the clock. Worlds, palettes and the packing have only `keep` and `random`.
 - `set`: `null` means every option. Otherwise a list of option keys: world ids, palette names, mirror counts as strings (`"0"` is none), and motion, filter and overlay names. Keys are names rather than indices so templates survive options being added.
 - `CATS` describes the categories and is what the engine and the editor both iterate over. `normT` fills in anything missing and drops unknown keys, so stored or pasted templates are always complete.
 
@@ -694,7 +717,7 @@ Built with a small `mk(tag, props, kids)` DOM helper. `advRenderT()` and `advRen
 | Chars | Field | Encoding |
 |---|---|---|
 | 1 | palette index | base 36 |
-| 1 | mirror index | base 36 |
+| 1 | mirror index, plus 6 times the packing | base 36. A link from before the packings reads as the grid. The packing is taken up only in a world it changes. |
 | 6 | position, 2 per axis | `(pos/period + 0.5) * 1295` |
 | 2 | yaw | `(atan2(F.x, F.z)/2π + 0.5) * 1295` |
 | 2 | pitch | `(asin(F.y)/π + 0.5) * 1295` |

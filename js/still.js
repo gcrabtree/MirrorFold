@@ -1,6 +1,7 @@
 /* Hold still: a pause, and the sharpening of the picture while nothing in it moves. */
 import { cam } from "./camera.js";
 import { scene } from "./choose.js";
+import { packing } from "./packing.js";
 import { $, gl, toast } from "./dom.js";
 import { press, wakeHud } from "./input.js";
 import { landMode } from "./land.js";
@@ -42,7 +43,7 @@ export function stillFree(){freeT(tR[0]);freeT(tR[1]);tR[0]=tR[1]=null;stillN=0;
 export function stillAim(fr){
   if(!still||landMode===1||vidOn){stillN=0;jit[0]=jit[1]=0;return;}
   var now=[cam.pos[0],cam.pos[1],cam.pos[2],cam.F[0],cam.F[1],cam.F[2],cam.Up[0],cam.Up[1],cam.Up[2],fr.m],i,same=true;
-  var k=scene.world.id+","+tA.w+","+tA.h+","+sel.mi+","+sel.pi+","+(stereo?1:0)+(scene.world.flat?","+zoomKey():"");
+  var k=scene.world.id+","+tA.w+","+tA.h+","+sel.mi+","+sel.pi+","+(stereo?1:0)+","+packing+(scene.world.flat?","+zoomKey():"");
   for(i=0;i<10;i++){if(Math.abs(now[i]-was[i])>1e-9)same=false;was[i]=now[i];}
   if(k!==key){key=k;same=false;}
   stillN=same?Math.min(STILL_MAX,stillN+1):1;

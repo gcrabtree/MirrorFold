@@ -6,7 +6,7 @@
    point is not used. It never sees a place, a world or a note of the music.
    The one who invites is the host: the host's world and morph are everyone's, so that all fly through the same shapes,
    and the host passes each guest's place on to the others. The rest of what the host's Journey changes is everyone's
-   too (palette, filter, mirrors, motion, overlay, surface, land), each taken up when the host changes it, and the
+   too (palette, filter, mirrors, motion, overlay, surface, land, packing), each taken up when the host changes it, and the
    host's music is sent to the guests as sound (the same connection carries it), so all hear one song and each picture
    moves to it. Everyone keeps their own flight.
    Anyone can ask to be brought to a friend's spot, or call a friend to theirs. The one asked is shown the request and
@@ -31,7 +31,7 @@ export const TG_TURN=200*Math.PI; /* the morph's clock comes round in this time 
 export const TG_WAIT=30;      /* seconds a joining may take before it is given up */
 export const TG_ASK=20;       /* seconds a request to come or to go stays open for its answer */
 /* What the host's messages name besides the world, and the kind of Journey change each is: a guest takes each up when the host changes it. */
-export const TG_KINDS=[["pa","palette"],["lk","filter"],["mi","mirrors"],["mo","motion"],["ov","overlay"],["sf","surface"],["ld","land"]];
+export const TG_KINDS=[["pa","palette"],["lk","filter"],["mi","mirrors"],["mo","motion"],["ov","overlay"],["sf","surface"],["ld","land"],["pk","packing"]];
 /* The words about going to someone's spot: "come" (come to me), "join" (may I come to you), "coming" (yes to come),
    "here" (this is my place: the answer to coming, and the yes to join), "no". */
 export const TG_ASKS=["come","join","coming","here","no"];

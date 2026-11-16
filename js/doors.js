@@ -10,6 +10,7 @@
    Only worlds with surfaces and a distance worked out here can have one: not a zoom, a cloud or a pack world. */
 import { cam } from "./camera.js";
 import { requestWorld, scene, setWorldNow } from "./choose.js";
+import { packing } from "./packing.js";
 import { $, toast } from "./dom.js";
 import { flightPlaying } from "./flightplay.js";
 import { press, wakeHud } from "./input.js";
@@ -100,7 +101,7 @@ function doorMay(i){
 export function doorOpen(i,warp){
   if(!doorMay(i))return false;
   try{if(!WORLDS[i].prog)buildStart(WORLDS[i]);}catch(_){return false;}
-  door={to:WORLDS[i],from:scene.world,p:null,n:null,r:0,q:null,s:1,open:0,age:0,back:false,warp:!!warp,wait:true,shut:false,was:null,chk:0};
+  door={to:WORLDS[i],from:scene.world,p:null,n:null,r:0,q:null,s:1,open:0,age:0,back:false,warp:!!warp,wait:true,shut:false,was:null,chk:0,pk:packing};
   return true;
 }
 /* the doorway is over: forgotten, and if Journey was owed a change of world it gets one the old way */
@@ -130,7 +131,7 @@ function doorThrough(fr,rel){
   per=d.to.period(fr.m);
   for(i=0;i<3;i++){cam.pos[i]=d.q[i]+d.s*rel[i];cam.pos[i]-=per[i]*Math.floor(cam.pos[i]/per[i]+0.5);cam.vel[i]=vel[i]*d.s;}
   fr.w=d.to;fr.wSpeed=d.to.speed;fr.pk=false;fr.per=per;fr.dist=Math.abs(d.to.de(cam.pos[0],cam.pos[1],cam.pos[2],fr.m));
-  door={to:d.from,from:d.to,p:d.q,n:d.n,r:d.r*d.s,q:d.p,s:1/d.s,open:1,age:0,back:true,warp:false,wait:false,shut:false,was:null,chk:0};
+  door={to:d.from,from:d.to,p:d.q,n:d.n,r:d.r*d.s,q:d.p,s:1/d.s,open:1,age:0,back:true,warp:false,wait:false,shut:false,was:null,chk:0,pk:packing};
 }
 /* A step of the frame, after the autopilot: while Journey flies and a doorway stands ahead, turn toward its middle. One that has been passed is closed. */
 export function doorSteer(fr){
@@ -149,7 +150,7 @@ export function stepDoor(fr){
   var d=door,per=fr.per,m=fr.m,rel,i,far=0;
   if(!d){doorU[3]=0;return;}
   if(still)return;
-  if(scene.world!==d.from||stereo||landMode||!per||tgGuest()||flightPlaying()){door=null;doorU[3]=0;return;} /* the world was changed some other way, or something came on that a doorway cannot be drawn with */
+  if(scene.world!==d.from||d.pk!==packing||stereo||landMode||!per||tgGuest()||flightPlaying()){door=null;doorU[3]=0;return;} /* the world was changed some other way, or something came on that a doorway cannot be drawn with */
   d.age+=fr.dt;
   if(d.wait){
     doorU[3]=0;

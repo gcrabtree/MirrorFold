@@ -2,6 +2,7 @@
 import { ac, pluck } from "./audio.js";
 import { cam } from "./camera.js";
 import { requestWorld, scene } from "./choose.js";
+import { pkMul } from "./packing.js";
 import { morphValue } from "./clock.js";
 import { orbsOn } from "./controls.js";
 import { toast } from "./dom.js";
@@ -14,7 +15,7 @@ import { vidAlone } from "./video.js";
 import { tr } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 export function spawnOrb(){
-  var w=scene.world,m=morphValue(),per=w.period(m),sc=Math.min(per[0],per[1],per[2])/2,best=-1,bp=null,bd=0;
+  var w=scene.world,m=morphValue(),per=w.period(m),sc=Math.min(per[0],per[1],per[2])/2/pkMul(w),best=-1,bp=null,bd=0;
   var nc=w.pack?96:260,cand=new Float32Array(3*nc),k;
   for(k=0;k<3*nc;k++)cand[k]=(Math.random()-.5)*per[k%3];
   var cd=deMany(w,cand,nc,m);

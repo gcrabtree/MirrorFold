@@ -523,7 +523,8 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   land.init(); // the list of landscapes is made at start-up, and needs no page
   const want = [].concat(WORLDS.map(w => thumbName("world", w.id)), PALETTES.map(p => thumbName("palette", p.name)), MOTIONS.map(m => thumbName("motion", m.name)),
     LOOKS.map(f => thumbName("filter", f.name)), OVERLAYS.map(o => thumbName("overlay", o.name)), mirrors.map(m => thumbName("mirrors", m)),
-    FX.map(f => thumbName("fx", f.name)), SURFACES.map(f => thumbName("surface", f.name)), land.LK.map(k => thumbName("land", k.id)));
+    FX.map(f => thumbName("fx", f.name)), SURFACES.map(f => thumbName("surface", f.name)), land.LK.map(k => thumbName("land", k.id)),
+    (await import("../js/packing.js")).PACKINGS.map(k => thumbName("packing", k.name)));
   const missing = want.filter(f => !existsSync(new URL(f, root)));
   expect("a picture's file name is made of small letters, digits and hyphens only", thumbName("filter", "Two-tone") === "thumbs/filter-two-tone.jpg" && thumbName("world", "../x y") === "thumbs/world-x-y.jpg");
   expect("no two built-ins share a picture", new Set(want).size === want.length);
@@ -687,12 +688,12 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
 
 // ---- flying together (js/together.js)
 {
-  const { tgClean, tgPlace, TG_MAX, TG_TURN, TG_KINDS } = togetherM, J = JSON.stringify, none = { pa: "", lk: "", mi: "", mo: "", ov: "", sf: "", ld: "" };
+  const { tgClean, tgPlace, TG_MAX, TG_TURN, TG_KINDS } = togetherM, J = JSON.stringify, none = { pa: "", lk: "", mi: "", mo: "", ov: "", sf: "", ld: "", pk: "" };
   expect("a guest's message comes through as its world and its place", J(tgClean(J({ w: "sponge", q: [0.1, -0.5, 0.5], extra: "<b>" }), false)) === J({ w: "sponge", q: [0.1, -0.5, 0.5] }));
   expect("a host's message comes through as its world, morph clock and the others", J(tgClean(J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }), true)) === J(Object.assign({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }, none)));
-  const all = { pa: "Wood", lk: "Neon", mi: "6", mo: "Melt", ov: "Rings", sf: "marble", ld: "canyon over" };
+  const all = { pa: "Wood", lk: "Neon", mi: "6", mo: "Melt", ov: "Rings", sf: "marble", ld: "canyon over", pk: "nested" };
   expect("and with everything the host's Journey changes, by name", J(tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, all, { zz: "x" })), true)) === J(Object.assign({ w: "a", mt: 1, o: [] }, all)));
-  expect("one of those that is not a short name drops the message", [{ pa: 7 }, { pa: "x".repeat(41) }, { lk: ["Neon"] }, { lk: "" }, { pa: null }, { mi: 6 }, { mo: {} }, { ov: "x".repeat(41) }, { sf: false }, { ld: 0 }].every(x => tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, x)), true) === null));
+  expect("one of those that is not a short name drops the message", [{ pa: 7 }, { pa: "x".repeat(41) }, { lk: ["Neon"] }, { lk: "" }, { pa: null }, { mi: 6 }, { mo: {} }, { ov: "x".repeat(41) }, { sf: false }, { ld: 0 }, { pk: 2 }].every(x => tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, x)), true) === null));
   expect("the host's message names every kind Journey changes but the world, which it names as w", J(TG_KINDS.map(k => k[1]).sort()) === J(flightM.FL_KINDS.filter(k => k !== "world").sort()));
   const spot = [0.1, -0.5, 0.5, 0, 0, 1, 0, 1, 0];
   expect("a word about going to a spot comes through: from the host with who said it, from a guest with who it is for", J(tgClean(J({ c: "come", f: 2, extra: 1 }), true)) === J({ c: "come", f: 2, to: -1, w: "", p: null }) && J(tgClean(J({ c: "no", to: 0, f: 3 }), false)) === J({ c: "no", f: 0, to: 0, w: "", p: null }));
@@ -762,6 +763,46 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("the scene shader's doorway uniforms are all asked for by name", ["uDoor", "uDoorN", "uDoorT", "uDoorC"].every(u => pr.includes('"' + u + '"')) && sh.includes("uniform vec4 uDoor,uDoorC;uniform vec3 uDoorN;uniform sampler2D uDoorT;"));
 }
 
+// ---- packing: how the worlds made of one shape repeated set their copies out (js/packing.js)
+{
+  const pk = await import("../js/packing.js"), { WORLDS } = await import("../js/worlds.js"), { tile } = await import("../js/dom.js"), { fragSource } = await import("../js/shaders.js");
+  const { pkBox } = pk.__dbg, packed = WORLDS.filter(w => w.packs);
+  let sd = 5; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  expect("eight worlds are made of one shape repeated, and each has a distance worked out here", packed.length === 8 && packed.every(w => typeof w.de === "function" && !w.volume && !w.flat));
+  expect("only those worlds' shaders carry the packing", WORLDS.every(w => (fragSource(w).indexOf("uniform float uPk;") >= 0) === !!w.packs));
+  const g = pk.pkP(7.3, -2.1, 0.4, 3.4, 1.42);
+  expect("the grid is the old one: a copy every P, each the mirror of its neighbour", pk.packing === 0 && g[3] === 0 && g[0] === tile(7.3, 3.4) && g[1] === tile(-2.1, 3.4) && g[2] === tile(0.4, 3.4) && pk.pkD(0.37) === 0.37);
+  expect("the grid's period is twice P, and a packing's is that for each of its large boxes", pk.pkPer(3).join() === "6,6,6" && (pk.setPackingNow(2), pk.pkPer(3).join()) === "24,24,24" && pk.pkMul(packed[0]) === pk.PK_N && pk.pkMul(WORLDS[0]) === 1);
+  const bad = [];
+  for (let mode = 1; mode < pk.PACKINGS.length; mode++) {
+    pk.setPackingNow(mode);
+    // what a box holds stays inside it, clear of its walls by the gap, and the boxes come in the sizes the packing has
+    const o = new Array(12), sizes = {}; let out = 0, empty = 0;
+    for (let i = 0; i < 3000; i++) {
+      const P = 3.4, R = 1.42; pkBox(rnd() * 80 - 40, rnd() * 80 - 40, rnd() * 80 - 40, P, R, o);
+      sizes[o[11] / P] = 1; empty += o[5];
+      for (let k = 0; k < 3; k++) if (Math.abs(o[k] - o[8 + k]) + o[3] * R > 0.5 * o[11] - pk.PK_GAP * P + 1e-9) out++;
+    }
+    if (out) bad.push(pk.PACKINGS[mode].name + ": " + out + " copies reach their box's walls");
+    if (Object.keys(sizes).sort().join() !== (mode === 1 ? "1" : "0.5,1,2")) bad.push(pk.PACKINGS[mode].name + ": box sizes " + Object.keys(sizes).sort().join());
+    if (!(empty > 150 && empty < 750)) bad.push(pk.PACKINGS[mode].name + ": " + empty + " of 3000 boxes empty");
+    for (const w of packed) {
+      const per = w.period(0); let np = 0, over = 0, low = 0;
+      for (let i = 0; i < 400; i++) {
+        const x = rnd() * 60 - 30, y = rnd() * 60 - 30, z = rnd() * 60 - 30, m = rnd() * 2 - 1;
+        pk.setPkPlain(false); const a = w.de(x, y, z, m), b = w.de(x + per[0], y - 2 * per[1], z + 3 * per[2], m);
+        pk.setPkPlain(true); const p = w.de(x, y, z, m), p2 = w.de(x - per[0], y + per[1], z, m);
+        if (Math.abs(a - b) > 1e-6 || Math.abs(p - p2) > 1e-6) np++;
+        if (p > a + 1e-9 && a < 0.5 * per[0] / (2 * pk.PK_N) - 1e-9) over++; // the shader's answer may pass JavaScript's only where JavaScript stops at half a grid step
+        if (a > 0 && p <= 0) low++;
+      }
+      if (np || over || low) bad.push(pk.PACKINGS[mode].name + " " + w.id + ": " + np + " not repeating, " + over + " where the shader's distance passes the open space, " + low + " where it is inside and the open space is not");
+    }
+  }
+  pk.setPkPlain(false); pk.setPackingNow(0);
+  expect("in each packing every copy keeps inside its box, the worlds repeat exactly, and the shader's distance never passes the open space", bad.length === 0, bad.join("; "));
+  expect("a packing that is not in the list is the grid", (pk.setPackingNow(9), pk.packing) === 0 && (pk.setPackingNow(-1), pk.packing) === 0);
+}
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {
   const { readdirSync } = await import("node:fs"), dir = new URL("../js/", import.meta.url), seen = {}, twice = [];

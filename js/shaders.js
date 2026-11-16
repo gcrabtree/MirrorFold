@@ -1,5 +1,6 @@
 /* The scene shader and the post-processing shaders. */
 import { STEPS, isTouch } from "./dom.js";
+import { PACK_GLSL } from "./packing.js";
 import { REF_W, ZBAIL } from "./zoom.js";
 
 export const VS="attribute vec2 a;varying vec2 v;void main(){v=a*0.5+0.5;gl_Position=vec4(a,0.0,1.0);}";
@@ -37,7 +38,7 @@ export function fragSource(w){
 "  float g=fract(10.0*sqrt(2.02-cos(q.x+0.15*sin(q.z))-cos(q.y+0.15*cos(q.z)))+(0.9+1.6*uMid)*w-0.35*uBeat);",
 "  return g*g*g*(1.0-smoothstep(0.9,1.0,g));",
 "}"
-  ].concat(w.glsl,[
+  ].concat(w.packs?PACK_GLSL:[],w.glsl,[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* A sprite: a small dot of light at o.xyz of size o.w, seen along the ray if nothing is in front of it: a disc with a
    faint halo, a times as strong, in the palette's own colour at hue, so it changes with the palette and drifts with it. There are eight (NFLIT in js/flits.js; a test holds the two

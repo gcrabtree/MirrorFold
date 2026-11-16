@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Distance probe test: for every world, ask the graphics chip for the distance (GLSL "map") at random points
-and compare it with the JavaScript distance function ("de") at the same points.
+and compare it with the JavaScript distance function ("de") at the same points. The worlds made of one shape
+repeated are compared once in each packing (js/packing.js).
 
   python3 tools/probe.py
 
@@ -17,14 +18,18 @@ from harness import dump
 INJECT = r'''
 var dbgEl=document.createElement("i");dbgEl.id="dbg";document.body.appendChild(dbgEl);
 setTimeout(function(){
+  setPkPlain(true); /* JavaScript is to answer as the shader does in the packings, not with its own wider look at the open space */
   var out=[],sd=12345,rnd=function(){sd=(Math.imul(sd,1664525)+1013904223)>>>0;return sd/4294967296};
   WORLDS.forEach(function(w){
     if(w.volume){out.push(w.id+" volume");return;}
-    var per=w.period(0),worst=0,at="",n=0,bad=0,ms=[-0.9,0,0.9];
+    PACKINGS.forEach(function(pkg,pi){
+    if(pi&&!w.packs)return;
+    setPackingNow(pi);
+    var name=w.id+(pi?"/"+pkg.name:""),per=w.period(0),worst=0,at="",n=0,bad=0,ms=[-0.9,0,0.9];
     for(var b=0;b<24;b++){
       var m=ms[b%3],k,d;
       for(k=0;k<16;k++){probePts[3*k]=(rnd()-0.5)*2*per[0];probePts[3*k+1]=(rnd()-0.5)*2*per[1];probePts[3*k+2]=(rnd()-0.5)*2*per[2];}
-      if(!probe(w,m,16)){out.push(w.id+" NOPROBE");return;}
+      if(!probe(w,m,16)){out.push(name+" NOPROBE");return;}
       for(k=0;k<16;k++){
         var js=w.de(probePts[3*k],probePts[3*k+1],probePts[3*k+2],m);
         if(Math.abs(js)>7.5)continue; /* outside what the probe can carry */
@@ -32,12 +37,14 @@ setTimeout(function(){
         if(d>worst){worst=d;at="chip "+probeOut[k].toFixed(4)+" script "+js.toFixed(4)+" m "+m;}
       }
     }
-    out.push(w.id+" "+worst.toFixed(5)+" "+bad+"/"+n+" ("+at+")");
+    out.push(name+" "+worst.toFixed(5)+" "+bad+"/"+n+" ("+at+")");
+    });
+    setPackingNow(0);
   });
   dbgEl.textContent=out.join(" ; ")+" ; glerr="+gl.getError()+" DONE";
 },600);
 '''
-title, err, dbg = dump(INJECT, budget_ms=6000)
+title, err, dbg = dump(INJECT, budget_ms=9000)
 ok = "DONE" in dbg and not title.startswith("ERR") and "glerr=0" in dbg
 print("title :", title)
 for line in dbg.split(" ; "):

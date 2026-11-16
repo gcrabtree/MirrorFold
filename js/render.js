@@ -9,6 +9,7 @@ import { LK } from "./landscapes.js";
 import { updateWave, waveTex } from "./listen.js";
 import { palCur, setPal } from "./palettes.js";
 import { driven } from "./packs.js";
+import { packing } from "./packing.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { doorN, doorU, doorView } from "./doors.js";
 import { flitA, flitU } from "./flits.js";
@@ -48,6 +49,7 @@ function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip)
   setPal(U);
   videoUniforms(U,T.w,T.h,!stereo,per);
   gl.uniform4fv(U.uFl,main?flitU:none32);gl.uniform1fv(U.uFlA,flitA);gl.uniform4fv(U.uPe,main?peerU:none32.subarray(0,peerU.length));
+  gl.uniform1f(U.uPk,packing); /* the packing is the same both sides of a doorway */
   gl.uniform1f(U.uSurf,sel.si);if(per)gl.uniform3f(U.uPer,per[0],per[1],per[2]);
   /* the doorway: its ring and the picture inside it for the world in use; for the world beyond, where the ring stands in it. The picture has a unit of its own for the same reason the land's has. */
   bindTex(4,door?door.t:null);gl.uniform1i(U.uDoorT,4);
