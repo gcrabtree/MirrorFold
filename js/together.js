@@ -78,11 +78,12 @@ export function tgAddr(a){
   if(a.indexOf(":")>=0)return a.split(":").slice(0,2).join(":")+":x (IPv6)";
   return "other";
 }
-/* One way of being reached, read from its line of text: {typ, proto, addr, port}, or null. typ is host (an address on
-   the device), srflx (the address a server saw from outside), prflx or relay. */
+/* One way of being reached, read from its line of text: {typ, proto, addr, port, from}, or null. typ is host (an
+   address on the device), srflx (the address a server saw from outside), prflx or relay; from is the port on the
+   device that an outside address belongs to, or 0 where the browser does not say. */
 export function tgCand(text){
-  var m=/candidate:\S+ \d+ (\S+) \d+ (\S+) (\d+) typ (\w+)/i.exec(typeof text==="string"?text:"");
-  return m?{typ:m[4].toLowerCase(),proto:m[1].toLowerCase(),addr:m[2],port:+m[3]}:null;
+  var t=typeof text==="string"?text:"",m=/candidate:\S+ \d+ (\S+) \d+ (\S+) (\d+) typ (\w+)/i.exec(t),r=/ rport (\d+)/i.exec(t);
+  return m?{typ:m[4].toLowerCase(),proto:m[1].toLowerCase(),addr:m[2],port:+m[3],from:r?+r[1]:0}:null;
 }
 /* every way in a description, as a list */
 export function tgCands(sdp){
@@ -97,16 +98,20 @@ export function tgCount(list){
   return t.length?t.join(", "):"none";
 }
 /* Does a side's list look like a network that gives each server asked a different outside port? Then the port the
-   other side is told is not the one its packets must go to, and the two cannot meet without a relay. The sign is two
-   outside addresses over UDP that are the same address with different ports. */
+   other side is told is not the one its packets must go to, and the two cannot meet without a relay. The sign is one
+   port on the device seen from outside as two different ports. A device with several ports open has an outside
+   address for each, which is not that sign; so where the browser does not say which port an outside address belongs
+   to, it is taken as the sign only if there are more outside ports than ports on the device. */
 export function tgSplit(list){
-  var seen={},i,c;
+  var seen={},out={},hosts={},no=0,nh=0,i,c,k;
   for(i=0;i<list.length;i++){
-    c=list[i];if(c.typ!=="srflx"||c.proto!=="udp"||c.addr.indexOf(":")>=0)continue;
-    if(seen[c.addr]!==undefined&&seen[c.addr]!==c.port)return true;
-    seen[c.addr]=c.port;
+    c=list[i];if(c.proto!=="udp"||c.addr.indexOf(":")>=0)continue;
+    if(c.typ==="host"){if(!hosts[c.port]){hosts[c.port]=1;nh++;}continue;}
+    if(c.typ!=="srflx")continue;
+    if(c.from){k=c.addr+"/"+c.from;if(seen[k]!==undefined&&seen[k]!==c.port)return true;seen[k]=c.port;}
+    if(!out[c.addr+"/"+c.port]){out[c.addr+"/"+c.port]=1;no++;}
   }
-  return false;
+  return nh>0&&no>nh;
 }
 /* What a failed joining most likely came to, from each side's ways of being reached. */
 export function tgVerdict(mine,theirs){
@@ -127,7 +132,7 @@ function tgDebug(c,who){
     if(!e.candidate){tgLog(who,"finished looking for ways to be reached: "+tgCount(c.mine)+(tgSplit(c.mine)?"; the two servers saw DIFFERENT outside ports":""));return;}
     if(!k)return;
     c.mine.push(k);
-    tgLog(who,"way found: "+k.typ+" "+k.proto+" "+tgAddr(k.addr)+" port "+k.port+(e.candidate.url?" from "+e.candidate.url:""));
+    tgLog(who,"way found: "+k.typ+" "+k.proto+" "+tgAddr(k.addr)+" port "+k.port+(k.from?" (the device's port "+k.from+")":"")+(e.candidate.url?" from "+e.candidate.url:""));
   });
   pc.addEventListener("icecandidateerror",function(e){tgLog(who,"address server trouble: "+(e.url||"?")+" code "+e.errorCode+" "+(e.errorText||""));});
   pc.addEventListener("icegatheringstatechange",function(){tgLog(who,"looking for ways: "+pc.iceGatheringState);});
@@ -154,6 +159,15 @@ function tgPaths(c,who){
     if(used&&by[used.localCandidateId]&&by[used.remoteCandidateId])tgLog(who,"path in use: this side "+by[used.localCandidateId].candidateType+" "+by[used.localCandidateId].protocol+", other side "+by[used.remoteCandidateId].candidateType+(used.currentRoundTripTime!==undefined?", there and back in "+Math.round(used.currentRoundTripTime*1000)+" ms":""));
     else if(pc.iceConnectionState==="failed")tgLog(who,"RESULT: "+tgVerdict(c.mine,c.theirs));
   },function(){});
+}
+/* why a message from the meeting point was not usable, for the report */
+function tgWhyNot(text){
+  var m;
+  if(typeof text!=="string")return " (not text)";
+  if(text.length>12000)return " (longer than 12000 letters)";
+  try{m=JSON.parse(text)}catch(_){return " (not readable)";}
+  if(m&&typeof m.s==="string"&&m.s.length>10000)return " (its description is "+m.s.length+" letters, over the 10000 allowed)";
+  return " (not of a kind this page expects: "+String(m&&m.t).slice(0,8)+")";
 }
 /* the report as one text */
 export function tgReport(){
@@ -440,6 +454,7 @@ function tgRoomOpen(){
     var m;
     if(sock!==s||e.data==="q")return;
     m=tgSignal(e.data,true);
+    tgLog("host","the meeting point passed on a message of "+String(e.data).length+" letters: "+(m?"a friend's description":"NOT USABLE"+tgWhyNot(e.data)));
     if(m)tgAdmit(s,m.g,m.s);
   };
   s.onclose=function(e){
@@ -470,7 +485,7 @@ function tgAdmit(s,g,sdp){
     return pc.createAnswer();
   }).then(function(a){return tgSetLocal(pc,a);}).then(function(){return tgGathered(pc);}).then(function(){
     s.send(JSON.stringify({t:"a",g:g,s:pc.localDescription.sdp}));
-    tgLog("host","answer sent, offering "+tgCount(tgCands(pc.localDescription.sdp)));
+    tgLog("host","answer sent ("+pc.localDescription.sdp.length+" letters), offering "+tgCount(tgCands(pc.localDescription.sdp)));
   }).catch(function(e){tgLog("host","could not answer: "+(e&&e.message||e));tgDrop(c);});
 }
 /* Host: open a room if none is open, and copy its link. Gives the room's code, or "" if there is none. */
@@ -505,9 +520,10 @@ export function tgJoin(text){
       var s;
       if(conns.indexOf(c)<0){done(false);return;}
       s=c.sock=new WebSocket(tgRoomUrl(code,"guest"));
-      s.onopen=function(){s.send(JSON.stringify({t:"o",s:pc.localDescription.sdp}));tgLog("guest","meeting point reached; offer sent, offering "+tgCount(tgCands(pc.localDescription.sdp)));};
+      s.onopen=function(){s.send(JSON.stringify({t:"o",s:pc.localDescription.sdp}));tgLog("guest","meeting point reached; offer sent ("+pc.localDescription.sdp.length+" letters), offering "+tgCount(tgCands(pc.localDescription.sdp)));};
       s.onmessage=function(e){
         var m=tgSignal(e.data,false);
+        if(!m)tgLog("guest","the meeting point passed on a message of "+String(e.data).length+" letters: NOT USABLE"+tgWhyNot(e.data));
         if(!m||c.met)return;
         c.met=true;
         tgLog("guest","meeting point answered: "+(m.t==="a"?"the host's description":m.t==="n"?"the flight is full":"the invitation has ended"));
@@ -593,6 +609,7 @@ tgSay("Fly with a friend: invite them with a link.");
 $("bTg").addEventListener("click",function(){var open=$("rowTg").hidden;$("rowTg").hidden=!open;press(this,open||!!tgRole);if(open)tgShow();wakeHud();});
 $("bTgInvite").addEventListener("click",function(){tgInvite();wakeHud();});
 $("bTgGo").addEventListener("click",function(){tgCopyLink();wakeHud();});
+document.addEventListener("visibilitychange",function(){if(tgRole)tgLog(tgRole,document.hidden?"THE PAGE WAS HIDDEN (another tab or app is in front; a phone may stop it now)":"the page is showing again"+(tgRole==="host"?"; meeting point "+(sockUp?"still connected":"not connected"):""));});
 $("bTgLog").addEventListener("click",function(){tgCopyReport();wakeHud();});
 $("bTgLeave").addEventListener("click",function(){tgLeave();tgShow();toast("You are flying alone.");wakeHud();});
 $("bTgCome").addEventListener("click",function(){tgCall();wakeHud();});
@@ -605,6 +622,6 @@ window.addEventListener("hashchange",tgFromAddress);
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={tgLog, tgLines, tgAddr, tgCand, tgCands, tgCount, tgSplit, tgVerdict, tgDebug, tgTheirs, tgPaths, tgReport, tgCopyReport, tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, hostHas, TG_ASK, TG_KINDS, TG_ASKS, tgUnitPart, tgWho, tgSpot, tgPut, tgTell, tgGoTo, tgAsked, tgCall, tgAskGo, tgAnswer, tgForget, get tgAskNow(){return ask}, get tgWant(){return want}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
+export const __dbg={tgWhyNot, tgLog, tgLines, tgAddr, tgCand, tgCands, tgCount, tgSplit, tgVerdict, tgDebug, tgTheirs, tgPaths, tgReport, tgCopyReport, tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, hostHas, TG_ASK, TG_KINDS, TG_ASKS, tgUnitPart, tgWho, tgSpot, tgPut, tgTell, tgGoTo, tgAsked, tgCall, tgAskGo, tgAnswer, tgForget, get tgAskNow(){return ask}, get tgWant(){return want}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
   get peerU(){return peerU},set peerU(v){peerU=v}, get tgRole(){return tgRole},set tgRole(v){tgRole=v}, get hostW(){return hostW},set hostW(v){hostW=v}, get hostT(){return hostT},set hostT(v){hostT=v},
   get tgRoomsAt(){return roomsAt},set tgRoomsAt(v){roomsAt=v}, get tgRoomNow(){return room}, get tgSockUp(){return sockUp}};
