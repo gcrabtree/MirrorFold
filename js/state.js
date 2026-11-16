@@ -47,7 +47,8 @@ export const LOOKS=[
    block of timber. The grain takes its colours from the palette too: with the palette Wood it is brown. */
 export const SURFACES=[{name:"plain"},{name:"grain"},{name:"dots"},{name:"tiles"},{name:"marble"},{name:"wire"},{name:"cells"},{name:"pearl"},{name:"chrome"},{name:"ribbed"}];
 export const OVS=[.15,.3,.5,.75,1];
-export const OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"}];
+export const OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"},
+ {name:"Dancer",dance:1},{name:"Chorus line",dance:2},{name:"Dance floor",dance:3}]; /* dance: stick figures that dance to the music (js/dance.js): one; four doing the same dance; five, each with its own */
 export const TRANSITIONS=8;
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */

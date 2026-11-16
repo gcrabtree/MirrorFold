@@ -15,6 +15,7 @@ import { autopilot, jMove, journey, stepJourney } from "./journey.js";
 import { landMode, moveLand } from "./land.js";
 import { lapClock, lapFrame, lapOn, lapShot } from "./lap.js";
 import { stepRibbons } from "./ribbons.js";
+import { stepDance } from "./dance.js";
 import { stepLightWave } from "./lightwave.js";
 import { photoFrame } from "./photo.js";
 import { learnFrame, learnOpen, openLearn } from "./learn.js";
@@ -114,6 +115,7 @@ function frame(now){
   stepTogether(notes); /* flying together: say where this camera is, and place the others */
   stepLightWave(notes); /* the bands of light that run outward on the beat (js/lightwave.js) */
   stepRibbons(notes); /* the lines of light left behind the camera and behind friends (js/ribbons.js) */
+  stepDance(notes); /* the stick figures of the dancing overlays keep time and take up their poses (js/dance.js) */
   musicFollowsSpeed(notes.spN);
 
   /* drawing */

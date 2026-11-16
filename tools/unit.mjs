@@ -965,6 +965,48 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a file's name is shown without its folder or ending", md.mediaTitle("C:\\Music\\07 Weird Fishes.mp3") === "07 Weird Fishes" && md.mediaTitle("/a/b/song.final.flac") === "song.final" && md.mediaTitle("") === "");
   expect("Reddit's page is opened with the title and link as plain parts of the address", sn.sendReddit("A & B = <C>", "https://example.org/x/#julia-01") === "https://www.reddit.com/submit?title=A%20%26%20B%20%3D%20%3CC%3E&url=https%3A%2F%2Fexample.org%2Fx%2F%23julia-01" && sn.sendReddit("t", "") === "https://www.reddit.com/submit?title=t" && sn.sendReddit("x".repeat(500), "").length < 320);
 }
+// ---- the dancers: the count of beats, the figures' joints, and that nothing jumps
+{
+  const { __dbg: dn } = await import("../js/dance.js");
+  const hit = (t, per) => Math.exp(-5 * (t % per)), dt = 1 / 60;
+  let bc = dn.makeBeatClock(), o, t, back = false, lastU = 0, errs = [];
+  for (t = 0; t < 30; t += dt) { o = bc(dt, hit(t, 0.47)); if (o.u < lastU) back = true; lastU = o.u; if (t > 15 && (t % 0.47) < dt) errs.push(Math.abs(o.u - Math.round(o.u))); }
+  expect("a steady pulse is counted at its own speed, each beat on a whole count, and the count never goes back", Math.abs(o.per - 0.47) < 0.012 && Math.max(...errs) < 0.12 && !back, o.per + " " + Math.max(...errs));
+  bc = dn.makeBeatClock(); for (t = 0; t < 20; t += dt) o = bc(dt, hit(t, 0.94));
+  const slow = o.per; bc = dn.makeBeatClock(); for (t = 0; t < 20; t += dt) o = bc(dt, hit(t, 0.25));
+  expect("a pulse slower or quicker than a dance is counted as half or double", Math.abs(slow - 0.47) < 0.012 && Math.abs(o.per - 0.5) < 0.012, slow + " " + o.per);
+  bc = dn.makeBeatClock(); for (t = 0; t < 10; t += dt) o = bc(dt, hit(t, 0.47)); const u0 = o.u; for (t = 0; t < 4.7; t += dt) o = bc(dt, 0);
+  expect("with no hits the count runs on as it was", Math.abs(o.u - u0 - 10) < 0.2, String(o.u - u0));
+  // every limb keeps its length whatever the pose, and no foot goes under the floor
+  const J = new Array(22), len = (a, b) => Math.hypot(J[2 * a] - J[2 * b], J[2 * a + 1] - J[2 * b + 1]); let sd = 5, worst = 0, under = 0, k, i;
+  const rnd = () => (sd = sd * 16807 % 2147483647) / 2147483647;
+  const limbs = [[0, 1, dn.DN_SPINE], [11, 2, dn.DN_ARM], [2, 3, dn.DN_ARM], [12, 4, dn.DN_ARM], [4, 5, dn.DN_ARM], [0, 11, dn.DN_SHO], [0, 12, dn.DN_SHO], [1, 6, dn.DN_LEG], [6, 7, dn.DN_LEG], [1, 8, dn.DN_LEG], [8, 9, dn.DN_LEG], [0, 10, dn.DN_HEAD + dn.DN_NECK]];
+  const check = p => { dn.dancePose(p, J); for (const [a, b, l] of limbs) worst = Math.max(worst, Math.abs(len(a, b) - l)); under = Math.min(under, J[15], J[19], J[13], J[17]); };
+  for (k = 0; k < 400; k++) check([rnd() - 0.5, rnd() * 0.4 - 0.1, rnd() * 0.4 - 0.1, 2 * rnd() - 1, 2 * rnd() - 1, 7 * rnd() - 3.5, 7 * rnd() - 3.5, 7 * rnd() - 3.5, 7 * rnd() - 3.5, 2 * rnd() - 1, rnd() - 0.3, 2 * rnd() - 1, rnd() - 0.3]);
+  const P = new Array(13); for (const m of dn.MOVES) for (k = 0; k < 160; k++) { m.f(k / 20, P); check(P); }
+  expect("a figure's limbs keep their length in every pose, and nothing goes under the floor", worst < 1e-9 && under > -1e-9, worst + " " + under);
+  expect("every move comes round in four beats, and can be chosen at some fullness of the music", dn.MOVES.every(m => { const a = [], b = []; m.f(0.3, a); m.f(4.3, b); return (m.lo || m.mid || m.hi) && a.every((x, j) => Math.abs(x - b[j]) < 1e-6); }));
+  expect("a move is chosen from those fit for the music, and never the one in hand", [0.2, 0.7, 1.2].every((e, n) => [0, 0.3, 0.6, 0.999].every(r => { const j = dn.pickMove(e, 1, r); return j !== 1 && dn.MOVES[j][["lo", "mid", "hi"][n]]; })));
+  // a whole night out: silence, music, a great change, a drop, quiet again. No joint may move faster than a dancer could.
+  const { sel, OVERLAYS } = await import("../js/state.js"), was = sel.ovi; let fast = 0, still0 = 0, moved = 0, high = 0, prev = null, calmMove = 0;
+  dn.danceTick = dn.makeBeatClock();
+  const run = (kind, secs, f) => { for (let n = 0; n < secs * 60; n++) { f(n / 60); for (i = 0; i < dn.crowd.length; i++) { dn.dancePose(dn.crowd[i].p, J); if (prev && prev[i]) for (k = 0; k < 22; k++) fast = Math.max(fast, Math.abs(J[k] - prev[i][k]) * 60); (prev = prev || [])[i] = J.slice(); } } };
+  sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); Math.random = rnd;
+  dn.stepDance({ dt, bt: 0, mp: 0 }); // sets the five up
+  expect("the dance floor has five figures, the chorus line four and the dancer one, all inside the picture", dn.crowd.length === 5 && [1, 2, 3].every(kd => [0.46, 1, 1.78, 2.4].every(asp => { const sp = dn.danceSpots(kd, asp); return sp.length === [0, 1, 4, 5][kd] && sp.every(q => Math.abs(q[0]) + 0.3 * q[2] <= 0.5 * Math.max(1, asp) + 1e-9 && q[1] + q[2] < 0.5); })));
+  run(3, 4, tt => dn.danceStep(dt, 0, 0, 0, false, false, false, tt)); dn.dancePose(dn.crowd[0].p, J); still0 = Math.abs(J[6] - J[22]) + Math.abs(J[7] - (J[1] - 0.33));
+  const quietHand = J.slice(6, 8);
+  run(3, 12, tt => dn.danceStep(dt, hit(tt, 0.47), 0, 0.8, false, tt > 6 && tt < 6 + dt, false, 4 + tt)); dn.dancePose(dn.crowd[0].p, J);
+  run(3, 2, tt => { dn.danceStep(dt, hit(tt, 0.47), 0, 0.8, false, false, false, 16 + tt); dn.dancePose(dn.crowd[0].p, J); moved = Math.max(moved, Math.hypot(J[6] - quietHand[0], J[7] - quietHand[1]), Math.abs(J[3] - dn.DN_HIP)); });
+  run(3, 3, tt => { dn.danceStep(dt, hit(tt, 0.47), 0, 1, tt < dt, false, false, 18 + tt); dn.dancePose(dn.crowd[0].p, J); high = Math.max(high, Math.min(J[15], J[19])); });
+  run(3, 8, tt => dn.danceStep(dt, 0, 0, 0.1, false, false, false, 21 + tt)); dn.dancePose(dn.crowd[0].p, J);
+  expect("in silence a figure stands with its arms down, and with a beat it dances", still0 < 0.12 && moved > 0.1, still0 + " " + moved);
+  expect("at a drop the figures leave the floor, and come down again", high > 0.08 && Math.max(J[15], J[19]) < 0.01, String(high));
+  expect("when the music goes quiet they stand again", Math.abs(J[6] - quietHand[0]) + Math.abs(J[7] - quietHand[1]) < 0.06);
+  expect("no joint is ever moved faster than eight figure heights a second: a pose is gone toward, never jumped to", fast < 8, String(fast));
+  dn.danceFill(3, 1.78); expect("the shader is handed five figures, and none for an overlay that is not theirs", dn.dnU[5][3] === 1 && dn.dnU[5][19] > 0 && (dn.danceFill(1, 1.78), dn.dnU[5][3] === 0));
+  sel.ovi = was;
+}
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {
   const { readdirSync } = await import("node:fs"), dir = new URL("../js/", import.meta.url), seen = {}, twice = [];
