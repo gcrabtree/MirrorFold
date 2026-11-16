@@ -1013,6 +1013,33 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("at a drop the figures leave the floor, and come down again", high > 0.08 && Math.max(J[34], J[40]) < 0.01, String(high));
   expect("when the music goes quiet they stand again, facing front", Math.hypot(after[0] - quiet[0], after[1] - quiet[1], after[2] - quiet[2]) < 0.05 && Math.abs(Math.sin(dn.crowd[0].p[4] / 2)) < 0.05);
   expect("through a minute of dancing no joint is moved faster than seven figure heights a second: a pose is gone toward, never jumped to", fast < 7, String(fast));
+  // routines, the kick, and travelling
+  { const r = dn.makeRoutine(0.7, rnd), sizes = new Set(); for (k = 0; k < 200; k++) sizes.add(dn.makeRoutine(0.7, rnd).mv.length);
+    expect("a routine is three to ten different moves fit for the music", Math.min(...sizes) === 3 && Math.max(...sizes) === 10 && new Set(r.mv).size === r.mv.length && r.mv.every(j => mv.MOVES[j].mid) && r.mir.length === r.mv.length && dn.moveTier(0.2) === "lo" && dn.moveTier(1.2) === "hi");
+    for (let n = 0; n < 600; n++) dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.5, false, false, false, n * dt); // the music is under way before the figure is chosen, so its routine is made for it
+    sel.ovi = 0; dn.stepDance({ dt, bt: 0, mp: 0 }); sel.ovi = OVERLAYS.findIndex(v => v.dance === 1); dn.stepDance({ dt, bt: 1, mp: 0 }); const seen = []; let last = -1, rt0 = dn.crowd[0].rt;
+    for (let n = 0; n < 60 * 300 && dn.crowd[0].rt === rt0; n++) { dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.5, false, false, false, n * dt); if (dn.crowd[0].mv !== last) seen.push(last = dn.crowd[0].mv); }
+    const nr = rt0.mv.length;
+    expect("a figure dances its routine through in order twice, and then takes a new one", seen.length === 2 * nr + 1 && seen.slice(0, 2 * nr).every((x, j) => x === rt0.mv[j % nr]), seen.join() + " / " + rt0.mv.join());
+    sel.ovi = OVERLAYS.findIndex(v => v.dance === 2); dn.stepDance({ dt, bt: 0, mp: 0 }); let together = true;
+    for (let n = 0; n < 60 * 60; n++) { dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.5, false, n === 900, false, n * dt); if (!dn.crowd.every(d => d.mv === dn.crowd[0].mv && d.u0 === dn.crowd[0].u0 && Math.abs(d.tx - dn.crowd[0].tx) < 1e-9)) together = false; }
+    expect("the chorus line dances the same move from the same beat, and travels together", together && dn.crowd.length === 4);
+    // the kick itself bends the knees: the same moment of the same move, with and without one
+    sel.ovi = OVERLAYS.findIndex(v => v.dance === 1); dn.stepDance({ dt, bt: 0, mp: 0 });
+    const hips = loud => { dn.danceTick = dn.makeBeatClock(); const s0 = dn.danceSt; s0.u = 0; s0.kick = 0; s0.jump = -1; const d = dn.crowd[0]; d.rt = { mv: [0], mir: [false], tier: "lo" }; d.ri = 0; d.mv = 0; d.mir = false; d.u0 = 0; d.bl = 1; d.next = 1e9; d.tx = 0; s0.en = 1; s0.pa = 1;
+      for (let n = 0; n < 30; n++) dn.danceStep(dt, 0.3, 0, 1, false, false, false, 0); for (let n = 0; n < 6; n++) dn.danceStep(dt, loud ? 1 : 0.3, 0, 1, false, false, false, 0); return dn.crowd[0].b[4]; };
+    const soft = hips(false), hard = hips(true);
+    expect("a kick bends the knees as it lands: the hips are lower just after a hard one than a soft one", soft - hard > 0.004, soft + " " + hard);
+    // the moonwalk glides backward, and stops short of the end of its room
+    const mw = mv.MOVES.findIndex(m => m.name === "moonwalk"), dd = dn.crowd[0]; dd.rt = { mv: [mw], mir: [false], tier: "mid" }; dd.mv = mw; dd.mir = false; dd.tx = 0; dd.next = 1e9; let far = 0, early = 0;
+    for (let n = 0; n < 60 * 40; n++) { dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.5, false, false, false, n * dt); far = Math.min(far, dd.tx); if (n === 240) early = dd.tx; }
+    dn.danceBody(dd.p, J);
+    expect("the moonwalk carries the figure backward from its place, and never past the end of its room", early < -0.15 && far > -0.9 && far < -0.6 && J[42] - J[33] > 0 && mv.moveGo(mv.MOVES[mw], 3) < 0 && mv.moveGo(mv.MOVES[0], 3) === 0, early + " " + far);
+    const ht = mv.MOVES.find(m => m.name === "hammer time"); expect("a move that sways goes one way and then back", mv.moveGo(ht, 1) > 0 && mv.moveGo(ht, 5) < 0 && mv.moveGo(ht, 9) > 0);
+    // a flowing move does not stop at its keys; one with a hold does
+    const flow = mv.MOVES.find(m => m.name === "grapevine"), held = mv.MOVES.find(m => m.name === "robot"), sp = (m, u) => { const a = [], b = []; mv.movePose(m, u - 0.01, a); mv.movePose(m, u + 0.01, b); return Math.max(...a.map((x, j) => Math.abs(x - b[j]))) / 0.02; };
+    expect("a flowing move passes through its keys without stopping, and a move with a hold stops at each", sp(flow, 2) > 0.03 && sp(held, 2) < 1e-3 && sp(held, 1.8) > 0.03, sp(flow, 2) + " " + sp(held, 2)); }
+  sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); dn.stepDance({ dt, bt: 0, mp: 0 });
   dn.danceFill(3, 1.78); expect("the shader is handed five figures, smaller than they were, and none for an overlay that is not theirs", dn.dnU[8][3] === 1 && dn.dnU[8][19] > 0 && dn.danceSpots(1, 1.78)[0][2] < 0.45 && (dn.danceFill(1, 1.78), dn.dnU[8][3] === 0));
   sel.ovi = was; Math.random = rand;
 }

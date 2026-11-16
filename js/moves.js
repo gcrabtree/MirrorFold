@@ -17,7 +17,9 @@
    the beat as a dancer does. len is how many beats the move takes to come round. sym: the keys given are the first
    half, and the second half is the same facing the other way. A key at beat len is the end of the last crossing (a
    spin ends a whole turn on from where it began); otherwise the move goes back to its first key. post changes the pose
-   by a rule of its own (hands that go round). bob is how far the knees give on each beat. lo, mid, hi: how full the
+   by a rule of its own (hands that go round). bob is how far the knees give on each beat. go carries the figure along
+   the floor to its own left, in figure heights a beat (the moonwalk glides backward), and sway turns that back every
+   so many beats. lo, mid, hi: how full the
    music is when the move may be chosen. Nothing here touches the page. */
 export const MV_N=28;
 export const MV_REST=[0,0,0.01,0,0,0,0,0,0,0,0,0, 0.13,-0.31,0.03,0, 0.13,-0.31,0.03,0, 0,0,0,0, 0,0,0,0];
@@ -69,7 +71,7 @@ export const MOVES=[
  {name:"hitchhiker",len:4,sym:1,mid:1,hold:0,keys:[{t:0,L:[0.2,0.02,0,0.5],R:HIP,x:0.03,tw:0.15},{t:0.5,L:[0.36,0.08,-0.06,0.5],R:HIP,x:0.04,tw:0.25},{t:1,L:[0.2,0.02,0,0.5],R:HIP,x:0.03,tw:0.15},{t:1.5,L:[0.36,0.08,-0.06,0.5],R:HIP,x:0.04,tw:0.25}]},
  {name:"egyptian",len:4,sym:1,mid:1,hold:0.3,keys:[{t:0,turn:0.6,L:[0.14,0.1,0.22],R:[0.16,-0.18,-0.2],hn:-0.1,z:0.03},{t:0.5,turn:0.6,L:[0.14,0.1,0.26],R:[0.16,-0.18,-0.24],hn:0.12,z:0.0,d:0.03},{t:1,turn:0.6,L:[0.14,0.1,0.22],R:[0.16,-0.18,-0.2],hn:-0.1,z:0.03},{t:1.5,turn:0.6,L:[0.14,0.1,0.26],R:[0.16,-0.18,-0.24],hn:0.12,d:0.03}]},
  {name:"cabbage patch",len:2,mid:1,keys:[{t:0,d:0.03}],post:function(u,o){var cx=0.13*C(u/2),cz=0.08*S(u/2);o[12]=cx+0.03;o[16]=-cx+0.03;o[13]=o[17]=-0.12;o[14]=o[18]=0.2+cz;o[8]=0.09*C(u/2);o[0]=0.03*C(u/2);o[7]=0.2*C(u/2);}},
- {name:"running man",len:2,mid:1,hi:1,hold:0,bob:0.008,keys:[{t:0,turn:0.85,fl:[0,0.2,0.1],gr:[0,0,-0.02],L:[0.14,-0.2,-0.1],R:[0.14,-0.1,0.18],lf:0.1,hop:0.015},{t:0.5,turn:0.85,fl:[0,0,0.08],gr:[0,0,-0.13],L:[0.14,-0.24,0],R:[0.14,-0.2,0.08],lf:0.1},
+ {name:"running man",go:0.03,sway:4,len:2,mid:1,hi:1,hold:0,bob:0.008,keys:[{t:0,turn:0.85,fl:[0,0.2,0.1],gr:[0,0,-0.02],L:[0.14,-0.2,-0.1],R:[0.14,-0.1,0.18],lf:0.1,hop:0.015},{t:0.5,turn:0.85,fl:[0,0,0.08],gr:[0,0,-0.13],L:[0.14,-0.24,0],R:[0.14,-0.2,0.08],lf:0.1},
    {t:1,turn:0.85,gr:[0,0.2,0.1],fl:[0,0,-0.02],R:[0.14,-0.2,-0.1],L:[0.14,-0.1,0.18],lf:0.1,hop:0.015},{t:1.5,turn:0.85,gr:[0,0,0.08],fl:[0,0,-0.13],R:[0.14,-0.24,0],L:[0.14,-0.2,0.08],lf:0.1}]},
  {name:"sprinkler",len:8,mid:1,hit:1,hold:0.5,keys:[{t:0,L:HEAD,R:[0.25,0,0.24],tw:-0.7},{t:1,L:HEAD,R:[0.25,0,0.24],tw:-0.35},{t:2,L:HEAD,R:[0.25,0,0.24],tw:0},{t:3,L:HEAD,R:[0.25,0,0.24],tw:0.35},{t:4,L:HEAD,R:[0.25,0,0.24],tw:0.7},{t:6,L:HEAD,R:[0.25,0,0.24],tw:-0.7}]},
  {name:"shopping cart",len:4,mid:1,keys:[{t:0,B:[0.1,-0.15,0.26],z:0.02,lf:0.06},{t:1,L:[0.4,0.1,0.05],R:[0.1,-0.15,0.26],ht:0.12,tw:0.2},{t:2,L:[0.08,-0.22,0.3],R:[0.1,-0.15,0.26],lf:0.14},{t:3,B:[0.1,-0.15,0.26],d:0.03}]},
@@ -79,7 +81,7 @@ export const MOVES=[
  {name:"y m c a",len:8,mid:1,hi:1,hold:0.55,keys:[{t:0,B:[0.3,0.27,0]},{t:2,B:[0.03,0.13,0.02,1]},{t:4,L:[0.3,0.2,0.02],R:[-0.27,-0.06,0.1],ls:0.18,x:-0.03},{t:6,B:[0.01,0.32,0],fl:[0.06,0,0],gr:[0.06,0,0]}]},
  {name:"vogue",len:4,mid:1,hit:1,hold:0.5,bob:0.008,keys:[{t:0,L:[0.02,0.14,0.1,0.8],R:[0.05,-0.02,0.12],ht:0.1},{t:1,B:[0.19,0.1,0.03,0.5]},{t:2,R:[0.02,0.14,0.1,0.8],L:HIP,x:0.05,pr:0.1},{t:3,L:[0.4,0.15,0],R:HIP,ls:-0.1,ht:-0.1}]},
  {name:"thriller",len:4,sym:1,mid:1,hold:0.3,keys:[{t:0,L:[0.36,0.08,0.1],R:[-0.12,0.06,0.2],ht:0.15,x:0.05,d:0.04,ls:0.06,fl:[0.08,0,0]},{t:1,L:[0.36,0.03,0.1],R:[-0.12,0.01,0.2],ht:0.15,x:0.06,d:0.08,ls:0.06,fl:[0.08,0,0]}]},
- {name:"moonwalk",len:2,mid:1,hold:0,bob:0.004,keys:[{t:0,turn:1.3,fl:[0,0.035,0.09],gr:[0,0,-0.1],lf:0.06,L:[0.13,-0.28,-0.08],R:[0.13,-0.28,0.08]},{t:1,turn:1.3,gr:[0,0.035,0.09],fl:[0,0,-0.1],lf:0.06,L:[0.13,-0.28,0.08],R:[0.13,-0.28,-0.08]}]},
+ {name:"moonwalk",go:-0.13,len:2,mid:1,hold:0,bob:0.004,keys:[{t:0,turn:1.3,fl:[0,0.035,0.09],gr:[0,0,-0.1],lf:0.06,L:[0.13,-0.28,-0.08],R:[0.13,-0.28,0.08]},{t:1,turn:1.3,gr:[0,0.035,0.09],fl:[0,0,-0.1],lf:0.06,L:[0.13,-0.28,0.08],R:[0.13,-0.28,-0.08]}]},
  {name:"charleston",len:4,mid:1,hi:1,keys:[{t:0,fl:[0.1,0.12,0.2],L:[0.24,-0.2,-0.08],R:[0.2,-0.1,0.16],lf:-0.06,x:-0.03},{t:1,B:BENT,d:0.03,fl:[0,0,0,0.3],gr:[0,0,0,0.3]},{t:2,gr:[0.1,0.1,-0.16],R:[0.24,-0.2,-0.08],L:[0.2,-0.1,0.16],lf:0.1,x:0.03},{t:3,B:BENT,d:0.03,fl:[0,0,0,0.3],gr:[0,0,0,0.3]}]},
  {name:"salsa",len:8,mid:1,hold:0.1,keys:[{t:0,B:BENT},{t:1,fl:[0.02,0,0.14],z:0.05,x:0.04,pr:0.12,d:0.03,L:[0.18,-0.12,0.16],R:[0.15,-0.16,0.1]},{t:2,fl:[0.02,0,0.14],z:0,x:-0.04,pr:-0.12,B:BENT},{t:3,pr:0.05,R:[0.18,-0.12,0.16],L:[0.15,-0.16,0.1]},{t:4,B:BENT},
    {t:5,gr:[0.02,0,-0.14],z:-0.05,x:-0.04,pr:-0.12,d:0.03,R:[0.18,-0.12,0.16],L:[0.15,-0.16,0.1]},{t:6,gr:[0.02,0,-0.14],z:0,x:0.04,pr:0.12,B:BENT},{t:7,pr:-0.05,L:[0.18,-0.12,0.16],R:[0.15,-0.16,0.1]}]},
@@ -114,7 +116,7 @@ export const MOVES=[
  {name:"skier",len:2,sym:1,hi:1,hold:0.1,bob:0,keys:[{t:0,py:0.6,tw:-0.6,d:0.07,fl:[-0.05,0,0],gr:[-0.05,0,0],L:[0.17,-0.14,0.02],R:[0.16,-0.14,0.2]}],post:function(u,o){var a=S(u/2);o[3]=0.04*a*a;}},
  {name:"kick step",len:4,sym:1,hi:1,mid:1,keys:[{t:0,fl:[0.14,0.17,0.22],hop:0.03,x:-0.03,R:[0.18,-0.08,0.16],L:[0.2,-0.24,-0.08]},{t:1,d:0.03,B:BENT}]},
  {name:"lasers",len:2,sym:1,hi:1,hold:0.15,keys:[{t:0,L:[0.3,0.28,0.05],R:[0.1,-0.1,0.1,0.2],tw:-0.2,hop:0.02}]},
- {name:"shuffle",len:2,sym:1,hi:1,hold:0,bob:0.006,keys:[{t:0,gr:[0,0.14,0.04,0.2],fl:[0,0,0,-0.3],x:0.03,L:[0.14,-0.2,0.12],R:[0.14,-0.22,-0.06]},{t:0.5,gr:[0.06,0,0],fl:[0.03,0,0,0.3],x:0.03,L:BENT,R:BENT}]},
+ {name:"shuffle",go:0.08,sway:4,len:2,sym:1,hi:1,hold:0,bob:0.006,keys:[{t:0,gr:[0,0.14,0.04,0.2],fl:[0,0,0,-0.3],x:0.03,L:[0.14,-0.2,0.12],R:[0.14,-0.22,-0.06]},{t:0.5,gr:[0.06,0,0],fl:[0.03,0,0,0.3],x:0.03,L:BENT,R:BENT}]},
  {name:"overhead clap",len:4,sym:1,hi:1,keys:[{t:0,B:[0.0,0.31,0.02],x:0.05,fl:[0.1,0,0]},{t:1,B:[0.25,0.2,0]}]},
  /* ---- more for quiet music ---- */
  {name:"heel toe",len:4,sym:1,lo:1,keys:[{t:0,fl:[0.08,0.02,0.13],x:-0.03,B:HIP,ls:-0.04},{t:1,B:HIP,d:0.02}]},
@@ -176,10 +178,10 @@ export const MOVES=[
  {name:"elaine",len:2,sym:1,mid:1,hold:0,keys:[{t:0,L:[0.3,0,-0.04,0.2],R:[0.2,-0.1,0.1],fl:[0.16,0.1,0.12],lf:-0.12,hn:-0.15,hop:0.02,ls:-0.06},{t:0.5,d:0.03,B:[0.2,-0.06,0.08],lf:-0.08}]},
  {name:"tequila",len:2,sym:1,mid:1,hold:0.1,bob:0,keys:[{t:0,hop:0.04,L:[0.3,-0.22,0.02],R:[0.02,-0.3,0.04],x:0.04,tw:0.2,fl:[-0.03,0,0],gr:[-0.03,0,0]}]},
  {name:"funky chicken",len:2,mid:1,hold:0,keys:[{t:0,B:[0.08,-0.08,0.04,1.3],fl:[0.04,0,0,0.7],gr:[0.04,0,0,0.7],d:0.07,hn:0.15},{t:1,B:[0.1,-0.14,0.04,-0.2],fl:[0.02,0,0,-0.2],gr:[0.02,0,0,-0.2],d:0.05,hn:-0.1}]},
- {name:"skate",len:4,sym:1,mid:1,keys:[{t:0,x:0.1,fl:[0.14,0,0],gr:[-0.1,0.06,-0.14],lf:0.15,d:0.06,L:[0.14,-0.22,-0.12],R:[0.1,-0.16,0.2],tw:0.3},{t:1,x:0.1,fl:[0.14,0,0],gr:[-0.1,0.06,-0.14],lf:0.15,d:0.09,L:[0.14,-0.22,-0.12],R:[0.1,-0.16,0.2],tw:0.3}]},
+ {name:"skate",go:0.05,sway:4,len:4,sym:1,mid:1,keys:[{t:0,x:0.1,fl:[0.14,0,0],gr:[-0.1,0.06,-0.14],lf:0.15,d:0.06,L:[0.14,-0.22,-0.12],R:[0.1,-0.16,0.2],tw:0.3},{t:1,x:0.1,fl:[0.14,0,0],gr:[-0.1,0.06,-0.14],lf:0.15,d:0.09,L:[0.14,-0.22,-0.12],R:[0.1,-0.16,0.2],tw:0.3}]},
  {name:"backstroke",len:2,sym:1,mid:1,hold:0,keys:[{t:0,L:[0.14,0.3,-0.06],R:[0.14,-0.28,0.04],lf:-0.12,tw:0.35}]},
  {name:"stadium wave",len:4,mid:1,hi:1,hold:0.1,keys:[{t:0,d:0.14,B:[0.14,-0.25,0.1],lf:0.15},{t:1,d:0.05,B:[0.2,0,0.14]},{t:2,B:[0.2,0.32,0],hop:0.03,lf:-0.06},{t:3,d:0.06,B:[0.2,0,0.14]}]},
- {name:"walk it out",len:2,sym:1,mid:1,hold:0.1,keys:[{t:0,py:0.45,fl:[0.03,0,0.05,-0.2],gr:[0,0,-0.03],x:0.04,B:[0.18,-0.2,0.1],tw:-0.2,d:0.04}]},
+ {name:"walk it out",go:0.05,sway:4,len:2,sym:1,mid:1,hold:0.1,keys:[{t:0,py:0.45,fl:[0.03,0,0.05,-0.2],gr:[0,0,-0.03],x:0.04,B:[0.18,-0.2,0.1],tw:-0.2,d:0.04}]},
  {name:"bankhead bounce",len:1,sym:1,mid:1,hold:0,bob:0.025,keys:[{t:0,ls:0.1,L:[0.2,-0.1,0.08,0.6],R:[0.18,-0.2,0.08],d:0.03}]},
  {name:"get low",len:4,mid:1,hi:1,hold:0.1,keys:[{t:0,d:0.05,B:[0.2,-0.12,0.14]},{t:1,d:0.14,B:[0.2,-0.1,0.16],fl:[0.08,0,0,0.4],gr:[0.08,0,0,0.4]},{t:2,d:0.24,fl:[0.1,0,0,0.6],gr:[0.1,0,0,0.6],B:[0.1,-0.2,0.2]},{t:3,d:0.12,B:[0.2,-0.1,0.16],fl:[0.08,0,0,0.4],gr:[0.08,0,0,0.4]}]},
  /* ---- more for the fullest music ---- */
@@ -187,8 +189,8 @@ export const MOVES=[
  {name:"orange justice",len:4,hi:1,hold:0,keys:[{t:0,B:[0,-0.08,0.18],fl:[0,0,0,0.5],gr:[0,0,0,0.5],d:0.06},{t:1,B:[0.34,-0.12,0.06],fl:[0,0,0,-0.2],gr:[0,0,0,-0.2],d:0.04,ls:0.08,x:0.03},{t:2,B:[0,-0.08,0.18],fl:[0,0,0,0.5],gr:[0,0,0,0.5],d:0.06},{t:3,B:[0.34,-0.12,0.06],fl:[0,0,0,-0.2],gr:[0,0,0,-0.2],d:0.04,ls:-0.08,x:-0.03}]},
  {name:"jump on it",len:2,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,L:[0.14,0.3,0],R:[0.1,-0.16,0.2],hop:0.04,x:0.08,fl:[0.1,0,0],gr:[-0.04,0.06,0],tw:0.3},{t:0.5,L:[0.2,0.28,0.06],R:[0.1,-0.16,0.2],d:0.04,x:0.08,fl:[0.1,0,0],gr:[-0.04,0,0],tw:0.3}]},
  {name:"superman",len:4,hi:1,mid:1,keys:[{t:0,hop:0.04,fl:[-0.1,0,0.04],gr:[-0.1,0,-0.04],B:LOW},{t:1,fl:[0.06,0,0],gr:[0.06,0,0],d:0.04,B:BENT},{t:2,B:[0.14,0.1,0.28],lf:0.2,hop:0.03},{t:3,B:[0.14,0.1,0.28],lf:0.25,d:0.05}]},
- {name:"hammer time",len:1,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,d:0.1,fl:[0.14,0,0,0.3],gr:[0.06,0.03,0,0.3],x:0.06,B:[0.18,-0.2,0.1]}]},
- {name:"riverdance",len:2,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,fl:[0.03,0.2,0.14],hop:0.03,B:[0.12,-0.31,0]},{t:0.5,fl:[-0.1,0.03,0.1],hop:0.01,B:[0.12,-0.31,0]}]},
+ {name:"hammer time",go:0.1,sway:4,len:1,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,d:0.1,fl:[0.14,0,0,0.3],gr:[0.06,0.03,0,0.3],x:0.06,B:[0.18,-0.2,0.1]}]},
+ {name:"riverdance",go:0.07,sway:4,len:2,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,fl:[0.03,0.2,0.14],hop:0.03,B:[0.12,-0.31,0]},{t:0.5,fl:[-0.1,0.03,0.1],hop:0.01,B:[0.12,-0.31,0]}]},
  {name:"bhangra",len:2,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,L:[0.22,0.3,0.04],R:[0.18,0.22,0.04],ls:0.1,fl:[0.02,0.16,0.08,0.3],hop:0.03},{t:0.5,B:[0.2,0.24,0.04],d:0.03}]},
  {name:"skank",len:2,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,fl:[0,0.2,0.1],L:[0.14,-0.2,-0.12],R:[0.2,-0.02,0.16,0.3],lf:0.1,hop:0.02,tw:0.3},{t:0.5,d:0.02,lf:0.1,B:BENT}]},
  {name:"headbang",len:1,hi:1,hold:0,bob:0,keys:[{t:0,lf:0.5,hn:0.6,d:0.13,fl:[0.1,0,0],gr:[0.1,0,0],B:[0.2,-0.2,0.12]},{t:0.5,lf:-0.08,hn:-0.25,d:0.02,fl:[0.1,0,0],gr:[0.1,0,0],B:[0.24,-0.12,0.04]}]},
@@ -198,7 +200,7 @@ export const MOVES=[
  {name:"boxing",len:2,hi:1,mid:1,hold:0,keys:[{t:0,R:[-0.14,0.02,0.27],L:[0.1,0,0.12,0.2],tw:0.6,ls:0.06,d:0.04,fl:[0.03,0,0.08]},{t:0.5,B:[0.1,0,0.12,0.2],d:0.05,fl:[0.03,0,0.08]},{t:1,L:[-0.14,0.02,0.27],R:[0.1,0,0.12,0.2],tw:-0.6,ls:-0.06,d:0.04,fl:[0.03,0,0.08]},{t:1.5,B:[0.1,0,0.12,0.2],d:0.05,fl:[0.03,0,0.08]}]},
  {name:"jump rope",len:1,hi:1,hold:0,bob:0,keys:[{t:0,d:0.02,B:[0.2,-0.24,0.08]},{t:0.5,hop:0.05,B:[0.2,-0.24,0.08]}],post:function(u,o){o[13]+=0.03*S(u);o[17]+=0.03*S(u);o[14]+=0.03*C(u);o[18]+=0.03*C(u);}},
  {name:"cheerleader",len:4,hi:1,hit:1,hold:0.45,keys:[{t:0,B:[0.3,0.26,0],fl:[0.06,0,0],gr:[0.06,0,0]},{t:1,B:HIP},{t:2,B:TEE},{t:3,B:[0,-0.06,0.18],hop:0.06}]},
- {name:"duck walk",len:1,hi:1,hold:0,bob:0,keys:[{t:0,turn:1.2,d:0.16,fl:[0,0.1,0.22],gr:[0,0,-0.04],L:[0.14,-0.08,0.2],R:[0.1,-0.22,0.12],lf:0.05,hn:0.15},{t:0.5,turn:1.2,d:0.16,fl:[0,0,0.08],gr:[0,0,-0.04],L:[0.14,-0.08,0.2],R:[0.1,-0.26,0.12],lf:0.05,hn:-0.1}]},
+ {name:"duck walk",go:0.1,len:1,hi:1,hold:0,bob:0,keys:[{t:0,turn:1.2,d:0.16,fl:[0,0.1,0.22],gr:[0,0,-0.04],L:[0.14,-0.08,0.2],R:[0.1,-0.22,0.12],lf:0.05,hn:0.15},{t:0.5,turn:1.2,d:0.16,fl:[0,0,0.08],gr:[0,0,-0.04],L:[0.14,-0.08,0.2],R:[0.1,-0.26,0.12],lf:0.05,hn:-0.1}]},
  {name:"take the l",len:2,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,R:[0.04,0.13,0.1,0.5],L:[0.2,-0.2,0.05],fl:[0.2,0.14,0.02],hop:0.03,ls:-0.08},{t:0.5,R:[0.04,0.13,0.1,0.5],L:[0.2,-0.2,0.05],d:0.02}]},
  {name:"best mates",len:2,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,L:[0.2,0.3,0],R:[0.25,-0.2,0.05],fl:[0.2,0.12,0],hop:0.03},{t:0.5,B:[0.2,0.05,0.08],d:0.02}]},
  {name:"heel click",len:2,sym:1,hi:1,hold:0.1,bob:0,keys:[{t:0,hop:0.1,fl:[-0.02,0.12,0,0.6],gr:[0.04,0.12,0,0.6],x:0.05,B:[0.3,0.1,0],ls:-0.1},{t:0.5,d:0.05,B:LOW}]},
@@ -228,21 +230,39 @@ export function moveKeys(m){
   if(m.k)return m.k;
   ks=m.keys.map(function(k){return {t:k.t,a:keyPose(k)}});
   if(m.sym){h=m.len/2;m.keys.forEach(function(k){ks.push({t:k.t+h,a:flipPose(keyPose(k))})});}
-  if(ks[ks.length-1].t<m.len)ks.push({t:m.len,a:ks[0].a});
+  if(ks[ks.length-1].t<m.len)ks.push({t:m.len,a:ks[0].a});else m.ends=1;
   m.k=ks;return ks;
 }
-/* The pose of move m at beat u, into o. */
+/* The pose of move m at beat u, into o. A move that says how long to wait at each key (hold), or snaps (hit), or ends
+   on a key of its own, goes from key to key eased, stopping at each. Any other flows: its numbers pass through each
+   key at the speed that carries them on to the next (a curve through the keys with no corners), so the figure does
+   not stop on every beat. The give of the knees on the beat is not in here: js/dance.js adds it from the sound. */
 export function movePose(m,u,o){
-  var ks=moveKeys(m),uu=u-m.len*Math.floor(u/m.len),i=0,j,w,h=m.hold===undefined?0.25:m.hold,a,b;
-  while(i<ks.length-2&&ks[i+1].t<=uu)i++;
-  a=ks[i].a;b=ks[i+1].a;
-  w=(uu-ks[i].t)/Math.max(1e-6,ks[i+1].t-ks[i].t);
-  w=ease((w-h)/(1-h));if(m.hit)w=ease(w);
-  for(j=0;j<MV_N;j++)o[j]=a[j]+(b[j]-a[j])*w;
+  var ks=moveKeys(m),n=ks.length-1,uu=u-m.len*Math.floor(u/m.len),i=0,j,w,h=m.hold||0,a,b,p,q,t0,t1,tp,tq,dt,w2,w3,ma,mb;
+  while(i<n-1&&ks[i+1].t<=uu)i++;
+  a=ks[i].a;b=ks[i+1].a;t0=ks[i].t;t1=ks[i+1].t;dt=Math.max(1e-6,t1-t0);
+  w=(uu-t0)/dt;
+  if(h>0||m.hit||m.ends){
+    w=ease((w-h)/(1-h));if(m.hit)w=ease(w);
+    for(j=0;j<MV_N;j++)o[j]=a[j]+(b[j]-a[j])*w;
+  }else{
+    /* the key before this pair and the key after it, going round the end of the move */
+    p=i>0?ks[i-1]:ks[n-1];tp=i>0?p.t:p.t-m.len;q=i+2<=n?ks[i+2]:ks[1];tq=i+2<=n?q.t:q.t+m.len;
+    w2=w*w;w3=w2*w;
+    for(j=0;j<MV_N;j++){
+      ma=(b[j]-p.a[j])/(t1-tp)*dt;mb=(q.a[j]-a[j])/(tq-t0)*dt;
+      o[j]=(2*w3-3*w2+1)*a[j]+(w3-2*w2+w)*ma+(3*w2-2*w3)*b[j]+(w3-w2)*mb;
+    }
+    o[2]=Math.max(0,o[2]);o[3]=Math.max(0,o[3]);
+  }
   if(m.post)m.post(uu,o);
-  o[2]+=(m.bob===undefined?0.018:m.bob)*(0.5+0.5*C(u)); /* the knees give on the beat */
   return o;
 }
+/* how far a move's knees give on each beat */
+export function moveBob(m){return m.bob===undefined?0.018:m.bob;}
+/* How fast a move carries the figure along the floor at beat u, in figure heights a beat, to the figure's own left
+   (0 for most moves). go is the speed; a move with sway turns back every sway beats, so that it goes to and fro. */
+export function moveGo(m,u){return m.go?m.go*(m.sway&&Math.floor(u/m.sway)%2?-1:1):0;}
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={MV_N, MV_REST, MOVES, flipPose, moveKeys, movePose};
+export const __dbg={MV_N, MV_REST, MOVES, flipPose, moveKeys, movePose, moveBob, moveGo};

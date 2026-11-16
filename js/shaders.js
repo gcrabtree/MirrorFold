@@ -515,12 +515,12 @@ VR_GLSL,
 "          ds=min(ds,min(limb(q,b5.zw,b7.xy),limb(q,b6.zw,b7.zw)));", /* the feet */
 "          float g=(1.0-smoothstep(0.35*wl,wl,ds))*hd.w;",
 "          if(g>ln){ln=g;rr=0.15+0.27*float(i);}",
-"          dk=max(dk,(1.0-smoothstep(wl,2.6*wl,ds))*hd.w);",
+"          dk=max(dk,(1.0-smoothstep(wl,1.6*wl,ds))*hd.w);",
 "        }",
 "      }",
 "    }",
 "    if(uVr>0.5)ln*=1.0-smoothstep(1.7,1.8,length(ev));",
-"    o*=1.0-0.8*dk*uOvAmt;", /* the dancers have a dark edge round them, so that they can be seen against a bright world */
+"    o*=1.0-0.75*dk*uOvAmt;", /* the dancers have a dark edge round them, so that they can be seen against a bright world */
 "    vec3 oc=pal(uHue+0.3+rr*0.45);", /* coloured from the current palette */
 "    if(uVidK.x>3.5&&uVidK.x<4.5)o=mix(o,mix(oc,vs,uVidK.y),min(ln,1.0)*uOvAmt);", /* video in the overlay: its shapes are windows onto the video, dark parts and all */
 "    else o+=(max(o,oc)-o)*min(ln,1.0)*uOvAmt;",
