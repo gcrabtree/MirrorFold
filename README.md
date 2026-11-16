@@ -563,4 +563,13 @@ Known weak spots: Box and Fortress look grainy, and the controls cover a lot of 
 
 ## Licence
 
-[GNU Affero General Public License, version 3](LICENSE).
+Mirrorfold. Copyright (C) 2026 gcrabtree.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, version 3. It is distributed in the hope that it will be useful, but without any warranty; without even the implied warranty of merchantability or fitness for a particular purpose. The full text is in [LICENSE](LICENSE).
+
+In plain words, which are a summary and not the licence:
+
+- Anyone may use the app, host a copy, study the code and change it.
+- If you pass on a copy, changed or not, or run a changed copy as a website or service that other people use, you must keep the copyright notices and offer those people the complete source of your version under this same licence.
+- If you want to put Mirrorfold or part of it in a product on other terms, ask: open an issue on this repository. The copyright holder can give a separate licence.
+

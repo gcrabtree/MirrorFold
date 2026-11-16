@@ -264,4 +264,4 @@ This folder is the gallery. The app lists what `index.json` names, with each pac
 
 Before merging, a maintainer should load the pack with **Load a pack file** and watch each filter and overlay on several worlds, with music playing and with a motion on. Loaded that way the picture is smoothed, so also read the code for anything that changes quickly with `time`, `beat` or `sound`. Refuse one that flashes, flickers in large areas, or makes the picture stutter. An overlay should pulse softly, not blink. The automatic checks cannot judge these.
 
-By adding a pack you agree to release it under the project's licence (see `LICENSE`).
+By offering a pack you agree to release it under the project's licence (the GNU Affero General Public License, version 3; see `LICENSE`), and that the project's copyright holder may also license it to others on other terms, as the rest of the project can be.

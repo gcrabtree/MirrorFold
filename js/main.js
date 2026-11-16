@@ -1,3 +1,4 @@
+/* Mirrorfold. Copyright (C) 2026 gcrabtree. Free software under the GNU Affero General Public License, version 3: see LICENSE. */
 /* Starts the app: loads every file, then runs each file's init, if it has one, in this order. The order matters only for
    the start-up work: a file's init may use what the files before it have set up. */
 import * as m0 from "./dom.js";
