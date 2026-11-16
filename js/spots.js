@@ -35,7 +35,7 @@ export function applySpot(t){
   for(i=0;i<3;i++)cam.pos[i]=(n(2+2*i,4+2*i)/1295-0.5)*per[i];
   var yaw=(n(8,10)/1295-0.5)*2*Math.PI,pit=(n(10,12)/1295-0.5)*Math.PI;
   cam.F=[Math.cos(pit)*Math.sin(yaw),Math.sin(pit),Math.cos(pit)*Math.cos(yaw)];
-  cam.R=norm(cross([0,1,0],cam.F));cam.Up=cross(cam.F,cam.R);cam.vel=[0,0,0];
+  cam.R=norm(cross([0,1,0],cam.F));cam.Up=cross(cam.F,cam.R);cam.vel=[0,0,0];cam.hand=1;
   spawnOrb();
 }
 export function fromHash(){

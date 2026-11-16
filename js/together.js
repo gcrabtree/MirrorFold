@@ -202,7 +202,7 @@ function tgGoTo(m){
   if(m.w!==w.id||!perNow||flightPlaying()){toast("You are not in the same world as your friend yet. Ask again in a moment.");return;}
   s=tgSpot(m.p,perNow);
   if(!s)return;
-  cam.pos=s.pos;cam.F=s.F;cam.Up=s.Up;cam.R=s.R;cam.vel=[0,0,0];
+  cam.pos=s.pos;cam.F=s.F;cam.Up=s.Up;cam.R=s.R;cam.vel=[0,0,0];cam.hand=1;
   toast("You are at your friend's spot.");
 }
 /* A word about going to someone's spot has arrived, from the person with number m.f. A request is only shown, for this

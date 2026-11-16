@@ -13,6 +13,8 @@ import { wakeHud } from "./input.js";
 import { stepZoom } from "./zoom.js";
 import { autopilot, jMove, journey, stepJourney } from "./journey.js";
 import { landMode, moveLand } from "./land.js";
+import { lapClock, lapFrame, lapOn, lapShot } from "./lap.js";
+import { stepRibbons } from "./ribbons.js";
 import { learnFrame, learnOpen, openLearn } from "./learn.js";
 import { setMusic, soundFrame } from "./listen.js";
 import { midiFrame } from "./midi.js";
@@ -80,9 +82,10 @@ function frame(now){
 
   /* what time it is, what the music is doing */
   soundFrame(notes);
-  if(!still)tickClock(notes,morph,morph===2?songAim(scene.world,clock.time):null); /* Hold still stops the clocks, and with them the morph, the colour drift and the turning mirrors */
+  if(!still&&!lapOn())tickClock(notes,morph,morph===2?songAim(scene.world,clock.time):null); /* Hold still stops the clocks, and with them the morph, the colour drift and the turning mirrors */
   flightClock(notes); /* a recorded flight being played makes its changes and sets the morph (js/flightplay.js) */
   togetherClock(notes); /* flying together: a guest takes the host's world and morph (js/together.js) */
+  lapClock(notes); /* a loop being flown sets every clock from how far round the lap is, and stands in for the sound (js/lap.js) */
   stepWarp(dt);
   notes.m=morphValue();
   pkTick(clock.morphT); /* the packing's wave needs the morph's clock, to work out the morph some seconds ago (js/packing.js) */
@@ -91,8 +94,8 @@ function frame(now){
   measure(notes);
   scrubFollow();
   midiFrame(notes);
-  steering(notes,journey&&jMove==="travel"&&!still);
-  if(journey&&started&&!still){
+  steering(notes,journey&&jMove==="travel"&&!still&&!lapOn());
+  if(journey&&started&&!still&&!lapOn()){ /* Journey waits while a loop is flown */
     if(notes.travel&&!doorSteer(notes))autopilot(notes); /* a doorway ahead with a clear way to it is steered into, and the autopilot left out (js/doors.js) */
     stepJourney(dt);
   }
@@ -100,12 +103,14 @@ function frame(now){
   move(notes);
   stepZoom(notes);
   flightFrame(notes); /* a recorded flight being played puts the camera on its path; one being recorded notes it */
+  lapFrame(notes); /* a loop being flown puts the camera on its path (js/lap.js) */
   stepDoor(notes); /* a doorway: opened, closed, and gone through (js/doors.js) */
   if(landMode)moveLand(notes);
   stepOrb(notes);
   sparkFrame(notes);stepSpark(notes);
   stepFlits(notes);
   stepTogether(notes); /* flying together: say where this camera is, and place the others */
+  stepRibbons(notes); /* the lines of light left behind the camera and behind friends (js/ribbons.js) */
   musicFollowsSpeed(notes.spN);
 
   /* drawing */
@@ -119,6 +124,7 @@ function frame(now){
   drawFinal(notes);
   pickFrame(); /* the list buttons say what is chosen */
   pictureFrame(); /* Save picture takes the frame now, while it is still on the canvas */
+  lapShot(); /* a loop being recorded is handed the frame */
   statsEnd(rawDt);
 }
 

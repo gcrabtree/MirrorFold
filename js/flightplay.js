@@ -80,7 +80,7 @@ function beginPlay(fl){
   if(journey)setJourney(false);
   if(wi>=0&&WORLDS[wi]!==scene.world)setWorldNow(wi,true);
   if(fl.seed&&musicMode==="built")restartBuilt(fl.seed);
-  play={fl:fl,t:0,ei:0};
+  play={fl:fl,t:0,ei:0};cam.hand=1; /* a flight was recorded unmirrored */
   toast("Playing a recorded flight. Move or look to take the controls.");
 }
 function stopPlay(msg){

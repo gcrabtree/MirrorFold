@@ -48,7 +48,7 @@ export function fillWorlds(){selWorld.textContent="";WORLDS.forEach(function(w,i
    this morph, or the packing in use has moved the shapes. */
 function placeCam(w){
   var fixed=w.start&&!pkOn(w),m=morphValue();
-  cam.pos=fixed?w.start.slice():[0,0,0];cam.vel=[0,0,0];
+  cam.pos=fixed?w.start.slice():[0,0,0];cam.vel=[0,0,0];cam.hand=1;
   if(pkDeep(w)){cam.pos=[.12*w.grid,.08*w.grid,2.5*w.grid];cam.F=[0,0,-1];cam.R=[-1,0,0];cam.Up=[0,1,0];return;} /* the descent: between two cages, looking in along one of the six ways through */
   if(!fixed||w.de(cam.pos[0],cam.pos[1],cam.pos[2],m)<0.02){
     var per=w.period(m),best=-1,ns=w.pack?96:300,sc=new Float32Array(3*ns),k;

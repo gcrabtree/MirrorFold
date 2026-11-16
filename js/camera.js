@@ -14,8 +14,11 @@ export const cam={
   lookX:0,lookY:0,        /* turning still to be applied, eased in over a few frames */
   rollIn:0,gRoll:0,       /* roll rate from the keys, and a roll from a two-finger twist waiting to be applied */
   userTurn:0,lookAct:0,   /* how much the user turned the view this frame, and how actively they are steering (0 to 1) */
-  baseSpeed:1,curSpeed:0,boost:0
+  baseSpeed:1,curSpeed:0,boost:0,
+  hand:1                  /* 1, or -1 after flying through a doorway that mirrors (js/doors.js): right is then the other way round from up and forward, and stays so */
 };
+/* the camera's right is worked out from up and forward again, as it must be whenever something sets those two alone */
+export function camSquare(){cam.F=norm(cam.F);cam.R=norm(cross(cam.Up,cam.F));if(cam.hand<0)cam.R=[-cam.R[0],-cam.R[1],-cam.R[2]];cam.Up=cross(cam.F,cam.R);if(cam.hand<0)cam.Up=[-cam.Up[0],-cam.Up[1],-cam.Up[2]];}
 export function userLook(dx,dy){cam.lookX+=dx;cam.lookY+=dy;cam.userTurn+=Math.hypot(dx,dy);}
 export function userActive(act,rate,dt){
   var want=Math.min(1,Math.max(0,(rate-0.08)/0.42));
@@ -46,19 +49,21 @@ export function turn(fr){
   /* A turn that is all but done is finished here, so that the look comes to exactly nothing within a second. Left to die away by itself it takes most of a minute to reach nothing, and a zoom world, which reads any look as the user taking the picture, would not start its tour for that long after the autopilot's last turn in the world before. Holding still finishes it sooner, so the view comes to a full stop. */
   if(Math.abs(cam.lookX)+Math.abs(cam.lookY)<(still?2e-4:1e-7)){ax+=cam.lookX;ay+=cam.lookY;cam.lookX=cam.lookY=0;}
   fr.lx=ax;fr.ly=ay;
-  cam.F=rot(cam.F,cam.Up,ax);cam.F=rot(cam.F,cam.R,ay);cam.Up=rot(cam.Up,cam.R,ay);
+  if(stereo)cam.hand=1; /* the VR viewer turns the view with the head, which is not mirrored */
+  var h=cam.hand; /* in a mirrored view every turn goes the other way round its axis, so that right on the screen is still right */
+  cam.F=rot(cam.F,cam.Up,ax*h);cam.F=rot(cam.F,cam.R,ay*h);cam.Up=rot(cam.Up,cam.R,ay*h);
   var rollT=((keys.KeyE?1:0)-(keys.KeyQ?1:0))*1.2;
   var idle=stick.id===null&&!keys.KeyW&&!keys.KeyS&&!keys.KeyA&&!keys.KeyD;
   if((drift||travel)&&idle&&!calm&&!stereo&&!landMode&&!still)rollT+=0.035*hands; /* no automatic roll in the VR viewer */
   cam.rollIn+=(rollT-cam.rollIn)*(1-Math.exp(-dt*4));
   if(still&&rollT===0&&Math.abs(cam.rollIn)<2e-3)cam.rollIn=0;
-  cam.Up=rot(cam.Up,cam.F,-cam.rollIn*dt);
+  cam.Up=rot(cam.Up,cam.F,-cam.rollIn*dt*h);
   fr.gr=cam.gRoll;
-  if(cam.gRoll!==0){cam.Up=rot(cam.Up,cam.F,cam.gRoll);cam.gRoll=0;}
-  cam.F=norm(cam.F);cam.R=norm(cross(cam.Up,cam.F));cam.Up=cross(cam.F,cam.R);
+  if(cam.gRoll!==0){cam.Up=rot(cam.Up,cam.F,cam.gRoll*h);cam.gRoll=0;}
+  camSquare();
   if(landMode&&!stereo&&Math.abs(cam.F[1])<0.97){ /* over land the horizon is eased level */
     var lt=norm([-cam.F[0]*cam.F[1],1-cam.F[1]*cam.F[1],-cam.F[2]*cam.F[1]]),le=1-Math.exp(-dt*3);
-    cam.Up=norm([cam.Up[0]+(lt[0]-cam.Up[0])*le,cam.Up[1]+(lt[1]-cam.Up[1])*le,cam.Up[2]+(lt[2]-cam.Up[2])*le]);cam.R=norm(cross(cam.Up,cam.F));cam.Up=cross(cam.F,cam.R);
+    cam.Up=norm([cam.Up[0]+(lt[0]-cam.Up[0])*le,cam.Up[1]+(lt[1]-cam.Up[1])*le,cam.Up[2]+(lt[2]-cam.Up[2])*le]);camSquare();
   }
   fr.idle=idle;
 }
@@ -92,4 +97,4 @@ export function move(fr){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={cam, userLook, userActive, rot, norm, cross, steering, turn, move};
+export const __dbg={cam, camSquare, userLook, userActive, rot, norm, cross, steering, turn, move};

@@ -851,6 +851,56 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a mixed world's shader holds its own shape and two others, a plain one only its own", plain.indexOf("float sh0(") > 0 && plain.indexOf("float sh1(") < 0 && mixed.indexOf("float sh2(") > 0 && mixed.indexOf("SHAPE") < 0);
   expect("the chrome surface is in the shaders only while it is in use, and never in a cloud world's", plain.indexOf("#define CHROME") < 0 && chr.indexOf("#define CHROME") > 0 && chrCloud.indexOf("#define CHROME") < 0);
 }
+// ---- strange doorways, ribbons, lens blur and loops
+{
+  const { doorLieTurn, doorTurn, doorUnturn, doorSmall, DOOR_SMALL, DOOR_LIES } = doorsM, { __dbg: rb } = await import("../js/ribbons.js"), { __dbg: lp } = await import("../js/lap.js");
+  const { fragSource } = await import("../js/shaders.js"), { WORLDS } = worldsM;
+  const near = (a, b, e) => a.every((x, i) => Math.abs(x - b[i]) < (e || 1e-9)), dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const n = [0.6, 0, 0.8], right = [0.8, 0.3, -0.6], v = [0.3, -0.7, 0.2];
+  const det = T => T[0] * (T[4] * T[8] - T[5] * T[7]) - T[1] * (T[3] * T[8] - T[5] * T[6]) + T[2] * (T[3] * T[7] - T[4] * T[6]);
+  const over = doorLieTurn("over", n, right), mir = doorLieTurn("mirror", n, right);
+  expect("a strange doorway's turn leaves the way the ring faces as it is, whichever kind", near(doorTurn(over, n), n) && near(doorTurn(mir, n), n) && doorLieTurn("small", n, right) === null && near(doorTurn(null, v), v));
+  expect("upside down is half a turn (twice is nothing, no mirroring), and mirrored swaps the hands", near(doorTurn(over, doorTurn(over, v)), v) && Math.abs(det(over) - 1) < 1e-9 && Math.abs(det(mir) + 1) < 1e-9 && near(doorTurn(mir, doorTurn(mir, v)), v));
+  expect("a turn and the turn that undoes it give the place back, and lengths are kept", near(doorTurn(doorUnturn(over), doorTurn(over, v)), v) && Math.abs(Math.hypot(...doorTurn(mir, v)) - Math.hypot(...v)) < 1e-9 && doorUnturn(null) === null);
+  // a wall across the way ahead: z = -3 (the ring faces +z, so onward is -z)
+  const wall = (x, y, z) => z + 3, far = doorSmall(wall, [0, 0, 0], [0, 0, 1], 0.5, 6);
+  expect("a small doorway's far end is straight on, close to the surface, with room for a ring about " + DOOR_SMALL + " of the size", !!far && Math.abs(far.q[0]) < 1e-9 && far.q[2] < -2.7 && wall(...far.q) > 0 && far.s > 0.05 && far.s < 0.2 && Math.abs(0.45 * wall(...far.q) / 0.5 - far.s) < 1e-9);
+  expect("with nothing within reach there is none", doorSmall(wall, [0, 0, 0], [0, 0, 1], 0.5, 2) === null && DOOR_LIES.length === 3);
+  // ribbons
+  const list = [], per = [4, 4, 4];
+  rb.rbAdd(list, [0, 0, 0], 0.5, 4, per); rb.rbAdd(list, [0.2, 0, 0], 0.5, 4, per); rb.rbAdd(list, [0.6, 0, 0], 0.5, 4, per);
+  expect("a ribbon takes a new point only when the camera has gone a step, newest first", list.length === 2 && list[0].p[0] === 0.6 && Math.abs(list[0].d - 0.6) < 1e-9);
+  rb.rbAdd(list, [1.2, 0, 0], 0.5, 4, per); rb.rbAdd(list, [1.8, 0, 0], 0.5, 4, per); rb.rbAdd(list, [-1.7, 0, 0], 0.5, 4, per);
+  expect("it keeps no more points than it may, and a step across the world's edge is the short step it is", list.length === 4 && list[0].p[0] === -1.7 && Math.abs(list[0].d - 0.5) < 1e-9);
+  const out = new Float32Array(4 * 6); rb.rbFill(out, 1, 5, list, null, [-1.6, 0, 0], per, 45);
+  expect("each point is drawn at its copy nearest the camera, and the line runs on through the world's edge", Math.abs(out[4] + 1.7) < 1e-6 && Math.abs(out[8] + 2.2) < 1e-6 && out[7] > 0 && out[11] > 0 && out[0] === 0 && out[3] === 0);
+  expect("the last point ends the line, and the brightness falls along it", out[4 * 4 + 3] < 0 && out[7] > out[11] && out[11] > -out[19] && out[23] === 0);
+  rb.rbFill(out, 1, 5, list, null, [0.1, 0, 0], per, 45); // from here the newest point's nearest copy is across the world from the next one's
+  expect("where two points' nearest copies are different copies of the world, no line joins them", out[7] < 0 && Math.abs(out[4] + 1.7) < 1e-6 && Math.abs(out[8] - 1.8) < 1e-6 && out[11] > 0);
+  rb.rbAdd(list, [0.5, 1.9, 0], 0.2, 4, per);
+  expect("a jump is not a flight: the ribbon starts again", list.length === 1);
+  const src = fragSource(WORLDS[0]);
+  expect("the scene shader has room for every ribbon point, and a friend's ribbon for each friend", src.includes("uniform vec4 uRb[" + rb.RB_N + "];") && rb.RB_PEERS === togetherM.TG_MAX && rb.RB_N === rb.RB_OWN + rb.RB_PEERS * rb.RB_PEER);
+  // lens blur
+  const ball = (x, y, z) => Math.hypot(x, y, z - 5) - 1;
+  expect("the lens is sharp at the depth of what is straight ahead, and has no depth to give when nothing is", Math.abs(stillM.lensFocus(ball, [0, 0, 0], [0, 0, 1], 20) - 4) < 0.02 && stillM.lensFocus(ball, [0, 0, 0], [0, 1, 0], 20) === 0);
+  expect("the scene shader takes the lens, and lens blur starts off", src.includes("uniform vec3 uLens;") && stillM.LENS[0].a === 0 && stillM.LENS.length === 3);
+  // loops: a world of balls on a grid of 2, with clear ways between them
+  const balls = (x, y, z) => { const f = c => c - 2 * Math.round(c / 2); return Math.hypot(f(x), f(y), f(z)) - 0.6; };
+  let sd = 3; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  expect("a straight way that meets a shape is not clear, and one between the shapes is, by the room it has", lp.lapClear(balls, [0, 0, -1], [0, 0, 2], 0.01) === null && Math.abs(lp.lapClear(balls, [1, 1, 0], [0, 0, 2], 0.01).min - (Math.SQRT2 - 0.6)) < 1e-6);
+  const ln = lp.lapLine(balls, [2, 2, 2], [0.1, 0.1, 0.3], [0.2, -0.1, -0.9], rnd, 0.02, 24);
+  expect("the loop found is a clear way one whole repeat long, along the axis the camera faces most", !!ln && ln.k[2] === -1 && ln.k[0] === 0 && ln.min > 0.5 && !!lp.lapClear(balls, ln.a, [0, 0, -2], ln.min - 1e-9));
+  expect("and where every way is blocked there is none", lp.lapLine((x, y, z) => 0.001, [2, 2, 2], [0, 0, 0], [0, 0, 1], rnd, 0.02, 8) === null);
+  const P = [2, 3, 4], line = { kind: "line", a: [0.1, -0.2, 0.3], k: [0, 0, 1], up: [0, 1, 0], rolls: 1, sway: 1 }, a0 = lp.lapPose(line, 0, P), a1 = lp.lapPose(line, 1, P), ah = lp.lapPose(line, 0.5, P);
+  const wrapd = (a, b) => a.map((x, i) => { const d = x - b[i]; return d - P[i] * Math.round(d / P[i]); });
+  expect("a straight loop ends at a copy of its start, facing and rolled as it began, and is half a repeat on halfway", near(wrapd(a0.pos, a1.pos), [0, 0, 0], 1e-9) && near(a0.F, a1.F, 1e-6) && near(a0.Up, a1.Up, 1e-6) && Math.abs(Math.abs(wrapd(ah.pos, a0.pos)[2]) - 2) < 1e-9 && near(ah.Up, [0, -1, 0], 1e-6));
+  const ring = { kind: "ring", c: [1, 2, 3], rad: 0.5, e1: [1, 0, 0], e2: [0, 0, 1] }, r0 = lp.lapPose(ring, 0, P), rq = lp.lapPose(ring, 0.25, P), r1 = lp.lapPose(ring, 1, P);
+  expect("a circle comes round to its start, always the same way from its middle and facing along itself", near(r0.pos, [1.5, 2, 3], 1e-6) && near(rq.pos, [1, 2, 3.5], 1e-6) && near(rq.F, [-1, 0, 0], 1e-6) && near(r0.pos, r1.pos, 1e-6) && near(r0.F, r1.F, 1e-6) && Math.abs(dot(rq.F, rq.Up)) < 1e-6);
+  const deep = { kind: "deep", e: [0.048, 0.032, 1], grid: 3, F0: [0, 0, -1], up: [0, 1, 0], rolls: 1, sway: 0 }, d0 = lp.lapPose(deep, 0, P), d1 = lp.lapPose(deep, 1, P);
+  expect("the descent's loop ends a third as far from the centre as it began, facing the same way", near(d1.pos.map(x => 3 * x), d0.pos, 1e-9) && near(d0.F, d1.F, 1e-6) && near(d0.Up, d1.Up, 1e-6) && Math.abs(d0.pos[2] - 13.5) < 1e-9);
+  expect("the pulse that stands in for the music is soft, the same at a lap's end as at its start, and absent when asked", Math.abs(lp.lapBeat(0, 8) - lp.lapBeat(1, 8)) < 1e-9 && lp.lapBeat(0, 8) <= 0.5 && lp.lapBeat(0.0625, 8) < 1e-9 && lp.lapBeat(0.3, 0) === 0);
+}
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {
   const { readdirSync } = await import("node:fs"), dir = new URL("../js/", import.meta.url), seen = {}, twice = [];

@@ -1,6 +1,7 @@
 /* The scene shader and the post-processing shaders. */
 import { STEPS, isTouch } from "./dom.js";
 import { PACK_GLSL } from "./packing.js";
+import { RB_N, RB_OWN, RB_PEER } from "./ribbons.js";
 import { packSrc } from "./worlds.js";
 import { REF_W, ZBAIL } from "./zoom.js";
 
@@ -68,6 +69,32 @@ export function fragSource(w){
    world, uDoorT, showing inside it. That picture is this same shader run for the other world, which is told where the
    ring stands in it (uDoorC.xyz, with uDoorC.w 1) and draws nothing nearer than the ring. */
 "uniform vec4 uDoor,uDoorC;uniform vec3 uDoorN;uniform sampler2D uDoorT;",
+/* Lens blur (js/still.js): uLens.xy is where on the lens this frame's rays start, across and up from its middle, and
+   uLens.z how far ahead the picture is sharp (0 for no lens). Every ray still passes through the same point at that
+   depth, so what is there stays sharp, and what is nearer or further lands in a different place each frame. */
+"uniform vec3 uLens;",
+/* Ribbons (js/ribbons.js): lines of light through the points uRb, as wide as uRbW (0 for none), seen along the ray if
+   nothing is in front. A point's fourth number is how brightly the line shows from it to the next; below nothing, the
+   line stops there. The first RB_OWN points are the camera's ribbon, then RB_PEER for each friend, in the friend's own
+   colour. A line is never thinner than a pixel, and fades out close to the eye. */
+"uniform vec4 uRb["+RB_N+"];uniform float uRbW;",
+"vec3 ribbons(vec3 ro,vec3 rd,float tmax){",
+"  vec3 c=vec3(0.0);",
+"  for(int i=0;i<"+(RB_N-1)+";i++){",
+"    vec4 A=uRb[i];vec4 B=uRb[i+1];",
+"    if(A.w<=0.0||B.w==0.0)continue;",
+"    vec3 ba=B.xyz-A.xyz;vec3 oa=ro-A.xyz;",
+"    float baba=dot(ba,ba),bard=dot(ba,rd),baoa=dot(ba,oa),rdoa=dot(rd,oa);",
+"    float s=clamp((baoa-rdoa*bard)/max(baba-bard*bard,1e-9),0.0,1.0);", /* the place along the line that the ray passes nearest */
+"    float t=s*bard-rdoa;",
+"    if(t<=0.0||t>=tmax)continue;",
+"    vec3 q=oa+rd*t-ba*s;float R=max(uRbW,1.2*uPix*t);float R2=R*R;float d2=dot(q,q);",
+"    float fi=float(i);float hue=fi<"+RB_OWN.toFixed(1)+"?0.55:0.10+0.33*floor((fi-"+RB_OWN.toFixed(1)+")/"+RB_PEER.toFixed(1)+");",
+"    float b=mix(A.w,abs(B.w),s)*smoothstep(6.0*uRbW,30.0*uRbW,t)*min(1.0,uRbW/R);", /* thinner than a pixel, it is drawn a pixel wide and fainter */
+"    c+=mix(vec3(1.0),pal(uHue+hue+0.2*b),0.6)*((1.0-smoothstep(0.3*R2,R2,d2))*0.8+exp(-d2/(R2*10.0))*0.3)*b;",
+"  }",
+"  return c*(1.0+0.3*uBeat);",
+"}",
 "vec3 friend(vec4 o,vec3 ro,vec3 rd,float tmax,float hue){",
 "  vec3 oc=o.xyz-ro;float tc=dot(oc,rd);",
 "  if(tc<=0.0||tc>=tmax)return vec3(0.0);",
@@ -164,6 +191,7 @@ export function fragSource(w){
 "#else",
 "#ifdef VOLUME",
 "  vec3 rd=normalize(uCam*vec3(uv,fov));",
+"  if(uLens.z>0.0){ro+=uCam*vec3(uLens.xy,0.0);rd=normalize(uCam*(vec3(uv,fov)*(uLens.z/fov)-vec3(uLens.xy,0.0)));}", /* lens blur: the ray starts off the lens's middle and is aimed through the same point at the sharp depth */
 "  vec3 col=vec3(0.0);",
 "  float t=0.04+VSTEP*fract(52.9829189*fract(dot(fc,vec2(0.06711056,0.00583715)))+0.4*fract(sin(dot(fc,vec2(12.9898,78.233)))*43758.5453));", /* each ray starts a different part of one step in, so the steps show as fine grain and not as layers (an even pattern, roughened a little so that it does not show as hatching); Hold still moves fc, and the grain averages away */
 "  float fall=1.0;",
@@ -176,6 +204,7 @@ export function fragSource(w){
 "  col*=0.9+0.5*uBeat;",
 "#else",
 "  vec3 rd=normalize(uCam*vec3(uv,fov));",
+"  if(uLens.z>0.0){ro+=uCam*vec3(uLens.xy,0.0);rd=normalize(uCam*(vec3(uv,fov)*(uLens.z/fov)-vec3(uLens.xy,0.0)));}", /* lens blur: the ray starts off the lens's middle and is aimed through the same point at the sharp depth */
 "  float t=0.002*SC;float d=0.0;float steps=0.0;float hit=0.0;",
 "  if(uDoorC.w>0.5){float cn=dot(rd,uDoorN);float ct=dot(uDoorC.xyz-ro,uDoorN)/(abs(cn)<1e-5?1e-5:cn);if(ct>0.0)t=max(t,ct);}", /* seen through a doorway: the ray starts at the ring */
 "  for(int i=0;i<STEPS;i++){",
@@ -300,6 +329,7 @@ export function fragSource(w){
 "  if(uPe[0].w>0.0)col+=friend(uPe[0],ro,rd,tmax,0.10);",
 "  if(uPe[1].w>0.0)col+=friend(uPe[1],ro,rd,tmax,0.43);",
 "  if(uPe[2].w>0.0)col+=friend(uPe[2],ro,rd,tmax,0.76);",
+"  if(uRbW>0.0)col+=ribbons(ro,rd,tmax);",
 "  if(uDoor.w>0.0){", /* the doorway, if nothing is in front of it: the other world inside, and a rim of light in the palette's colour that swells a little on the beat */
 "    float dn=dot(rd,uDoorN);float td=dot(uDoor.xyz-ro,uDoorN)/(abs(dn)<1e-5?1e-5:dn);",
 "    if(td>0.0&&td<tmax){",

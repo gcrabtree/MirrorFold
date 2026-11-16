@@ -11,13 +11,15 @@ import { palCur, setPal } from "./palettes.js";
 import { driven } from "./packs.js";
 import { packing, pkDeep, pkMix, pkMw, pkWave, pkZoom } from "./packing.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
-import { doorN, doorU, doorView } from "./doors.js";
+import { doorN, doorTurn, doorU, doorView } from "./doors.js";
+import { lapOn } from "./lap.js";
+import { rbNone, rbU, rbW } from "./ribbons.js";
 import { flitA, flitU } from "./flits.js";
 import { peerU } from "./together.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
 import { doorTarget, landQ, tA, tB, tF, tT, target } from "./targets.js";
 import { vidAlone, videoScene, videoUniforms } from "./video.js";
-import { jit, stillN } from "./still.js";
+import { jit, lens, stillN } from "./still.js";
 import { stereo, vrEye, vrEyeStep } from "./vr.js";
 import { tr } from "./warp.js";
 import { zoomUniforms } from "./zoom.js";
@@ -29,11 +31,13 @@ export const flip={cur:0,fcur:0};         /* which of each pair of pictures is b
 
 /* Draw one world into a picture, as seen from pos. The world in use is drawn with everything that lives in it (the orb,
    the sprites, friends, and a doorway whose picture is door). The world beyond a doorway is drawn with none of those,
-   and with nothing nearer than the ring, which stands at clip in it. */
-function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip){
-  var U=w.U,main=!clip,orbU=fr.orbU,sparkU=fr.sparkU;
+   and with nothing nearer than the ring, which stands at clip in it; a strange doorway's far side is also seen turned
+   (turn) and from a lens sc times the size. While a loop is flown the things that live in the world are left out too,
+   since they would not be where they were when the lap comes round. */
+function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip,turn,sc){
+  var U=w.U,main=!clip,live=main&&!lapOn(),orbU=fr.orbU,sparkU=fr.sparkU,R,Up,F;
   gl.bindFramebuffer(gl.FRAMEBUFFER,T.f);gl.viewport(0,0,T.w,T.h);gl.useProgram(w.prog);
-  gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],main?orbU[3]:0);gl.uniform4f(U.uSpark,sparkU[0],sparkU[1],sparkU[2],main?sparkU[3]:0);
+  gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],live?orbU[3]:0);gl.uniform4f(U.uSpark,sparkU[0],sparkU[1],sparkU[2],live?sparkU[3]:0);
   gl.uniform2f(U.uRes,T.w,T.h);
   gl.uniform1f(U.uTime,clock.time);
   gl.uniform1f(U.uSeg,mirrors[sel.mi]);
@@ -48,7 +52,9 @@ function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip)
   gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
   setPal(U);
   videoUniforms(U,T.w,T.h,!stereo,per);
-  gl.uniform4fv(U.uFl,main?flitU:none32);gl.uniform1fv(U.uFlA,flitA);gl.uniform4fv(U.uPe,main?peerU:none32.subarray(0,peerU.length));
+  gl.uniform4fv(U.uFl,live?flitU:none32);gl.uniform1fv(U.uFlA,flitA);gl.uniform4fv(U.uPe,live?peerU:none32.subarray(0,peerU.length));
+  gl.uniform4fv(U.uRb,live?rbU:rbNone);gl.uniform1f(U.uRbW,live?rbW:0);
+  gl.uniform3f(U.uLens,lens[0]*sc,lens[1]*sc,lens[2]*sc);
   gl.uniform1f(U.uPk,packing); /* the packing is the same both sides of a doorway */
   if(w.packs){var mw=pkMw();gl.uniform2f(U.uPkO,pkWave?1:0,pkMix?1:0);gl.uniform4f(U.uMw,mw[0],mw[1],mw[2],mw[3]);gl.uniform1f(U.uPkZ,pkDeep(w)?pkZoom(pos,w.grid):1);}
   gl.uniform1f(U.uSurf,sel.si);if(per)gl.uniform3f(U.uPer,per[0],per[1],per[2]);
@@ -57,7 +63,8 @@ function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip)
   gl.uniform4f(U.uDoor,doorU[0],doorU[1],doorU[2],main&&door?doorU[3]:0);gl.uniform3f(U.uDoorN,doorN[0],doorN[1],doorN[2]);
   gl.uniform4f(U.uDoorC,clip?clip[0]:0,clip?clip[1]:0,clip?clip[2]:0,clip?1:0);
   gl.uniform3f(U.uPos,pos[0],pos[1],pos[2]);
-  camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];
+  R=doorTurn(turn,cam.R);Up=doorTurn(turn,cam.Up);F=doorTurn(turn,cam.F);
+  camArr[0]=R[0];camArr[1]=R[1];camArr[2]=R[2];camArr[3]=Up[0];camArr[4]=Up[1];camArr[5]=Up[2];camArr[6]=F[0];camArr[7]=F[1];camArr[8]=F[2];
   gl.uniformMatrix3fv(U.uCam,false,camArr);
   if(w.flat)zoomUniforms(U,w);
   gl.drawArrays(gl.TRIANGLES,0,3);
@@ -91,11 +98,11 @@ export function drawScene(fr){
   if(dv&&dv.w.prog){
     dT=doorTarget();
     if(dv.box!=="all"){gl.enable(gl.SCISSOR_TEST);gl.scissor(dv.box[0],dv.box[1],dv.box[2],dv.box[3]);}
-    worldPass(dv.w,dT,dv.pos,dv.per,fr,fovNow,vrPx,vrTan,bt,mp,hp,false,null,dv.at);
+    worldPass(dv.w,dT,dv.pos,dv.per,fr,fovNow,vrPx,vrTan,bt,mp,hp,false,null,dv.at,dv.T,dv.s);
     gl.disable(gl.SCISSOR_TEST);
   }
   vrEyeStep(dist,dt); /* VR viewer: eye spacing follows the distance to the nearest surface, so the world always feels a similar size */
-  worldPass(w,tA,cam.pos,fr.per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,dT,null);
+  worldPass(w,tA,cam.pos,fr.per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,dT,null,null,1);
   }
   /* which picture the effects work on: the land laid over the world, the world alone, or the land alone */
   /* VR viewer: the effects are always on everything, since they need one picture that carries the depth of all that is seen */

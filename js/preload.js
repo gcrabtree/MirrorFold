@@ -6,6 +6,7 @@ import { landFinish, landKind, landReady, landStart } from "./land.js";
 import { LK } from "./landscapes.js";
 import { NWORLD } from "./pack-worlds.js";
 import { build, buildReady, buildStart, par } from "./programs.js";
+import { lapOn } from "./lap.js";
 import { recording } from "./record.js";
 import { still } from "./still.js";
 import { WORLDS } from "./worlds.js";
@@ -42,7 +43,7 @@ export function preloadFrame(rawDt,started){
     return;
   }
   if(at>=list.length){finish();return;}
-  if(started&&(preSlow||still||recording()))return; /* nothing that could make a recording or a held picture stutter */
+  if(started&&(preSlow||still||recording()||lapOn()))return; /* nothing that could make a recording or a held picture stutter */
   it=list[at];
   try{if(it[0]==="land"?landStart(it[1]):buildStart(WORLDS[it[1]]))cur=it;else{at++;note();}}catch(_){at++;}
 }
