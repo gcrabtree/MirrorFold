@@ -70,6 +70,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter, overlay, surface and land over time. You control what it may change with templates.
 - **Share spot** links that take someone to the exact place you are looking at.
 - **Record flight**: a link that flies someone else along the path you flew, through the same changes of world and look, drawn afresh on their device. They have the controls the moment they move.
+- **Doorways**: a ring of light standing in one world, with another world showing through it. Fly through and you are there, with no cut. Journey changes world this way when it is flying.
 - **Fly together**: up to four people in the same world, each seen by the others as a ring of light. One link joins a friend; after that the browsers talk straight to each other.
 - **Hold still**, a pause that sharpens the picture, **Save picture**, which saves a picture that opens again as the scene it shows, and **Record video**.
 - **A gallery** of journeys and packs that people have shared, and a way to offer your own.
@@ -194,6 +195,8 @@ The controls fade after five seconds and come back when you touch the picture.
 | Button | What it does |
 |---|---|
 | Orbs | Shows or hides the orbs. |
+| Open a doorway | Opens a doorway ahead of you to another world, picked by chance: a ring of light with that world showing inside it. Fly through the ring and you are in that world, at the place you saw, with no cut; the way back stays open behind you for ten seconds. If you do not go through, it closes after forty seconds, and it closes early if the world's changing shape squeezes the space at either end. It needs a little open space ahead; if there is none in six seconds it says so. Not in a zoom world, a cloud world or a world from a pack (nor to one), over the land, or in the VR viewer. While a doorway is in view the picture costs up to twice as much to draw, so **Detail auto** may make it less sharp for a while. |
+| Journey uses doorways | On (the default): when Journey is flying (**Movement travel**) and changes world, it opens a doorway and flies you through it. If it cannot reach it, or there is no room for one, the world changes behind a transition as before. Off: always behind a transition. |
 | Sprites | Shows or hides the sprites: eight small dots of light, in the palette's colours, that live in the world. Two wander alone: each drifts along slowly, turning a little all the time, and now and then zigs off a new way. Three fly as a flock, one leading and two keeping near it. Three settle on a surface and sit there until you come close, then scatter. All steer clear of the surfaces, fade in when they arrive and out when they leave, and swell on the beat. A wall in front of one hides it. There are none in a world from a pack, in the zoom worlds, over the land alone or with a video filling the screen. With reduced motion asked for they start switched off. |
 | Detail | Steps through auto, sharp and fast. See [Performance](#performance). |
 | Stats | Shows a readout in the top left corner: pictures drawn each second and the slowest one, how long the page's own script takes for each picture, the sharpness and size of the picture, the name of the graphics chip drawing it, and a trial of the distance probe (how long the page waits for the chip to answer one question, and the chip's answer beside the script's). Useful when the picture stutters. |
@@ -302,6 +305,8 @@ With Journey on, a **Movement** button appears beside the template list:
 |---|---|
 | Movement travel | Journey flies and steers for you. This is the default. |
 | Movement drift | Journey only changes the scenery: world, palette, mirrors, motion, filter and overlay. It does not move or turn you. You fly yourself, and the **Drift** button decides whether you glide slowly forward when you are not steering. |
+
+When Journey changes world while it is flying, it opens a doorway to the next world and steers through it, so one world leads into the next without a cut (see **Open a doorway** under [The buttons](#the-buttons); **Journey uses doorways** in the More menu turns this off). Where there cannot be a doorway, the world changes behind a transition.
 
 Two more buttons sit beside it. **More like this** makes Journey choose what is showing now more often. **Less like this** makes it choose the last thing it changed less often, and changes it again at once. Nothing is ever shut out: a disliked option still comes up now and then. Your likes are kept in this browser only; **Forget what I liked** in the journey setup panel clears them.
 
@@ -489,7 +494,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 |---|---|
 | `index.html` | The page's markup |
 | `css/app.css` | The styling |
-| `js/` | The app, as about 53 modules; the architecture document lists what each holds |
+| `js/` | The app, as about 54 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
 | `docs/worlds.jpg` | Contact sheet of all 27 worlds |
@@ -554,6 +559,7 @@ The app was developed against headless Chrome with software rendering. These hav
 - The home-screen full-screen mode on iPhone, including whether the controls clear the notch.
 - The screen mirroring steps in `docs/TV.md`, on any TV device.
 - **The zoom worlds** on any real graphics chip. The 1,024-step loop that reads a picture of numbers has only been compiled and run by software rendering; how long a Windows machine takes to build that shader, the frame rate deep in a zoom, and whether a phone has the kind of picture it needs (without it the two worlds say so and are skipped) are all unknown. The controls for them have never been tried by hand.
+- **Doorways** on a real graphics chip and in real flight: how the ring looks as it opens, whether going through feels like no cut at speed, the frame rate while one is in view, and how often Journey's autopilot misses one.
 - Everything added in November 2026 on anything but headless Chrome: **Hold still** (whether a phone keeps its frame rate while it sharpens), **Save picture** and **Record video** on a phone (a download link may open the file instead of saving it), the **gallery's** offer form and its GitHub workflow (never run), the two **hybrid worlds** in flight, the **VR comfort** rules in a viewer, and **Knobs** with a real MIDI controller (only made-up messages were tried).
 - Whether the screen really stays awake with Journey or the VR viewer on, in Safari and from the home-screen icon.
 - **Listen to a tab** with real Spotify and YouTube tabs, and **Microphone** with a real microphone. Both were tested with simulated devices only.

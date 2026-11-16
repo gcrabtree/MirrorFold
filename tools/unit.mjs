@@ -27,6 +27,7 @@ import { __dbg as midiM } from "../js/midi.js";
 import { __dbg as songM } from "../js/song.js";
 import { __dbg as flightM } from "../js/flightdata.js";
 import { __dbg as togetherM } from "../js/together.js";
+import { __dbg as doorsM } from "../js/doors.js";
 import { __dbg as worldsM } from "../js/worlds.js";
 import { tidy, slug, problems, packText, indexEntry } from "./packlib.mjs";
 import { handle, answer, packField } from "./offer.mjs";
@@ -731,6 +732,34 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   }
   const src = (await import("node:fs")).readFileSync(new URL("../js/shaders.js", import.meta.url), "utf8");
   expect("the scene shader has a line for each friend, and no more", src.includes("uniform vec4 uPe[" + TG_MAX + "];") && src.includes("uPe[" + (TG_MAX - 1) + "].w>0.0") && !src.includes("uPe[" + TG_MAX + "].w"));
+}
+
+// ---- doorways (js/doors.js)
+{
+  const { doorAhead, doorSpot, doorCross, doorBox, doorWrap, doorWorld } = doorsM, J = JSON.stringify;
+  /* a made-up world: open space between two walls two units apart, at x = -1 and x = 1 */
+  const slab = (x, y, z) => 1 - Math.abs(x);
+  const F = [0, 0, 1], R = [1, 0, 0], Up = [0, 1, 0];
+  const a = doorAhead(slab, [0, 0, 0], F, R, Up, 20);
+  expect("a doorway is put ahead of the camera, facing it, in the clear", a && a.p[2] > 1 && Math.abs(a.p[0]) < 1e-9 && J(a.n) === J([-0, -0, -1]) && a.r > 0.2 && a.r <= 0.45 * slab(...a.p) + 1e-9 && a.r <= 0.3 * a.p[2] + 1e-9, J(a));
+  expect("the ring is never bigger than the space round it allows", [[0.5, 0, 0], [-0.8, 3, 1], [0, 0, 7]].every(p => { const d = doorAhead(slab, p, F, R, Up, 20); return d && d.r <= 0.45 * slab(...d.p) + 1e-9; }));
+  expect("facing a wall close to, it goes to one side where there is room, or nowhere", (() => { const d = doorAhead(slab, [0.9, 0, 0], [1, 0, 0], [0, 0, -1], Up, 20); return d === null || slab(...d.p) >= d.r / 0.45 - 1e-9; })());
+  expect("inside something solid there is no doorway", doorAhead((x, y, z) => -1, [0, 0, 0], F, R, Up, 20) === null);
+  let sd = 5; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  const sp = doorSpot(slab, [8, 8, 8], rnd);
+  expect("the far end is the most open place found, with a ring that fits it", sp && Math.abs(sp.q[0]) < 0.2 && Math.abs(sp.r - 0.45 * slab(...sp.q)) < 1e-12 && sp.q.every(x => Math.abs(x) <= 4), J(sp));
+  expect("a world with no open space has no far end", doorSpot(() => -0.1, [8, 8, 8], rnd) === null);
+  const n = [0, 0, -1];
+  expect("flying through the ring is seen, either way", doorCross([0.1, 0, -0.2], [0.1, 0, 0.2], n, 0.5) && doorCross([0, 0.3, 0.1], [0, 0.3, -0.1], n, 0.5));
+  expect("passing beside it, stopping short of it, or resting on it is not going through", !doorCross([0.6, 0, -0.2], [0.6, 0, 0.2], n, 0.5) && !doorCross([0, 0, -0.3], [0, 0, -0.1], n, 0.5) && !doorCross([0, 0, 0], [0, 0, 0], n, 0.5));
+  expect("a place is taken to its nearest copy round the repeat", J(doorWrap([2.6, -2.6, 0.4], [5, 5, 1])) === J([-2.4, 2.4, 0.4]));
+  const b = doorBox([0, 0, 4], 0.5, 1.15, 800, 600), S = Math.sqrt(800 * 600);
+  expect("the part of the picture a ring ahead can show in is round the middle and holds all of it", Array.isArray(b) && b[0] < 400 - 0.55 * 1.15 / 4 * S / 2 && b[0] + b[2] > 400 + 0.55 * 1.15 / 4 * S / 2 && b[1] < 300 && b[1] + b[3] > 300 && b[2] < 400 && b[3] < 400, J(b));
+  expect("it is the whole picture when the camera is at the ring, and nothing when the ring is behind or off to one side", doorBox([0, 0, 0.3], 0.5, 1.15, 800, 600) === "all" && doorBox([0, 0, -4], 0.5, 1.15, 800, 600) === null && doorBox([40, 0, 4], 0.5, 1.15, 800, 600) === null);
+  expect("the part is kept inside the picture", (() => { const c = doorBox([1.2, -0.9, 3], 0.5, 1.15, 800, 600); return Array.isArray(c) && c[0] >= 0 && c[1] >= 0 && c[0] + c[2] <= 800 && c[1] + c[3] <= 600; })());
+  expect("only a world with surfaces and a distance worked out here can have a doorway", doorWorld({ de() {} }) && !doorWorld({ de() {}, flat: true }) && !doorWorld({ de() {}, volume: true }) && !doorWorld({ de() {}, pack: true }) && !doorWorld({}) && !doorWorld(null));
+  const fs = await import("node:fs"), sh = fs.readFileSync(new URL("../js/shaders.js", import.meta.url), "utf8"), pr = fs.readFileSync(new URL("../js/programs.js", import.meta.url), "utf8");
+  expect("the scene shader's doorway uniforms are all asked for by name", ["uDoor", "uDoorN", "uDoorT", "uDoorC"].every(u => pr.includes('"' + u + '"')) && sh.includes("uniform vec4 uDoor,uDoorC;uniform vec3 uDoorN;uniform sampler2D uDoorT;"));
 }
 
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them

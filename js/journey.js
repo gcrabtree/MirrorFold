@@ -11,6 +11,7 @@ import { LK } from "./landscapes.js";
 import { liveAudio, soundChanged } from "./listen.js";
 import { heard } from "./song.js";
 import { tgGuest } from "./together.js";
+import { doorOpen, doorsOn } from "./doors.js";
 import { packD } from "./pack-worlds.js";
 import { PALETTES, palOpen, setPalette } from "./palettes.js";
 import { LOOKS, MOTIONS, OVERLAYS, SURFACES, mirrors, sel } from "./state.js";
@@ -194,7 +195,11 @@ export function stepJourney(dt){
     if(ck==="world"&&cf.trigger==="sound"&&liveAudio()){ /* wait for the music to shift, but never forever */
       due=((soundChanged||heard.drop)&&J.world.t>Math.max(10,cf.every*0.25))||J.world.t>cf.every*2.5;
     }
-    if(due&&jApply(ck,jPick(ck,cf,jCur(ck),jPool(ck,cf)))){jReset(ck);jLast=ck;}
+    if(!due)continue;
+    var pick=jPick(ck,cf,jCur(ck),jPool(ck,cf));
+    /* a new world while Journey is flying: through a doorway where there can be one (js/doors.js), which changes the world the old way itself if it is not gone through */
+    if(ck==="world"&&doorsOn&&jMove==="travel"&&pick!==jCur(ck)&&doorOpen(jIndex(ck,pick),true)){jReset(ck);jLast=ck;continue;}
+    if(jApply(ck,pick)){jReset(ck);jLast=ck;}
   }
 }
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */

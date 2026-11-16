@@ -54,6 +54,10 @@ export function fragSource(w){
    size o.w, in the palette's colour at hue, seen along the ray if nothing is in front of it. There are three (TG_MAX;
    a test holds the two equal). */
 "uniform vec4 uPe[3];",
+/* A doorway (js/doors.js): a ring at uDoor.xyz of size uDoor.w (0 for none) facing uDoorN, with the picture of another
+   world, uDoorT, showing inside it. That picture is this same shader run for the other world, which is told where the
+   ring stands in it (uDoorC.xyz, with uDoorC.w 1) and draws nothing nearer than the ring. */
+"uniform vec4 uDoor,uDoorC;uniform vec3 uDoorN;uniform sampler2D uDoorT;",
 "vec3 friend(vec4 o,vec3 ro,vec3 rd,float tmax,float hue){",
 "  vec3 oc=o.xyz-ro;float tc=dot(oc,rd);",
 "  if(tc<=0.0||tc>=tmax)return vec3(0.0);",
@@ -143,6 +147,7 @@ export function fragSource(w){
 "  }",
 "  vec3 ro=uPos+uCam*vec3(eo,0.0);",
 "  float tmax=1e9;",
+"  float thru=0.0;", /* how much of this pixel is the world seen through a doorway */
 "  float eta=0.0;", /* VR viewer: how far apart the two eyes see this point, as half the difference of their angles' tangents; 0 for the far distance */
 "#ifdef FLAT",
 "  vec3 col=zoomCol(uv);",
@@ -162,6 +167,7 @@ export function fragSource(w){
 "#else",
 "  vec3 rd=normalize(uCam*vec3(uv,fov));",
 "  float t=0.002;float d=0.0;float steps=0.0;float hit=0.0;",
+"  if(uDoorC.w>0.5){float cn=dot(rd,uDoorN);float ct=dot(uDoorC.xyz-ro,uDoorN)/(abs(cn)<1e-5?1e-5:cn);if(ct>0.0)t=max(t,ct);}", /* seen through a doorway: the ray starts at the ring */
 "  for(int i=0;i<STEPS;i++){",
 "    d=map(ro+rd*t);",
 "    if(d<0.45*uPix*t){hit=1.0;break;}",
@@ -263,6 +269,15 @@ export function fragSource(w){
 "  if(uPe[0].w>0.0)col+=friend(uPe[0],ro,rd,tmax,0.10);",
 "  if(uPe[1].w>0.0)col+=friend(uPe[1],ro,rd,tmax,0.43);",
 "  if(uPe[2].w>0.0)col+=friend(uPe[2],ro,rd,tmax,0.76);",
+"  if(uDoor.w>0.0){", /* the doorway, if nothing is in front of it: the other world inside, and a rim of light in the palette's colour that swells a little on the beat */
+"    float dn=dot(rd,uDoorN);float td=dot(uDoor.xyz-ro,uDoorN)/(abs(dn)<1e-5?1e-5:dn);",
+"    if(td>0.0&&td<tmax){",
+"      vec3 dh=ro+rd*td-uDoor.xyz;float dx=dot(dh,dh)/(uDoor.w*uDoor.w);",
+"      thru=1.0-smoothstep(0.84,0.9,dx);",
+"      float rim=smoothstep(0.8,0.9,dx)*(1.0-smoothstep(0.95,1.0,dx));",
+"      col=col*(1.0-thru)*(1.0-rim)+pal(uHue+0.3+0.4*dx)*rim*(1.1+0.5*uBeat);",
+"    }",
+"  }",
 "#endif",
 "  col*=clamp(1.0-0.16*r*r,0.35,1.0)*(1.0-uVr.x*smoothstep(1.5,1.8,r));",
 "  col*=1.35;col=col/(1.0+0.2*col);",
@@ -271,6 +286,7 @@ export function fragSource(w){
 "  col=col*col*(3.0-2.0*col);",
 "  col=pow(col,vec3(1.15));",
 "  col=pow(col,vec3(0.4545))*uFade;",
+"  if(thru>0.0)col=mix(col,texture2D(uDoorT,gl_FragCoord.xy/uRes).rgb,thru);", /* that picture is already finished, so it goes in after this one's own finishing */
 "  col+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))))-0.5)/255.0;", /* a fixed fine grain of half a step of brightness, so smooth dark gradients do not show as bands */
 "  gl_FragColor=vec4(col,uVr.x>0.5?clamp(eta/"+VR_EMAX+",0.0,1.0):1.0);", /* VR viewer: the fourth number carries the depth, for the effects to use */
 "}"])).join("\n");

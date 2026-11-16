@@ -39,7 +39,7 @@ export function linkEnd(j,names){
   return {prog:p,U:U};
 }
 export function link(fs,names){return linkEnd(linkStart(fs),names);}
-const WORLD_U=["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uSurf","uPer","uFl","uFlA","uPe","uJit","uSpark","uRef","uZ","uZn","uZo","uZs"];
+const WORLD_U=["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uSurf","uPer","uFl","uFlA","uPe","uJit","uSpark","uRef","uZ","uZn","uZo","uZs","uDoor","uDoorN","uDoorT","uDoorC"];
 /* start on a world's program ahead of need; false if there is nothing to start */
 export function buildStart(w){
   if(w.prog||w.job||w.pack||(w.flat&&!zoomOk()))return false;

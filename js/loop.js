@@ -29,6 +29,7 @@ import { still, stillAim, stillBlend } from "./still.js";
 import { statsBegin, statsEnd, statsOn } from "./stats.js";
 import { autoDetail, detailLower, fellBack } from "./targets.js";
 import { stepTogether, togetherClock } from "./together.js";
+import { doorSteer, stepDoor } from "./doors.js";
 import { videoFrame } from "./video.js";
 import { stepWarp } from "./warp.js";
 export let started=false; /* the start card has been left */
@@ -89,13 +90,14 @@ function frame(now){
   midiFrame(notes);
   steering(notes,journey&&jMove==="travel"&&!still);
   if(journey&&started&&!still){
-    if(notes.travel)autopilot(notes);
+    if(notes.travel){autopilot(notes);doorSteer(notes);} /* a doorway ahead draws the autopilot into it (js/doors.js) */
     stepJourney(dt);
   }
   turn(notes);
   move(notes);
   stepZoom(notes);
   flightFrame(notes); /* a recorded flight being played puts the camera on its path; one being recorded notes it */
+  stepDoor(notes); /* a doorway: opened, closed, and gone through (js/doors.js) */
   if(landMode)moveLand(notes);
   stepOrb(notes);
   sparkFrame(notes);stepSpark(notes);

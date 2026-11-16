@@ -72,6 +72,8 @@ export function autoDetail(now,dt){
   q=st.q;landQ=st.landQ;keepDetail();resize(); /* each change rebuilds every picture, which shows as a hitch */
 }
 export let tA=null, tF=[null,null];
+export let tD=null; /* the picture of the world seen through a doorway, made when the first doorway is drawn */
+export function doorTarget(){if(!tD)tD=target(tA.w,tA.h);return tD;}
 
 export function target(w,h){
   var t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
@@ -93,7 +95,7 @@ export function resize(){
   var w=Math.max(2,Math.floor(canvas.clientWidth*dpr)),h=Math.max(2,Math.floor(canvas.clientHeight*dpr));
   if(canvas.width!==w||canvas.height!==h||!tA){
     canvas.width=w;canvas.height=h;
-    freeT(tA);freeT(tT[0]);freeT(tT[1]);freeT(tB[0]);freeT(tB[1]);freeT(tF[0]);freeT(tF[1]);tF=[null,null];landFreeTargets();stillFree();
+    freeT(tA);freeT(tT[0]);freeT(tT[1]);freeT(tB[0]);freeT(tB[1]);freeT(tF[0]);freeT(tF[1]);tF=[null,null];freeT(tD);tD=null;landFreeTargets();stillFree();
     tA=target(w,h);tT[0]=target(w,h);tT[1]=target(w,h);
     var bw=Math.max(2,w>>2),bh=Math.max(2,h>>2);
     tB[0]=target(bw,bh);tB[1]=target(bw,bh);
@@ -115,5 +117,5 @@ window.addEventListener("resize",resize);resize();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={setDetail, autoDetail, detailStep, get landQ(){return landQ},set landQ(v){landQ=v}, target, freeT, tT, tB, DETAIL, resize, get di(){return di},set di(v){di=v}, get q(){return q},set q(v){q=v},
+export const __dbg={doorTarget, get tD(){return tD}, setDetail, autoDetail, detailStep, get landQ(){return landQ},set landQ(v){landQ=v}, target, freeT, tT, tB, DETAIL, resize, get di(){return di},set di(v){di=v}, get q(){return q},set q(v){q=v},
   get acc(){return acc},set acc(v){acc=v}, get frames(){return frames},set frames(v){frames=v}, ds, DKEY, LKEY, DWAIT, DWAIT_MAX, detailNext, detailSaved, detailLower, keepDetail, get fellBack(){return fellBack},set fellBack(v){fellBack=v}, get loading(){return loading},set loading(v){loading=v}, get tA(){return tA},set tA(v){tA=v}, get tF(){return tF},set tF(v){tF=v}};

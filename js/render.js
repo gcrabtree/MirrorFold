@@ -10,10 +10,11 @@ import { updateWave, waveTex } from "./listen.js";
 import { palCur, setPal } from "./palettes.js";
 import { driven } from "./packs.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
+import { doorN, doorU, doorView } from "./doors.js";
 import { flitA, flitU } from "./flits.js";
 import { peerU } from "./together.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
-import { landQ, tA, tB, tF, tT, target } from "./targets.js";
+import { doorTarget, landQ, tA, tB, tF, tT, target } from "./targets.js";
 import { vidAlone, videoScene, videoUniforms } from "./video.js";
 import { jit, stillN } from "./still.js";
 import { stereo, vrEye, vrEyeStep } from "./vr.js";
@@ -21,13 +22,48 @@ import { tr } from "./warp.js";
 import { zoomUniforms } from "./zoom.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
 const camWas=new Float32Array([1,0,0,0,1,0,0,0,1]),turnArr=new Float32Array(9); /* the camera's three directions last frame, and this frame's turn from them */
+const none32=new Float32Array(32); /* nothing, for the sprites and friends of a world they are not in */
 export const flip={cur:0,fcur:0};         /* which of each pair of pictures is being drawn into this frame: the trails, and the smoothed final picture */
 
+
+/* Draw one world into a picture, as seen from pos. The world in use is drawn with everything that lives in it (the orb,
+   the sprites, friends, and a doorway whose picture is door). The world beyond a doorway is drawn with none of those,
+   and with nothing nearer than the ring, which stands at clip in it. */
+function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip){
+  var U=w.U,main=!clip,orbU=fr.orbU,sparkU=fr.sparkU;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,T.f);gl.viewport(0,0,T.w,T.h);gl.useProgram(w.prog);
+  gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],main?orbU[3]:0);gl.uniform4f(U.uSpark,sparkU[0],sparkU[1],sparkU[2],main?sparkU[3]:0);
+  gl.uniform2f(U.uRes,T.w,T.h);
+  gl.uniform1f(U.uTime,clock.time);
+  gl.uniform1f(U.uSeg,mirrors[sel.mi]);
+  gl.uniform1f(U.uM,fr.m);
+  gl.uniform1f(U.uHue,clock.hueT+w.hue);
+  gl.uniform1f(U.uSpin,clock.spin);
+  gl.uniform1f(U.uFade,1);gl.uniform2f(U.uJit,jit[0],jit[1]);
+  gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrTan,vrEye);
+  gl.uniform1f(U.uPix,stereo?vrTan:2/(Math.sqrt(T.w*T.h)*1.15));
+  gl.uniform1f(U.uFov,fovNow);
+  gl.uniform1f(U.uLandOn,landOver&&!LK[landKind].mirror?1:0);bindTex(6,landOver?tL.t:null);gl.uniform1i(U.uLandT,6); /* always a unit of its own: left at unit 0 it can name the very picture being drawn into, and the chip then refuses to draw */
+  gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
+  setPal(U);
+  videoUniforms(U,T.w,T.h,!stereo,per);
+  gl.uniform4fv(U.uFl,main?flitU:none32);gl.uniform1fv(U.uFlA,flitA);gl.uniform4fv(U.uPe,main?peerU:none32.subarray(0,peerU.length));
+  gl.uniform1f(U.uSurf,sel.si);if(per)gl.uniform3f(U.uPer,per[0],per[1],per[2]);
+  /* the doorway: its ring and the picture inside it for the world in use; for the world beyond, where the ring stands in it. The picture has a unit of its own for the same reason the land's has. */
+  bindTex(4,door?door.t:null);gl.uniform1i(U.uDoorT,4);
+  gl.uniform4f(U.uDoor,doorU[0],doorU[1],doorU[2],main&&door?doorU[3]:0);gl.uniform3f(U.uDoorN,doorN[0],doorN[1],doorN[2]);
+  gl.uniform4f(U.uDoorC,clip?clip[0]:0,clip?clip[1]:0,clip?clip[2]:0,clip?1:0);
+  gl.uniform3f(U.uPos,pos[0],pos[1],pos[2]);
+  camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];
+  gl.uniformMatrix3fv(U.uCam,false,camArr);
+  if(w.flat)zoomUniforms(U,w);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+}
 
 /* Step 1: the land if it is on, then the world. Leaves in fr.src the picture the effects are to work on. */
 export function drawScene(fr){
   var dt=fr.dt,m=fr.m,w=fr.w,dist=fr.dist,bt=fr.bt,mp=fr.mp,hp=fr.hp,spN=fr.spN,orbU=fr.orbU,sparkU=fr.sparkU;
-  var fx=FX[sel.fi],U=w.U,wHue=w.hue;
+  var fx=FX[sel.fi],wHue=w.hue;
   if(stillN){bt=0;mp=0;hp=0;} /* while the picture is being sharpened the scene takes nothing from the sound, or the frames would not match */
   var fovNow=calm?1.15:(1.15-0.13*spN-0.05*bt-0.25*cam.boost+0.025*Math.sin(clock.time*0.4));
   /* VR viewer geometry, from the Cardboard viewer's published numbers: lenses 64 mm apart and 39 mm from the screen.
@@ -47,31 +83,16 @@ export function drawScene(fr){
   /* the video filling the screen takes the world's place (not in the VR viewer, where a flat picture would not sit right for each eye) */
   if((!landOn||landOver)&&vidAlone()&&!stereo)videoScene(tA,mirrors[sel.mi],clock.spin,bt);
   else if(!landOn||landOver){
-  gl.bindFramebuffer(gl.FRAMEBUFFER,tA.f);gl.viewport(0,0,tA.w,tA.h);gl.useProgram(w.prog);
-  gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],orbU[3]);gl.uniform4f(U.uSpark,sparkU[0],sparkU[1],sparkU[2],sparkU[3]);
-  gl.uniform2f(U.uRes,tA.w,tA.h);
-  gl.uniform1f(U.uTime,clock.time);
-  gl.uniform1f(U.uSeg,mirrors[sel.mi]);
-  gl.uniform1f(U.uM,m);
-  gl.uniform1f(U.uHue,clock.hueT+wHue);
-  gl.uniform1f(U.uSpin,clock.spin);
-  gl.uniform1f(U.uFade,1);gl.uniform2f(U.uJit,jit[0],jit[1]);
-  /* VR viewer: eye spacing follows the distance to the nearest surface, so the world always feels a similar size */
-  vrEyeStep(dist,dt);
-  gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrTan,vrEye);
-  gl.uniform1f(U.uPix,stereo?vrTan:2/(Math.sqrt(tA.w*tA.h)*1.15));
-  gl.uniform1f(U.uFov,fovNow);
-  gl.uniform1f(U.uLandOn,landOver&&!LK[landKind].mirror?1:0);bindTex(6,landOver?tL.t:null);gl.uniform1i(U.uLandT,6); /* always a unit of its own: left at unit 0 it can name the very picture being drawn into, and the chip then refuses to draw */
-  gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
-  setPal(U);
-  videoUniforms(U,tA.w,tA.h,!stereo,fr.per);
-  gl.uniform4fv(U.uFl,flitU);gl.uniform1fv(U.uFlA,flitA);gl.uniform4fv(U.uPe,peerU);
-  gl.uniform1f(U.uSurf,sel.si);if(fr.per)gl.uniform3f(U.uPer,fr.per[0],fr.per[1],fr.per[2]);
-  gl.uniform3f(U.uPos,cam.pos[0],cam.pos[1],cam.pos[2]);
-  camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];
-  gl.uniformMatrix3fv(U.uCam,false,camArr);
-  if(w.flat)zoomUniforms(U,w);
-  gl.drawArrays(gl.TRIANGLES,0,3);
+  /* a doorway in view: the world beyond it is drawn first, into its own picture, and only in the part of the picture the ring can show in */
+  var dv=doorView(m,fovNow,tA.w,tA.h,mirrors[sel.mi]>0),dT=null;
+  if(dv&&dv.w.prog){
+    dT=doorTarget();
+    if(dv.box!=="all"){gl.enable(gl.SCISSOR_TEST);gl.scissor(dv.box[0],dv.box[1],dv.box[2],dv.box[3]);}
+    worldPass(dv.w,dT,dv.pos,dv.per,fr,fovNow,vrPx,vrTan,bt,mp,hp,false,null,dv.at);
+    gl.disable(gl.SCISSOR_TEST);
+  }
+  vrEyeStep(dist,dt); /* VR viewer: eye spacing follows the distance to the nearest surface, so the world always feels a similar size */
+  worldPass(w,tA,cam.pos,fr.per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,dT,null);
   }
   /* which picture the effects work on: the land laid over the world, the world alone, or the land alone */
   /* VR viewer: the effects are always on everything, since they need one picture that carries the depth of all that is seen */
@@ -173,4 +194,4 @@ export function drawFinal(fr){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={camArr, camWas, turnArr, flip, drawScene, drawTrails, drawBloom, drawFinal};
+export const __dbg={worldPass, none32, camArr, camWas, turnArr, flip, drawScene, drawTrails, drawBloom, drawFinal};
