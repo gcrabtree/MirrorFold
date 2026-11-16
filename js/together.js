@@ -1,7 +1,9 @@
 /* Fly together: up to four people in the same world, each seen by the others as a ring of light.
-   There is no server. The two browsers talk straight to each other (WebRTC), and they are introduced by hand: the one
-   who invites sends a tgLink, the one who joins sends a reply back, and pasting the reply in connects them. The link and
-   the reply hold each side's network addresses, which is what lets the browsers find each other.
+   The browsers talk straight to each other (WebRTC). To find each other they first swap, through a meeting point
+   (server/rooms.js, a small script on Cloudflare), a description of how each can be reached. The one who invites
+   opens a room there, named by a short code, and sends the link that carries the code. Whoever opens the link is
+   joined: their page hands its description to the room, the host's page hands one back, and from then on the meeting
+   point is not used. It never sees a place, a world or a note of the music.
    The one who invites is the host: the host's world and morph are everyone's, so that all fly through the same shapes,
    and the host passes each guest's place on to the others. The host's palette and filter are everyone's too, each
    time the host changes them, and the host's music is sent to the guests as sound (the same connection carries it),
@@ -22,9 +24,13 @@ export const TG_MAX=3;        /* how many others can be seen; the scene shader h
 export const TG_EVERY=0.1;    /* seconds between the messages each side sends */
 export const TG_GONE=5;       /* seconds without a message after which someone is no longer shown */
 export const TG_TURN=200*Math.PI; /* the morph's clock comes round in this time */
-/* The server asked, once, "what is my address as seen from outside?" when an invitation or a reply is made. Without it
+export const TG_WAIT=30;      /* seconds a joining may take before it is given up */
+/* The meeting point's address (server/README.md says how to make one). With none, nobody can be invited. */
+export const TG_ROOMS="";
+/* The server asked, once, "what is my address as seen from outside?" when a description is made. Without it
    two people behind different home routers cannot find each other. It is told nothing else. */
 export const TG_ICE=[{urls:"stun:stun.l.google.com:19302"}];
+const TG_LETTERS="abcdefghjkmnpqrstuvwxyz23456789"; /* a room's code is made of these: none that is mistaken for another */
 export let peerU;              /* for the shader: each other person's place and size (0 for none) */
 export let tgRole="";          /* "" alone, "host" having invited, "guest" having joined */
 const conns=[];                /* host: one for each guest (the connection, its channel, the guest's number). guest: the one to the host */
@@ -32,6 +38,9 @@ const others=[];               /* the people to draw, by number: the world they 
 let sendT=0,hostW="",hostT=-1,waitJoin="",lastJoin="";
 let hostPal="",hostLook=""; /* guest: the palette and filter the host last named, so that each is taken up once, when the host changes it */
 let tap=null,tapGain=null;  /* host: the app's sound as a stream to send, and the gain that shuts it while the microphone is the source */
+let roomsAt="";             /* the meeting point in use: TG_ROOMS, unless a test has put its own here */
+let room="",roomKey="";     /* host: the code of the room that is open, and the secret that lets this page alone take it again after a break */
+let sock=null,sockUp=false,sockTries=0,sockTimer=0; /* host: the connection to the room, whether it is open, and the tries to get it back */
 
 /* The host's sound as a stream for the guests: whatever the picture is listening to (the built-in music, a file, a
    shared tab), taken where the analyser hears it. Null if this browser has no sound. */
@@ -57,39 +66,30 @@ function tgSetLocal(pc,d){
   return pc.setLocalDescription(better).catch(function(){return pc.setLocalDescription(d);});
 }
 
-function tgB64(bytes){var s="",i;for(i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
-function tgUnb64(t){var s=atob(t.replace(/-/g,"+").replace(/_/g,"/")),o=new Uint8Array(s.length),i;for(i=0;i<s.length;i++)o[i]=s.charCodeAt(i);return o;}
-/* through one of the browser's own packers or unpackers; at most cap bytes are taken out */
-function tgPipe(bytes,stream,cap){
-  var w=stream.writable.getWriter(),r=stream.readable.getReader(),parts=[],n=0;
-  w.write(bytes).catch(function(){});w.close().catch(function(){});
-  function more(){return r.read().then(function(x){
-    if(x.done){var o=new Uint8Array(n),k=0;parts.forEach(function(p){o.set(p,k);k+=p.length});return o;}
-    n+=x.value.length;if(n>cap)throw new Error("too long");
-    parts.push(x.value);return more();
-  });}
-  return more();
-}
-/* An invitation or a reply as letters for a link: "o" (an offer) or "a" (an answer), and the browser's own description of how to reach it, packed small where the browser can. */
-export function tgPack(kind,sdp){
-  var raw=new TextEncoder().encode(JSON.stringify({t:kind,s:sdp}));
-  if(typeof CompressionStream==="undefined")return Promise.resolve("r"+tgB64(raw));
-  return tgPipe(raw,new CompressionStream("deflate-raw"),40000).then(function(z){return "z"+tgB64(z);},function(){return "r"+tgB64(raw);});
-}
-/* Read one back: {t, s}, or null. The description is only ever handed to the browser's own connection, which reads it as an address list and nothing else. */
-export function tgUnpack(text){
-  var body,done=function(bytes){
-    var o=JSON.parse(new TextDecoder().decode(bytes));
-    if(!o||(o.t!=="o"&&o.t!=="a")||typeof o.s!=="string"||o.s.length>20000||o.s.indexOf("v=0")!==0)return null;
-    return {t:o.t,s:o.s};
-  },none=function(){return null;};
+/* A room's code from a link, or "" if the text is not one. */
+export function tgRoom(text){return typeof text==="string"&&/^[a-z2-9]{6,12}$/.test(text)?text:"";}
+function tgWord(n){var a=new Uint8Array(n),s="",i;crypto.getRandomValues(a);for(i=0;i<n;i++)s+=TG_LETTERS.charAt(a[i]%TG_LETTERS.length);return s;}
+function tgRoomUrl(code,role){return roomsAt.replace(/^http/,"ws").replace(/\/+$/,"")+"/room/"+code+"?role="+role+(role==="host"?"&key="+roomKey:"");}
+function tgSdp(s){return typeof s==="string"&&s.length<=10000&&s.indexOf("v=0")===0;}
+/* What the meeting point passes on, checked. To the host (host true): {t:"o", g, s}, a guest's name in the room and
+   its description. To a guest: {t:"a", s}, the host's description, {t:"n"}, no room left, or {t:"e"}, the host has
+   gone. Anything else is null.
+   A description is only ever handed to the browser's own connection, which reads it as an address list and nothing
+   else; a guest's name is only ever sent back to the meeting point. */
+export function tgSignal(text,host){
+  var m;
   try{
-    if(typeof text!=="string"||text.length<8||text.length>16000||!/^[zr][A-Za-z0-9_-]+$/.test(text))return Promise.resolve(null);
-    body=tgUnb64(text.slice(1));
-    if(text.charAt(0)==="r")return Promise.resolve(done(body)).catch(none);
-    if(typeof DecompressionStream==="undefined")return Promise.resolve(null);
-    return tgPipe(body,new DecompressionStream("deflate-raw"),40000).then(done).catch(none);
-  }catch(_){return Promise.resolve(null);}
+    if(typeof text!=="string"||text.length>12000)return null;
+    m=JSON.parse(text);
+    if(!m||typeof m!=="object")return null;
+    if(host){
+      if(m.t!=="o"||typeof m.g!=="string"||!/^[a-z0-9]{1,16}$/.test(m.g)||!tgSdp(m.s))return null;
+      return {t:"o",g:m.g,s:m.s};
+    }
+    if(m.t==="n"||m.t==="e")return {t:m.t};
+    if(m.t!=="a"||!tgSdp(m.s))return null;
+    return {t:"a",s:m.s};
+  }catch(_){return null;}
 }
 function tgPart(x){return typeof x==="number"&&isFinite(x)&&x>=-0.5&&x<=0.5;}
 function tgName(x){return typeof x==="string"&&x.length>0&&x.length<=40;}
@@ -137,21 +137,22 @@ export function tgPlace(at,q,per,camPos,dt){
   return o;
 }
 function tgSay(t){$("tgSay").textContent=t;}
+function tgLinkText(){return location.href.split("#")[0]+"#room="+room;}
 function tgShow(){
-  var n=conns.filter(function(c){return c.open}).length;
+  var n=conns.filter(function(c){return c.open}).length,host=tgRole==="host",inv=host&&!!room;
   $("rowTg").hidden=false;press($("bTg"),true);
   $("bTgLeave").hidden=!tgRole;
-  $("bTgInvite").hidden=tgRole==="guest";
-  $("tgCode").hidden=!tgRole;$("bTgGo").hidden=!tgRole;
-  $("bTgGo").textContent=tgRole==="guest"?"Copy the reply":"Connect";
-  $("tgCode").readOnly=tgRole==="guest";
-  $("tgCode").placeholder=tgRole==="guest"?"":"Paste your friend's reply here";
-  if(tgRole==="host"&&n)tgSay(n===1?"Flying with one friend.":"Flying with "+n+" friends.");
+  $("bTgInvite").hidden=tgRole==="guest"||inv;
+  $("tgCode").hidden=!inv;$("bTgGo").hidden=!inv;
+  if(inv)$("tgCode").value=tgLinkText();
+  if(!host)return;
+  if(n)tgSay((n===1?"Flying with one friend.":"Flying with "+n+" friends.")+(inv&&n<TG_MAX?" The same link lets more in.":""));
+  else if(inv)tgSay(sockUp?"Send your friend this link. Opening it joins them to you. It works while this page stays open.":"Reaching the meeting point...");
 }
 /* a new connection, and what to do when its channel opens, speaks and closes */
 function tgLink(c,dc){
   c.dc=dc;
-  dc.onopen=function(){c.open=true;toast(tgRole==="host"?"Your friend has joined.":"Connected. You are flying together.");if(tgRole==="guest"){tgSay("Flying together. The host's world, palette, filter and music are yours too.");$("tgCode").value="";}tgShow();};
+  dc.onopen=function(){c.open=true;clearTimeout(c.timer);toast(tgRole==="host"?"Your friend has joined.":"Connected. You are flying together.");if(tgRole==="guest")tgSay("Flying together. The host's world, palette, filter and music are yours too.");tgShow();};
   dc.onclose=function(){tgDrop(c);};
   dc.onmessage=function(e){
     var m=tgClean(e.data,tgRole==="guest"),i;
@@ -168,12 +169,28 @@ function tgDrop(c){
   var i=conns.indexOf(c),k;
   if(i<0)return;
   conns.splice(i,1);
+  clearTimeout(c.timer);
+  try{c.sock&&c.sock.close()}catch(_){}
   try{c.pc.close()}catch(_){}
   for(k=others.length-1;k>=0;k--)if(tgRole==="guest"||others[k].id===c.id)others.splice(k,1);
   if(c.open)toast(tgRole==="guest"?"The host has left. You are flying alone.":"A friend has left.");
   if(tgRole==="guest")setFriendSound(null);
-  if(tgRole==="guest"||!conns.length){tgRole="";hostW="";hostT=-1;hostPal=hostLook="";tgSay("Fly with a friend: invite them with a link.");}
+  if(tgRole==="guest"||(!conns.length&&!room)){tgRole="";hostW="";hostT=-1;hostPal=hostLook="";tgSay("Fly with a friend: invite them with a link.");}
   tgShow();
+}
+/* A joining that came to nothing: the connection is dropped, and whoever was waiting is told which half failed. */
+function tgFail(c){
+  var guest=tgRole==="guest",was=c.open,why="one of the two networks does not let browsers talk straight to each other.";
+  if(conns.indexOf(c)<0)return;
+  tgDrop(c);
+  if(was)return;
+  if(guest)tgSay(c.met?"Could not connect: "+why:"The meeting point did not answer. Try the link again.");
+  else toast("A friend tried to join and could not connect: "+why);
+}
+/* give a joining TG_WAIT seconds, and end it at once if the browser says the two cannot reach each other */
+function tgWatch(c){
+  c.pc.onconnectionstatechange=function(){if(c.pc.connectionState==="failed")tgFail(c);};
+  c.timer=setTimeout(function(){if(!c.open)tgFail(c);},TG_WAIT*1000);
 }
 /* everything the browser has found out about how to reach it, or what it has after four seconds */
 function tgGathered(pc){
@@ -183,65 +200,107 @@ function tgGathered(pc){
     pc.addEventListener("icegatheringstatechange",function(){if(pc.iceGatheringState==="complete"){clearTimeout(t);done();}});
   });
 }
-function tgCopy(text,ok,fail){try{navigator.clipboard.writeText(text).then(function(){tgSay(ok)},function(){tgSay(fail)});}catch(_){tgSay(fail);}}
-/* Host: make an invitation for one more friend. Gives the link's text (also copied, and shown in the box). */
-export function tgInvite(){
+function tgCopyLink(){
+  var none=function(){toast("Could not copy the link. Select it in the box and copy it by hand.");};
+  try{navigator.clipboard.writeText(tgLinkText()).then(function(){toast("Invitation link copied. Send it to your friend.");},none);}catch(_){none();}
+}
+/* Host: keep a connection to the room, so that whoever opens the link can be let in. If it breaks it is made again,
+   a few times, each after a longer wait. Friends already joined are not touched by any of this. */
+function tgRoomOpen(){
+  var s,over=function(msg){room="";sockUp=false;if(!conns.length)tgRole="";tgSay(msg);tgShow();};
+  clearTimeout(sockTimer);
+  try{s=new WebSocket(tgRoomUrl(room,"host"));}catch(_){over("The meeting point cannot be reached.");return;}
+  sock=s;
+  s.onopen=function(){if(sock!==s)return;sockUp=true;sockTries=0;tgShow();};
+  s.onmessage=function(e){
+    var m;
+    if(sock!==s||e.data==="q")return;
+    m=tgSignal(e.data,true);
+    if(m)tgAdmit(s,m.g,m.s);
+  };
+  s.onclose=function(e){
+    if(sock!==s)return;
+    sock=null;sockUp=false;
+    if(tgRole!=="host"||!room)return;
+    if(e.code===4408||e.code===4409){over("The invitation has run out. Press Invite for a new link.");return;}
+    if(sockTries>=5){over("The meeting point cannot be reached, so nobody new can join. Try Invite again later.");return;}
+    sockTries++;sockTimer=setTimeout(tgRoomOpen,1000*Math.pow(2,sockTries));tgShow();
+  };
+}
+/* now and then, a word to the room so that the connection to it is not taken for dead; the room says "q" back */
+function tgPing(){if(sock&&sockUp){try{sock.send("p")}catch(_){}}}
+/* Host: someone has opened the link. Take their description, make this side's, and send it back through the room.
+   The host's music goes to them as sound, on the line their description asked for. */
+function tgAdmit(s,g,sdp){
   var used={},id=0,i,c,pc;
-  if(tgRole==="guest")return Promise.resolve("");
-  if(typeof RTCPeerConnection==="undefined"){tgSay("This browser cannot connect two people directly.");return Promise.resolve("");}
   conns.forEach(function(x){used[x.id]=1});
   for(i=1;i<=TG_MAX;i++)if(!used[i]&&!id)id=i;
-  if(!id){tgSay("Four people is the most. Someone has to leave first.");return Promise.resolve("");}
-  for(i=conns.length-1;i>=0;i--)if(!conns[i].open&&!conns[i].answered){try{conns[i].pc.close()}catch(_){}conns.splice(i,1);} /* an invitation nobody answered is replaced */
-  pc=new RTCPeerConnection({iceServers:TG_ICE});c={pc:pc,dc:null,id:id,open:false,answered:false};conns.push(c);
-  tgRole="host";tgLink(c,pc.createDataChannel("mirrorfold"));
-  if(tgTap())tap.stream.getAudioTracks().forEach(function(t){pc.addTrack(t,tap.stream);}); /* the host's music goes to this guest as sound */
-  tgSay("Making the invitation...");tgShow();
-  return pc.createOffer().then(function(o){return tgSetLocal(pc,o);}).then(function(){return tgGathered(pc);}).then(function(){
-    return tgPack("o",pc.localDescription.sdp);
-  }).then(function(text){
-    var url=location.href.split("#")[0]+"#join="+text;
-    $("tgCode").value="";
-    tgCopy(url,"Invitation link copied. Send it to your friend, then paste the reply they send back and press Connect. The link holds your network address, so send it only to them.","Could not copy the link. Allow the clipboard for this page and press Invite again.");
-    return text;
-  }).catch(function(){tgDrop(c);tgSay("The invitation could not be made.");return "";});
+  if(!id){try{s.send(JSON.stringify({t:"n",g:g}))}catch(_){}return;}
+  pc=new RTCPeerConnection({iceServers:TG_ICE});c={pc:pc,dc:null,id:id,open:false,met:true};conns.push(c);
+  pc.ondatachannel=function(e){tgLink(c,e.channel);};
+  tgWatch(c);
+  pc.setRemoteDescription({type:"offer",sdp:sdp}).then(function(){
+    if(tgTap())tap.stream.getAudioTracks().forEach(function(t){pc.addTrack(t,tap.stream);});
+    return pc.createAnswer();
+  }).then(function(a){return tgSetLocal(pc,a);}).then(function(){return tgGathered(pc);}).then(function(){
+    s.send(JSON.stringify({t:"a",g:g,s:pc.localDescription.sdp}));
+  }).catch(function(){tgDrop(c);});
 }
-/* Host: take a friend's reply and connect. */
-export function tgAnswer(text){
-  var c=null,i;
-  for(i=0;i<conns.length;i++)if(!conns[i].open&&!conns[i].answered)c=conns[i];
-  if(!c){tgSay("Press Invite first, and send your friend the link.");return Promise.resolve(false);}
-  return tgUnpack(String(text||"").trim()).then(function(m){
-    if(!m||m.t!=="a"){tgSay("That is not a reply. Ask your friend for the text their page gave them.");return false;}
-    c.answered=true;$("tgCode").value="";tgSay("Connecting...");
-    return c.pc.setRemoteDescription({type:"answer",sdp:m.s}).then(function(){return true;},function(){c.answered=false;tgSay("That reply does not fit this invitation. Make a new one.");return false;});
-  });
+/* Host: open a room if none is open, and copy its link. Gives the room's code, or "" if there is none. */
+export function tgInvite(){
+  if(tgRole==="guest")return "";
+  $("rowTg").hidden=false;
+  if(typeof RTCPeerConnection==="undefined"||typeof WebSocket==="undefined"){tgSay("This browser cannot connect two people directly.");return "";}
+  if(!roomsAt){tgSay("Fly together has no meeting point on this site yet.");return "";}
+  if(!room){room=tgWord(8);roomKey=tgWord(16);sockTries=0;tgRole="host";tgRoomOpen();}
+  tgCopyLink();tgShow();
+  return room;
 }
-/* Guest: take an invitation and make the reply. Gives the reply's text (also copied, and shown in the box). */
+/* Guest: join the room a link names. Gives a promise of whether the host's description came back and fitted; the
+   two are flying together a moment after that, when the channel opens. */
 export function tgJoin(text){
-  if(typeof RTCPeerConnection==="undefined"){tgSay("This browser cannot connect two people directly.");$("rowTg").hidden=false;return Promise.resolve("");}
-  return tgUnpack(text).then(function(m){
-    var pc,c;
-    if(!m||m.t!=="o"){toast("That link is not an invitation this page can read.");return "";}
-    tgLeave();
-    pc=new RTCPeerConnection({iceServers:TG_ICE});c={pc:pc,dc:null,id:0,open:false,answered:true};conns.push(c);
-    tgRole="guest";pc.ondatachannel=function(e){tgLink(c,e.channel);};
-    pc.ontrack=function(e){if(e.track&&e.track.kind==="audio"){setFriendSound(e.streams&&e.streams[0]?e.streams[0]:new MediaStream([e.track]));toast("Playing the host's music. Choose another under Music to use your own.");}};
-    tgSay("Making your reply...");tgShow();
-    return pc.setRemoteDescription({type:"offer",sdp:m.s}).then(function(){return pc.createAnswer();}).then(function(a){return tgSetLocal(pc,a);}).then(function(){return tgGathered(pc);}).then(function(){
-      return tgPack("a",pc.localDescription.sdp);
-    }).then(function(reply){
-      $("tgCode").value=reply;
-      tgCopy(reply,"Your reply is copied. Send it back to the friend who invited you. It holds your network address, so send it only to them.","Send the text in the box back to the friend who invited you. It holds your network address, so send it only to them.");
-      return reply;
-    }).catch(function(){tgDrop(c);tgSay("That invitation could not be used. Ask for a new one.");return "";});
-  });
+  var code=tgRoom(text),pc,c,end=function(msg){tgDrop(c);tgSay(msg);return false;};
+  $("rowTg").hidden=false;
+  if(typeof RTCPeerConnection==="undefined"||typeof WebSocket==="undefined"){tgSay("This browser cannot connect two people directly.");return Promise.resolve(false);}
+  if(!code){toast("That link is not an invitation this page can read.");return Promise.resolve(false);}
+  if(!roomsAt){tgSay("Fly together has no meeting point on this site yet.");return Promise.resolve(false);}
+  if(tgRole==="host"&&code===room){tgSay("That is your own invitation. Send the link to a friend.");return Promise.resolve(false);}
+  tgLeave();
+  pc=new RTCPeerConnection({iceServers:TG_ICE});c={pc:pc,dc:null,id:0,open:false,met:false};conns.push(c);
+  tgRole="guest";tgLink(c,pc.createDataChannel("mirrorfold"));
+  try{pc.addTransceiver("audio",{direction:"recvonly"});}catch(_){} /* a line for the host's music to come in on */
+  pc.ontrack=function(e){if(e.track&&e.track.kind==="audio"){setFriendSound(e.streams&&e.streams[0]?e.streams[0]:new MediaStream([e.track]));toast("Playing the host's music. Choose another under Music to use your own.");}};
+  tgWatch(c);
+  tgSay("Joining your friend...");tgShow();
+  return pc.createOffer().then(function(o){return tgSetLocal(pc,o);}).then(function(){return tgGathered(pc);}).then(function(){
+    return new Promise(function(done){
+      var s;
+      if(conns.indexOf(c)<0){done(false);return;}
+      s=c.sock=new WebSocket(tgRoomUrl(code,"guest"));
+      s.onopen=function(){s.send(JSON.stringify({t:"o",s:pc.localDescription.sdp}));};
+      s.onmessage=function(e){
+        var m=tgSignal(e.data,false);
+        if(!m||c.met)return;
+        c.met=true;
+        if(m.t==="n"){done(end("Four people is the most, and your friend's flight is full."));return;}
+        if(m.t==="e"){done(end("That invitation has ended. Ask your friend for a new link."));return;}
+        pc.setRemoteDescription({type:"answer",sdp:m.s}).then(function(){done(true);},function(){done(end("That invitation could not be used. Ask your friend for a new link."));});
+      };
+      s.onclose=function(e){
+        if(c.met)return; /* the room lets a guest go once it has passed the answer on */
+        if(conns.indexOf(c)<0){done(false);return;}
+        done(end(e.code===4404?"That invitation has ended. Ask your friend for a new link.":e.code===4429?"Too many people are joining at once. Try the link again in a minute.":"The meeting point could not be reached. Try the link again."));
+      };
+    });
+  }).catch(function(){return end("That invitation could not be used. Ask your friend for a new link.");});
 }
 export function tgLeave(){
-  var cs=conns.slice(),i;
+  var cs=conns.slice(),i,s=sock;
   conns.length=0;others.length=0;
-  for(i=0;i<cs.length;i++){try{cs[i].dc&&cs[i].dc.close()}catch(_){}try{cs[i].pc.close()}catch(_){}}
+  for(i=0;i<cs.length;i++){clearTimeout(cs[i].timer);try{cs[i].sock&&cs[i].sock.close()}catch(_){}try{cs[i].dc&&cs[i].dc.close()}catch(_){}try{cs[i].pc.close()}catch(_){}}
   if(tgRole==="guest")setFriendSound(null);
+  clearTimeout(sockTimer);sock=null;sockUp=false;room="";roomKey="";
+  if(s){try{s.close()}catch(_){}}
   tgRole="";hostW="";hostT=-1;hostPal=hostLook="";
   tgSay("Fly with a friend: invite them with a link.");
 }
@@ -288,7 +347,7 @@ export function stepTogether(fr){
 }
 function tgFromAddress(){
   var h=(location.hash||"").replace("#","");
-  if(h.indexOf("join=")!==0||h===lastJoin)return;
+  if(h.indexOf("room=")!==0||h===lastJoin)return;
   lastJoin=h;
   if(started)tgJoin(h.slice(5));else waitJoin=h.slice(5);
 }
@@ -296,19 +355,18 @@ function tgFromAddress(){
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 peerU=new Float32Array(4*TG_MAX);
+roomsAt=TG_ROOMS;
 tgSay("Fly with a friend: invite them with a link.");
 $("bTg").addEventListener("click",function(){var open=$("rowTg").hidden;$("rowTg").hidden=!open;press(this,open||!!tgRole);if(open)tgShow();wakeHud();});
 $("bTgInvite").addEventListener("click",function(){tgInvite();wakeHud();});
-$("bTgGo").addEventListener("click",function(){
-  if(tgRole==="guest")tgCopy($("tgCode").value,"Your reply is copied. Send it back to the friend who invited you.","Select the text in the box and copy it by hand.");
-  else tgAnswer($("tgCode").value);
-  wakeHud();
-});
+$("bTgGo").addEventListener("click",function(){tgCopyLink();wakeHud();});
 $("bTgLeave").addEventListener("click",function(){tgLeave();tgShow();toast("You are flying alone.");wakeHud();});
+setInterval(tgPing,25000);
 tgFromAddress();
 window.addEventListener("hashchange",tgFromAddress);
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, get hostPal(){return hostPal}, get hostLook(){return hostLook}, tgHeard, tgLink, tgDrop, tgSay, tgShow, tgCopy, tgPart, tgName, tgPipe, tgGathered, tgB64, tgUnb64, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_ICE, conns, others, tgPack, tgUnpack, tgClean, tgPlace, tgInvite, tgAnswer, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
-  get peerU(){return peerU},set peerU(v){peerU=v}, get tgRole(){return tgRole},set tgRole(v){tgRole=v}, get hostW(){return hostW},set hostW(v){hostW=v}, get hostT(){return hostT},set hostT(v){hostT=v}};
+export const __dbg={tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, get hostPal(){return hostPal}, get hostLook(){return hostLook}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
+  get peerU(){return peerU},set peerU(v){peerU=v}, get tgRole(){return tgRole},set tgRole(v){tgRole=v}, get hostW(){return hostW},set hostW(v){hostW=v}, get hostT(){return hostT},set hostT(v){hostT=v},
+  get tgRoomsAt(){return roomsAt},set tgRoomsAt(v){roomsAt=v}, get tgRoomNow(){return room}, get tgSockUp(){return sockUp}};

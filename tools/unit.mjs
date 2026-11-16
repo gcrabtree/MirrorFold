@@ -686,7 +686,7 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
 
 // ---- flying together (js/together.js)
 {
-  const { tgClean, tgPlace, tgPack, tgUnpack, TG_MAX, TG_TURN } = togetherM, J = JSON.stringify;
+  const { tgClean, tgPlace, TG_MAX, TG_TURN } = togetherM, J = JSON.stringify;
   expect("a guest's message comes through as its world and its place", J(tgClean(J({ w: "sponge", q: [0.1, -0.5, 0.5], extra: "<b>" }), false)) === J({ w: "sponge", q: [0.1, -0.5, 0.5] }));
   expect("a host's message comes through as its world, morph clock and the others", J(tgClean(J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }), true)) === J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]], pa: "", lk: "" }));
   expect("and with the host's palette and filter, by name", J(tgClean(J({ w: "a", mt: 1, o: [], pa: "Wood", lk: "Neon" }), true)) === J({ w: "a", mt: 1, o: [], pa: "Wood", lk: "Neon" }));
@@ -706,14 +706,17 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   let at = tgPlace(null, [0.45, 0, 0], per, [1.5, 0, 0], 1 / 60), far = 0;
   for (let i = 0; i < 60; i++) { const n = tgPlace(at, [-0.45, 0, 0], per, [1.5, 0, 0], 1 / 60); far = Math.max(far, Math.abs(n[0] - at[0])); at = n; }
   expect("they slide to a new place the short way across the world's wrap, without a jump", far < 0.08 && Math.abs(at[0] - 2.2) < 0.01, far + " " + at[0]);
-  const sdp = "v=0\r\no=- 4611731400430051336 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\na=candidate:1 1 udp 2113937151 192.0.2.7 51234 typ host\r\n".repeat(3).replace(/^/, "");
-  const packed = await tgPack("o", sdp), back = await tgUnpack(packed);
-  expect("an invitation packed into a link's letters reads back the same", back && back.t === "o" && back.s === sdp && /^[zr][A-Za-z0-9_-]+$/.test(packed));
-  expect("and is packed smaller than it was", packed.length < sdp.length, packed.length + " of " + sdp.length);
-  const raw = o => "r" + Buffer.from(J(o)).toString("base64url");
-  const badP = ["", "zzzz", "r", "x" + packed.slice(1), packed + "!", raw({ t: "x", s: sdp }), raw({ t: "o", s: 7 }), raw({ t: "o", s: "hello" }), raw({ t: "o", s: "v=0" + "x".repeat(20001) }), raw(null), raw([1]), "z" + Buffer.from("not packed at all").toString("base64url"), "r" + "A".repeat(17000), 7];
-  const res = await Promise.all(badP.map(b => tgUnpack(b)));
-  expect("text that is not an invitation or a reply is refused", res.every(x => x === null), res.map((x, i) => x === null ? "" : i).join(","));
+  const { tgSignal, tgRoom } = togetherM, sdp = "v=0\r\no=- 4611731400430051336 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\na=candidate:1 1 udp 2113937151 192.0.2.7 51234 typ host\r\n";
+  expect("a room's code is read from a link, and anything else is not one", tgRoom("k7f2q9xm") === "k7f2q9xm" && ["", "abc", "K7F2Q9XM", "k7f2q9x1", "k7f2 q9xm", "a".repeat(13), "k7f2q9xm/../x", "k7f2q9xm?x=1", 7, null].every(x => tgRoom(x) === ""));
+  expect("the meeting point's word to the host comes through as a guest's name and description", J(tgSignal(J({ t: "o", g: "ab12cd34ef", s: sdp, extra: "<b>" }), true)) === J({ t: "o", g: "ab12cd34ef", s: sdp }));
+  expect("and its word to a guest as the host's description, no room left, or the host gone", J(tgSignal(J({ t: "a", s: sdp, g: "x" }), false)) === J({ t: "a", s: sdp }) && J(tgSignal(J({ t: "n", s: 7 }), false)) === J({ t: "n" }) && J(tgSignal(J({ t: "e" }), false)) === J({ t: "e" }));
+  const badToHost = ["", "{", "null", "7", "q", J([1]), J({ t: "a", g: "ab", s: sdp }), J({ t: "o", s: sdp }), J({ t: "o", g: 7, s: sdp }), J({ t: "o", g: "", s: sdp }), J({ t: "o", g: "AB", s: sdp }), J({ t: "o", g: "a/b", s: sdp }), J({ t: "o", g: "a".repeat(17), s: sdp }), J({ t: "o", g: "ab", s: 7 }), J({ t: "o", g: "ab", s: "hello" }), J({ t: "o", g: "ab", s: "v=0" + "x".repeat(10000) }), J({ t: "o", g: "ab", s: sdp, pad: "x".repeat(12000) })];
+  const badToGuest = ["", "{", "null", J([1]), J({ t: "o", g: "ab", s: sdp }), J({ t: "x" }), J({ t: "a" }), J({ t: "a", s: 7 }), J({ t: "a", s: "<script>" }), J({ t: "a", s: "v=0" + "x".repeat(10000) })];
+  expect("a word from the meeting point with anything wrong in it is dropped", badToHost.every(b => tgSignal(b, true) === null) && badToGuest.every(b => tgSignal(b, false) === null) && tgSignal(7, true) === null && tgSignal(null, false) === null, badToHost.map((b, i) => tgSignal(b, true) === null ? "" : "h" + i).join("") + badToGuest.map((b, i) => tgSignal(b, false) === null ? "" : "g" + i).join(""));
+  {
+    const fs = await import("node:fs"), srv = fs.readFileSync(new URL("../server/rooms.js", import.meta.url), "utf8"), page = fs.readFileSync(new URL("../js/together.js", import.meta.url), "utf8");
+    expect("the meeting point and the page agree on what a room's code is", srv.includes("/^\\/room\\/([a-z2-9]{6,12})$/") && page.includes("/^[a-z2-9]{6,12}$/"));
+  }
   const src = (await import("node:fs")).readFileSync(new URL("../js/shaders.js", import.meta.url), "utf8");
   expect("the scene shader has a line for each friend, and no more", src.includes("uniform vec4 uPe[" + TG_MAX + "];") && src.includes("uPe[" + (TG_MAX - 1) + "].w>0.0") && !src.includes("uPe[" + TG_MAX + "].w"));
 }

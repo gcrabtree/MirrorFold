@@ -1,0 +1,18 @@
+# The meeting point for Fly together. See README.md in this folder for how to put it on a Cloudflare account.
+name = "mirrorfold-rooms"
+main = "rooms.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+[vars]
+# The addresses whose pages may use the meeting point, with commas between them. No path, no slash at the end.
+ORIGINS = "https://gcrabtree.github.io"
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "Room"
+
+# The free plan allows only this kind of room (one with SQLite storage). The rooms store nothing in it.
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
