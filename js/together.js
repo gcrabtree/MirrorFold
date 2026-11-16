@@ -26,7 +26,7 @@ export const TG_GONE=5;       /* seconds without a message after which someone i
 export const TG_TURN=200*Math.PI; /* the morph's clock comes round in this time */
 export const TG_WAIT=30;      /* seconds a joining may take before it is given up */
 /* The meeting point's address (server/README.md says how to make one). With none, nobody can be invited. */
-export const TG_ROOMS="";
+export const TG_ROOMS="https://mirrorfold-rooms.mirrorfold.workers.dev";
 /* The server asked, once, "what is my address as seen from outside?" when a description is made. Without it
    two people behind different home routers cannot find each other. It is told nothing else. */
 export const TG_ICE=[{urls:"stun:stun.l.google.com:19302"}];

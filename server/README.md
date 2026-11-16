@@ -46,4 +46,5 @@ To take it down: `npx wrangler delete`.
 ```
 npx wrangler dev --port 8799     # a copy on this computer
 node server/test.mjs             # in another terminal, from the folder above
+node server/test.mjs wss://mirrorfold-rooms.<your-name>.workers.dev   # the same checks against the one on Cloudflare
 ```

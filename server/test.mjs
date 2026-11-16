@@ -2,7 +2,7 @@
      npx wrangler dev --port 8799
    and in another:  node server/test.mjs
    The last check opens connections until the limit for one address is reached, so wait a minute before running it again. */
-const U="ws://127.0.0.1:8799/room/", O={headers:{Origin:"https://gcrabtree.github.io"}};
+const U=(process.argv[2]||"ws://127.0.0.1:8799")+"/room/", O={headers:{Origin:"https://gcrabtree.github.io"}};
 const open=(path,o=O)=>new Promise(res=>{const w=new WebSocket(U+path,o),log=[];w.log=log;w.onmessage=e=>log.push(e.data);w.onopen=()=>res(w);w.onclose=e=>{w.closed=e.code;res(w)};w.onerror=()=>{};});
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 let ok=0,bad=0;const say=(n,c,x)=>{c?ok++:bad++;console.log((c?"ok   ":"FAIL ")+n+(c?"":" "+JSON.stringify(x)))};
