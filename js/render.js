@@ -158,7 +158,7 @@ export function drawTrails(fr){
   gl.uniform1f(TU.uOv,ov.code?(op?99:0):sel.ovi);gl.uniform1f(TU.uOvBeat,bt);gl.uniform1f(TU.uOvMid,mp);gl.uniform1f(TU.uOvHi,hp);
   gl.uniform1f(TU.uShift,sel.moi>0?Math.min(0.3,(0.05+0.1*hp)*k60):0); /* trails drift through the colour channels so they read apart from the scene */
   gl.uniform1f(TU.uOvAmt,OVS[sel.ovsi]);gl.uniform1f(TU.uHue,clock.hueT+wHue);
-  if(ov.dance){danceFill(ov.dance,stereo?1:tc.w/tc.h);for(j=0;j<6;j++)gl.uniform4fv(TU["uD"+j],dnU[j]);} /* the dancers' joints */
+  if(ov.dance){danceFill(ov.dance,stereo?1:tc.w/tc.h);for(j=0;j<9;j++)gl.uniform4fv(TU["uD"+j],dnU[j]);} /* the dancers' joints */
   setPal(TU);
   videoUniforms(TU,tc.w,tc.h,!stereo,null);
   gl.drawArrays(gl.TRIANGLES,0,3);

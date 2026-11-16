@@ -965,10 +965,10 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a file's name is shown without its folder or ending", md.mediaTitle("C:\\Music\\07 Weird Fishes.mp3") === "07 Weird Fishes" && md.mediaTitle("/a/b/song.final.flac") === "song.final" && md.mediaTitle("") === "");
   expect("Reddit's page is opened with the title and link as plain parts of the address", sn.sendReddit("A & B = <C>", "https://example.org/x/#julia-01") === "https://www.reddit.com/submit?title=A%20%26%20B%20%3D%20%3CC%3E&url=https%3A%2F%2Fexample.org%2Fx%2F%23julia-01" && sn.sendReddit("t", "") === "https://www.reddit.com/submit?title=t" && sn.sendReddit("x".repeat(500), "").length < 320);
 }
-// ---- the dancers: the count of beats, the figures' joints, and that nothing jumps
+// ---- the dancers: the count of beats, the figures' bodies, the moves, and that nothing jumps
 {
-  const { __dbg: dn } = await import("../js/dance.js");
-  const hit = (t, per) => Math.exp(-5 * (t % per)), dt = 1 / 60;
+  const { __dbg: dn } = await import("../js/dance.js"), { __dbg: mv } = await import("../js/moves.js");
+  const hit = (t, per) => Math.exp(-5 * (t % per)), dt = 1 / 60, TAU = 2 * Math.PI;
   let bc = dn.makeBeatClock(), o, t, back = false, lastU = 0, errs = [];
   for (t = 0; t < 30; t += dt) { o = bc(dt, hit(t, 0.47)); if (o.u < lastU) back = true; lastU = o.u; if (t > 15 && (t % 0.47) < dt) errs.push(Math.abs(o.u - Math.round(o.u))); }
   expect("a steady pulse is counted at its own speed, each beat on a whole count, and the count never goes back", Math.abs(o.per - 0.47) < 0.012 && Math.max(...errs) < 0.12 && !back, o.per + " " + Math.max(...errs));
@@ -977,35 +977,44 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a pulse slower or quicker than a dance is counted as half or double", Math.abs(slow - 0.47) < 0.012 && Math.abs(o.per - 0.5) < 0.012, slow + " " + o.per);
   bc = dn.makeBeatClock(); for (t = 0; t < 10; t += dt) o = bc(dt, hit(t, 0.47)); const u0 = o.u; for (t = 0; t < 4.7; t += dt) o = bc(dt, 0);
   expect("with no hits the count runs on as it was", Math.abs(o.u - u0 - 10) < 0.2, String(o.u - u0));
-  // every limb keeps its length whatever the pose, and no foot goes under the floor
-  const J = new Array(22), len = (a, b) => Math.hypot(J[2 * a] - J[2 * b], J[2 * a + 1] - J[2 * b + 1]); let sd = 5, worst = 0, under = 0, k, i;
+  // every bone keeps its length whatever the pose, and no foot goes under the floor
+  const J = new Array(51), F = new Array(35), len = (a, b) => Math.hypot(J[3 * a] - J[3 * b], J[3 * a + 1] - J[3 * b + 1], J[3 * a + 2] - J[3 * b + 2]); let sd = 5, worst = 0, under = 0, k, i;
   const rnd = () => (sd = sd * 16807 % 2147483647) / 2147483647;
-  const limbs = [[0, 1, dn.DN_SPINE], [11, 2, dn.DN_ARM], [2, 3, dn.DN_ARM], [12, 4, dn.DN_ARM], [4, 5, dn.DN_ARM], [0, 11, dn.DN_SHO], [0, 12, dn.DN_SHO], [1, 6, dn.DN_LEG], [6, 7, dn.DN_LEG], [1, 8, dn.DN_LEG], [8, 9, dn.DN_LEG], [0, 10, dn.DN_HEAD + dn.DN_NECK]];
-  const check = p => { dn.dancePose(p, J); for (const [a, b, l] of limbs) worst = Math.max(worst, Math.abs(len(a, b) - l)); under = Math.min(under, J[15], J[19], J[13], J[17]); };
-  for (k = 0; k < 400; k++) check([rnd() - 0.5, rnd() * 0.4 - 0.1, rnd() * 0.4 - 0.1, 2 * rnd() - 1, 2 * rnd() - 1, 7 * rnd() - 3.5, 7 * rnd() - 3.5, 7 * rnd() - 3.5, 7 * rnd() - 3.5, 2 * rnd() - 1, rnd() - 0.3, 2 * rnd() - 1, rnd() - 0.3]);
-  const P = new Array(13); for (const m of dn.MOVES) for (k = 0; k < 160; k++) { m.f(k / 20, P); check(P); }
-  expect("a figure's limbs keep their length in every pose, and nothing goes under the floor", worst < 1e-9 && under > -1e-9, worst + " " + under);
-  expect("every move comes round in four beats, and can be chosen at some fullness of the music", dn.MOVES.every(m => { const a = [], b = []; m.f(0.3, a); m.f(4.3, b); return (m.lo || m.mid || m.hi) && a.every((x, j) => Math.abs(x - b[j]) < 1e-6); }));
-  expect("a move is chosen from those fit for the music, and never the one in hand", [0.2, 0.7, 1.2].every((e, n) => [0, 0.3, 0.6, 0.999].every(r => { const j = dn.pickMove(e, 1, r); return j !== 1 && dn.MOVES[j][["lo", "mid", "hi"][n]]; })));
+  const bones = [[0, 1, dn.DN_SPINE], [0, 2, dn.DN_SHO], [0, 3, dn.DN_SHO], [2, 4, dn.DN_ARM], [4, 5, dn.DN_FORE], [3, 6, dn.DN_ARM], [6, 7, dn.DN_FORE], [1, 8, dn.DN_HIPW], [1, 9, dn.DN_HIPW], [8, 10, dn.DN_LEG], [10, 11, dn.DN_LEG], [9, 12, dn.DN_LEG], [12, 13, dn.DN_LEG], [11, 14, dn.DN_FOOT], [13, 15, dn.DN_FOOT], [0, 16, dn.DN_HEAD + dn.DN_NECK]];
+  const check = p => { dn.danceBody(p, J); for (const [a, b, l] of bones) worst = Math.max(worst, Math.abs(len(a, b) - l)); under = Math.min(under, J[34], J[40], J[31], J[37], J[43], J[46]); };
+  // (hands anywhere; feet anywhere a dancer's could be: with the hips at their lowest and a foot far behind, the knee would have to go through the floor)
+  for (k = 0; k < 600; k++) check(mv.MV_REST.map((x, n) => n === 4 ? 7 * rnd() : n < 12 ? rnd() - 0.5 : n % 4 === 3 ? 2 * rnd() - 0.7 : n < 20 ? 1.4 * rnd() - 0.7 : n % 4 === 1 ? 0.6 * rnd() - 0.1 : 0.7 * rnd() - 0.35));
+  const P = new Array(mv.MV_N); for (const m of mv.MOVES) for (k = 0; k < 20 * m.len; k++) { mv.movePose(m, k / 20, P); check(P); }
+  expect("a figure's bones keep their length in every pose, and nothing goes under the floor", worst < 1e-9 && under > -1e-9, worst + " " + under);
+  expect("there are more than a hundred moves, each with its own name, and each can be chosen at some fullness of the music", mv.MOVES.length > 100 && new Set(mv.MOVES.map(m => m.name)).size === mv.MOVES.length && mv.MOVES.every(m => m.lo || m.mid || m.hi) && ["lo", "mid", "hi"].every(q => mv.MOVES.filter(m => m[q]).length >= 10));
+  const round = mv.MOVES.filter(m => { const a = [], b = []; mv.movePose(m, 0.3, a); mv.movePose(m, m.len + 0.3, b); return !(m.keys[0].t === 0 && [1, 2, 4, 8, 16].includes(m.len) && a.every((x, j) => Math.abs(x - b[j]) < 1e-6)); });
+  expect("every move begins on a beat and comes round in its own length, a power of two up to sixteen beats", round.length === 0, round.map(m => m.name).join());
+  // within a move, on its own at full size, no joint is asked to go faster than a person could at a quick tempo
+  { let top = 0, who = ""; for (const m of mv.MOVES) { let prev = null; const mem = [0, 0, 0, 0, 0, 0]; for (k = 0; k <= 60 * 0.4 * m.len * 2; k++) { mv.movePose(m, k / (60 * 0.4), P); dn.danceBody(P, J, mem, 1 / 6); if (prev) for (i = 0; i < 51; i++) { const v = Math.abs(J[i] - prev[i]) * 60; if (v > top) { top = v; who = m.name; } } prev = J.slice(); } }
+    expect("no move asks a joint to go faster than seven figure heights a second at 150 beats a minute", top < 7, top.toFixed(1) + " in " + who); }
+  const fl = mv.MV_REST.slice(); fl[0] = 0.1; fl[12] = 0.4; fl[21] = 0.2; mv.flipPose(fl); dn.danceBody(fl, J); const jl = J.slice(); mv.flipPose(fl); dn.danceBody(fl, J);
+  expect("a pose turned to face the other way is the same body with left and right exchanged", [[2, 3], [5, 7], [11, 13], [1, 1], [16, 16]].every(([a, b]) => Math.abs(J[3 * a] + jl[3 * b]) < 1e-9 && Math.abs(J[3 * a + 1] - jl[3 * b + 1]) < 1e-9 && Math.abs(J[3 * a + 2] - jl[3 * b + 2]) < 1e-9));
+  const near = mv.MV_REST.slice(); near[14] = 0.3; near[12] = 0.1; near[13] = 0; dn.danceFlat(dn.danceBody(near, J), F);
+  expect("the figure faces the viewer, its left on the viewer's right, and a hand held out toward the viewer looks larger", J[6] > 0 && J[9] < 0 && J[17] > 0.25 && Math.abs(F[10]) > Math.abs(J[15]) && F[34] > 0.99);
+  expect("a move is chosen from those fit for the music, and never the one in hand", [0.2, 0.7, 1.2].every((e, n) => [0, 0.3, 0.6, 0.999].every(r => { const j = dn.pickMove(e, 1, r); return j !== 1 && mv.MOVES[j][["lo", "mid", "hi"][n]]; })));
   // a whole night out: silence, music, a great change, a drop, quiet again. No joint may move faster than a dancer could.
-  const { sel, OVERLAYS } = await import("../js/state.js"), was = sel.ovi; let fast = 0, still0 = 0, moved = 0, high = 0, prev = null, calmMove = 0;
+  const { sel, OVERLAYS } = await import("../js/state.js"), was = sel.ovi, rand = Math.random; let fast = 0, still0 = 0, moved = 0, high = 0, prev = null;
   dn.danceTick = dn.makeBeatClock();
-  const run = (kind, secs, f) => { for (let n = 0; n < secs * 60; n++) { f(n / 60); for (i = 0; i < dn.crowd.length; i++) { dn.dancePose(dn.crowd[i].p, J); if (prev && prev[i]) for (k = 0; k < 22; k++) fast = Math.max(fast, Math.abs(J[k] - prev[i][k]) * 60); (prev = prev || [])[i] = J.slice(); } } };
+  const run = (secs, f) => { for (let n = 0; n < secs * 60; n++) { f(n / 60); for (i = 0; i < dn.crowd.length; i++) { J.splice(0, 51, ...dn.crowd[i].b); if (prev && prev[i]) for (k = 0; k < 51; k++) fast = Math.max(fast, Math.abs(J[k] - prev[i][k]) * 60); (prev = prev || [])[i] = J.slice(); } } };
   sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); Math.random = rnd;
   dn.stepDance({ dt, bt: 0, mp: 0 }); // sets the five up
   expect("the dance floor has five figures, the chorus line four and the dancer one, all inside the picture", dn.crowd.length === 5 && [1, 2, 3].every(kd => [0.46, 1, 1.78, 2.4].every(asp => { const sp = dn.danceSpots(kd, asp); return sp.length === [0, 1, 4, 5][kd] && sp.every(q => Math.abs(q[0]) + 0.3 * q[2] <= 0.5 * Math.max(1, asp) + 1e-9 && q[1] + q[2] < 0.5); })));
-  run(3, 4, tt => dn.danceStep(dt, 0, 0, 0, false, false, false, tt)); dn.dancePose(dn.crowd[0].p, J); still0 = Math.abs(J[6] - J[22]) + Math.abs(J[7] - (J[1] - 0.33));
-  const quietHand = J.slice(6, 8);
-  run(3, 12, tt => dn.danceStep(dt, hit(tt, 0.47), 0, 0.8, false, tt > 6 && tt < 6 + dt, false, 4 + tt)); dn.dancePose(dn.crowd[0].p, J);
-  run(3, 2, tt => { dn.danceStep(dt, hit(tt, 0.47), 0, 0.8, false, false, false, 16 + tt); dn.dancePose(dn.crowd[0].p, J); moved = Math.max(moved, Math.hypot(J[6] - quietHand[0], J[7] - quietHand[1]), Math.abs(J[3] - dn.DN_HIP)); });
-  run(3, 3, tt => { dn.danceStep(dt, hit(tt, 0.47), 0, 1, tt < dt, false, false, 18 + tt); dn.dancePose(dn.crowd[0].p, J); high = Math.max(high, Math.min(J[15], J[19])); });
-  run(3, 8, tt => dn.danceStep(dt, 0, 0, 0.1, false, false, false, 21 + tt)); dn.dancePose(dn.crowd[0].p, J);
-  expect("in silence a figure stands with its arms down, and with a beat it dances", still0 < 0.12 && moved > 0.1, still0 + " " + moved);
-  expect("at a drop the figures leave the floor, and come down again", high > 0.08 && Math.max(J[15], J[19]) < 0.01, String(high));
-  expect("when the music goes quiet they stand again", Math.abs(J[6] - quietHand[0]) + Math.abs(J[7] - quietHand[1]) < 0.06);
-  expect("no joint is ever moved faster than eight figure heights a second: a pose is gone toward, never jumped to", fast < 8, String(fast));
-  dn.danceFill(3, 1.78); expect("the shader is handed five figures, and none for an overlay that is not theirs", dn.dnU[5][3] === 1 && dn.dnU[5][19] > 0 && (dn.danceFill(1, 1.78), dn.dnU[5][3] === 0));
-  sel.ovi = was;
+  const hand = () => { dn.danceBody(dn.crowd[0].p, J); return [J[15], J[16], J[17]]; };
+  run(4, tt => dn.danceStep(dt, 0, 0, 0, false, false, false, tt)); const quiet = hand(); still0 = Math.abs(quiet[1] - (dn.DN_HIP + dn.DN_SPINE - 0.31)) + Math.abs(J[4] - dn.DN_HIP);
+  run(60, tt => { dn.danceStep(dt, hit(tt, 0.47), 0, 0.8, false, tt > 6 && tt < 6 + dt, false, 4 + tt); const h = hand(); moved = Math.max(moved, Math.hypot(h[0] - quiet[0], h[1] - quiet[1], h[2] - quiet[2])); });
+  run(3, tt => { dn.danceStep(dt, hit(tt, 0.47), 0, 1, tt < dt, false, false, 64 + tt); dn.danceBody(dn.crowd[0].p, J); high = Math.max(high, Math.min(J[34], J[40])); });
+  run(8, tt => dn.danceStep(dt, 0, 0, 0.1, false, false, false, 67 + tt)); const after = hand();
+  expect("in silence a figure stands with its arms down, and with a beat it dances", still0 < 0.05 && moved > 0.15, still0 + " " + moved);
+  expect("at a drop the figures leave the floor, and come down again", high > 0.08 && Math.max(J[34], J[40]) < 0.01, String(high));
+  expect("when the music goes quiet they stand again, facing front", Math.hypot(after[0] - quiet[0], after[1] - quiet[1], after[2] - quiet[2]) < 0.05 && Math.abs(Math.sin(dn.crowd[0].p[4] / 2)) < 0.05);
+  expect("through a minute of dancing no joint is moved faster than seven figure heights a second: a pose is gone toward, never jumped to", fast < 7, String(fast));
+  dn.danceFill(3, 1.78); expect("the shader is handed five figures, smaller than they were, and none for an overlay that is not theirs", dn.dnU[8][3] === 1 && dn.dnU[8][19] > 0 && dn.danceSpots(1, 1.78)[0][2] < 0.45 && (dn.danceFill(1, 1.78), dn.dnU[8][3] === 0));
+  sel.ovi = was; Math.random = rand;
 }
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {

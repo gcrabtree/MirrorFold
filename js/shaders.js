@@ -422,7 +422,7 @@ const VR_GLSL=[
 
 export const FS_TRAIL=[
 "precision highp float;varying vec2 v;uniform sampler2D uA,uB,uWv;",
-"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;uniform vec4 uD0[5],uD1[5],uD2[5],uD3[5],uD4[5],uD5[5];uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
+"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;uniform vec4 uD0[5],uD1[5],uD2[5],uD3[5],uD4[5],uD5[5],uD6[5],uD7[5],uD8[5];uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
 VR_GLSL,
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* the motion: where in the last picture this place takes its trail from. c is measured from the middle, -0.5 to 0.5 */
@@ -501,17 +501,19 @@ VR_GLSL,
 "        if(uVr>0.5){el=min(uOvEta*(1.0+0.6*sin(uTime*(0.4+0.13*fi)+fi*2.1)),"+VR_EMAX+");dl=(ev-vec2(sg*el,0.0))*"+VR_KAP+";}", /* VR viewer: each light also swings nearer and farther */
 "        float q2=length(dl/m-pp),gl2=exp(-q2*q2/((0.0006+0.0025*uOvHi)*wd*wd*0.5));if(gl2>ln)oe=el;ln+=gl2;",
 "      }",
-"    }else{", /* the dancers: up to five stick figures, whose joints JavaScript works out (js/dance.js). Each is a filled head and eleven lines, with a dark edge (dk). The shoulders are not sent: they stand out from the neck square to the back, 0.075 for a head of 0.09 (DN_SHO and DN_HEAD in js/dance.js), and the arms start from them. A figure is looked at only near where it stands. rr, which the colour is taken from below, is set to a number of the figure's own, so each has its own colour of the palette */
+"    }else{", /* the dancers: up to five stick figures, whose joints JavaScript works out (js/dance.js), as a body in space seen from in front. Each is a filled head, fourteen lines (back, neck, shoulders, hips, two to an arm, two to a leg, the feet) and a small filled hand at the end of each arm, with a dark edge (dk). A figure is looked at only near where it stands. rr, which the colour is taken from below, is set to a number of the figure's own, so each has its own colour of the palette */
 "      vec2 q=d/m;",
 "      for(int i=0;i<5;i++){",
-"        vec4 hd=uD5[i],b0=uD0[i];",
-"        if(hd.w>0.0&&abs(q.x-b0.z)<hd.z*9.0){",
-"          vec4 b1=uD1[i],b2=uD2[i],b3=uD3[i],b4=uD4[i];",
-"          vec2 bk=b0.xy-b0.zw;bk=vec2(bk.y,-bk.x)/max(length(bk),1e-5)*hd.z*(0.075/0.09);vec2 sl=b0.xy-bk,sr=b0.xy+bk;",
-"          float ds=min(min(limb(q,b0.xy,b0.zw),limb(q,sl,sr)),min(limb(q,b0.xy,hd.xy),length(q-hd.xy)-hd.z));",
-"          ds=min(ds,min(min(limb(q,sl,b1.xy),limb(q,b1.xy,b1.zw)),min(limb(q,sr,b2.xy),limb(q,b2.xy,b2.zw))));",
-"          ds=min(ds,min(min(limb(q,b0.zw,b3.xy),limb(q,b3.xy,b3.zw)),min(limb(q,b0.zw,b4.xy),limb(q,b4.xy,b4.zw))));",
-"          float wl=hd.z*0.3*min(wd,3.0),g=(1.0-smoothstep(0.35*wl,wl,ds))*hd.w;",
+"        vec4 hd=uD8[i],b0=uD0[i];",
+"        if(hd.w>0.0&&abs(q.x-b0.z)<hd.z*11.0){",
+"          vec4 b1=uD1[i],b2=uD2[i],b3=uD3[i],b4=uD4[i],b5=uD5[i],b6=uD6[i],b7=uD7[i];",
+"          float wl=hd.z*0.34*min(wd,3.0);",
+"          float ds=min(min(limb(q,b0.xy,b0.zw),limb(q,b1.xy,b1.zw)),min(limb(q,b0.xy,hd.xy),length(q-hd.xy)-hd.z));",
+"          ds=min(ds,min(min(limb(q,b1.xy,b2.xy),limb(q,b2.xy,b2.zw)),min(limb(q,b1.zw,b3.xy),limb(q,b3.xy,b3.zw))));",
+"          ds=min(ds,min(length(q-b2.zw),length(q-b3.zw))-0.7*wl);", /* the hands */
+"          ds=min(ds,min(limb(q,b4.xy,b4.zw),min(min(limb(q,b4.xy,b5.xy),limb(q,b5.xy,b5.zw)),min(limb(q,b4.zw,b6.xy),limb(q,b6.xy,b6.zw)))));",
+"          ds=min(ds,min(limb(q,b5.zw,b7.xy),limb(q,b6.zw,b7.zw)));", /* the feet */
+"          float g=(1.0-smoothstep(0.35*wl,wl,ds))*hd.w;",
 "          if(g>ln){ln=g;rr=0.15+0.27*float(i);}",
 "          dk=max(dk,(1.0-smoothstep(wl,2.6*wl,ds))*hd.w);",
 "        }",
@@ -665,7 +667,7 @@ export function trailSource(code){
    .replace("void main(){","float time,beat,mid,hi,aspect;\nfloat sound(float x){return texture2D(uWv,vec2(clamp(x,0.0,1.0)*0.98+0.01,0.5)).r;}\nvoid mark(vec2 p,inout float ln,inout float hue){\n"+code+"\n}\nvoid main(){")
    .replace("    vec3 oc=pal(uHue+0.3+rr*0.45);","    float hq=0.3+rr*0.45;\n    if(uOv>98.5){ln=0.0;time=uTime;beat=uOvBeat;mid=uOvMid;hi=uOvHi;aspect=uAsp;mark(d/m,ln,hq);ln=clamp(ln,0.0,1.0);}\n    vec3 oc=pal(uHue+hq);");
 }
-export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5"];
+export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5","uD6","uD7","uD8"];
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={VS, fragSource, FS_TRAIL, FS_DOWN, FS_BLUR, FS_FINAL, finalSource, trailSource, TRAIL_U};
