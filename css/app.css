@@ -223,3 +223,6 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
 #tgCode[hidden]{display:none}
 #tgAsk{flex:1 1 100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font:600 13px/1.4 var(--body);color:var(--ink);padding:2px 4px}
 #tgAsk[hidden]{display:none}
+/* photo mode's sliders: a name and a slider in one button-shaped box */
+.btn.slide{display:inline-flex;align-items:center;gap:8px}
+.btn.slide input[type=range]{width:110px;height:18px;margin:0;accent-color:var(--cool);touch-action:pan-y}

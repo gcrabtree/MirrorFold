@@ -25,21 +25,25 @@ var dbgEl=document.createElement("i");dbgEl.id="dbg";document.body.appendChild(d
 setTimeout(function(){
   setPkPlain(true); /* JavaScript is to answer as the shader does in the packings, not with its own wider look at the open space */
   var out=[],sd=12345,rnd=function(){sd=(Math.imul(sd,1664525)+1013904223)>>>0;return sd/4294967296};
-  [0,1].forEach(function(opt){
-  if(opt){setMix(true);setPulse(true);}
+  [0,1,2].forEach(function(opt){
+  if(opt===1){setMix(true);setPulse(true);}
+  if(opt===2){setMix(false);setPulse(false);setInOutNow(true);} /* and once more inside out, in the grid */
   WORLDS.forEach(function(w){
     if(w.volume){if(!opt)out.push(w.id+" volume");return;}
+    if(opt===2&&!w.de0)return;
     PACKINGS.forEach(function(pkg,pi){
     if((pi||opt)&&!w.packs)return;
-    if(opt&&!pi)return;
+    if(opt===1&&!pi)return;
+    if(opt===2&&pi)return;
     setPackingNow(pi);
-    var name=w.id+(pi?"/"+pkg.name:"")+(opt?"/mixed,wave":""),per=w.period(0).map(function(v){return pi===PK_DEEP?v/4:v}),worst=0,at="",n=0,bad=0,ms=[-0.9,0,0.9];
+    var name=w.id+(pi?"/"+pkg.name:"")+(opt===1?"/mixed,wave":opt===2?"/inside-out":""),per=w.period(0).map(function(v){return pi===PK_DEEP?v/4:v}),worst=0,at="",n=0,bad=0,ms=[-0.9,0,0.9];
     for(var b=0;b<24;b++){
       var m=ms[b%3],k,d;
       for(k=0;k<16;k++){probePts[3*k]=(rnd()-0.5)*2*per[0];probePts[3*k+1]=(rnd()-0.5)*2*per[1];probePts[3*k+2]=(rnd()-0.5)*2*per[2];}
       if(!probe(w,m,16)){out.push(name+" NOPROBE");return;}
       for(k=0;k<16;k++){
         var js=w.de(probePts[3*k],probePts[3*k+1],probePts[3*k+2],m);
+        if(opt===2&&probeOut[k]<0)probeOut[k]=0; /* inside a wall the script answers nothing where the shader goes below it */
         if(Math.abs(js)>7.5)continue; /* outside what the probe can carry */
         d=Math.abs(probeOut[k]-js);n++;if(d>0.002+0.003*Math.abs(js))bad++;
         if(d>worst){worst=d;at="chip "+probeOut[k].toFixed(4)+" script "+js.toFixed(4)+" m "+m;}
@@ -59,7 +63,7 @@ print("title :", title)
 for line in dbg.split(" ; "):
     parts = line.split(" ", 3)
     if len(parts) >= 3 and parts[1] not in ("volume",) and not parts[0].startswith("glerr"):
-        loose = parts[0].count("/") > 0  # a packing other than the grid
+        loose = parts[0].count("/") > 0 and not parts[0].endswith("/inside-out")  # a packing other than the grid
         if not (parts[2].startswith("0/") or (loose and parts[2].startswith("1/"))): ok = False; line = "DIFFERS  " + line
     print("  ", line)
 print("PASS" if ok else "FAIL")

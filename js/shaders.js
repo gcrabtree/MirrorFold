@@ -2,7 +2,7 @@
 import { STEPS, isTouch } from "./dom.js";
 import { PACK_GLSL } from "./packing.js";
 import { RB_N, RB_OWN, RB_PEER } from "./ribbons.js";
-import { packSrc } from "./worlds.js";
+import { IN_STEP, packSrc } from "./worlds.js";
 import { REF_W, ZBAIL } from "./zoom.js";
 
 export const VS="attribute vec2 a;varying vec2 v;void main(){v=a*0.5+0.5;gl_Position=vec4(a,0.0,1.0);}";
@@ -10,6 +10,9 @@ export let chrome=false; /* the programs are being made with the chrome surface 
 /* The chrome surface follows a second ray from every surface, which makes a world's program larger and slower to make.
    So it is left out of the programs unless it is in use: js/choose.js keeps a set of programs for each way. */
 export function setChrome(on){chrome=!!on;}
+export let shafts=false; /* the programs are being made with the light shafts in them (see setShafts) */
+/* The light shafts ask the world's distance up to thirty more times for every pixel, so they too are in the programs only while in use. */
+export function setShafts(on){shafts=!!on;}
 export function fragSource(w){
   return [
 "precision highp float;",
@@ -20,6 +23,7 @@ export function fragSource(w){
 "#define VSTEPS "+(isTouch?44:56),
 "#define RSTEPS "+(isTouch?28:40),
 (chrome&&!w.flat&&!w.volume?"#define CHROME":""),
+(shafts&&!w.flat&&!w.volume?"#define SHAFTS":""),
 "#define SC "+(w.packs?"uPkZ":"1.0"), /* the descent stretches the reach and the fog as the camera goes in (js/packing.js) */
 "#define SP "+(w.packs?"(uPk>5.5?pkQ:p)":"p"), /* the place a surface's pattern is worked out from: in the descent, the place within the copy, so that the pattern is the same when the camera is moved out */
 "uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi;uniform vec4 uOrb,uVr,uSpark;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;uniform vec2 uJit;",
@@ -48,7 +52,12 @@ export function fragSource(w){
 "  float g=fract(10.0*sqrt(2.02-cos(q.x+0.15*sin(q.z))-cos(q.y+0.15*cos(q.z)))+(0.9+1.6*uMid)*w-0.35*uBeat);",
 "  return g*g*g*(1.0-smoothstep(0.9,1.0,g));",
 "}"
-  ].concat(w.packs?PACK_GLSL.concat(packSrc(w)):w.glsl,[
+  ].concat(w.flat||w.volume?[]:["#define map map0"],w.packs?PACK_GLSL.concat(packSrc(w)):w.glsl,w.flat||w.volume?[]:[
+/* Inside out (js/worlds.js): the world's own distance is map0, and with uInv above nothing the picture is drawn from
+   the shell less that distance, taken a little short: open space where the shapes were, walls where the open space was. */
+"#undef map",
+"uniform float uInv;",
+"float map(vec3 p){float d=map0(p);return uInv>0.0?(uInv-max(d,0.0))*"+IN_STEP.toFixed(2)+":d;}"],[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* A sprite: a small dot of light at o.xyz of size o.w, seen along the ray if nothing is in front of it: a disc with a
    faint halo, a times as strong, in the palette's own colour at hue, so it changes with the palette and drifts with it. There are eight (NFLIT in js/flits.js; a test holds the two
@@ -73,6 +82,14 @@ export function fragSource(w){
    uLens.z how far ahead the picture is sharp (0 for no lens). Every ray still passes through the same point at that
    depth, so what is there stays sharp, and what is nearer or further lands in a different place each frame. */
 "uniform vec3 uLens;",
+"uniform float uExp;", /* photo mode's Brightness: what the light is multiplied by before it is made ready for the screen */
+/* The light wave (js/lightwave.js): uLwR is how far out each of three bands of light is (0 for none), and uLwA how brightly each shows. */
+"uniform vec3 uLwR,uLwA;",
+/* Light shafts (js/choose.js): the open space is given a faint haze that is lit only where the way toward the light is
+   clear, so the gaps between shapes show as beams. uSh = how strong, how far toward the light to look, and how far
+   along the ray the haze reaches. The light comes from one fixed direction in the world, so the beams stay put as the
+   view turns. */
+"uniform vec3 uSh;",
 /* Ribbons (js/ribbons.js): lines of light through the points uRb, as wide as uRbW (0 for none), seen along the ray if
    nothing is in front. A point's fourth number is how brightly the line shows from it to the next; below nothing, the
    line stops there. The first RB_OWN points are the camera's ribbon, then RB_PEER for each friend, in the friend's own
@@ -221,6 +238,7 @@ export function fragSource(w){
 "  if(hit>0.5){",
 "    vec3 p=ro+rd*t;",
 "    map(p);vec4 tr=orb;vec3 sp=SP;",
+"    if(uInv>0.0)tr=tr/(1.0+abs(tr));", /* inside out, the walls stand away from the shapes, where a world's colour measures can run to large numbers: they are held between -1 and 1, or the colours come as rings too fine to see */
 "    float e=0.8*uPix*t+0.00005*SC;vec2 k=vec2(1.0,-1.0);",
 "    vec3 n=normalize(k.xyy*map(p+k.xyy*e)+k.yyx*map(p+k.yyx*e)+k.yxy*map(p+k.yxy*e)+k.xxx*map(p+k.xxx*e));",
 "    float nd=abs(dot(n,rd));",
@@ -297,6 +315,8 @@ export function fragSource(w){
 "      base=mix(base,vec3(0.5),0.5)*0.3;glow=rc*mix(vec3(1.0),pal(uHue+0.1*tr.w),0.25)*(0.75+0.6*fres);shine=2.0;quiet=1.0;",
 "    }",
 "#endif",
+"    vec3 lx=(vec3(t)-uLwR)/max(0.18*uLwR,vec3(1e-5));", /* the light wave: a soft band about a sixth as wide as it is far out */
+"    glow+=mix(vec3(1.0),pal(uHue+0.5+tr.w),0.6)*dot(uLwA,exp(-lx*lx))*0.9;",
 "    float vk=0.0,lit=0.05+0.7*dif+0.4*nd*nd;", /* how much of the surface's colour is the video, and how brightly the surface is lit */
 "    if(uVidK.x>0.5){",
 "      if(uVidK.x<1.5){vk=uVidK.y;lit=mix(lit,0.3+0.8*lit,vk);", /* video on the surfaces: laid on from the three axes, each weighted by how squarely the surface faces it */
@@ -313,6 +333,22 @@ export function fragSource(w){
 "    col=mix(fogc,col,exp(-FOG*t/SC));",
 "  }",
 "  col+=pal(uHue+0.7+r*0.1)*gw*gw*gw*0.22;",
+"#ifdef SHAFTS",
+"  if(uSh.x>0.0){",
+"    vec3 sl=normalize(vec3(0.42,0.80,0.43));float se=min(t,uSh.z);float sa=0.0;",
+"    float sj=fract(52.9829189*fract(dot(fc,vec2(0.06711056,0.00583715))));", /* each ray's eight places along it start a different part of a step in, so the steps show as fine grain and not as bands; Hold still moves fc, and the grain averages away */
+"    for(int i=0;i<6;i++){",
+"      float st=se*(float(i)+sj)/6.0;vec3 sq=ro+rd*st;float sv=1.0;float su=0.3*uSh.y;",
+"      for(int j=0;j<5;j++){", /* a short walk toward the light: the nearer anything comes to the way, the less light gets here */
+"        float sd=map(sq+sl*su);sv=min(sv,5.0*sd/su);",
+"        if(sv<0.01)break;",
+"        su+=max(sd,0.2*uSh.y);",
+"      }",
+"      sa+=clamp(sv,0.0,1.0)*exp(-FOG*st/SC);",
+"    }",
+"    col+=mix(vec3(1.0,0.95,0.85),pal(uHue+0.12),0.5)*sa/6.0*uSh.x*(se/uSh.z)*(0.35+0.65*pow(max(dot(rd,sl),0.0),3.0));", /* brightest looking toward the light */
+"  }",
+"#endif",
 "#endif",
 "#endif",
 "#ifndef FLAT",
@@ -341,7 +377,7 @@ export function fragSource(w){
 "  }",
 "#endif",
 "  col*=clamp(1.0-0.16*r*r,0.35,1.0)*(1.0-uVr.x*smoothstep(1.5,1.8,r));",
-"  col*=1.35;col=col/(1.0+0.2*col);",
+"  col*=1.35*uExp;col=col/(1.0+0.2*col);",
 "  float lum=dot(col,vec3(0.299,0.587,0.114));",
 "  col=clamp(mix(vec3(lum),col,1.4),0.0,1.0);",
 "  col=col*col*(3.0-2.0*col);",

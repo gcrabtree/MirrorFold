@@ -1,6 +1,6 @@
 /* The worlds: each one's shader distance function beside the same function in JavaScript. */
 import { fr, md, tile } from "./dom.js";
-import { pkD, pkMix, pkP, pkPer } from "./packing.js";
+import { packing, pkD, pkDeep, pkMix, pkP, pkPer } from "./packing.js";
 
 /* ---------- the worlds ----------
    Each has a GLSL distance estimator (map), the same estimator in JS (de) for the
@@ -847,9 +847,42 @@ export function packSrc(w){
  "}"]);
 }
 
-export function init(){
+/* Inside out: what was open space is solid and what was solid is open. A world's distance is only good outside its
+   shapes, so the swap is made a shell's width out from them: the new walls stand where the old distance equals the
+   shell, the new open space is everything nearer the old shapes than that, the old shapes themselves included, and
+   the new distance is the shell less the old one (an old distance below nothing, which inside some shapes is a large
+   number that means nothing, counts as nothing). It is taken a little short (IN_STEP), because far from the shapes
+   an old distance may grow faster than the real one. The shell is three tenths of the most open space the world has,
+   measured once for each world and packing on a fixed grid of places, so that every device gets the same number.
+   Not in the descent, whose distances grow with the camera's, nor in a cloud, zoom or pack world. */
+export const IN_STEP=0.8;
+export const IN_PART=0.3;
+export let inOut=false;
+const inKept={};
+export function setInOutNow(on){inOut=!!on;}
+export function inShell(w){
+  var k,per,i,j,l,best=0,d,n=7;
+  if(!inOut||!w||!w.de0||w.flat||w.volume||w.pack||pkDeep(w))return 0;
+  k=w.id+","+packing+(pkMix?"m":"");
+  if(inKept[k]===undefined){
+    per=w.period(0);
+    for(i=0;i<n;i++)for(j=0;j<n;j++)for(l=0;l<n;l++){d=w.de0((i/n-0.5)*per[0],(j/n-0.5)*per[1],(l/n-0.5)*per[2],0);if(d>best)best=d;}
+    inKept[k]=IN_PART*best;
+  }
+  return inKept[k];
+}
+/* A world's distance with the swap made, if it is on. Inside the new walls it answers nothing, not a number below
+   nothing as the shader does: flight takes the size of a distance for open room, and must not find room in a wall. */
+export function inDe(w,x,y,z,m){var d=w.de0(x,y,z,m),c=inShell(w);return c>0?Math.max(0,(c-Math.max(d,0))*IN_STEP):d;}
 
+/* What this file does when the app starts. main.js calls each file's init in turn. */
+export function init(){
+/* every world with a distance of its own keeps it as de0, and answers through inDe from now on */
+WORLDS.forEach(function(w){
+  if(w.flat||w.volume||typeof w.de!=="function")return;
+  w.de0=w.de;w.de=function(x,y,z,m){return inDe(w,x,y,z,m);};
+});
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={WORLDS, packKinds, packDe, packSrc};
+export const __dbg={WORLDS, packKinds, packDe, packSrc, IN_STEP, IN_PART, inKept, setInOutNow, inShell, inDe, get inOut(){return inOut},set inOut(v){inOut=v}};

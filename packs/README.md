@@ -50,7 +50,7 @@ A pack may also hold one `scene`: a place and the look that goes with it. Loadin
 
 | Field | Meaning | Allowed |
 |---|---|---|
-| `spot` | The world and place, exactly as **Share spot** writes it after the `#` in a link | a world id of lower-case letters, a hyphen, then 16 or 17 letters and digits; required |
+| `spot` | The world and place, exactly as **Share spot** writes it after the `#` in a link | a world id of lower-case letters, a hyphen, then 16 to 18 letters and digits; required |
 | `palette`, `motion`, `filter`, `overlay` | Names of the ones to use | 1 to 28 plain characters each |
 | `mirrors` | Number of mirror segments | 0 to 12; only 0, 3, 4, 6, 8 and 12 exist |
 | `fx` | The FX setting | `"glow"`, `"trails"` or `"clean"` |

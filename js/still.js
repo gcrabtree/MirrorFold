@@ -8,7 +8,9 @@ import { $, gl, toast } from "./dom.js";
 import { press, wakeHud } from "./input.js";
 import { landMode } from "./land.js";
 import { bindTex, link, pCopy, passTo } from "./programs.js";
+import { photoFocus, photoKey } from "./photo.js";
 import { sel } from "./state.js";
+import { inOut } from "./worlds.js";
 import { freeT, tA, target } from "./targets.js";
 import { vidOn } from "./video.js";
 import { stereo } from "./vr.js";
@@ -42,7 +44,12 @@ export function setStill(on){
   still=!!on;press($("bStill"),still);
   if(!still){stillN=0;jit[0]=jit[1]=0;lens[0]=lens[1]=lens[2]=0;}
 }
-export function setLens(i){lensI=LENS[i]?i:0;$("bLens").textContent="Lens blur "+LENS[lensI].name;press($("bLens"),lensI>0);}
+/* how many frames the kept picture takes at most, as things are set */
+export function stillMost(){return lensI>0&&!stereo&&!landMode&&!scene.world.flat?STILL_LENS:STILL_MAX;}
+export function setLens(i){
+  lensI=LENS[i]?i:0;
+  ["bLens","bPhLens"].forEach(function(id){$(id).textContent="Lens blur "+LENS[lensI].name;press($(id),lensI>0);}); /* the button in the Look group and its twin in photo mode */
+}
 /* How far ahead the picture is to be sharp: the depth of what is straight ahead, walked to with the world's distance.
    de(x,y,z) is that distance, reach how far to look; 0 if there is nothing ahead within reach. */
 export function lensFocus(de,pos,F,reach){
@@ -69,14 +76,14 @@ export function stillAim(fr){
   var blur=lensI>0&&!stereo&&!landMode&&!scene.world.flat,most=blur?STILL_LENS:STILL_MAX,a,r;
   if(!still||landMode===1||vidOn){stillN=0;jit[0]=jit[1]=0;lens[0]=lens[1]=lens[2]=0;return;}
   var now=[cam.pos[0],cam.pos[1],cam.pos[2],cam.F[0],cam.F[1],cam.F[2],cam.Up[0],cam.Up[1],cam.Up[2],fr.m],i,same=true;
-  var k=scene.world.id+","+tA.w+","+tA.h+","+sel.mi+","+sel.pi+","+(stereo?1:0)+","+packing+(pkWave?"w":"")+(pkMix?"m":"")+","+lensI+(scene.world.flat?","+zoomKey():"");
+  var k=scene.world.id+","+tA.w+","+tA.h+","+sel.mi+","+sel.pi+","+(stereo?1:0)+","+packing+(pkWave?"w":"")+(pkMix?"m":"")+","+lensI+(inOut?"i":"")+","+photoKey()+(scene.world.flat?","+zoomKey():"");
   for(i=0;i<10;i++){if(Math.abs(now[i]-was[i])>1e-9)same=false;was[i]=now[i];}
   if(k!==key){key=k;same=false;}
   stillN=same?Math.min(most,stillN+1):1;
   shots=same?shots+1:0;
   jit[0]=halton(shots%64+1,2)-0.5;jit[1]=halton(shots%64+1,3)-0.5;
   if(!blur){lens[0]=lens[1]=lens[2]=0;return;}
-  if(!same||!(focus>0))focus=focusNow(fr);
+  if(!same||!(focus>0))focus=focusNow(fr)*photoFocus(); /* photo mode moves the sharp depth nearer or further */
   /* this frame's place on the lens: the places fill a disc evenly as the frames go by */
   r=LENS[lensI].a*Math.min(focus,3*Math.max(fr.dist,1e-4))*Math.sqrt(halton(shots%256+1,5));a=6.2831853*halton(shots%256+1,7);
   lens[0]=r*Math.cos(a);lens[1]=r*Math.sin(a);lens[2]=focus;
@@ -108,6 +115,6 @@ $("bLens").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={jit, lens, LENS, STILL_LENS, setLens, lensFocus, focusNow, get lensI(){return lensI},set lensI(v){lensI=v}, get lensDepth(){return focus},set lensDepth(v){focus=v}, STILL_MAX, FS_ACC, halton, setStill, stillFree, stillAim, stillBlend, tR, was,
+export const __dbg={stillMost, jit, lens, LENS, STILL_LENS, setLens, lensFocus, focusNow, get lensI(){return lensI},set lensI(v){lensI=v}, get lensDepth(){return focus},set lensDepth(v){focus=v}, STILL_MAX, FS_ACC, halton, setStill, stillFree, stillAim, stillBlend, tR, was,
   get still(){return still},set still(v){still=v}, get stillN(){return stillN},set stillN(v){stillN=v}, get pAcc(){return pAcc},set pAcc(v){pAcc=v},
   get rcur(){return rcur},set rcur(v){rcur=v}, get shots(){return shots},set shots(v){shots=v}, get key(){return key},set key(v){key=v}};

@@ -691,10 +691,10 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
 
 // ---- flying together (js/together.js)
 {
-  const { tgClean, tgPlace, TG_MAX, TG_TURN, TG_KINDS } = togetherM, J = JSON.stringify, none = { pa: "", lk: "", mi: "", mo: "", ov: "", sf: "", ld: "", pk: "", pu: "", sh: "" };
+  const { tgClean, tgPlace, TG_MAX, TG_TURN, TG_KINDS } = togetherM, J = JSON.stringify, none = { pa: "", lk: "", mi: "", mo: "", ov: "", sf: "", ld: "", pk: "", pu: "", sh: "", io: "" };
   expect("a guest's message comes through as its world and its place", J(tgClean(J({ w: "sponge", q: [0.1, -0.5, 0.5], extra: "<b>" }), false)) === J({ w: "sponge", q: [0.1, -0.5, 0.5] }));
   expect("a host's message comes through as its world, morph clock and the others", J(tgClean(J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }), true)) === J(Object.assign({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }, none)));
-  const all = { pa: "Wood", lk: "Neon", mi: "6", mo: "Melt", ov: "Rings", sf: "marble", ld: "canyon over", pk: "nested", pu: "wave", sh: "one kind" };
+  const all = { pa: "Wood", lk: "Neon", mi: "6", mo: "Melt", ov: "Rings", sf: "marble", ld: "canyon over", pk: "nested", pu: "wave", sh: "one kind", io: "on" };
   expect("and with everything the host's Journey changes, by name", J(tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, all, { zz: "x" })), true)) === J(Object.assign({ w: "a", mt: 1, o: [] }, all)));
   expect("one of those that is not a short name drops the message", [{ pa: 7 }, { pa: "x".repeat(41) }, { lk: ["Neon"] }, { lk: "" }, { pa: null }, { mi: 6 }, { mo: {} }, { ov: "x".repeat(41) }, { sf: false }, { ld: 0 }, { pk: 2 }, { pu: 1 }, { sh: ["mixed"] }].every(x => tgClean(J(Object.assign({ w: "a", mt: 1, o: [] }, x)), true) === null));
   expect("the host's message names every kind Journey changes but the world, which it names as w", J(TG_KINDS.map(k => k[1]).sort()) === J(flightM.FL_KINDS.filter(k => k !== "world").sort()));
@@ -913,6 +913,43 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const deep = { kind: "deep", e: [0.048, 0.032, 1], grid: 3, F0: [0, 0, -1], up: [0, 1, 0], rolls: 1, sway: 0 }, d0 = lp.lapPose(deep, 0, P), d1 = lp.lapPose(deep, 1, P);
   expect("the descent's loop ends a third as far from the centre as it began, facing the same way", near(d1.pos.map(x => 3 * x), d0.pos, 1e-9) && near(d0.F, d1.F, 1e-6) && near(d0.Up, d1.Up, 1e-6) && Math.abs(d0.pos[2] - 13.5) < 1e-9);
   expect("the pulse that stands in for the music is soft, the same at a lap's end as at its start, and absent when asked", Math.abs(lp.lapBeat(0, 8) - lp.lapBeat(1, 8)) < 1e-9 && lp.lapBeat(0, 8) <= 0.5 && lp.lapBeat(0.0625, 8) < 1e-9 && lp.lapBeat(0.3, 0) === 0);
+}
+// ---- inside out, the light wave, light shafts, photo mode, postcards and the QR code
+{
+  const { __dbg: wd } = await import("../js/worlds.js"), { __dbg: lw } = await import("../js/lightwave.js"), { __dbg: ph } = await import("../js/photo.js"), { __dbg: qr } = await import("../js/qr.js");
+  const sh = await import("../js/shaders.js"), { WORLDS } = wd;
+  // inside out: a made-up world of balls of radius 0.5 on a grid of 2, whose most open place is sqrt(3) - 0.5 from a ball
+  const f = c => c - 2 * Math.round(c / 2), toy = { id: "toytest", period: () => [2, 2, 2], de0: (x, y, z) => Math.hypot(f(x), f(y), f(z)) - 0.5 };
+  expect("with inside out off a world's distance is its own", wd.inShell(toy) === 0 && Math.abs(wd.inDe(toy, 1, 1, 1, 0) - (Math.sqrt(3) - 0.5)) < 1e-12);
+  wd.setInOutNow(true);
+  const c = wd.inShell(toy);
+  expect("the shell is a fixed part of the most open space the world has", c > 0.2 && c <= wd.IN_PART * (Math.sqrt(3) - 0.5) + 1e-12 && wd.inShell(toy) === c);
+  expect("inside out, the old shapes are open, the old open space is wall, and the wall stands the shell's width from the shapes", wd.inDe(toy, 0, 0, 0, 0) === c * wd.IN_STEP && wd.inDe(toy, 1, 1, 1, 0) === 0 && Math.abs(wd.inDe(toy, 0.5 + c / 2, 0, 0, 0) - (c / 2) * wd.IN_STEP) < 1e-12);
+  expect("it is not made in a cloud, zoom or pack world", wd.inShell({ id: "v", volume: true, de0: () => 1, period: () => [2, 2, 2] }) === 0 && wd.inShell({ id: "p", pack: true, de0: () => 1, period: () => [2, 2, 2] }) === 0 && wd.inShell({ id: "n", period: () => [2, 2, 2] }) === 0);
+  wd.setInOutNow(false);
+  const surf = WORLDS.find(w => !w.volume && !w.flat && !w.packs), cloud = WORLDS.find(w => w.volume && !w.flat), plain = sh.fragSource(surf);
+  expect("a world with surfaces is drawn through the swap, taken short by the same part as the script's, and a cloud world is not", plain.includes("#define map map0") && plain.includes("(uInv-max(d,0.0))*" + wd.IN_STEP.toFixed(2)) && !sh.fragSource(cloud).includes("map0"));
+  sh.setShafts(true); const beams = sh.fragSource(surf), beamsCloud = sh.fragSource(cloud); sh.setShafts(false);
+  expect("the light shafts are in the shaders only while in use, and never in a cloud world's", !plain.includes("#define SHAFTS") && beams.includes("#define SHAFTS") && !beamsCloud.includes("#define SHAFTS") && plain.includes("uniform vec3 uLwR,uLwA;") && plain.includes("uniform float uExp;"));
+  // the light wave
+  const r = [0, 0, 0], st = { since: 9, was: 0 };
+  expect("a wave starts when the beat rises, and not again while the beat stays up or too soon after", lw.lwStep(r, st, 0.9, 0.05, 10) && r[0] > 0 && !lw.lwStep(r, st, 0.9, 0.05, 10) && (st.was = 0, !lw.lwStep(r, st, 0.9, 0.05, 10)) && r[1] === 0);
+  st.was = 0; st.since = lw.LW_GAP;
+  expect("a second starts once the gap has passed, and each runs out and ends at the limit of sight", lw.lwStep(r, st, 0.9, 0.05, 10) && r[1] > 0 && r[0] > r[1] && (lw.lwStep(r, st, 0, lw.LW_TIME, 10), r[0] === 0 && r[1] === 0));
+  expect("a quiet beat starts none, and at most three are out at once", (st.was = 0, st.since = 9, !lw.lwStep(r, st, lw.LW_BEAT - 0.01, 0.05, 10)) && [0, 1, 2, 3].map(() => { st.was = 0; st.since = 9; return lw.lwStep(r, st, 1, 0.01, 10); }).join() === "true,true,true,false");
+  expect("a wave shows nothing at the camera or at the end, and most part of the way out", lw.lwBright(0) === 0 && lw.lwBright(0.02) === 0 && lw.lwBright(1) === 0 && lw.lwBright(0.3) > 0.6 && lw.lwBright(0.3) > lw.lwBright(0.1) && lw.lwBright(0.3) > lw.lwBright(0.8) && lw.LW_GAP >= 0.5);
+  // photo mode
+  expect("a slider in the middle changes nothing, and its ends are a number and one over it", ph.photoGain(0, 4) === 1 && Math.abs(ph.photoGain(100, 4) - 4) < 1e-12 && Math.abs(ph.photoGain(-100, 4) - 0.25) < 1e-12 && ph.photoGain(999, 4) === ph.photoGain(100, 4));
+  expect("outside photo mode the picture is as it was", ph.photoFov() === 1 && ph.photoExp() === 1 && ph.photoFocus() === 1 && ph.photoKey() === "");
+  // postcards
+  expect("a spot's code is set out in fours for reading, and read back with spaces and capitals as typed", ph.cardSpaced("julia-0123456789abcdefgh") === "julia-0123 4567 89ab cdef gh" && ph.cardCode(" Julia-0123 4567 89AB cdef gh ") === "julia-0123456789abcdefgh" && ph.cardCode("https://example.org/x/#julia-0123456789abcdef") === "julia-0123456789abcdef");
+  expect("anything that is not a world's name, a hyphen and 16 to 18 letters and digits is no code", ["", "julia", "julia-0123", "julia-0123456789abcdefghi", "ju1ia-0123456789abcdef", "julia-0123456789abcde!", "<b>-0123456789abcdef", "flight=abc", 7, null].every(t => ph.cardCode(t) === ""));
+  // the QR code
+  const q = qr.qrMake("https://example.org/MirrorFold/#julia-0123456789abcdefgh"), at = (x, y) => q.m[y * q.n + x];
+  expect("the check bytes are the standard's (its own worked example)", qr.qrCheck([32, 91, 11, 120, 209, 114, 220, 77, 67, 64, 236, 17, 236, 17, 236, 17], 10).join() === "196,35,39,119,235,215,231,226,93,23");
+  expect("a link to a spot fits a code of size 4 or 5, and a code holds what the standard says it does", (q.n === 33 || q.n === 37) && [1, 2, 3, 4, 5, 6, 7, 8, 9].map(qr.qrRoom).join() === "14,26,42,62,84,106,122,152,180");
+  expect("it has the three corner squares, the dotted lines and the one dark square that is always there", [[0, 0], [q.n - 7, 0], [0, q.n - 7]].every(([x, y]) => at(x, y) && at(x + 6, y + 6) && !at(x + 1, y + 1) && at(x + 3, y + 3) && at(x + 2, y + 2)) && at(8, 6) && !at(9, 6) && at(6, 8) && at(8, q.n - 8) === 1);
+  expect("text too long for the largest size, or with a letter that does not fit a byte, gives no code", qr.qrMake("x".repeat(181)) === null && qr.qrMake("世") === null && qr.qrMake(7) === null && qr.qrMake("x".repeat(180)).n === 53 && qr.qrMake("").n === 21);
 }
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {

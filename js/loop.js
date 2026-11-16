@@ -15,6 +15,8 @@ import { autopilot, jMove, journey, stepJourney } from "./journey.js";
 import { landMode, moveLand } from "./land.js";
 import { lapClock, lapFrame, lapOn, lapShot } from "./lap.js";
 import { stepRibbons } from "./ribbons.js";
+import { stepLightWave } from "./lightwave.js";
+import { photoFrame } from "./photo.js";
 import { learnFrame, learnOpen, openLearn } from "./learn.js";
 import { setMusic, soundFrame } from "./listen.js";
 import { midiFrame } from "./midi.js";
@@ -110,6 +112,7 @@ function frame(now){
   sparkFrame(notes);stepSpark(notes);
   stepFlits(notes);
   stepTogether(notes); /* flying together: say where this camera is, and place the others */
+  stepLightWave(notes); /* the bands of light that run outward on the beat (js/lightwave.js) */
   stepRibbons(notes); /* the lines of light left behind the camera and behind friends (js/ribbons.js) */
   musicFollowsSpeed(notes.spN);
 
@@ -125,6 +128,7 @@ function frame(now){
   pickFrame(); /* the list buttons say what is chosen */
   pictureFrame(); /* Save picture takes the frame now, while it is still on the canvas */
   lapShot(); /* a loop being recorded is handed the frame */
+  photoFrame(); /* photo mode: a large picture is saved once it has settled (js/photo.js) */
   statsEnd(rawDt);
 }
 

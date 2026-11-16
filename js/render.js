@@ -13,10 +13,14 @@ import { packing, pkDeep, pkMix, pkMw, pkWave, pkZoom } from "./packing.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { doorN, doorTurn, doorU, doorView } from "./doors.js";
 import { lapOn } from "./lap.js";
+import { photoExp, photoFov } from "./photo.js";
+import { lwA, lwR } from "./lightwave.js";
+import { shaftU } from "./choose.js";
 import { rbNone, rbU, rbW } from "./ribbons.js";
 import { flitA, flitU } from "./flits.js";
 import { peerU } from "./together.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
+import { inShell } from "./worlds.js";
 import { doorTarget, landQ, tA, tB, tF, tT, target } from "./targets.js";
 import { vidAlone, videoScene, videoUniforms } from "./video.js";
 import { jit, lens, stillN } from "./still.js";
@@ -47,7 +51,7 @@ function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip,
   gl.uniform1f(U.uFade,1);gl.uniform2f(U.uJit,jit[0],jit[1]);
   gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrTan,vrEye);
   gl.uniform1f(U.uPix,stereo?vrTan:2/(Math.sqrt(T.w*T.h)*1.15));
-  gl.uniform1f(U.uFov,fovNow);
+  gl.uniform1f(U.uFov,fovNow);gl.uniform1f(U.uExp,photoExp()); /* photo mode's Brightness; 1 outside it */
   gl.uniform1f(U.uLandOn,landOver&&!LK[landKind].mirror?1:0);bindTex(6,landOver?tL.t:null);gl.uniform1i(U.uLandT,6); /* always a unit of its own: left at unit 0 it can name the very picture being drawn into, and the chip then refuses to draw */
   gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
   setPal(U);
@@ -56,6 +60,9 @@ function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip,
   gl.uniform4fv(U.uRb,live?rbU:rbNone);gl.uniform1f(U.uRbW,live?rbW:0);
   gl.uniform3f(U.uLens,lens[0]*sc,lens[1]*sc,lens[2]*sc);
   gl.uniform1f(U.uPk,packing); /* the packing is the same both sides of a doorway */
+  gl.uniform3f(U.uLwR,lwR[0]*sc,lwR[1]*sc,lwR[2]*sc);gl.uniform3f(U.uLwA,lwA[0],lwA[1],lwA[2]); /* the light wave, at the far side's scale beyond a doorway */
+  var sh=shaftU(w,pos);gl.uniform3f(U.uSh,sh[0],sh[1],sh[2]);
+  gl.uniform1f(U.uInv,inShell(w)); /* inside out is the same both sides too, each world with its own shell */
   if(w.packs){var mw=pkMw();gl.uniform2f(U.uPkO,pkWave?1:0,pkMix?1:0);gl.uniform4f(U.uMw,mw[0],mw[1],mw[2],mw[3]);gl.uniform1f(U.uPkZ,pkDeep(w)?pkZoom(pos,w.grid):1);}
   gl.uniform1f(U.uSurf,sel.si);if(per)gl.uniform3f(U.uPer,per[0],per[1],per[2]);
   /* the doorway: its ring and the picture inside it for the world in use; for the world beyond, where the ring stands in it. The picture has a unit of its own for the same reason the land's has. */
@@ -75,7 +82,7 @@ export function drawScene(fr){
   var dt=fr.dt,m=fr.m,w=fr.w,dist=fr.dist,bt=fr.bt,mp=fr.mp,hp=fr.hp,spN=fr.spN,orbU=fr.orbU,sparkU=fr.sparkU;
   var fx=FX[sel.fi],wHue=w.hue;
   if(stillN){bt=0;mp=0;hp=0;} /* while the picture is being sharpened the scene takes nothing from the sound, or the frames would not match */
-  var fovNow=calm?1.15:(1.15-0.13*spN-0.05*bt-0.25*cam.boost+0.025*Math.sin(clock.time*0.4));
+  var fovNow=(calm?1.15:(1.15-0.13*spN-0.05*bt-0.25*cam.boost+0.025*Math.sin(clock.time*0.4)))*photoFov(); /* photo mode's Zoom */
   /* VR viewer geometry, from the Cardboard viewer's published numbers: lenses 64 mm apart and 39 mm from the screen.
      The browser does not report the screen's physical size, so one CSS pixel is taken as 0.162 mm, which is close on current phones.
      Worked out before anything is drawn, since the effect passes need the numbers whatever the scene is. */

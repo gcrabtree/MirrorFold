@@ -7,14 +7,14 @@ import { wakeHud } from "./input.js";
 import { started } from "./loop.js";
 import { spawnOrb } from "./orbs.js";
 import { deMany } from "./pack-worlds.js";
-import { PACKINGS, packing, pkDeep, pkMix, pkOn, pkWave, setPackingNow, setPkMix, setPkWave } from "./packing.js";
+import { PACKINGS, packing, pkDeep, pkMix, pkMul, pkOn, pkWave, pkZoom, setPackingNow, setPkMix, setPkWave } from "./packing.js";
 import { fillPalettes, setPalette } from "./palettes.js";
 import { build, setProgSet } from "./programs.js";
-import { setChrome } from "./shaders.js";
+import { setChrome, setShafts, shafts } from "./shaders.js";
 import { applySpot, fromHash } from "./spots.js";
 import { LOOKS, MOTIONS, OVERLAYS, OVS, SURFACES, mirrors, sel } from "./state.js";
 import { beginWarp, tr, warpThen } from "./warp.js";
-import { WORLDS } from "./worlds.js";
+import { WORLDS, inOut, setInOutNow } from "./worlds.js";
 import { zoomEnter } from "./zoom.js";
 export const scene={
   world:null,   /* the current entry of WORLDS */
@@ -70,7 +70,7 @@ export function setPacking(i){
    world in use is made at once if it has not been made that way yet. False if it cannot be made. */
 export function progSync(){
   var c=SURFACES[sel.si].name==="chrome";
-  setChrome(c);setProgSet((pkMix?"m":"")+(c?"c":""),WORLDS);
+  setChrome(c);setProgSet((pkMix?"m":"")+(c?"c":"")+(shafts?"f":""),WORLDS);
   if(scene.world&&!scene.world.pack){try{build(scene.world)}catch(_){return false;}}
   return true;
 }
@@ -92,6 +92,32 @@ export function setMix(on){
   $("bMix").textContent="Shapes "+(pkMix?"mixed":"one kind");press($("bMix"),pkMix);
   try{localStorage.setItem("mirrorfold-shapes",pkMix?"mixed":"one kind")}catch(_){}
   if(w&&pkOn(w)&&was!==pkMix){placeCam(w);spawnOrb();}
+}
+/* Light shafts: a haze in the open space, lit where the way to the light is clear (js/shaders.js). Kept in this
+   browser. It needs a larger program for each world, made when it is first wanted. */
+export function setShaftsOn(on){
+  setShafts(on);
+  if(!progSync()){setShafts(false);progSync();toast("Light shafts do not work on this device.");}
+  $("bShaft").textContent="Light shafts "+(shafts?"on":"off");press($("bShaft"),shafts);
+  try{localStorage.setItem("mirrorfold-shafts",shafts?"on":"off")}catch(_){}
+}
+const shU=[0,0,0];
+/* for the shader: how strong the shafts are in a world seen from pos, how far toward the light it looks, and how far the haze reaches */
+export function shaftU(w,pos){
+  var per,h;
+  if(!shafts||w.flat||w.volume){shU[0]=shU[1]=shU[2]=0;return shU;}
+  per=w.period(0);h=0.18*Math.min(per[0],per[1],per[2])/pkMul(w)*(pkDeep(w)?pkZoom(pos,w.grid)*1.5:1);
+  shU[0]=calm?0.7:1.1;shU[1]=h;shU[2]=Math.min(14*h,0.6*w.maxd*(pkDeep(w)?pkZoom(pos,w.grid):1));
+  return shU;
+}
+/* Inside out: open space and solid swapped (js/worlds.js). Kept in this browser. Everything that was open is now
+   solid, so the camera is put in open space again. */
+export function setInside(on){
+  var w=scene.world,was=inOut;
+  setInOutNow(on);
+  $("bInside").textContent="Inside out "+(inOut?"on":"off");press($("bInside"),inOut);
+  try{localStorage.setItem("mirrorfold-inside",inOut?"on":"off")}catch(_){}
+  if(w&&was!==inOut&&!w.flat&&!w.volume&&!w.pack){placeCam(w);spawnOrb();}
 }
 /* The user's choice of either: behind a transition where it shows, and with a word of why nothing is seen where it does not. */
 function requestOpt(set,on,name){
@@ -141,6 +167,15 @@ fillWorlds();
 fillPalettes();
 (function(){var s="",i;try{s=localStorage.getItem("mirrorfold-packing")||""}catch(_){}for(i=0;i<PACKINGS.length;i++)if(PACKINGS[i].name===s)setPackingNow(i);setPacking(packing);})();
 (function(){var a="",b="";try{a=localStorage.getItem("mirrorfold-pulse")||"";b=localStorage.getItem("mirrorfold-shapes")||""}catch(_){}setPulse(a==="wave");setMix(b==="mixed");})();
+(function(){var a="";try{a=localStorage.getItem("mirrorfold-inside")||""}catch(_){}setInside(a==="on");})();
+(function(){var a="";try{a=localStorage.getItem("mirrorfold-shafts")||""}catch(_){}setShaftsOn(a==="on");})();
+$("bShaft").addEventListener("click",function(){setShaftsOn(!shafts);toast(shafts?"Light shafts on. Light falls in beams through the gaps between the shapes. It is heavier to draw.":"Light shafts off");wakeHud();});
+$("bInside").addEventListener("click",function(){
+  var on=!inOut,w=scene.world,fn=function(){setInside(on)};
+  if(w.flat||w.volume||w.pack||pkDeep(w)){fn();toast("Inside out is "+(on?"on":"off")+". It does not show in a zoom, cloud or pack world, or in the descent.");}
+  else if(!started||calm||!warpThen(fn))fn();
+  wakeHud();
+});
 $("bPulse").addEventListener("click",function(){requestOpt(setPulse,!pkWave,"Pulse "+(pkWave?"together":"wave"));wakeHud()});
 $("bMix").addEventListener("click",function(){requestOpt(setMix,!pkMix,"Shapes "+(pkMix?"one kind":"mixed"));wakeHud()});
 selWorld.addEventListener("change",function(){requestWorld(+this.value);wakeHud()});
@@ -160,4 +195,4 @@ window.addEventListener("hashchange",function(){
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={setOvS, scene, fillMotions, fillLooks, fillOverlays, setOverlay, setMotion, setLook, fillWorlds, setWorldNow, requestWorld,
-  setMirrors, placeCam, setPacking, requestPacking, progSync, setPulse, setMix, requestOpt, get selMusic(){return selMusic},set selMusic(v){selMusic=v}, get selJT(){return selJT},set selJT(v){selJT=v}, get selWorld(){return selWorld},set selWorld(v){selWorld=v}, get selOv(){return selOv},set selOv(v){selOv=v}, get selMotion(){return selMotion},set selMotion(v){selMotion=v}, get selLook(){return selLook},set selLook(v){selLook=v}};
+  setMirrors, placeCam, setPacking, requestPacking, progSync, setPulse, setMix, setInside, setShaftsOn, shaftU, requestOpt, get selMusic(){return selMusic},set selMusic(v){selMusic=v}, get selJT(){return selJT},set selJT(v){selJT=v}, get selWorld(){return selWorld},set selWorld(v){selWorld=v}, get selOv(){return selOv},set selOv(v){selOv=v}, get selMotion(){return selMotion},set selMotion(v){selMotion=v}, get selLook(){return selLook},set selLook(v){selLook=v}};

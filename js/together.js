@@ -32,7 +32,7 @@ export const TG_WAIT=30;      /* seconds a joining may take before it is given u
 export const TG_WAIT_HOST=170; /* seconds a guest waits for the host's description: a phone stops the host's page while they are in another app sending the link, and it answers only when they come back */
 export const TG_ASK=20;       /* seconds a request to come or to go stays open for its answer */
 /* What the host's messages name besides the world, and the kind of Journey change each is: a guest takes each up when the host changes it. */
-export const TG_KINDS=[["pa","palette"],["lk","filter"],["mi","mirrors"],["mo","motion"],["ov","overlay"],["sf","surface"],["ld","land"],["pk","packing"],["pu","pulse"],["sh","shapes"]];
+export const TG_KINDS=[["pa","palette"],["lk","filter"],["mi","mirrors"],["mo","motion"],["ov","overlay"],["sf","surface"],["ld","land"],["pk","packing"],["pu","pulse"],["sh","shapes"],["io","inside"]];
 /* The words about going to someone's spot: "come" (come to me), "join" (may I come to you), "coming" (yes to come),
    "here" (this is my place: the answer to coming, and the yes to join), "no". */
 export const TG_ASKS=["come","join","coming","here","no"];

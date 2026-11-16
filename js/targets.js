@@ -64,7 +64,7 @@ export function autoDetail(now,dt){
   if(frames<30)return;
   var avg=acc/frames,st=null,d;acc=0;frames=0;
   if(loading&&++loading>20){loading=0;try{localStorage.removeItem(LKEY)}catch(_){}} /* 600 pictures drawn: this visit got going */
-  if(DETAIL[di]!=="auto")return;
+  if(DETAIL[di]!=="auto"||shot)return; /* a large picture is slow by its nature, and is not a reason to give up sharpness */
   d=detailNext(avg,now,ds);
   if(!d)return;
   st=detailStep(d==="down",d==="roomy",q,landQ,landMode>0);
@@ -90,9 +90,17 @@ export const tT=[null,null];
 export const tB=[null,null]; /* the last two finished pictures, kept only while an unreviewed pack filter is being smoothed */
 
 export const DETAIL=["auto","sharp","fast"];
+export let shot=0; /* the long side, in pixels, of a large picture being made (js/photo.js); 0 for the usual size */
+/* Make the picture large for a photograph, or put it back (0). The size is held to what the chip can draw into. */
+export function setShot(px){shot=px>0?px:0;resize();}
 export function resize(){
-  var dpr=Math.min(window.devicePixelRatio||1,DETAIL[di]==="sharp"?3:2)*q;
+  var dpr=Math.min(window.devicePixelRatio||1,DETAIL[di]==="sharp"?3:2)*q,k,most;
   var w=Math.max(2,Math.floor(canvas.clientWidth*dpr)),h=Math.max(2,Math.floor(canvas.clientHeight*dpr));
+  if(shot){
+    most=Math.min(shot,gl.getParameter(gl.MAX_TEXTURE_SIZE)||shot,(gl.getParameter(gl.MAX_VIEWPORT_DIMS)||[shot])[0]||shot);
+    k=most/Math.max(canvas.clientWidth,canvas.clientHeight,1);
+    w=Math.max(2,Math.floor(canvas.clientWidth*k));h=Math.max(2,Math.floor(canvas.clientHeight*k));
+  }
   if(canvas.width!==w||canvas.height!==h||!tA){
     canvas.width=w;canvas.height=h;
     freeT(tA);freeT(tT[0]);freeT(tT[1]);freeT(tB[0]);freeT(tB[1]);freeT(tF[0]);freeT(tF[1]);tF=[null,null];freeT(tD);tD=null;landFreeTargets();stillFree();
@@ -117,5 +125,5 @@ window.addEventListener("resize",resize);resize();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={doorTarget, get tD(){return tD}, setDetail, autoDetail, detailStep, get landQ(){return landQ},set landQ(v){landQ=v}, target, freeT, tT, tB, DETAIL, resize, get di(){return di},set di(v){di=v}, get q(){return q},set q(v){q=v},
+export const __dbg={setShot, get shot(){return shot}, doorTarget, get tD(){return tD}, setDetail, autoDetail, detailStep, get landQ(){return landQ},set landQ(v){landQ=v}, target, freeT, tT, tB, DETAIL, resize, get di(){return di},set di(v){di=v}, get q(){return q},set q(v){q=v},
   get acc(){return acc},set acc(v){acc=v}, get frames(){return frames},set frames(v){frames=v}, ds, DKEY, LKEY, DWAIT, DWAIT_MAX, detailNext, detailSaved, detailLower, keepDetail, get fellBack(){return fellBack},set fellBack(v){fellBack=v}, get loading(){return loading},set loading(v){loading=v}, get tA(){return tA},set tA(v){tA=v}, get tF(){return tF},set tF(v){tF=v}};

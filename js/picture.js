@@ -4,6 +4,7 @@ import { $, canvas, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
 import { loadPack, packOfScene } from "./pack-io.js";
 let wanted=null; /* what to do with the next finished frame's PNG bytes, or null */
+let card=null;   /* what to do with the next finished frame itself, while it is still on the canvas, or null */
 
 /* the check number PNG keeps at the end of each of its parts */
 export function crc32(b,from,to){
@@ -57,7 +58,11 @@ export function pngGet(b,word,most){
 
 /* Ask for the next finished frame as PNG bytes with the scene inside. The frame loop calls pictureFrame when the frame is on the canvas. */
 export function pictureMake(then){wanted=then;}
+/* Ask to be handed the canvas when the next frame is on it (a postcard draws its own picture from it). */
+export function pictureCard(then){card=then;}
 export function pictureFrame(){
+  var c=card;
+  if(c){card=null;c(canvas);}
   if(!wanted)return;
   var then=wanted,text=asciiJson(packOfScene());wanted=null;
   if(!canvas.toBlob){then(null);return;}
@@ -105,4 +110,4 @@ window.addEventListener("drop",function(e){e.preventDefault();loadFile(e.dataTra
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={crc32, asciiJson, isPng, u32, pngPut, pngGet, pictureMake, pictureFrame, save, loadFile, get wanted(){return wanted},set wanted(v){wanted=v}};
+export const __dbg={pictureCard, crc32, asciiJson, isPng, u32, pngPut, pngGet, pictureMake, pictureFrame, save, loadFile, get wanted(){return wanted},set wanted(v){wanted=v}};
