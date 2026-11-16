@@ -851,6 +851,17 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("a mixed world's shader holds its own shape and two others, a plain one only its own", plain.indexOf("float sh0(") > 0 && plain.indexOf("float sh1(") < 0 && mixed.indexOf("float sh2(") > 0 && mixed.indexOf("SHAPE") < 0);
   expect("the chrome surface is in the shaders only while it is in use, and never in a cloud world's", plain.indexOf("#define CHROME") < 0 && chr.indexOf("#define CHROME") > 0 && chrCloud.indexOf("#define CHROME") < 0);
 }
+// ---- fly together: the connection report
+{
+  const { tgAddr, tgCand, tgCands, tgCount, tgSplit, tgVerdict } = togetherM;
+  const sdp = "v=0\r\na=candidate:1 1 udp 2113937151 abcd-12.local 50000 typ host\r\na=candidate:2 1 UDP 1677729535 203.0.113.7 40001 typ srflx raddr 0.0.0.0 rport 0\r\na=candidate:3 1 udp 1677729535 203.0.113.7 40002 typ srflx raddr 0.0.0.0 rport 0\r\na=candidate:4 1 tcp 1518280447 192.168.1.5 9 typ host tcptype active\r\n";
+  const L = tgCands(sdp), one = L.slice(0, 2);
+  expect("a description's ways of being reached are read: kind, protocol, address and port", L.length === 4 && L[1].typ === "srflx" && L[1].proto === "udp" && L[1].addr === "203.0.113.7" && L[1].port === 40001 && tgCand("nonsense") === null && tgCands(null).length === 0);
+  expect("they are counted by kind", tgCount(L) === "2 host, 2 srflx" && tgCount([]) === "none");
+  expect("one outside address with two ports is the sign of a network that cannot be met directly; with one port it is not", tgSplit(L) && !tgSplit(one));
+  expect("addresses in the report are shortened and named by kind", tgAddr("203.0.113.7") === "203.0.x.x (public)" && tgAddr("192.168.1.5") === "192.168.x.x (private)" && tgAddr("100.72.3.4") === "100.72.x.x (carrier's shared range)" && tgAddr("abcd-12.local") === "hidden name" && tgAddr("2001:db8:1:2::3").indexOf("2001:db8:x") === 0 && tgAddr("") === "none");
+  expect("a failure is put down to the side with no outside address, or to the network that splits its ports", /^This side never/.test(tgVerdict([L[0]], one)) && /^The other side never learned/.test(tgVerdict(one, [L[0]])) && /the other network gives a different outside port/.test(tgVerdict(one, L)) && /this network gives a different outside port/.test(tgVerdict(L, one)) && /never arrived/.test(tgVerdict(one, [])) && /^Both sides learned an outside address and neither/.test(tgVerdict(one, one)));
+}
 // ---- strange doorways, ribbons, lens blur and loops
 {
   const { doorLieTurn, doorTurn, doorUnturn, doorSmall, DOOR_SMALL, DOOR_LIES } = doorsM, { __dbg: rb } = await import("../js/ribbons.js"), { __dbg: lp } = await import("../js/lap.js");
