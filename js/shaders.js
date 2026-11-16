@@ -40,15 +40,25 @@ export function fragSource(w){
   ].concat(w.glsl,[
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* A sprite: a small dot of light at o.xyz of size o.w, seen along the ray if nothing is in front of it: a disc with a
-   faint halo, a times as strong, in the palette's own colour at hue, so it changes with the palette and drifts with it. There are six (NFLIT in js/flits.js; a test holds the two
+   faint halo, a times as strong, in the palette's own colour at hue, so it changes with the palette and drifts with it. There are eight (NFLIT in js/flits.js; a test holds the two
    equal), each named by a fixed number below, since a shader here may not pick from a list by a number worked out as
    it runs. */
-"uniform vec4 uFl[6];uniform float uFlA[6];",
+"uniform vec4 uFl[8];uniform float uFlA[8];",
 "vec3 flit(vec4 o,float a,vec3 ro,vec3 rd,float tmax,float hue){",
 "  vec3 oc=o.xyz-ro;float tc=dot(oc,rd);",
 "  if(tc<=0.0||tc>=tmax)return vec3(0.0);",
 "  float R2=o.w*o.w;float d2=max(dot(oc,oc)-tc*tc,0.0);",
 "  return pal(uHue+hue)*((1.0-smoothstep(R2*0.5,R2,d2))*0.95+exp(-d2/(R2*6.0))*0.25)*a;",
+"}",
+/* Someone flying with you (js/together.js): a ring of light with a dot at its middle and a faint halo, at o.xyz and of
+   size o.w, in the palette's colour at hue, seen along the ray if nothing is in front of it. There are three (TG_MAX;
+   a test holds the two equal). */
+"uniform vec4 uPe[3];",
+"vec3 friend(vec4 o,vec3 ro,vec3 rd,float tmax,float hue){",
+"  vec3 oc=o.xyz-ro;float tc=dot(oc,rd);",
+"  if(tc<=0.0||tc>=tmax)return vec3(0.0);",
+"  float x=max(dot(oc,oc)-tc*tc,0.0)/(o.w*o.w);",
+"  return pal(uHue+hue)*(smoothstep(0.35,0.55,x)*(1.0-smoothstep(0.8,1.0,x))*0.95+(1.0-smoothstep(0.02,0.07,x))*0.9+exp(-x/5.0)*0.2);",
 "}",
 /* a glowing ball at o.xyz of size o.w, seen along the ray, if nothing is in front of it: a bright core and a soft halo in a palette colour */
 "vec3 ball(vec4 o,vec3 ro,vec3 rd,float tmax,float hue){",
@@ -248,6 +258,11 @@ export function fragSource(w){
 "  if(uFl[3].w>0.0)col+=flit(uFl[3],uFlA[3],ro,rd,tmax,0.81);",
 "  if(uFl[4].w>0.0)col+=flit(uFl[4],uFlA[4],ro,rd,tmax,0.98);",
 "  if(uFl[5].w>0.0)col+=flit(uFl[5],uFlA[5],ro,rd,tmax,1.15);",
+"  if(uFl[6].w>0.0)col+=flit(uFl[6],uFlA[6],ro,rd,tmax,1.32);",
+"  if(uFl[7].w>0.0)col+=flit(uFl[7],uFlA[7],ro,rd,tmax,1.49);",
+"  if(uPe[0].w>0.0)col+=friend(uPe[0],ro,rd,tmax,0.10);",
+"  if(uPe[1].w>0.0)col+=friend(uPe[1],ro,rd,tmax,0.43);",
+"  if(uPe[2].w>0.0)col+=friend(uPe[2],ro,rd,tmax,0.76);",
 "#endif",
 "  col*=clamp(1.0-0.16*r*r,0.35,1.0)*(1.0-uVr.x*smoothstep(1.5,1.8,r));",
 "  col*=1.35;col=col/(1.0+0.2*col);",

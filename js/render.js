@@ -11,6 +11,7 @@ import { palCur, setPal } from "./palettes.js";
 import { driven } from "./packs.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { flitA, flitU } from "./flits.js";
+import { peerU } from "./together.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
 import { landQ, tA, tB, tF, tT, target } from "./targets.js";
 import { vidAlone, videoScene, videoUniforms } from "./video.js";
@@ -64,7 +65,7 @@ export function drawScene(fr){
   gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
   setPal(U);
   videoUniforms(U,tA.w,tA.h,!stereo,fr.per);
-  gl.uniform4fv(U.uFl,flitU);gl.uniform1fv(U.uFlA,flitA);
+  gl.uniform4fv(U.uFl,flitU);gl.uniform1fv(U.uFlA,flitA);gl.uniform4fv(U.uPe,peerU);
   gl.uniform1f(U.uSurf,sel.si);if(fr.per)gl.uniform3f(U.uPer,fr.per[0],fr.per[1],fr.per[2]);
   gl.uniform3f(U.uPos,cam.pos[0],cam.pos[1],cam.pos[2]);
   camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];

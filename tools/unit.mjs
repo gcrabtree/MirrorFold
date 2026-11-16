@@ -25,6 +25,8 @@ import { __dbg as sparkM } from "../js/spark.js";
 import { __dbg as flitsM } from "../js/flits.js";
 import { __dbg as midiM } from "../js/midi.js";
 import { __dbg as songM } from "../js/song.js";
+import { __dbg as flightM } from "../js/flightdata.js";
+import { __dbg as togetherM } from "../js/together.js";
 import { __dbg as worldsM } from "../js/worlds.js";
 import { tidy, slug, problems, packText, indexEntry } from "./packlib.mjs";
 import { handle, answer, packField } from "./offer.mjs";
@@ -452,6 +454,38 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     }
   }
   expect("a sprite keeps clear of the surfaces and keeps moving, in six worlds", bad.length === 0, bad.join("; "));
+  // a flock: two followers and a leader, thirty seconds in three worlds. The followers must stay near the leader, apart from each other, and clear of the surfaces.
+  {
+    const { flitFollow, flitGap, flitPerch } = flitsM; let badF = [], badP = [];
+    for (const id of ["foam", "thicket", "julia"]) {
+      const w = WORLDS.find(x => x.id === id), m = 0.3, per = w.period(m), de = (x, y, z, mm) => w.de(x, y, z, mm);
+      let p = null, best = -1;
+      for (let k = 0; k < 300; k++) { const q = [0, 1, 2].map(i => (Math.random() - 0.5) * per[i]), d = de(q[0], q[1], q[2], m); if (d > best) { best = d; p = q; } }
+      const s = Math.max(0.01, Math.min(0.6, best * 0.6)), mk = (off, zig) => ({ p: p.map((x, i) => x + off[i] * 0.07 * s), h: [0, 0, 1], wob: [0, 0, 0], r: 0.07 * s, age: 0, life: 99, zig, burst: 0, wait: 0, pace: 1, perch: 0 });
+      const lead = mk([0, 0, 0], 2), fs = [mk([4, 0, 0], 1e9), mk([0, 4, 0], 1e9)];
+      let far = 0, close = 1e9, wall = 1e9, farLate = 0;
+      for (let n = 0; n < 1800; n++) {
+        flitMove(lead, de, m, s, w.speed, per, 1 / 60);
+        for (const f of fs) { flitFollow(f, lead, fs.filter(g => g !== f), per, 1 / 60); flitMove(f, de, m, s, w.speed, per, 1 / 60); }
+        for (const f of fs) { const g = flitGap(f.p, lead.p, per), L = Math.hypot(g[0], g[1], g[2]) / f.r; far = Math.max(far, L); if (n > 600) farLate = Math.max(farLate, L); wall = Math.min(wall, de(f.p[0], f.p[1], f.p[2], m) / f.r); }
+        const g2 = flitGap(fs[0].p, fs[1].p, per); close = Math.min(close, Math.hypot(g2[0], g2[1], g2[2]) / fs[0].r);
+      }
+      if (!(far < 60 && wall > 1)) badF.push(id + " furthest " + far.toFixed(1) + " sizes from the leader, nearest a surface " + wall.toFixed(2) + ", nearest each other " + close.toFixed(2));
+      // one that settles: started in the open, it must reach a surface, sit without moving while the camera is far, and go when the camera comes
+      const f = mk([0, 0, 0], 3); f.role = 2; const farCam = p.map((x, i) => x + per[i] / 2);
+      let sat = -1, wallP = 1e9;
+      for (let n = 0; n < 3600 && sat < 0; n++) { if (!flitPerch(f, de, m, s, w.speed, farCam, per, 1 / 60)) flitMove(f, de, m, s, w.speed, per, 1 / 60); wallP = Math.min(wallP, de(f.p[0], f.p[1], f.p[2], m) / f.r); if (f.perch === 1) sat = n; }
+      if (sat < 0) { badP.push(id + " never settled"); continue; }
+      const at = f.p.slice(); for (let n = 0; n < 300; n++) flitPerch(f, de, m, s, w.speed, farCam, per, 1 / 60);
+      const drift = Math.hypot(...flitGap(at, f.p, per)) / f.r, dSit = de(f.p[0], f.p[1], f.p[2], m) / f.r;
+      flitPerch(f, de, m, s, w.speed, f.p.map(x => x + 0.5 * s), per, 1 / 60);
+      const went = f.perch === 2 && f.burst === 1;
+      for (let n = 0; n < 600; n++) { if (!flitPerch(f, de, m, s, w.speed, farCam, per, 1 / 60)) flitMove(f, de, m, s, w.speed, per, 1 / 60); wallP = Math.min(wallP, de(f.p[0], f.p[1], f.p[2], m) / f.r); }
+      if (!(wallP > 1 && drift < 0.5 && dSit > 1.8 && dSit < 2.6 && went)) badP.push(id + " nearest " + wallP.toFixed(2) + " sizes, moved " + drift.toFixed(2) + " while sitting at " + dSit.toFixed(2) + ", scattered " + went);
+    }
+    expect("followers stay with their leader and clear of the surfaces, in three worlds", badF.length === 0, badF.join("; "));
+    expect("a sprite that settles reaches a surface, sits still just off it, and goes when the camera comes", badP.length === 0, badP.join("; "));
+  }
 }
 
 // ---- Throw a light: bouncing
@@ -604,6 +638,77 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const solid = worldsM.WORLDS.filter(w => !w.volume && !w.flat);
   expect("every solid world has a dense end, found the same way each time", solid.every(w => { const a = denseSide(w); return (a === 1 || a === -1) && a === denseSide(w); }));
   expect("a cloud or zoom world, with no surfaces to measure, gets the high end", worldsM.WORLDS.filter(w => w.volume).every(w => denseSide(w) === 1));
+}
+
+// ---- a recorded flight as data (js/flightdata.js)
+{
+  const { FL_DT, FL_MAX, FL_BYTES, FL_TURN, flSample, flRead, flWrite, flAt, flPack, flUnpack } = flightM;
+  const per = [4, 6, 2], unit = v => { const l = Math.hypot(...v); return v.map(x => x / l); }, cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  // a flight round a slanted circle that crosses the world's wrap, rolling as it goes, with a change of world two thirds through
+  const N = 40, bytes = new Uint8Array(N * FL_BYTES), truth = [];
+  const at = t => { const a = t * 0.35, pos = [1.7 + 1.2 * Math.cos(a), 0.4 * Math.sin(a), 0.8 * Math.sin(a) + 0.9], F = unit([-Math.sin(a), 0.3 * Math.cos(a), Math.cos(a)]);
+    const R0 = unit(cross([0, 1, 0], F)), U0 = cross(F, R0), r = 0.4 * Math.sin(t * 0.5), Up = U0.map((x, i) => x * Math.cos(r) + R0[i] * Math.sin(r));
+    return { pos: pos.map((x, i) => x - per[i] * Math.floor(x / per[i] + 0.5)), F, Up, mt: 600 + 3 * t }; };
+  for (let i = 0; i < N; i++) { const s = at(i * FL_DT); truth.push(s); flWrite(bytes, i, flSample(s.pos, per, s.F, s.Up, s.mt, i < 27 ? 0 : 1)); }
+  const fl = { seed: 123456789, worlds: ["sponge", "julia"], ev: [[0, "world", "sponge"], [0, "palette", "Wood"], [13.5, "world", "julia"], [4.2, "surface", "grain"]], n: N, bytes };
+  const gap = (a, b) => Math.hypot(...a.map((x, i) => { let d = x - b[i]; return d - per[i] * Math.round(d / per[i]); }));
+  let worstS = 0, worstF = 0;
+  for (let i = 0; i < N; i++) { const r = flRead(bytes, i), s = truth[i]; worstS = Math.max(worstS, gap(r.q.map((x, k) => x * per[k]), s.pos)); worstF = Math.max(worstF, Math.hypot(...r.F.map((x, k) => x - s.F[k])), Math.hypot(...r.Up.map((x, k) => x - s.Up[k]))); }
+  expect("a sample read back is where it was written, to a few ten-thousandths", worstS < 3e-4 && worstF < 1e-3, worstS + " " + worstF);
+  let worstP = 0, worstD = 0, worstO = 0, jump = 0, prev = null;
+  for (let t = 0.5; t < 12.5; t += 1 / 60) {
+    const r = flAt(fl, t, 0, () => per), s = at(t);
+    worstP = Math.max(worstP, gap(r.pos, s.pos)); worstD = Math.max(worstD, Math.hypot(...r.F.map((x, k) => x - s.F[k])), Math.hypot(...r.Up.map((x, k) => x - s.Up[k])));
+    worstO = Math.max(worstO, Math.abs(r.F[0] * r.Up[0] + r.F[1] * r.Up[1] + r.F[2] * r.Up[2]), Math.abs(Math.hypot(...r.F) - 1), Math.abs(Math.hypot(...r.Up) - 1));
+    if (prev) jump = Math.max(jump, gap(r.pos, prev)); prev = r.pos;
+  }
+  expect("between samples the camera is on the path that was flown, across the world's wrap", worstP < 0.004 && worstD < 0.01, worstP + " " + worstD);
+  expect("and its directions stay one unit long and square to each other", worstO < 1e-9, worstO);
+  expect("and it never jumps", jump < 0.02, jump);
+  expect("the morph's clock is carried within one round of it", Math.abs(flAt(fl, 3.2, 0, () => per).mt - ((600 + 3 * 3.2) % FL_TURN)) < 0.02);
+  expect("round a change of world the camera is given only to the world the flight is in", flAt(fl, 12, 1, () => per) === null && flAt(fl, 15, 0, () => per) === null && flAt(fl, 13.2, 0, () => per) !== null && flAt(fl, 13.2, 1, () => per) !== null && flAt(fl, 15, 1, () => per) !== null);
+  const text = flPack(fl), back = flUnpack(text);
+  expect("a flight packed into a link's letters reads back the same", back && back.seed === 123456789 && back.n === N && back.worlds.join() === "sponge,julia" && back.bytes.length === bytes.length && back.bytes.every((x, i) => x === bytes[i]));
+  expect("its changes come back in the order of their times", back && back.ev.map(e => e[1] + e[2] + e[0]).join() === "worldsponge0,paletteWood0,surfacegrain4.2,worldjulia13.5", back && JSON.stringify(back.ev));
+  expect("a link's letters are only letters, digits, - and _ and one full stop", /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(text));
+  expect("four minutes of flight is under eleven thousand letters", Math.ceil((FL_MAX / FL_DT) * FL_BYTES * 4 / 3) < 10000);
+  const head = o => Buffer.from(JSON.stringify(o)).toString("base64url"), body = text.split(".")[1];
+  const bad = [ "", "abc", "a.b", text + "!", text.replace(".", ".."), "x".repeat(50000) + "." + body,
+    head({ v: 2, seed: 1, w: ["sponge"], e: [] }) + "." + body, head({ v: 1, seed: 1, w: [], e: [] }) + "." + body,
+    head({ v: 1, seed: 1, w: ["sponge"], e: [] }) + "." + body /* a sample names a second world that is not in the list */,
+    head({ v: 1, seed: 1, w: ["a", "b"], e: [[1, 99, "x"]] }) + "." + body, head({ v: 1, seed: 1, w: ["a", "b"], e: [["1", 0, "x"]] }) + "." + body,
+    head({ v: 1, seed: 1, w: ["a", "b"], e: [[1, 0, { toString: 1 }]] }) + "." + body, head({ v: 1, seed: 1, w: ["a", 7], e: [] }) + "." + body,
+    head({ v: 1, seed: 1, w: ["a", "b"], e: [[1e9, 0, "x"]] }) + "." + body, head({ v: 1, seed: 1, w: ["a", "x".repeat(61)], e: [] }) + "." + body,
+    head({ v: 1, seed: 1, w: ["a", "b"], e: [] }) + "." + Buffer.alloc(FL_BYTES).toString("base64url"), head([1, 2]) + "." + body, head(null) + "." + body, 7, null ];
+  expect("text that is not a flight is refused, whatever is wrong with it", bad.every(b => flUnpack(b) === null), bad.map((b, i) => flUnpack(b) === null ? "" : i).join(""));
+  expect("a seed that is not a number is taken as none", flUnpack(head({ v: 1, seed: "9", w: ["a", "b"], e: [] }) + "." + body).seed === 0);
+}
+
+// ---- flying together (js/together.js)
+{
+  const { tgClean, tgPlace, tgPack, tgUnpack, TG_MAX, TG_TURN } = togetherM, J = JSON.stringify;
+  expect("a guest's message comes through as its world and its place", J(tgClean(J({ w: "sponge", q: [0.1, -0.5, 0.5], extra: "<b>" }), false)) === J({ w: "sponge", q: [0.1, -0.5, 0.5] }));
+  expect("a host's message comes through as its world, morph clock and the others", J(tgClean(J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }), true)) === J({ w: "julia", mt: 12.5, o: [[0, "julia", 0, 0.2, -0.2], [2, "sponge", 0.5, 0, 0]] }));
+  const badG = ["", "{", "null", "7", J([1]), J({ w: "", q: [0, 0, 0] }), J({ w: "x".repeat(41), q: [0, 0, 0] }), J({ w: 5, q: [0, 0, 0] }), J({ w: "a", q: [0, 0] }), J({ w: "a", q: [0, 0, 0.6] }), J({ w: "a", q: [0, 0, "0"] }), J({ w: "a", q: [0, 0, null] }), J({ w: "a", q: "000" }), '{"w":"a","q":[0,0,1e999]}', J({ w: "a", q: [0, 0, 0], pad: "x".repeat(2000) })];
+  expect("a guest's message with anything wrong in it is dropped", badG.every(b => tgClean(b, false) === null) && tgClean(7, false) === null && tgClean(null, false) === null, badG.map((b, i) => tgClean(b, false) === null ? "" : i).join(","));
+  const h = o => J(Object.assign({ w: "a", mt: 1, o: [] }, o));
+  const badH = [J({ w: "a", q: [0, 0, 0] }), h({ mt: -1 }), h({ mt: TG_TURN + 2 }), h({ mt: "1" }), h({ o: "x" }), h({ o: [[0, "a", 0, 0, 0], [1, "a", 0, 0, 0], [2, "a", 0, 0, 0], [3, "a", 0, 0, 0]] }), h({ o: [[4, "a", 0, 0, 0]] }), h({ o: [[0.5, "a", 0, 0, 0]] }), h({ o: [[-1, "a", 0, 0, 0]] }), h({ o: [[0, 7, 0, 0, 0]] }), h({ o: [[0, "a", 0, 0]] }), h({ o: [[0, "a", 0, 0, 9]] }), h({ o: [null] })];
+  expect("a host's message with anything wrong in it is dropped", badH.every(b => tgClean(b, true) === null), badH.map((b, i) => tgClean(b, true) === null ? "" : i).join(","));
+  const per = [4, 4, 4];
+  expect("someone first heard of is drawn where they are, at the copy nearest the camera", tgPlace(null, [0.45, 0, -0.25], per, [-1.9, 0.1, 0], 1 / 60).every((x, i) => Math.abs(x - [-2.2, 0, -1][i]) < 1e-9));
+  let at = tgPlace(null, [0.45, 0, 0], per, [1.5, 0, 0], 1 / 60), far = 0;
+  for (let i = 0; i < 60; i++) { const n = tgPlace(at, [-0.45, 0, 0], per, [1.5, 0, 0], 1 / 60); far = Math.max(far, Math.abs(n[0] - at[0])); at = n; }
+  expect("they slide to a new place the short way across the world's wrap, without a jump", far < 0.08 && Math.abs(at[0] - 2.2) < 0.01, far + " " + at[0]);
+  const sdp = "v=0\r\no=- 4611731400430051336 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\na=candidate:1 1 udp 2113937151 192.0.2.7 51234 typ host\r\n".repeat(3).replace(/^/, "");
+  const packed = await tgPack("o", sdp), back = await tgUnpack(packed);
+  expect("an invitation packed into a link's letters reads back the same", back && back.t === "o" && back.s === sdp && /^[zr][A-Za-z0-9_-]+$/.test(packed));
+  expect("and is packed smaller than it was", packed.length < sdp.length, packed.length + " of " + sdp.length);
+  const raw = o => "r" + Buffer.from(J(o)).toString("base64url");
+  const badP = ["", "zzzz", "r", "x" + packed.slice(1), packed + "!", raw({ t: "x", s: sdp }), raw({ t: "o", s: 7 }), raw({ t: "o", s: "hello" }), raw({ t: "o", s: "v=0" + "x".repeat(20001) }), raw(null), raw([1]), "z" + Buffer.from("not packed at all").toString("base64url"), "r" + "A".repeat(17000), 7];
+  const res = await Promise.all(badP.map(b => tgUnpack(b)));
+  expect("text that is not an invitation or a reply is refused", res.every(x => x === null), res.map((x, i) => x === null ? "" : i).join(","));
+  const src = (await import("node:fs")).readFileSync(new URL("../js/shaders.js", import.meta.url), "utf8");
+  expect("the scene shader has a line for each friend, and no more", src.includes("uniform vec4 uPe[" + TG_MAX + "];") && src.includes("uPe[" + (TG_MAX - 1) + "].w>0.0") && !src.includes("uPe[" + TG_MAX + "].w"));
 }
 
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them

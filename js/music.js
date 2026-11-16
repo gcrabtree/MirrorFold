@@ -23,7 +23,14 @@ const PLAN=[["intro",8],["build",8],["drop",16],["break",8],["build",8],["drop",
 const seq={on:false,timer:0,next:0,step:0};
 let C=null,M=null,song=null; /* the audio context in use, the nodes made for it, and the song being played */
 
-function rnd(n){return Math.floor(Math.random()*n);}
+let songSeed=0; /* 0: songs are made by chance. Otherwise the number the next song is made from, so that a recorded flight can have its song again */
+/* a chance number for making a song: from the seed if there is one (each use moves the seed on), else by chance */
+function songRand(){
+  if(!songSeed)return Math.random();
+  songSeed=(Math.imul(songSeed,1664525)+1013904223)>>>0;if(!songSeed)songSeed=1;
+  return songSeed/4294967296;
+}
+function rnd(n){return Math.floor(songRand()*n);}
 function hz(midi){return 440*Math.pow(2,(midi-69)/12);}
 function degree(k){return SCALE[((k%7)+7)%7]+12*Math.floor(k/7);} /* step k of the scale, in semitones */
 function euclid(k,n,i){return (i*k)%n<k;} /* k hits spread as evenly as they will go over n steps */
@@ -113,7 +120,7 @@ function impact(t,f){ /* the boom on a drop */
 
 /* ---- the song ---- */
 function newSong(){
-  var s={root:[45,48,50,52,43,47][rnd(6)],prog:PROGS[rnd(PROGS.length)],gate:GATES[rnd(GATES.length)],rolling:Math.random()<0.5,
+  var s={root:[45,48,50,52,43,47][rnd(6)],prog:PROGS[rnd(PROGS.length)],gate:GATES[rnd(GATES.length)],rolling:songRand()<0.5,
     arpHits:[9,11,13][rnd(3)],arpShape:rnd(3),tune:[],bars:[]},i,d=4+rnd(3);
   PLAN.forEach(function(p){for(i=0;i<p[1];i++)s.bars.push({sec:p[0],i:i,n:p[1]});});
   /* the tune: one bar of notes that wanders by small steps of the scale, then the same bar ending elsewhere */
@@ -184,6 +191,11 @@ export function startBuilt(){
   if(!song)song=newSong();
   seq.on=true;seq.next=C.currentTime+0.15;seq.timer=setInterval(tick,90);
 }
+/* Begin a new song now, from its first bar. With a seed (a whole number, not 0) the song and those after it are the ones that seed always gives. */
+export function restartBuilt(seed){
+  songSeed=seed>>>0;song=newSong();seq.step=0;
+  if(seq.on&&C)seq.next=C.currentTime+0.15;
+}
 export function stopBuilt(){
   if(M)M.out.gain.setTargetAtTime(0,C.currentTime,0.15);
   seq.on=false;clearInterval(seq.timer);
@@ -204,4 +216,4 @@ export function musicRender(ctx,bars){
 export const __dbg={BPM, STEP, SCALE, PROGS, GATES, PLAN, seq, rnd, hz, degree,
   euclid, gain, filter, graph, env, osc, hiss, kick, clap, hat,
   bass, arp, lead, pad, riser, impact, newSong, chordAt, playStep, tick,
-  startBuilt, stopBuilt, musicFollowsSpeed, musicRender, get C(){return C},set C(v){C=v}, get M(){return M},set M(v){M=v}, get song(){return song},set song(v){song=v}};
+  startBuilt, restartBuilt, songRand, stopBuilt, musicFollowsSpeed, musicRender, get C(){return C},set C(v){C=v}, get M(){return M},set M(v){M=v}, get song(){return song},set song(v){song=v}};

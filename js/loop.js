@@ -6,6 +6,7 @@ import { clock, morphValue, tickClock } from "./clock.js";
 import { morph } from "./controls.js";
 import { $, canvas, errBox, toast } from "./dom.js";
 import { measure } from "./flight.js";
+import { flightClock, flightFrame } from "./flightplay.js";
 import { stepFlits } from "./flits.js";
 import { wakeHud } from "./input.js";
 import { stepZoom } from "./zoom.js";
@@ -27,6 +28,7 @@ import { sparkFrame, stepSpark } from "./spark.js";
 import { still, stillAim, stillBlend } from "./still.js";
 import { statsBegin, statsEnd, statsOn } from "./stats.js";
 import { autoDetail, detailLower, fellBack } from "./targets.js";
+import { stepTogether, togetherClock } from "./together.js";
 import { videoFrame } from "./video.js";
 import { stepWarp } from "./warp.js";
 export let started=false; /* the start card has been left */
@@ -76,6 +78,8 @@ function frame(now){
   /* what time it is, what the music is doing */
   soundFrame(notes);
   if(!still)tickClock(notes,morph,morph===2?songAim(scene.world,clock.time):null); /* Hold still stops the clocks, and with them the morph, the colour drift and the turning mirrors */
+  flightClock(notes); /* a recorded flight being played makes its changes and sets the morph (js/flightplay.js) */
+  togetherClock(notes); /* flying together: a guest takes the host's world and morph (js/together.js) */
   stepWarp(dt);
   notes.m=morphValue();
 
@@ -91,10 +95,12 @@ function frame(now){
   turn(notes);
   move(notes);
   stepZoom(notes);
+  flightFrame(notes); /* a recorded flight being played puts the camera on its path; one being recorded notes it */
   if(landMode)moveLand(notes);
   stepOrb(notes);
   sparkFrame(notes);stepSpark(notes);
   stepFlits(notes);
+  stepTogether(notes); /* flying together: say where this camera is, and place the others */
   musicFollowsSpeed(notes.spN);
 
   /* drawing */

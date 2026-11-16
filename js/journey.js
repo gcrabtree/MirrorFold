@@ -10,13 +10,14 @@ import { landH, landKind, landMode, lhead, lpos, setLand, setLandKind } from "./
 import { LK } from "./landscapes.js";
 import { liveAudio, soundChanged } from "./listen.js";
 import { heard } from "./song.js";
+import { tgGuest } from "./together.js";
 import { packD } from "./pack-worlds.js";
 import { PALETTES, palOpen, setPalette } from "./palettes.js";
 import { LOOKS, MOTIONS, OVERLAYS, SURFACES, mirrors, sel } from "./state.js";
 import { setStill } from "./still.js";
 import { pickWeighted, saveTaste, taste, tasteClear, tasteCount, tasteNudge, tasteOf } from "./taste.js";
 import { keepAwake, stereo } from "./vr.js";
-import { tr, warpThen } from "./warp.js";
+import { tr, warpThen as warpLater } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 export let jt; /* the template in use */
 export let journey=false;   /* Journey is on */
@@ -60,8 +61,8 @@ export function findS(n){var a=allS();for(var i=0;i<a.length;i++)if(a[i].name===
 export function jCur(k){return k==="world"?scene.world.id:k==="palette"?PALETTES[sel.pi].name:k==="mirrors"?String(mirrors[sel.mi]):k==="motion"?MOTIONS[sel.moi].name:k==="filter"?LOOKS[sel.lki].name:k==="surface"?SURFACES[sel.si].name:k==="land"?(landMode?LK[landKind].id+(landMode===2?" over":" alone"):"none"):OVERLAYS[sel.ovi].name;}
 export function jNone(k){return k==="mirrors"?"0":k==="surface"?"plain":"none";}
 function jIndex(k,key){var o=catOf(k).opts;for(var i=0;i<o.length;i++)if(o[i][0]===key)return i;return -1;}
-export function jApply(k,key){ /* false means it could not start yet (a transition is running) and should be retried */
-  var i=jIndex(k,key);
+export function jApply(k,key,now){ /* false means it could not start yet (a transition is running) and should be retried. With now, a change that would go behind a transition is made at once (a recorded flight setting up its start). */
+  var i=jIndex(k,key),warpThen=now?function(fn){fn();return true;}:warpLater;
   if(i<0||key===jCur(k))return true;
   if(k==="world"){if(tr.warpDir!==0)return false;requestWorld(i);return true;}
   if(k==="mirrors")return warpThen(function(){setMirrors(i)});
@@ -188,6 +189,7 @@ export function stepJourney(dt){
     var ck=CATS[ci].k,cf=jt[ck];
     if(cf.mode==="off"){if(jCur(ck)!==jNone(ck))jApply(ck,jNone(ck));continue;}
     if(cf.mode!=="random")continue;
+    if(ck==="world"&&tgGuest())continue; /* flying together as a guest: the host chooses the world */
     var due=J[ck].t>J[ck].next;
     if(ck==="world"&&cf.trigger==="sound"&&liveAudio()){ /* wait for the music to shift, but never forever */
       due=((soundChanged||heard.drop)&&J.world.t>Math.max(10,cf.every*0.25))||J.world.t>cf.every*2.5;

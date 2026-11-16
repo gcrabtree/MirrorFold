@@ -1,6 +1,8 @@
-/* Sprites: a few small dots of light that wander through the world on paths of their own. Each one drifts along slowly,
+/* Sprites: a few small dots of light that live in the world. Each one drifts along slowly on a path of its own,
    turning a little all the time, now and then zigs off a new way with a short burst of speed, steers away from the
    surfaces so that it never runs into one, fades in when it arrives and out when it leaves, and swells on the beat.
+   Two wander alone. Three fly as a flock: one leads and two keep near it. Three more settle on a surface and sit
+   there until the camera comes close, then scatter.
    They are drawn by the scene shader at their true places, so a wall in front of one hides it and the VR viewer gives
    each eye its own view of them. */
 import { cam } from "./camera.js";
@@ -11,9 +13,11 @@ import { started } from "./loop.js";
 import { facing } from "./spark.js";
 import { still } from "./still.js";
 import { vidAlone } from "./video.js";
-export const NFLIT=6;          /* how many there are; the scene shader has a line for each (js/shaders.js) */
+export const NFLIT=8;          /* how many there are; the scene shader has a line for each (js/shaders.js) */
+export const FLIT_ROLE=[0,0,0,1,1,2,2,2]; /* what each does: 0 wanders (the third of them leads the flock), 1 follows the leader, 2 settles on a surface */
+export const FLIT_LEAD=2;      /* which sprite the followers follow */
 export const FLIT_IN=0.6,FLIT_OUT=0.8; /* seconds a sprite takes to fade in and to fade out */
-export const flits=[];         /* each: where it is (p), the way it is heading (h, a unit vector), the slow push that keeps turning it (wob), its size (r), its age and the age it leaves at, seconds to its next zig, how much of a zig's burst of speed is left (1 to 0), and seconds until it comes back (0 while it is out) */
+export const flits=[];         /* each: where it is (p), the way it is heading (h, a unit vector), the slow push that keeps turning it (wob), its size (r), its age and the age it leaves at, seconds to its next zig, how much of a zig's burst of speed is left (1 to 0), seconds until it comes back (0 while it is out), its role (FLIT_ROLE), how fast it goes beside the usual (pace), and for one that settles: 0 on its way to a surface, 1 sitting, 2 off again */
 export let flitsOn=true;       /* the Sprites switch */
 export let flitU, flitA;       /* for the shader: each sprite's place and size (0 for none), and how strongly it shows */
 
@@ -46,7 +50,62 @@ function arrive(f,w,m,s){
   for(i=0;i<3;i++)f.p[i]=cam.pos[i]+s*(cam.F[i]*a[0]+cam.R[i]*a[1]+cam.Up[i]*a[2]);
   if(w.de(f.p[0],f.p[1],f.p[2],m)<0.3*s){f.wait=0.3;return;}
   f.h=anyWay();f.wob=[0,0,0];f.r=0.07*s;
-  f.age=0;f.life=10+15*Math.random();f.zig=2+5*Math.random();f.burst=0;f.wait=0;
+  f.age=0;f.life=10+15*Math.random();f.zig=2+5*Math.random();f.burst=0;f.wait=0;f.pace=1;f.perch=0;
+  if(f.role===2)f.life=20+20*Math.random(); /* one that settles stays longer */
+}
+/* Bring a follower in beside its leader, to stay as long as the leader does. If the leader is out or about to go, or the place is not in the open, it tries again shortly. */
+function arriveBy(f,lead,w,m,s){
+  var i,a=anyWay();
+  f.wait=0.4;
+  if(lead.wait>0||lead.life-lead.age<3)return;
+  for(i=0;i<3;i++)f.p[i]=lead.p[i]+a[i]*5*lead.r;
+  if(w.de(f.p[0],f.p[1],f.p[2],m)<0.3*s)return;
+  f.h=[lead.h[0],lead.h[1],lead.h[2]];f.wob=[0,0,0];f.r=0.07*s;
+  f.age=0;f.life=lead.life-lead.age;f.zig=1e9;f.burst=0;f.wait=0;f.pace=1;f.perch=0; /* a follower does not zig by itself */
+}
+/* the shortest way from a to b in a world that repeats every per */
+export function flitGap(a,b,per){
+  var i,q=[0,0,0];
+  for(i=0;i<3;i++){q[i]=b[i]-a[i];q[i]-=per[i]*Math.floor(q[i]/per[i]+.5);}
+  return q;
+}
+/* A follower's turn toward its flock, before its ordinary step: toward the leader when further than five sizes from it
+   and away when nearer, away from any mate nearer than three sizes, and round toward the way the leader is heading.
+   It hurries when it has fallen behind and takes up the leader's burst of speed. */
+export function flitFollow(f,lead,mates,per,dt){
+  var q=flitGap(f.p,lead.p,per),L=Math.hypot(q[0],q[1],q[2])||1e-9,want=5*f.r,k=Math.max(-1,Math.min(2,(L-want)/want))*2.5*dt/L;
+  var px=q[0]*k+lead.h[0]*1.5*dt,py=q[1]*k+lead.h[1]*1.5*dt,pz=q[2]*k+lead.h[2]*1.5*dt,j,v,l,t;
+  for(j=0;j<mates.length;j++){
+    v=flitGap(mates[j].p,f.p,per);l=Math.hypot(v[0],v[1],v[2]);
+    if(l>1e-9&&l<3*f.r){t=(1-l/(3*f.r))*4*dt/l;px+=v[0]*t;py+=v[1]*t;pz+=v[2]*t;}
+  }
+  f.h=flitTurn(f.h,px,py,pz);
+  f.pace=L>want?Math.min(1.8,1+(L-want)/(4*want)):0.85;
+  f.burst=Math.max(f.burst,lead.burst);
+}
+/* One step for a sprite that settles, while it has not yet gone off again. True if this was its whole step.
+   On its way (perch 0): within four times the open space of a surface it turns toward it and flies in, stopping a
+   little over two of its sizes off; further out it wanders as any sprite does. Sitting (perch 1): it stays that far
+   off the surface, moving with it as the world morphs, until the camera (cp) comes within three times the open space;
+   then it leaves along the surface's direction and away from the camera with a burst of speed, and is a wanderer. */
+export function flitPerch(f,de,m,s,wSpeed,cp,per,dt){
+  var i,d,n,q,l,sp;
+  if(f.perch>1)return false;
+  d=de(f.p[0],f.p[1],f.p[2],m);
+  if(f.perch===0&&d>4*s)return false;
+  f.r+=(0.07*s-f.r)*Math.min(1,2*dt);
+  n=facing(de,f.p[0],f.p[1],f.p[2],m,Math.max(1e-4,f.r*0.5));
+  if(f.perch===1){
+    sp=Math.max(-f.r,Math.min(f.r,2.2*f.r-d));for(i=0;i<3;i++)f.p[i]+=n[i]*sp; /* keep its place off the surface as the surface moves */
+    q=flitGap(cp,f.p,per);l=Math.hypot(q[0],q[1],q[2])||1e-9;
+    if(l<3*s){f.perch=2;f.h=flitTurn(n,0.7*q[0]/l,0.7*q[1]/l,0.7*q[2]/l);f.burst=1;f.zig=3+6*Math.random();}
+    return true;
+  }
+  if(d<=2.3*f.r){f.perch=1;return true;}
+  f.h=flitTurn(f.h,-n[0]*6*dt,-n[1]*6*dt,-n[2]*6*dt);
+  sp=Math.min(0.6*Math.min(wSpeed,Math.max(0.03,d*2.6))*dt,d-2.2*f.r); /* never nearer than where it will sit */
+  for(i=0;i<3;i++){f.p[i]+=f.h[i]*sp;f.p[i]-=per[i]*Math.floor(f.p[i]/per[i]+.5);}
+  return true;
 }
 /* One step of a sprite's flight, by itself so that it can be tested without a page: de is the world's distance, s the
    open space round the camera, wSpeed the world's top speed, per its period. */
@@ -73,7 +132,7 @@ export function flitMove(f,de,m,s,wSpeed,per,dt){
     t=(1-da/near)*8*dt;f.h=flitTurn(f.h,n[0]*t,n[1]*t,n[2]*t);
   }
   /* slow: six tenths of what the camera could fly at where the sprite is, and up to two and a half times that in a zig; never further in a frame than the open space it has */
-  sp=0.6*Math.min(wSpeed,Math.max(0.03,Math.abs(d)*2.6))*(1+1.5*f.burst);
+  sp=0.6*Math.min(wSpeed,Math.max(0.03,Math.abs(d)*2.6))*(1+1.5*f.burst)*(f.pace||1);
   sp=Math.min(sp*dt,Math.max(0,0.5*d));
   for(i=0;i<3;i++){f.p[i]+=f.h[i]*sp;f.p[i]-=per[i]*Math.floor(f.p[i]/per[i]+.5);}
 }
@@ -88,12 +147,13 @@ export function stepFlits(fr){
   for(k=0;k<NFLIT;k++){
     f=flits[k];
     if(!still){
-      if(f.wait>0){f.wait-=dt;if(f.wait<=0)arrive(f,w,m,s);if(f.wait>0)continue;}
+      if(f.wait>0){f.wait-=dt;if(f.wait<=0){if(f.role===1)arriveBy(f,flits[FLIT_LEAD],w,m,s);else arrive(f,w,m,s);}if(f.wait>0)continue;}
       f.age+=dt;
-      flitMove(f,de,m,s,w.speed,per,dt);
+      if(f.role===1&&flits[FLIT_LEAD].wait<=0)flitFollow(f,flits[FLIT_LEAD],flits.filter(function(g){return g.role===1&&g!==f&&g.wait<=0}),per,dt);
+      if(!(f.role===2&&flitPerch(f,de,m,s,w.speed,cam.pos,per,dt)))flitMove(f,de,m,s,w.speed,per,dt);
       /* left well behind, or far off: it starts to leave now */
       a=0;t=0;for(i=0;i<3;i++){q=f.p[i]-cam.pos[i];q-=per[i]*Math.floor(q/per[i]+.5);a+=q*cam.F[i];t+=q*q;}
-      if((a<-2*s||t>400*s*s)&&f.life-f.age>FLIT_OUT)f.life=f.age+FLIT_OUT;
+      if((a<-2*s||t>400*s*s)&&f.role!==1&&f.life-f.age>FLIT_OUT)f.life=f.age+FLIT_OUT; /* a follower leaves when its leader does */
       if(f.age>=f.life){f.wait=0.3+2.2*Math.random();continue;}
     }
     if(f.wait>0)continue;
@@ -108,7 +168,7 @@ export function setFlits(on){flitsOn=!!on;press($("bFlits"),flitsOn);}
 export function init(){
 var k,sv=null;
 flitU=new Float32Array(4*NFLIT);flitA=new Float32Array(NFLIT);
-for(k=0;k<NFLIT;k++)flits.push({p:[0,0,0],h:[0,0,1],wob:[0,0,0],r:0,age:0,life:0,zig:0,burst:0,wait:0.5+0.5*k});
+for(k=0;k<NFLIT;k++)flits.push({p:[0,0,0],h:[0,0,1],wob:[0,0,0],r:0,age:0,life:0,zig:0,burst:0,wait:0.5+0.5*k,role:FLIT_ROLE[k],pace:1,perch:0});
 try{sv=localStorage.getItem("mirrorfold-sprites")}catch(_){}
 setFlits(sv?sv==="on":!calm); /* with reduced motion asked for they start off, unless they were turned on before */
 $("bFlits").addEventListener("click",function(){
@@ -118,5 +178,5 @@ $("bFlits").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={NFLIT, FLIT_IN, FLIT_OUT, flits, flitFade, flitAim, flitTurn, flitSlide, anyWay, flitBar, arrive, flitMove, stepFlits, setFlits,
+export const __dbg={NFLIT, FLIT_ROLE, FLIT_LEAD, FLIT_IN, FLIT_OUT, flits, arriveBy, flitGap, flitFollow, flitPerch, flitFade, flitAim, flitTurn, flitSlide, anyWay, flitBar, arrive, flitMove, stepFlits, setFlits,
   get flitsOn(){return flitsOn},set flitsOn(v){flitsOn=v}, get flitU(){return flitU},set flitU(v){flitU=v}, get flitA(){return flitA},set flitA(v){flitA=v}};
