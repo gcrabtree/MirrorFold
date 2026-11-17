@@ -28,15 +28,29 @@ export function linkStart(fs){
   return {p:p,f:f};
 }
 export function linkReady(j){return !par||!!gl.getProgramParameter(j.p,par.COMPLETION_STATUS_KHR);}
-export function linkEnd(j,names){
-  var p=j.p,msg;
-  if(!gl.getProgramParameter(p,gl.LINK_STATUS)){
-    msg=(gl.getShaderParameter(j.f,gl.COMPILE_STATUS)?"":gl.getShaderInfoLog(j.f))||gl.getProgramInfoLog(p)||"shader failed";
-    gl.deleteShader(j.f);gl.deleteProgram(p);throw new Error(msg);
+/* The second half a little at a time, for a program made ahead of need. Every question put to the chip is a wait of
+   its own (half a millisecond or so), and a world's program has more than fifty names to ask after, so asking them
+   all in one frame shows as a stutter. The first call asks whether the program was made (and throws if not); each
+   call after asks after up to n names. It gives back the finished program once every name has been asked, and null
+   until then. */
+export function linkEndStep(j,names,n){
+  var p=j.p,msg,k;
+  if(!j.U){
+    if(!gl.getProgramParameter(p,gl.LINK_STATUS)){
+      msg=(gl.getShaderParameter(j.f,gl.COMPILE_STATUS)?"":gl.getShaderInfoLog(j.f))||gl.getProgramInfoLog(p)||"shader failed";
+      gl.deleteShader(j.f);gl.deleteProgram(p);throw new Error(msg);
+    }
+    gl.deleteShader(j.f); /* the program keeps what it needs */
+    j.U={};j.i=0;
+    return null;
   }
-  gl.deleteShader(j.f); /* the program keeps what it needs */
-  var U={};names.forEach(function(n){U[n]=gl.getUniformLocation(p,n)});
-  return {prog:p,U:U};
+  for(k=0;k<n&&j.i<names.length;k++,j.i++)j.U[names[j.i]]=gl.getUniformLocation(p,names[j.i]);
+  return j.i>=names.length?{prog:p,U:j.U}:null;
+}
+export function linkEnd(j,names){
+  var o=null;
+  while(!o)o=linkEndStep(j,names,1e9); /* all that is left of it, at once */
+  return o;
 }
 export function link(fs,names){return linkEnd(linkStart(fs),names);}
 const WORLD_U=["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uSurf","uPer","uFl","uFlA","uPe","uJit","uSpark","uRef","uZ","uZn","uZo","uZs","uDoor","uDoorN","uDoorT","uDoorC","uPk","uPkZ","uPkO","uMw","uLens","uRb","uRbW","uInv","uLwR","uLwA","uSh","uExp","uFb"];
@@ -61,6 +75,15 @@ export function buildStart(w){
   w.job=linkStart(fragSource(w));return true;
 }
 export function buildReady(w){return !w.job||linkReady(w.job);}
+/* finish a world's program that was started ahead of need, asking after up to n names; true once it is there (or there was nothing to finish) */
+export function buildStep(w,n){
+  var o;
+  if(w.prog||!w.job)return true;
+  o=linkEndStep(w.job,WORLD_U,n);
+  if(!o)return false;
+  w.job=null;w.prog=o.prog;w.U=o.U;
+  return true;
+}
 export function build(w){
   if(w.prog)return;
   if(w.flat&&!zoomOk())throw new Error("This device cannot hold the numbers a zoom world needs.");
@@ -77,14 +100,23 @@ export let pTrail, pDown, pBlur, pFinal, pCopy; /* the programs for the trails, 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
 par=gl.getExtension("KHR_parallel_shader_compile");
-try{
-  pTrail=link(FS_TRAIL,TRAIL_U);
-  pDown=link(FS_DOWN,["uT","uPx"]);
-  pBlur=link(FS_BLUR,["uT","uDir"]);
-  pFinal=link(FS_FINAL,FINAL_U);pCopy=link(FS_COPY,["uT"]);
-}catch(e){errBox.textContent="The effects shaders did not compile on this device.\n"+e.message;throw new Error("stop");}
+/* the five programs every picture needs are handed to the chip together and not waited for here: the chip makes them
+   side by side, and the first world's with them, where one after another each would have had the page wait in turn */
+try{postJobs=[linkStart(FS_TRAIL),linkStart(FS_DOWN),linkStart(FS_BLUR),linkStart(FS_FINAL),linkStart(FS_COPY)];}
+catch(e){errBox.textContent="The effects shaders did not compile on this device.\n"+e.message;throw new Error("stop");}
+}
+let postJobs=null;
+/* Wait for those five and take them up. Called once the first world's program has been started too (js/choose.js). */
+export function progFinish(){
+  var j=postJobs;
+  if(!j)return;
+  postJobs=null;
+  try{
+    pTrail=linkEnd(j[0],TRAIL_U);pDown=linkEnd(j[1],["uT","uPx"]);pBlur=linkEnd(j[2],["uT","uDir"]);
+    pFinal=linkEnd(j[3],FINAL_U);pCopy=linkEnd(j[4],["uT"]);
+  }catch(e){errBox.textContent="The effects shaders did not compile on this device.\n"+e.message;throw new Error("stop");}
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={overlayProg, FS_COPY, FINAL_U, filterProg, sh, link, linkStart, linkReady, linkEnd, WORLD_U, setProgSet, get progSet(){return progSet}, buildStart, buildReady, build, get par(){return par},set par(v){par=v}, bindTex, passTo, get vsObj(){return vsObj},set vsObj(v){vsObj=v},
+export const __dbg={linkEndStep, buildStep, progFinish, overlayProg, FS_COPY, FINAL_U, filterProg, sh, link, linkStart, linkReady, linkEnd, WORLD_U, setProgSet, get progSet(){return progSet}, buildStart, buildReady, build, get par(){return par},set par(v){par=v}, bindTex, passTo, get vsObj(){return vsObj},set vsObj(v){vsObj=v},
   get pTrail(){return pTrail},set pTrail(v){pTrail=v}, get pDown(){return pDown},set pDown(v){pDown=v}, get pBlur(){return pBlur},set pBlur(v){pBlur=v}, get pFinal(){return pFinal},set pFinal(v){pFinal=v}, get pCopy(){return pCopy},set pCopy(v){pCopy=v}};

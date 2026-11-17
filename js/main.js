@@ -78,9 +78,12 @@ import * as mLearn from "./learn.js";
 import * as m32 from "./loop.js";
 const mods=[m0,mZ,m1,mPk,mFb,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,mT,m19,m20,m21,mG,m22,m23,m24,m25,m26,mSong,m27,m28,m29,m30,m31,mS,mP,mR,mK,mFl,mFd,mFp,mSd,mSp,mSa,mSm,mSt,mTg,mDoor,mRib,mLap,mLw,mMv,mDn,mEye,mQr,mPh,mMed,mSend,mMidi,mPre,mPick,mLang,mLes,mFig,mFigS,mFigM,mFigL,mLearn,m32,mM,mV];
 /* an init that cannot go on (no WebGL, or no shader compiles) has already put a message on the page, and stops start-up by throwing "stop" */
-try{for(const m of mods)if(m.init)m.init();}catch(e){if(e.message!=="stop")throw e;}
+/* how long each file's start-up work took, in milliseconds, slowest first: MF.boot, for finding what makes the page slow to answer */
+const boot=[];
+try{for(const m of mods)if(m.init){const t0=performance.now();m.init();boot.push([Math.round((performance.now()-t0)*10)/10,Object.keys(m.__dbg||{})[0]||"?"]);}}catch(e){if(e.message!=="stop")throw e;}
+boot.sort((a,b)=>b[0]-a[0]);
 /* window.MF gives the test tools and the console every internal name, as the single script's closure used to */
 const MF={};for(const m of mods)Object.defineProperties(MF,Object.getOwnPropertyDescriptors(m.__dbg));
 /* the fields of the state objects can also be named bare (MF.pos for MF.cam.pos), which keeps test code short */
 for(const o of [MF.cam,MF.tr,MF.clock,MF.scene,MF.sel,MF.flip])for(const k of Object.keys(o))Object.defineProperty(MF,k,{get(){return o[k]},set(v){o[k]=v},enumerable:true,configurable:true});
-window.MF=MF;window.dispatchEvent(new Event("mf-ready"));
+MF.boot=boot;MF.bootAt=Math.round(performance.now());window.MF=MF;window.dispatchEvent(new Event("mf-ready"));

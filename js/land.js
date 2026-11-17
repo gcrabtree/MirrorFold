@@ -5,7 +5,7 @@ import { $, canvas, gl, toast } from "./dom.js";
 import { LAND_PRE_MAIN, LFREQ, LPERIOD } from "./land-shader.js";
 import { LK, landSrc } from "./landscapes.js";
 import { setPal } from "./palettes.js";
-import { bindTex, link, linkEnd, linkReady, linkStart, passTo } from "./programs.js";
+import { bindTex, link, linkEnd, linkEndStep, linkReady, linkStart, passTo } from "./programs.js";
 import { camArr } from "./render.js";
 import { mirrors, sel } from "./state.js";
 import { freeT, landQ, tA, target } from "./targets.js";
@@ -79,6 +79,16 @@ function landJobs(k){
 /* start on a landscape ahead of need; false if there is nothing to start */
 export function landStart(k){if(pLandK[k]||pLandJ[k])return false;pLandJ[k]=landJobs(k);return true;}
 export function landReady(k){var j=pLandJ[k];return !j||(linkReady(j[0])&&(!j[1]||linkReady(j[1])));}
+/* Finish a landscape started ahead of need a little at a time, asking the chip after up to n names a call, so that no
+   frame waits long; true once landFinish has only its tables left to make, which it then does. */
+export function landStep(k,n){
+  var j=pLandJ[k],i;
+  if(pLandK[k]||!j)return true;
+  try{
+    for(i=0;i<2;i++)if(j[i]&&!j[i].done){if(linkEndStep(j[i],LAND_U,n))j[i].done=true;return false;}
+  }catch(e){pLandJ[k]=null;return true;}
+  return true;
+}
 /* have a landscape's programs and tables there, finishing one started ahead of need and waiting only for what is left of it; false if this device cannot */
 export function landFinish(k){
   var j=pLandJ[k],c;
@@ -179,7 +189,7 @@ export function init(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={landClimb, landFreeTargets, landLayer, landMixed, FS_MIX, LAND_U, LTAB, landHash, landH, landFloor,
+export const __dbg={landStep, landClimb, landFreeTargets, landLayer, landMixed, FS_MIX, LAND_U, LTAB, landHash, landH, landFloor,
   LAYERS, pLandK, pLandJ, landJobs, landStart, landReady, landFinish, lpos, lvel, lhead, landXTab, landBuild, LP_CI, LP_CF, LP_LI,
   LP_LF, landPass, setLand, setLandKind, setLandTint, setLandFx, moveLand, get tL(){return tL},set tL(v){tL=v}, get tC(){return tC},set tC(v){tC=v}, get tLP(){return tLP},set tLP(v){tLP=v},
   get landEye(){return landEye},set landEye(v){landEye=v}, get landClear(){return landClear},set landClear(v){landClear=v}, get landMode(){return landMode},set landMode(v){landMode=v}, get landKind(){return landKind},set landKind(v){landKind=v}, get landTint(){return landTint},set landTint(v){landTint=v}, get landFx(){return landFx},set landFx(v){landFx=v}, get pLand(){return pLand},set pLand(v){pLand=v}, get pMix(){return pMix},set pMix(v){pMix=v}, get pLandPre(){return pLandPre},set pLandPre(v){pLandPre=v}, get landTex(){return landTex},set landTex(v){landTex=v}};

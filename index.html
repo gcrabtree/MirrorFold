@@ -14,6 +14,83 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/app.css">
+<!-- every file of the app, so that the browser fetches them all at once and not after the first has arrived (tools/unit.mjs checks the list) -->
+<link rel="modulepreload" href="js/audio.js">
+<link rel="modulepreload" href="js/camera.js">
+<link rel="modulepreload" href="js/choose.js">
+<link rel="modulepreload" href="js/clock.js">
+<link rel="modulepreload" href="js/controls.js">
+<link rel="modulepreload" href="js/dance.js">
+<link rel="modulepreload" href="js/dom.js">
+<link rel="modulepreload" href="js/doors.js">
+<link rel="modulepreload" href="js/editor.js">
+<link rel="modulepreload" href="js/eye.js">
+<link rel="modulepreload" href="js/fabric.js">
+<link rel="modulepreload" href="js/figures-look.js">
+<link rel="modulepreload" href="js/figures-more.js">
+<link rel="modulepreload" href="js/figures-space.js">
+<link rel="modulepreload" href="js/figures.js">
+<link rel="modulepreload" href="js/flight.js">
+<link rel="modulepreload" href="js/flightdata.js">
+<link rel="modulepreload" href="js/flightplay.js">
+<link rel="modulepreload" href="js/flits.js">
+<link rel="modulepreload" href="js/gallery.js">
+<link rel="modulepreload" href="js/input.js">
+<link rel="modulepreload" href="js/journey-panel.js">
+<link rel="modulepreload" href="js/journey.js">
+<link rel="modulepreload" href="js/land-shader.js">
+<link rel="modulepreload" href="js/land.js">
+<link rel="modulepreload" href="js/landscapes.js">
+<link rel="modulepreload" href="js/lang.js">
+<link rel="modulepreload" href="js/lap.js">
+<link rel="modulepreload" href="js/learn.js">
+<link rel="modulepreload" href="js/lessons.js">
+<link rel="modulepreload" href="js/library.js">
+<link rel="modulepreload" href="js/lightwave.js">
+<link rel="modulepreload" href="js/listen.js">
+<link rel="modulepreload" href="js/loop.js">
+<link rel="modulepreload" href="js/main.js">
+<link rel="modulepreload" href="js/media.js">
+<link rel="modulepreload" href="js/midi.js">
+<link rel="modulepreload" href="js/moves.js">
+<link rel="modulepreload" href="js/music.js">
+<link rel="modulepreload" href="js/orbs.js">
+<link rel="modulepreload" href="js/pack-io.js">
+<link rel="modulepreload" href="js/pack-worlds.js">
+<link rel="modulepreload" href="js/packing.js">
+<link rel="modulepreload" href="js/packs.js">
+<link rel="modulepreload" href="js/palettes.js">
+<link rel="modulepreload" href="js/photo.js">
+<link rel="modulepreload" href="js/picker.js">
+<link rel="modulepreload" href="js/picture.js">
+<link rel="modulepreload" href="js/preload.js">
+<link rel="modulepreload" href="js/probe.js">
+<link rel="modulepreload" href="js/programs.js">
+<link rel="modulepreload" href="js/qr.js">
+<link rel="modulepreload" href="js/record.js">
+<link rel="modulepreload" href="js/render.js">
+<link rel="modulepreload" href="js/ribbons.js">
+<link rel="modulepreload" href="js/scoreanalyse.js">
+<link rel="modulepreload" href="js/scoredata.js">
+<link rel="modulepreload" href="js/scoremake.js">
+<link rel="modulepreload" href="js/scoreplay.js">
+<link rel="modulepreload" href="js/send.js">
+<link rel="modulepreload" href="js/shaders.js">
+<link rel="modulepreload" href="js/song.js">
+<link rel="modulepreload" href="js/spark.js">
+<link rel="modulepreload" href="js/spots.js">
+<link rel="modulepreload" href="js/state.js">
+<link rel="modulepreload" href="js/stats.js">
+<link rel="modulepreload" href="js/still.js">
+<link rel="modulepreload" href="js/studio.js">
+<link rel="modulepreload" href="js/targets.js">
+<link rel="modulepreload" href="js/taste.js">
+<link rel="modulepreload" href="js/together.js">
+<link rel="modulepreload" href="js/video.js">
+<link rel="modulepreload" href="js/vr.js">
+<link rel="modulepreload" href="js/warp.js">
+<link rel="modulepreload" href="js/worlds.js">
+<link rel="modulepreload" href="js/zoom.js">
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -354,6 +431,8 @@
 <div id="err"></div>
 <div id="stats" hidden></div>
 
+<!-- a press on the start card before the app has loaded is kept, and answered the moment it has (js/loop.js) -->
+<script>document.addEventListener("click",function(e){var b=e.target;if(window.MF||window.mfEarly||!b||!/^enter/.test(b.id||""))return;window.mfEarly=b.id;b.setAttribute("data-was",b.textContent);b.textContent="Starting\u2026";},true);</script>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

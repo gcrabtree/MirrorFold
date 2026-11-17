@@ -1308,5 +1308,13 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("panel: a control is found by any words of its name, whatever their case or order", panMatch("Light shafts off Light", "SHAFT") && panMatch("Record a loop Save and share", "loop record") && !panMatch("Eye off", "eye blink") && panMatch("anything", "  "));
 }
 
+// ---- the page names every file of the app for fetching at once, and makes a preloaded program ready a little at a time
+{
+  const { readdirSync, readFileSync } = await import("node:fs"), html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const files = readdirSync(new URL("../js/", import.meta.url)).filter(f => f.endsWith(".js")), lacking = files.filter(f => !html.includes('<link rel="modulepreload" href="js/' + f + '">'));
+  const named = [...html.matchAll(/<link rel="modulepreload" href="js\/([^"]+)">/g)].map(m => m[1]).filter(f => !files.includes(f));
+  expect("index.html has a modulepreload line for every file in js/, and for no other", lacking.length === 0 && named.length === 0, lacking.concat(named).join(", "));
+}
+
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

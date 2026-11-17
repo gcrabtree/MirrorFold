@@ -30,7 +30,7 @@ import { stepOrb } from "./orbs.js";
 import { easePalette } from "./palettes.js";
 import { pickFrame } from "./picker.js";
 import { pictureFrame } from "./picture.js";
-import { preloadFrame } from "./preload.js";
+import { preloadBusy, preloadFrame } from "./preload.js";
 import { chipWait } from "./probe.js";
 import { drawBloom, drawFinal, drawScene, drawTrails } from "./render.js";
 import { songAim } from "./song.js";
@@ -84,7 +84,10 @@ function frame(now){
   if(learnOpen){learnFrame(now);last=now;return;} /* the lessons cover the page: draw the lesson, and leave the world as it is */
   var rawDt=(now-last)/1000,dt=notes.dt=Math.min(0.05,rawDt);last=now;notes.raw=Math.max(0,Math.min(1,rawDt));
   /* wait for the graphics chip (Stats' probe and a pack world's probe do the same job, so not twice) */
-  if(!(statsOn&&!scene.world.volume)&&!scene.world.pack)chipWait();
+  /* Not before the start card is left, and not while a program is being made ahead of need: the chip answers no
+     question until it has made it, so the wait would be for that (up to a fifth of a second for a heavy world, on a
+     fast computer), with the page deaf to every press meanwhile. The pictures may hitch then; the buttons do not. */
+  if(started&&!preloadBusy()&&!(statsOn&&!scene.world.volume)&&!scene.world.pack)chipWait();
   statsBegin();
   autoDetail(now,dt);
   preloadFrame(rawDt,started); /* make the next program ahead of need, a little each frame */
@@ -153,6 +156,9 @@ $("enter").addEventListener("click",function(){begin(true)});
 $("enterQuiet").addEventListener("click",function(){begin(false)});
 $("enterLearn").addEventListener("click",function(){begin(false);openLearn();});
 
+/* a press on the start card before the app had loaded was kept by the page (index.html): answer it now */
+var early=window.mfEarly,eb=early?$(early):null;
+if(eb){window.mfEarly="";if(eb.getAttribute("data-was"))eb.textContent=eb.getAttribute("data-was");setTimeout(function(){eb.click()},0);}
 last=performance.now();
 canvas.addEventListener("webglcontextlost",function(e){e.preventDefault();detailLower();errBox.textContent="The graphics context was lost. Reload the page to continue. It will start less sharp.";});
 if(fellBack)toast("The last visit stopped while starting, so the picture starts less sharp.");

@@ -9,7 +9,7 @@ import { spawnOrb } from "./orbs.js";
 import { deMany } from "./pack-worlds.js";
 import { PACKINGS, packing, pkDeep, pkMix, pkMul, pkOn, pkWave, pkZoom, setPackingNow, setPkMix, setPkWave } from "./packing.js";
 import { fillPalettes, setPalette } from "./palettes.js";
-import { build, setProgSet } from "./programs.js";
+import { build, setProgSet, buildStart, progFinish } from "./programs.js";
 import { setChrome, setShafts, shafts } from "./shaders.js";
 import { applySpot, fromHash } from "./spots.js";
 import { LOOKS, MOTIONS, OVERLAYS, OVS, SURFACES, mirrors, sel } from "./state.js";
@@ -183,6 +183,8 @@ selWorld.addEventListener("change",function(){requestWorld(+this.value);wakeHud(
 $("selPal").addEventListener("change",function(){setPalette(+this.value);wakeHud()});
 (function(){
   var hh=fromHash(),i=hh?hh.i:0;
+  try{buildStart(WORLDS[i])}catch(_){} /* the first world's program is handed to the chip before the effects' programs are waited for, so that all are made side by side */
+  progFinish();
   if(!setWorldNow(i,true)){for(var j=0;j<WORLDS.length&&!scene.world;j++)setWorldNow(j,true);}
   else if(hh&&hh.spot){applySpot(hh.spot);scene.lastHash=hh.h;}
 })();
