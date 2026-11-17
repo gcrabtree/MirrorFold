@@ -20,7 +20,7 @@ import { musicMode } from "./listen.js";
 import { cleanName } from "./packs.js";
 import { SC_GAP, SC_KINDS, SC_NEAR, SC_SOFT, SC_TAKE_MAX, takeLen } from "./scoredata.js";
 import { draftAlbum, hearFile, heardFile } from "./scoremake.js";
-import { scMade, scoreEdit, scoreNow, scoreRemove, scoreRename, scoreUse, setTakeHold } from "./scoreplay.js";
+import { scMade, scoreEdit, scoreNow, scoreRemove, scoreRename, scoreSet, scoreUse, scores, setTakeHold } from "./scoreplay.js";
 import { still } from "./still.js";
 import { resize } from "./targets.js";
 export const ST_GUT=96,ST_RULER=20,ST_WAVE=56,ST_LANE=22; /* the timeline's measures in CSS pixels: the lanes' names, the ruler, the music, one lane */
@@ -180,7 +180,7 @@ function draw(){
   cx.font="11px "+(css.getPropertyValue("--body")||"monospace");cx.textBaseline="middle";
   if(!tr){
     cx.fillStyle="rgba(243,236,255,.62)";
-    cx.fillText(!plCount()?"Choose the audio files of your album (Music: My audio file), then press Draft a score or Start empty.":!scoreUse()?"Press Draft a score to have a first one written from the music, or Start empty.":"The file that is playing is not one of this score's tracks.",12,H/2);
+    cx.fillText("The timeline appears here once a track of a score is playing.",12,H/2);
     return;
   }
   if(view.ti!==ti()){view.ti=ti();view.a=0;view.b=tr.len;pick=-1;loop=null;}
@@ -309,8 +309,28 @@ function fillTpl(){
   allT().forEach(function(t){o=document.createElement("option");o.value=t.name;o.textContent="By chance: "+t.name;s.appendChild(o);});
   s.value=v;if(s.value!==v)s.value="";
 }
+let scoreList="\u0000";       /* the names in the list of scores as it was last filled */
+let hint="";                 /* the last thing said by the screen itself about what to do next */
 function sync(){
-  var sc=scoreUse(),n=$("stName");
+  var sc=scoreUse(),n=$("stName"),files=plCount()>0,tr=track(),s=$("stScore"),names=scores.map(function(x){return x.name;}).join("\u0001"),o,h;
+  /* each group shows only what can be done now, so the next thing to do is always in sight */
+  $("stPlay").hidden=$("stPrev").hidden=$("stNext").hidden=!files;
+  $("stFiles").classList.toggle("advGo",!files);
+  $("stGrpScore").hidden=!files&&!scores.length;
+  $("stDraft").hidden=$("stEmpty").hidden=!files;$("stDraft").classList.toggle("advGo",files&&!tr);
+  s.hidden=!scores.length;n.hidden=$("stSave").hidden=$("stRemove").hidden=!sc;
+  $("stGrpEdit").hidden=$("stGrpCam").hidden=!tr;
+  if(names!==scoreList){
+    scoreList=names;s.textContent="";
+    o=document.createElement("option");o.value="";o.textContent="No score";s.appendChild(o);
+    scores.forEach(function(x,i){o=document.createElement("option");o.value=String(i);o.textContent=x.name;s.appendChild(o);});
+  }
+  s.value=sc?String(scores.indexOf(sc)):"";
+  h=!files?"Step 1: choose the audio files of your album. They play in the order of their names.":
+    !tr&&!sc?"Step 2: press Draft a score to have a first one written from the music, or Start empty.":
+    !tr?"The file that is playing is not a track of this score. Draft a score for these files, or choose another score.":
+    "Change anything while the music plays or is paused, and it is written here at that moment. Click the ruler to move the music; Shift and drag to play a passage round. Drag a change to move it; press twice in a lane to write what is showing now.";
+  if(h!==hint){hint=h;say(h);}
   $("stKeep").setAttribute("aria-pressed",keep?"true":"false");$("stKeep").textContent="Keep my changes: "+(keep?"on":"off");
   $("stTake").textContent=tape?"Stop and keep the take":"Record the camera";$("stTake").setAttribute("aria-pressed",tape?"true":"false");
   if(document.activeElement!==n)n.value=sc?sc.name:"";
@@ -381,6 +401,7 @@ $("stCut").addEventListener("click",function(){
   pick=p;say("World "+c[2]+" at "+stClock(c[0])+(c[3]?": behind a transition.":": a doorway to it opens at that moment, and the flight goes through. Where there cannot be a doorway, a transition."));
 });
 $("stTake").addEventListener("click",function(){if(tape)takeStop("");else takeStart();});
+$("stScore").addEventListener("change",function(){scoreSet(this.value===""?null:scores[+this.value]||null);});
 $("stUndo").addEventListener("click",function(){goBack("","r");});
 $("stRedo").addEventListener("click",function(){goBack("r","");});
 $("stDraft").addEventListener("click",function(){draftAlbum(false);});

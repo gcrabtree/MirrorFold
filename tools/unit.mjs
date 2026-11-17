@@ -1295,5 +1295,12 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("studio: the lanes are By chance, then those in use", stLanes(cues).join() === "journey,world,palette,filter" && stLanes([]).join() === "journey,world,palette");
 }
 
+// ---- the choosers with pictures show their things by name (js/picker.js)
+{
+  const { pickSort } = (await import("../js/picker.js")).__dbg, by = n => pickSort(n).map(i => n[i]).join();
+  expect("choosers: by name, with none first", by(["none", "Echo", "neon", "Solar", "Airbrush"]) === "none,Airbrush,Echo,neon,Solar");
+  expect("choosers: numbers count as numbers, and off comes first", by(["Mirrors off", "Mirrors 3", "Mirrors 12", "Mirrors 4"]) === "Mirrors off,Mirrors 3,Mirrors 4,Mirrors 12" && by(["Surface grain", "Surface plain", "Surface chrome"]) === "Surface plain,Surface chrome,Surface grain");
+}
+
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

@@ -63,7 +63,7 @@ export function draftAlbum(empty){
   if(busy){stop=true;return;}
   if(!n||!ac){toast("Choose the audio files first.");return;}
   busy=true;stop=false;
-  var end=function(msg){busy=false;stop=false;b.textContent="Draft a score";toast(msg);};
+  var end=function(msg){busy=false;stop=false;b.textContent=$("stDraft").textContent="Draft a score";toast(msg);};
   (function next(){
     var f=plFile(i);
     if(stop){end("The draft was given up.");return;}
@@ -76,7 +76,7 @@ export function draftAlbum(empty){
       end((empty?"Started the score ":"Drafted the score ")+sc.name+": "+sc.tracks.length+(sc.tracks.length===1?" track, ":" tracks, ")+sc.tracks.reduce(function(a,t){return a+t.cues.length;},0)+" changes. It is in use.");
       return;
     }
-    hearFile(f,function(part){b.textContent="Listening: "+(i+1)+" of "+n+", "+Math.round(part*100)+"%. Press to give up";}).then(function(an){
+    hearFile(f,function(part){b.textContent=$("stDraft").textContent="Listening: "+(i+1)+" of "+n+", "+Math.round(part*100)+"%. Press to give up";}).then(function(an){
       var d;
       if(an&&an.far)tracks.push({name:mediaTitle(f.name),len:an.len,cues:empty?[]:[[0,"journey",DRAFT_TPL.mid]]}); /* not heard ahead: left to the middling template all through */
       else if(an){d=scDraft(an,DRAFT_TPL,pool,Math.random,used);used=d.used;tracks.push({name:mediaTitle(f.name),len:an.len,marks:d.marks,cues:empty?[]:d.cues});}

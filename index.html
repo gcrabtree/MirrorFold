@@ -276,25 +276,35 @@
 <!-- the composing screen, for a computer: a timeline of the playing track's score under the picture (js/studio.js) -->
 <div id="studio" hidden>
   <div class="stBar">
-    <button id="stPlay" type="button">Play or pause</button>
-    <button id="stPrev" type="button">Previous track</button>
-    <button id="stNext" type="button">Next track</button>
-    <button id="stKeep" type="button" aria-pressed="true">Keep my changes: on</button>
-    <select id="stTpl" aria-label="What changes by chance from this moment"></select>
-    <button id="stDel" type="button">Remove the change</button>
-    <button id="stCut" type="button">Transition or doorway</button>
-    <button id="stTake" type="button" aria-pressed="false">Record the camera</button>
-    <button id="stUndo" type="button">Undo</button>
-    <button id="stRedo" type="button">Do again</button>
+    <span class="stGrp"><b>Music</b>
+      <label class="btn" for="fileIn" id="stFiles">Choose the album's files</label>
+      <button id="stPlay" type="button">Play or pause</button>
+      <button id="stPrev" type="button">Previous track</button>
+      <button id="stNext" type="button">Next track</button>
+    </span>
+    <span class="stGrp" id="stGrpScore"><b>Score</b>
+      <select id="stScore" aria-label="Score in use"></select>
+      <button id="stDraft" type="button">Draft a score</button>
+      <button id="stEmpty" type="button">Start empty</button>
+      <input id="stName" type="text" maxlength="28" autocomplete="off" spellcheck="false" aria-label="The score's name">
+      <button id="stSave" type="button">Save as a pack file</button>
+      <button id="stRemove" type="button">Remove the score</button>
+    </span>
+    <span class="stGrp" id="stGrpEdit"><b>Changes</b>
+      <button id="stKeep" type="button" aria-pressed="true">Keep my changes: on</button>
+      <select id="stTpl" aria-label="What changes by chance from this moment"></select>
+      <button id="stCut" type="button">Transition or doorway</button>
+      <button id="stDel" type="button">Remove the change</button>
+      <button id="stUndo" type="button">Undo</button>
+      <button id="stRedo" type="button">Do again</button>
+    </span>
+    <span class="stGrp" id="stGrpCam"><b>Camera</b>
+      <button id="stTake" type="button" aria-pressed="false">Record the camera</button>
+    </span>
     <span class="stGap"></span>
-    <label for="stName">Score</label><input id="stName" type="text" maxlength="28" autocomplete="off" spellcheck="false">
-    <button id="stDraft" type="button">Draft a score</button>
-    <button id="stEmpty" type="button">Start empty</button>
-    <button id="stSave" type="button">Save as a pack file</button>
-    <button id="stRemove" type="button">Remove the score</button>
     <button id="stClose" type="button">Close</button>
   </div>
-  <p id="stSay" role="status">Change anything while the music plays or is paused, and it is written here at that moment. Click the ruler to move the music; hold Shift and drag on it to play a passage round and round. Drag a change to move it. Press twice in a lane to write what is showing now. Turn the wheel to look closer.</p>
+  <p id="stSay" role="status"></p>
   <div id="stScroll"><canvas id="stCv"></canvas></div>
 </div>
 <div id="toast" role="status"></div>

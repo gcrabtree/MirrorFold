@@ -27,15 +27,28 @@ export function palStripe(p){
   }
   return "linear-gradient(90deg,"+s.join(",")+")";
 }
+/* The order a chooser shows its things in: by name, as a person would put them ("Mirrors 4" before "Mirrors 12"), with
+   the one that means nothing (none, off, plain) first. names is the list as the app holds it; what comes back is the
+   places in that list, in the order to show. Free of the page. */
+export function pickSort(names){
+  var none=/(^|\s)(none|off|plain)$/i,idx=names.map(function(_,i){return i;});
+  idx.sort(function(a,b){
+    var na=none.test(names[a])?0:1,nb=none.test(names[b])?0:1;
+    return na-nb||String(names[a]).localeCompare(String(names[b]),"en",{numeric:true,sensitivity:"base"})||a-b;
+  });
+  return idx;
+}
 function mirrorName(i){return mirrors[i]?"Mirrors "+mirrors[i]:"Mirrors off";}
 export function closePick(){if(!pickOpen)return;pickOpen="";pickEl.hidden=true;wakeHud();}
 /* Open one chooser: a tile for each thing, the chosen one marked. Choosing shuts the panel. */
 export function openPick(kind){
-  var K=KINDS[kind],grid=$("pickGrid"),n,cur,i;
+  var K=KINDS[kind],grid=$("pickGrid"),n,cur,j,order,names=[];
   if(!K)return;
   n=K.n();cur=K.cur();
   pickOpen=kind;$("pickTitle").textContent=K.title;grid.textContent="";
-  for(i=0;i<n;i++)(function(i){
+  for(j=0;j<n;j++)names.push(K.name(j));
+  order=pickSort(names);
+  for(j=0;j<n;j++)(function(i){
     var b=document.createElement("button"),pic=K.pic(i),open=K.open?K.open(i):true,im,t=document.createElement("span");
     b.type="button";b.className="tile";b.setAttribute("aria-pressed",i===cur?"true":"false");b.disabled=!open;
     if(pic){im=document.createElement("img");im.alt="";im.loading="lazy";im.width=240;im.height=150;im.src=pic;}
@@ -44,7 +57,7 @@ export function openPick(kind){
     b.appendChild(im);b.appendChild(t);
     b.addEventListener("click",function(){K.set(i);closePick();});
     grid.appendChild(b);
-  })(i);
+  })(order[j]);
   pickEl.hidden=false;pickEl.scrollTop=0;
   var on=grid.querySelector('[aria-pressed="true"]');if(on&&on.scrollIntoView)on.scrollIntoView({block:"center"});
 }
@@ -91,5 +104,5 @@ pickFrame();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={PICK_ORDER, thumbName, palStripe, mirrorName, openPick, closePick, pickFrame,
+export const __dbg={pickSort, PICK_ORDER, thumbName, palStripe, mirrorName, openPick, closePick, pickFrame,
   get KINDS(){return KINDS},set KINDS(v){KINDS=v}, get pickEl(){return pickEl},set pickEl(v){pickEl=v}, get pickOpen(){return pickOpen},set pickOpen(v){pickOpen=v}, get pickWas(){return pickWas},set pickWas(v){pickWas=v}};

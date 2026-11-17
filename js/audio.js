@@ -1,7 +1,7 @@
 /* Sound out: the audio graph, the built-in music, and the player and scrubber for a file of your own. */
 import { $, errBox, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
-import { musicMode } from "./listen.js";
+import { musicMode, setMusic } from "./listen.js";
 import { mediaFile } from "./media.js";
 export let ac=null, master=null, analyser=null, fbins=null, scrubbing;
 export let bus=null, audioEl=null, elNode=null, objUrl=null, scrub, scrubFill, scrubThumb,
@@ -214,7 +214,9 @@ $("fileIn").addEventListener("change",function(){
   if(!ensureAudio()){errBox.textContent="This browser cannot play audio here.";return;}
   order=plSort(fs.map(function(f){return f.name;}));
   fs.sort(function(a,b){return order.indexOf(a.name)-order.indexOf(b.name);});
-  list=fs;plGo(0);
+  list=fs;
+  if(musicMode!=="file")setMusic("file"); /* chosen from the composing screen, where the Music list is not in sight */
+  plGo(0);
   if(fs.length>1)toast(fs.length+" files: they play in the order of their names.");
 });
 $("bPrevT").addEventListener("click",function(){plGo(pPos()>3?li:li-1);wakeHud();}); /* as a record player does: back to the start of this track first */

@@ -132,6 +132,7 @@ export function loadGallery(){
   fetchText("packs/index.json").then(function(t){
     var list=JSON.parse(t);
     (Array.isArray(list)?list:[]).slice(0,200).forEach(function(x){var e=cleanEntry(x);if(e)gallery.push(e);});
+    gallery.sort(function(a,b){return a.name.localeCompare(b.name,"en",{numeric:true,sensitivity:"base"});}); /* by name, as the choosers are */
     box.textContent="";gallery.forEach(function(e){box.appendChild(card(e))});
     if(!gallery.length)note.textContent="The gallery is empty.";
   }).catch(function(){gallery=null;note.textContent="The gallery could not be fetched. Close this panel and open it again to retry.";});

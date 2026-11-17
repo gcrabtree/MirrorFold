@@ -244,3 +244,8 @@ body.studio #err{bottom:calc(var(--st-h) + 8px)}
 #stSay{margin:0;font-size:11px;line-height:1.35;color:var(--ink-dim);min-height:15px}
 #stScroll{flex:1;min-height:0;overflow-y:auto;border:1px solid var(--edge);border-radius:8px}
 #stCv{position:static;display:block;width:100%;height:120px;touch-action:none;cursor:default;background:#0b0716}
+.stGrp{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;border:1px solid var(--edge);border-radius:12px;padding:4px 6px}
+.stGrp[hidden],.stGrp [hidden]{display:none}
+.stGrp b{font:600 10px/1 var(--display);color:var(--cool);letter-spacing:.04em;padding:0 2px}
+.stBar .btn{padding:7px 10px;font-size:11px;border-radius:8px;-webkit-backdrop-filter:none;backdrop-filter:none}
+.stBar .advGo{background:var(--ink);color:var(--void);border-color:var(--ink)}
