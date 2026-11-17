@@ -1,4 +1,6 @@
 /* Journey: templates and sets, their storage, the clocks that say when to change something, and the autopilot. */
+import { danceStyle, setDanceStyle } from "./dance.js";
+import { MV_STYLES } from "./moves.js";
 import { cam, norm } from "./camera.js";
 import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay, setInside, setMix, setPacking, setPulse } from "./choose.js";
 import { PACKINGS, packing, pkDeep, pkMix, pkWave } from "./packing.js";
@@ -62,7 +64,7 @@ export function allS(){return BUILTIN_S.concat(store.sets)}
 export function findT(n){var a=allT();for(var i=0;i<a.length;i++)if(a[i].name===n)return a[i];return null;}
 export function findS(n){var a=allS();for(var i=0;i<a.length;i++)if(a[i].name===n)return a[i];return null;}
 
-export function jCur(k){return k==="world"?scene.world.id:k==="palette"?PALETTES[sel.pi].name:k==="mirrors"?String(mirrors[sel.mi]):k==="motion"?MOTIONS[sel.moi].name:k==="filter"?LOOKS[sel.lki].name:k==="surface"?SURFACES[sel.si].name:k==="packing"?PACKINGS[packing].name:k==="pulse"?(pkWave?"wave":"together"):k==="shapes"?(pkMix?"mixed":"one kind"):k==="inside"?(inOut?"on":"off"):k==="land"?(landMode?LK[landKind].id+(landMode===2?" over":" alone"):"none"):OVERLAYS[sel.ovi].name;}
+export function jCur(k){return k==="world"?scene.world.id:k==="palette"?PALETTES[sel.pi].name:k==="mirrors"?String(mirrors[sel.mi]):k==="motion"?MOTIONS[sel.moi].name:k==="filter"?LOOKS[sel.lki].name:k==="surface"?SURFACES[sel.si].name:k==="packing"?PACKINGS[packing].name:k==="pulse"?(pkWave?"wave":"together"):k==="shapes"?(pkMix?"mixed":"one kind"):k==="inside"?(inOut?"on":"off"):k==="dance"?danceStyle:k==="land"?(landMode?LK[landKind].id+(landMode===2?" over":" alone"):"none"):OVERLAYS[sel.ovi].name;}
 export function jNone(k){return k==="mirrors"?"0":k==="surface"?"plain":"none";}
 function jIndex(k,key){var o=catOf(k).opts;for(var i=0;i<o.length;i++)if(o[i][0]===key)return i;return -1;}
 export function jApply(k,key,now){ /* false means it could not start yet (a transition is running) and should be retried. With now, a change that would go behind a transition is made at once (a recorded flight setting up its start). */
@@ -74,6 +76,7 @@ export function jApply(k,key,now){ /* false means it could not start yet (a tran
   if(k==="packing")return warpThen(function(){setPacking(i)}); /* every shape moves, so it is done out of sight, and the camera is put in open space */
   if(k==="pulse")return warpThen(function(){setPulse(i===1)}); /* the shapes change at once, so these two are done out of sight too */
   if(k==="shapes")return warpThen(function(){setMix(i===1)});
+  if(k==="dance"){setDanceStyle(key);return true;} /* the kind of dancing the figures keep to (js/dance.js): they take it up at their next move */
   if(k==="inside")return warpThen(function(){setInside(i===1)}); /* open and solid swap at once, so this is done out of sight too */
   if(k==="land")return warpThen(function(){
     var sp=key.split(" "),kk;for(kk=0;kk<LK.length;kk++)if(LK[kk].id===sp[0])setLandKind(kk);
@@ -125,7 +128,7 @@ export function jLess(){
   if(jApply(k,jPick(k,c,cur,jPool(k,c))))jReset(k);else J[k].t=J[k].next+1; /* a transition is running: change as soon as it ends */
   toast("Less of "+JNAME[k]+" "+name+".");
 }
-export const JNAME={world:"the world",palette:"the palette",mirrors:"mirrors",motion:"the motion",filter:"the filter",overlay:"the overlay",surface:"the surface",land:"the land",packing:"the packing",pulse:"the pulse",shapes:"the shapes",inside:"inside out"};
+export const JNAME={world:"the world",palette:"the palette",mirrors:"mirrors",motion:"the motion",filter:"the filter",overlay:"the overlay",surface:"the surface",land:"the land",packing:"the packing",pulse:"the pulse",shapes:"the shapes",inside:"inside out",dance:"the dance style"};
 export function applyTemplate(t,announce){
   jt=t;
   CATS.forEach(function(c){
@@ -221,7 +224,7 @@ export function stepJourney(dt){
   }
 }
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */
-export const J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22},surface:{base:45},land:{base:80},packing:{base:90},pulse:{base:120},shapes:{base:150},inside:{base:140}};
+export const J={world:{base:55},palette:{base:21},mirrors:{base:20},motion:{base:24},filter:{base:27},overlay:{base:22},surface:{base:45},land:{base:80},packing:{base:90},pulse:{base:120},shapes:{base:150},inside:{base:140},dance:{base:60}};
 export function jReset(k){J[k].t=0;J[k].next=J[k].base*(0.8+0.4*Math.random());}
 function jResetAll(){for(var k in J)jReset(k);}
 
@@ -247,7 +250,9 @@ CATS=[
  {k:"pulse",label:"Pulse",every:120,modes:["keep","random"],opts:[["together","together"],["wave","wave"]]},
  {k:"shapes",label:"Shapes",every:150,modes:["keep","random"],opts:[["one kind","one kind"],["mixed","mixed"]]},
  /* open space and solid swapped; it shows in the worlds with surfaces, in every packing but the descent */
- {k:"inside",label:"Inside out",every:140,modes:["keep","random"],opts:[["off","off"],["on","on"]]}
+ {k:"inside",label:"Inside out",every:140,modes:["keep","random"],opts:[["off","off"],["on","on"]]},
+ /* the kind of dancing the stick figures of the dancing overlays keep to; any is every kind */
+ {k:"dance",label:"Dance style",every:60,modes:["keep","random"],opts:[["any","any"]].concat(Object.keys(MV_STYLES).map(function(n){return [n,n]}))}
 ];
 BUILTIN_T=[
  {name:"Classic",mirrors:{mode:"off"}},
@@ -257,7 +262,7 @@ BUILTIN_T=[
   filter:{mode:"random",set:["none","Echo","Neon","Solar","Liquid","Prism","Thermal","Contour"]},overlay:{mode:"random"},surface:{mode:"random"}},
  /* a party: MilkDrop's motions and filters behind one of the three overlays of dancing figures */
  {name:"Dance party",mirrors:{mode:"off"},motion:{mode:"random",set:["none","Melt","Vortex","Tunnel","Ripple","Drift"]},
-  filter:{mode:"random",set:["none","Echo","Neon","Prism","Liquid","Thermal"]},overlay:{mode:"random",every:40,set:["Dancer","Chorus line","Dance floor"]},surface:{mode:"random"}},
+  filter:{mode:"random",set:["none","Echo","Neon","Prism","Liquid","Thermal"]},overlay:{mode:"random",every:40,set:["Dancer","Chorus line","Dance floor"]},surface:{mode:"random"},dance:{mode:"random",every:60}},
  {name:"Kaleidoscope",mirrors:{mode:"random",set:["3","4","6","8","12"]},motion:{mode:"off"},filter:{mode:"random",set:["none","Quad","Tiles","Twirl","Prism"]},overlay:{mode:"off"}},
  {name:"Calm",world:{every:90,set:["coral","julia","aurora","nebula","gates","halls","temple"]},palette:{every:40},mirrors:{mode:"off"},
   motion:{mode:"random",every:50,set:["none","Melt","Drift"]},filter:{mode:"random",every:60,set:["none","Liquid"]},overlay:{mode:"off"}},

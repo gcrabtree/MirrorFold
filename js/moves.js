@@ -207,6 +207,23 @@ export const MOVES=[
  {name:"windmill arms",len:2,hi:1,bob:0.03,keys:[{t:0}],post:function(u,o){var a=TAU*u/2;o[12]=0.1+0.3*Math.cos(a);o[13]=0.3*Math.sin(a);o[14]=0.04;o[16]=0.1-0.3*Math.cos(a);o[17]=-0.3*Math.sin(a);o[18]=0.04;o[8]=0.06*Math.sin(a);}}
 ];
 
+/* What kind of dancing each move belongs to, so that a routine, or a journey, can keep to one kind. Every move is
+   in exactly one list (tools/unit.mjs checks). */
+export const MV_STYLES={
+ groove:["sway","step touch","step clap","groove","snap","hip sway","shoulder lean","body roll","b-boy rock","shimmy","heel toe","box step","rock step","slow clap","lean back","lean and rock","hip bump","hands up","raise the roof","fist pump","pogo","overhead clap","get low","stadium wave","finger wag","jazz hands"],
+ disco:["disco point","hand roll","spin","y m c a","electric slide","skate","temptation walk","lightbulb","arm wave"],
+ sixties:["twist","swim","mashed potato","monkey","pony","hitchhiker","the jerk","watusi","freddie","locomotion","hand jive","batusi","funky chicken","backstroke","hula","limbo","conga","charleston","suzie q","elvis","jagger","bunny hop","hokey pokey","time warp","chicken"],
+ hiphop:["running man","cabbage patch","robot","dougie","stanky leg","bernie","whip","dab","floss","gangnam","the woah","milly rock","butterfly","tootsie roll","harlem shake","king tut","smurf","wop","steve martin","humpty","roger rabbit","top rock","walk it out","bankhead bounce","shoot","orange justice","jump on it","superman","hammer time","krump","moonwalk","moonwalker kick","kick step","take the l","best mates"],
+ party:["shopping cart","lawnmower","macarena","sprinkler","big fish little fish","driving","snoopy","reel them in","stir the pot","air guitar","elaine","tequila","carlton","egyptian","thriller","vogue","single ladies","bye bye bye","cha cha slide","cupid shuffle","wobble","boxing","jump rope","cheerleader","windmill arms","headbang","duck walk"],
+ world:["grapevine","salsa","samba","flamenco","zorba","belly dance","bhangra","riverdance","cossack","can-can","jazz square","kick ball change","heel click"],
+ rave:["lasers","shuffle","jumpstyle","tecktonik","skank","high knees","skier","star jump"]
+};
+/* the kind a move belongs to ("" if it is in no list); found once and kept in the move */
+export function moveStyle(m){
+  var k;
+  if(m.style===undefined){m.style="";for(k in MV_STYLES)if(MV_STYLES[k].indexOf(m.name)>=0)m.style=k;}
+  return m.style;
+}
 /* the same pose facing the other way: left and right change places */
 export function flipPose(o){
   var i,t;o[0]=-o[0];o[4]=-o[4];o[5]=-o[5];o[6]=-o[6];o[7]=-o[7];o[8]=-o[8];o[10]=-o[10];
@@ -259,10 +276,10 @@ export function movePose(m,u,o){
   return o;
 }
 /* how far a move's knees give on each beat */
-export function moveBob(m){return m.bob===undefined?0.018:m.bob;}
+export function moveBob(m){return m.bob===undefined?0.024:m.bob;}
 /* How fast a move carries the figure along the floor at beat u, in figure heights a beat, to the figure's own left
    (0 for most moves). go is the speed; a move with sway turns back every sway beats, so that it goes to and fro. */
 export function moveGo(m,u){return m.go?m.go*(m.sway&&Math.floor(u/m.sway)%2?-1:1):0;}
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={MV_N, MV_REST, MOVES, flipPose, moveKeys, movePose, moveBob, moveGo};
+export const __dbg={MV_N, MV_REST, MOVES, MV_STYLES, moveStyle, flipPose, moveKeys, movePose, moveBob, moveGo};

@@ -4,7 +4,8 @@
    and feet that point where it faces, and what is drawn is that body seen from in front, a little nearer things
    larger. This file listens for the beat and keeps a count of beats that runs on between them; a move (js/moves.js)
    is a rule from the count to a pose, and the body's joints are worked out from the pose with every limb keeping its
-   length. While the music is quiet the figures stand and wait; as it fills they choose livelier moves; when a drop
+   length. The figures dance only to a steady beat: while the music is quiet, or there is sound without a beat (a voice
+   talking, say), they stand about shifting their feet, or walk to and fro; as the music fills they choose livelier moves; when a drop
    lands they all jump. The trails pass draws the joints as lines (js/shaders.js). Nothing here flashes: a figure
    only moves, and a pose is eased to, never jumped to. Hold still stops them where they are, and they are left out
    while a loop is flown, since what they do next is chosen by chance and would not come round. */
@@ -12,7 +13,7 @@ import { clock } from "./clock.js";
 import { calm } from "./dom.js";
 import { lapOn } from "./lap.js";
 import { soundChanged } from "./listen.js";
-import { MOVES, MV_N, MV_REST, flipPose, moveBob, moveGo, movePose } from "./moves.js";
+import { MOVES, MV_N, MV_REST, MV_STYLES, flipPose, moveBob, moveGo, movePose, moveStyle } from "./moves.js";
 import { heard } from "./song.js";
 import { OVERLAYS, sel } from "./state.js";
 import { still } from "./still.js";
@@ -37,8 +38,8 @@ export const DN_SLOW=0.72;   /* and this (83 a minute): a quicker or slower puls
 export const DN_SIZE=0.65;   /* how large the figures are drawn, as a part of the room danceSpots gives each */
 export const dnU=[new Float32Array(20),new Float32Array(20),new Float32Array(20),new Float32Array(20),new Float32Array(20),new Float32Array(20),new Float32Array(20),new Float32Array(20),new Float32Array(20)]; /* for the shader, four numbers a figure in each: neck and hips; the shoulders; left elbow and hand; right elbow and hand; the hip joints; left knee and ankle; right knee and ankle; the toes; the head's middle, its radius and how brightly the figure shows (0 for none) */
 const A=new Array(MV_N),B=new Array(MV_N),J=new Array(MV_N),flat=new Array(35);
-const crowd=[];              /* the figures: {rt, ri, mv, mir, u0, pmv, pmir, pu0, bl, next, tx, p, b, mem}: the routine and how far through it; the move, whether it is faced the other way and the beat it began on; the same for the move before, and how far the figure has gone over from it; the beat to change on; how far the figure has travelled from its place; the pose; the body; where the elbows were */
-const st={u:0,du:0,pa:0,kick:0,en:0,hype:0,jump:-1,kind:0,phrase:0}; /* the count of beats and this frame's step of it; how much pulse there has been lately; the kick as the figures feel it; how much they dance; how long since a drop; how far through a jump (in beats, -1 for none); which overlay they were set up for; how many times the chorus line has changed its dance */
+const crowd=[];              /* the figures: {rt, ri, mv, mir, u0, pmv, pmir, pu0, bl, next, tx, p, b, mem, fa, pfa, a, im, ic, idir, iface, itf, iph, iw}: the routine and how far through it; the move, whether it is faced the other way and the beat it began on; the same for the move before, and how far the figure has gone over from it; the beat to change on; how far the figure has travelled from its place; the pose; the body; where the elbows were; which way it is turned for this move and was for the last; how much it is dancing; and for when it is not, whether it walks, the seconds until it chooses again, which way it walks, the way it faces now and wants to, how far through its steps it is and how much it is walking */
+const st={u:0,du:0,pa:0,sure:0,kick:0,snap:0,en:0,hype:0,jump:-1,kind:0,phrase:0}; /* the count of beats and this frame's step of it; how much pulse there has been lately; how sure the beat is; the kick as the figures feel it; how much they dance; how long since a drop; how far through a jump (in beats, -1 for none); which overlay they were set up for; how many times the chorus line has changed its dance */
 let tick=null;
 
 function ease(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);}
@@ -148,27 +149,34 @@ export function danceFlat(b,o){
    the pulse rising well above where it had sunk to. The time between two hits, doubled or halved into DN_FAST to
    DN_SLOW, is taken as the beat's length when it agrees with what is held, or after three that do not. A hit that
    falls near a whole count pulls the count three quarters of the way to it; the pull is spread over the next frames, and the count never
-   goes backward, so a figure following it never jerks. With no hits the count runs on as it was. */
+   goes backward, so a figure following it never jerks. With no hits the count runs on as it was. sure (0 to 1) is
+   how far the hits have been a steady beat: it rises with each hit that comes a whole number of half beats after the
+   last, falls with each that does not, and sinks when a second and a half pass without one. A voice talking makes hits too, but not evenly, so its sure stays low; the figures dance only to a
+   beat that is sure. While it is low a hit sets the count outright, there being no beat to keep to. */
 export function makeBeatClock(){
-  var u=0,per=0.5,low=0,since=9,pend=0,odd=0,off=0,got=false,out={u:0,per:0.5,du:0};
+  var u=0,per=0.5,low=0,since=9,pend=0,odd=0,off=0,sure=0,got=false,out={u:0,per:0.5,du:0,sure:0};
   return function(dt,p){
-    var iv,e,c,du;
+    var iv,e,c,du,ok,r;
     since+=dt;low=Math.min(low,p);
+    if(since>1.5)sure=Math.max(0,sure-0.4*dt);
     if(p>low+0.15&&p>0.2&&since>=0.24){
-      iv=since;since=0;low=p;
+      iv=since;since=0;low=p;ok=false;
       if(iv<2.2){
+        r=iv/per;ok=got&&r>0.4&&Math.abs(r-Math.round(2*r)/2)<Math.max(0.07,0.03/per);
         while(iv>=DN_SLOW)iv/=2;while(iv<DN_FAST)iv*=2;
         if(!got){per=iv;got=true;odd=0;}
         else if(Math.abs(iv-per)<0.18*per){per+=(iv-per)*0.3;odd=0;}
         else if(++odd>=3){per=iv;odd=0;}
       }
       e=u-Math.round(u);
-      if(Math.abs(e)<0.3){pend=-0.75*e;off=0;}
+      if(sure<0.2){pend=e>0.25?1-e:-e;off=0;}
+      else if(Math.abs(e)<0.3){pend=-0.75*e;off=0;}
       else if(++off>=3){pend=-e;off=0;} /* three hits in a row between the counts: the count is what is out */
+      sure=ok?Math.min(1.5,sure+0.25):Math.max(0,sure-0.3); /* it is kept to half as much again as is given out, so that a beat that is sure is not lost to a hit or two off it: music has those */
     }
     c=pend*Math.min(1,dt*12);pend-=c;
     du=Math.max(0.2*dt/per,dt/per+c);u+=du;
-    out.u=u;out.per=per;out.du=du;
+    out.u=u;out.per=per;out.du=du;out.sure=Math.min(1,sure);
     return out;
   };
 }
@@ -183,24 +191,116 @@ export function pickMove(e,not,rnd){
 }
 /* A routine: three to ten different moves fit for how full the music is, to be danced one after another and then
    again from the first, as a dancer has a few moves that go together and comes back to them. rnd gives the chance
-   numbers. mir says, move by move, whether it is danced facing the other way. */
-export function makeRoutine(e,rnd){
-  var k=moveTier(e),ok=[],mv=[],mir=[],n=3+Math.floor(rnd()*8),i;
-  for(i=0;i<MOVES.length;i++)if(MOVES[i][k])ok.push(i);
+   numbers. mir says, move by move, whether it is danced facing the other way. style keeps it to one kind of dancing
+   (a name in MV_STYLES; anything else is every kind); a kind with fewer than three moves fit for the music gives all
+   of its moves. */
+export function makeRoutine(e,rnd,style){
+  var k=moveTier(e),ok=[],mv=[],mir=[],n=3+Math.floor(rnd()*8),i,st2=MV_STYLES[style]?style:"";
+  for(i=0;i<MOVES.length;i++)if(MOVES[i][k]&&(!st2||moveStyle(MOVES[i])===st2))ok.push(i);
+  if(ok.length<3){ok=[];for(i=0;i<MOVES.length;i++)if(moveStyle(MOVES[i])===st2)ok.push(i);}
   while(mv.length<n&&ok.length){mv.push(ok.splice(Math.min(ok.length-1,Math.floor(rnd()*ok.length)),1)[0]);mir.push(rnd()<0.5);}
-  return {mv:mv,mir:mir,tier:k};
+  return {mv:mv,mir:mir,tier:k,style:st2};
+}
+/* The kind of dancing the figures keep to: a name in MV_STYLES, or "any". Changing it gives every figure a new routine
+   at its next move. */
+export let danceStyle="any";
+export function setDanceStyle(s){
+  s=MV_STYLES[s]?s:"any";if(s===danceStyle)return;
+  danceStyle=s;for(var i=0;i<crowd.length;i++)crowd[i].fresh=true;
+}
+/* How a figure carries a move, chosen anew for each move so that no two times through are alike: how widely it sways,
+   where in the beat its sway is, which of three ways its feet keep moving, how hard its arms hit, and where on the
+   floor it drifts to (room is how far it may go), and which way it faces: a dancer is not on a stage, so it is as
+   often turned part of the way to one side as toward the viewer, and now and then seen from the side. A move that
+   travels (m.go) is left facing as the move itself says, since the way it goes depends on that. */
+function carry(d,room,m){
+  var r=Math.random(),h=Math.random()<0.5?-1:1;
+  d.g=0.75+0.5*Math.random();d.ph=Math.random();d.gp=Math.floor(3*Math.random());d.as=0.7+0.6*Math.random();d.wx=(Math.random()-0.5)*1.2*room;
+  d.fa=m&&m.go?0:h*(r<0.3?0.25*Math.random():r<0.8?0.5+0.6*Math.random():1.2+0.4*Math.random());
+}
+/* What a dancer's body does whatever the move: laid over the move's pose o at beat u for figure d. The hips sway from
+   side to side over two beats and turn a little with it, the shoulders against them; the weight goes from foot to
+   foot, and the foot it has left lifts at the heel, steps or shuffles (the more, the less the move itself does with
+   the feet); the head tips with the sway; the arms push out along their own line on the kick and flick on the mids
+   (snap); and small slow wanderings in the hands and the back keep one time through a move from being the same as
+   the last. */
+function groove(o,u,d,kick,snap){
+  var g=d.g,s1=Math.sin(6.2831853*(u/2+d.ph)),c1=Math.cos(6.2831853*(u/2+d.ph)),s2=Math.sin(6.2831853*(u/2+d.ph+0.25)),q=Math.sin(6.2831853*(u+d.ph)),
+    ws=Math.max(0.35,1-Math.abs(o[0])/0.08),wf=Math.max(0,1-(Math.abs(o[20])+Math.abs(o[21])+Math.abs(o[22])+Math.abs(o[24])+Math.abs(o[25])+Math.abs(o[26]))/0.12),
+    up=Math.max(0,s1),dn=Math.max(0,-s1),bump=Math.pow(1-Math.abs(s1),3),s,c,vx,vy,vz,n,a;
+  o[0]+=0.04*g*ws*s1;o[6]+=0.11*g*ws*s1;o[8]-=0.05*g*ws*s1;o[10]+=0.09*g*Math.sin(6.2831853*(u/2+d.ph+0.08));
+  o[5]+=0.13*g*s2;o[7]+=-0.16*g*s2+0.07*g*q;
+  /* the feet */
+  if(d.gp===0){o[25]+=0.03*wf*up;o[27]-=0.3*wf*up;o[21]+=0.03*wf*dn;o[23]-=0.3*wf*dn;} /* weight to the left: the right heel lifts and its knee comes in; and the other way */
+  else if(d.gp===1){o[20]+=0.05*wf*up;o[24]-=0.04*wf*up;o[24]+=0.05*wf*dn;o[20]-=0.04*wf*dn;if(c1>0)o[25]+=0.035*wf*bump;else o[21]+=0.035*wf*bump;} /* a small step to the side and the other foot brought to it */
+  else{o[22]+=0.05*wf*s2;o[26]-=0.05*wf*s2;a=Math.pow(1-Math.abs(s2),3);if(c1>0)o[21]+=0.03*wf*a;else o[25]+=0.03*wf*a;} /* a shuffle: one foot forward as the other goes back */
+  /* the arms */
+  for(s=0;s<2;s++){
+    c=12+4*s;vx=o[c]-DN_SHO;vy=o[c+1];vz=o[c+2];n=Math.max(0.05,Math.sqrt(vx*vx+vy*vy+vz*vz));
+    a=d.as*(0.06*kick+0.035*snap*((s?-q:q)>0?1:0.3));
+    o[c]+=a*vx/n;o[c+1]+=a*vy/n+0.02*d.as*kick;o[c+2]+=a*vz/n+0.02*d.as*kick;o[c+3]+=0.35*d.as*kick;
+    o[c]+=0.012*Math.sin(6.2831853*(u/3+d.ph+0.37*s));o[c+1]+=0.014*Math.sin(6.2831853*(u/5+2*d.ph+0.21*s));
+  }
+  o[9]+=0.025*Math.sin(6.2831853*(u/6+d.ph));
 }
 /* how many figures an overlay has, and which of the three it is (0 for an overlay without figures) */
 export function danceKind(){var o=OVERLAYS[sel.ovi];return o&&o.dance||0;}
 function count(kind){return kind===1?1:kind===2?4:kind===3?5:0;}
 /* how far a figure may go from where it stands, in figure heights: the dancer alone has the most room */
 function room(kind){return kind===1?0.9:kind===2?0.5:0.3;}
+/* and how far it may walk while there is no beat to dance to; the chorus line keeps its places */
+function idleRoom(kind){return kind===1?1.5:kind===2?0:0.5;}
+export const DN_STEP=0.2;    /* how long a walking step is, in figure heights, */
+export const DN_WALK=0.3;    /* how fast a figure walks, in figure heights a second, */
+export const DN_TURN=3;      /* and how fast one that is not dancing turns round, in radians a second */
+/* Standing and waiting, laid over the pose o by the share w: the weight goes slowly from one foot to the other, the
+   head looks about, and every few seconds a foot is lifted and put down again. t is the app's clock, i which figure. */
+function waitPose(t,i,w,o){
+  var s=Math.sin(t*0.8+2*i),c=t*0.4+0.37*i,f=c-Math.floor(c),k=20+4*(Math.floor(c)&1),a=f<0.3?Math.sin(Math.PI*f/0.3):0;
+  o[0]+=w*0.022*s;o[6]+=w*0.05*s;o[8]-=w*0.02*s;o[2]+=w*0.005*Math.sin(t*1.4+i);
+  o[10]+=w*0.06*Math.sin(t*0.31+1.7*i);o[11]+=w*0.05*Math.sin(t*0.23+i);
+  o[k]+=w*0.02*a;o[k+1]+=w*0.03*a;o[k+2]+=w*0.03*a*Math.sin(t*0.4+i);
+  o[14]+=w*0.02*s;o[18]-=w*0.02*s;
+}
+/* Walking, laid over the pose o by the share w, ph of the way through two steps: a foot on the floor goes back under
+   the body exactly as fast as the body goes forward (a step of DN_STEP), so it does not slide, then is lifted and
+   swung to the front; the arms swing against the legs. */
+function walkPose(ph,w,o){
+  var s,f,k,q,c=Math.cos(6.2831853*ph);
+  for(s=0;s<2;s++){
+    f=ph+0.5*s;f-=Math.floor(f);k=20+4*s;
+    if(f<0.5)o[k+2]+=w*DN_STEP*(0.5-2*f);
+    else{q=2*f-1;o[k+2]-=w*DN_STEP*0.5*Math.cos(Math.PI*q);o[k+1]+=w*0.05*Math.sin(Math.PI*q);}
+  }
+  o[14]-=w*0.09*c;o[18]+=w*0.09*c;o[13]+=w*0.02*Math.abs(c);o[17]+=w*0.02*Math.abs(c);
+  o[2]+=w*0.006*(1-Math.cos(12.5663706*ph));o[9]+=w*0.04;o[7]+=w*0.12*c;
+}
+/* What a figure does while there is no beat: it stands and waits, facing whichever way it likes, or walks to and fro
+   across its room facing the way it goes, some seconds of each. A figure that the beat finds outside the room it
+   dances in (far) walks back first, quickly. It turns at DN_TURN at most, and walks only as far as it faces the way
+   it is going. The pose goes into o; d.tx is moved on. */
+function idle(d,i,dt,time,far,o){
+  var lim=idleRoom(st.kind),want,e,v;
+  d.ic-=dt;
+  if(far){d.im=1;d.idir=d.tx>0?-1:1;d.ic=1;}
+  else if(d.ic<=0){
+    d.im=lim&&Math.random()<0.45?1:0;d.ic=d.im?2+4*Math.random():3+6*Math.random();
+    if(d.im)d.idir=Math.abs(d.tx)>0.6*lim?(d.tx>0?-1:1):Math.random()<0.5?-1:1;else d.itf=(Math.random()-0.5)*4.4;
+  }
+  if(d.im&&!far&&d.tx*d.idir>lim)d.idir=-d.idir;
+  want=d.im?d.idir*1.5707963:d.itf;e=turnTo(d.iface,want);
+  d.iface+=Math.max(-DN_TURN*dt,Math.min(DN_TURN*dt,e));
+  d.iw+=((d.im?1:0)-d.iw)*Math.min(1,dt*3);
+  v=DN_WALK*(far?1.8:1)*d.iw*Math.max(0,Math.cos(e))*(1-d.a);
+  d.iph+=v*dt/(2*DN_STEP);d.tx+=v*dt*Math.sin(d.iface);
+  rest(o);waitPose(time,i,1-d.iw,o);walkPose(d.iph,d.iw,o);o[4]=d.iface;
+}
 function setUp(kind){
   var i,n=count(kind),now=Math.floor(st.u),r;
   crowd.length=0;st.kind=kind;st.phrase=0;
   for(i=0;i<n;i++){
-    r=kind===2&&i?crowd[0].rt:makeRoutine(st.en,Math.random);
-    crowd.push({rt:r,ri:0,mv:r.mv[0],mir:kind!==2&&r.mir[0],u0:now,pmv:0,pmir:false,pu0:now,bl:1,next:now+4+(kind===3?i:0),tx:0,p:MV_REST.slice(),b:danceBody(MV_REST,[]),mem:[0,0,0,0,0,0]});
+    r=kind===2&&i?crowd[0].rt:makeRoutine(st.en,Math.random,danceStyle);
+    crowd.push({g:1,ph:0,gp:0,as:1,wx:0,fa:0,pfa:0,a:0,im:0,ic:3*Math.random(),idir:1,iface:0,itf:(Math.random()-0.5)*3,iph:0,iw:0,rt:r,ri:0,mv:r.mv[0],mir:kind!==2&&r.mir[0],u0:now,pmv:0,pmir:false,pu0:now,bl:1,next:now+4+(kind===3?i:0),tx:0,p:MV_REST.slice(),b:danceBody(MV_REST,[]),mem:[0,0,0,0,0,0]});
   }
 }
 /* A figure goes on to its next move. Its routine is gone through twice and then a new one made; a new one is made at
@@ -210,11 +310,11 @@ function setUp(kind){
    back toward where it stands, and the chorus line all go the same way. */
 function nextMove(d,i,now,e,fresh){
   var n,k,m;
-  d.pmv=d.mv;d.pmir=d.mir;d.pu0=d.u0;d.u0=now;d.bl=0;
+  d.pmv=d.mv;d.pmir=d.mir;d.pu0=d.u0;d.u0=now;d.bl=0;d.pfa=d.fa;
   if(st.kind===2&&i>0){d.rt=crowd[0].rt;d.ri=crowd[0].ri;}
   else{
     d.ri++;n=d.rt.mv.length;
-    if(fresh||d.ri>=2*n||(d.ri%n===0&&moveTier(e)!==d.rt.tier)){d.rt=makeRoutine(e,Math.random);d.ri=0;}
+    if(fresh||d.ri>=2*n||(d.ri%n===0&&moveTier(e)!==d.rt.tier)){d.rt=makeRoutine(e,Math.random,danceStyle);d.ri=0;}
     if(st.kind===2&&d.ri%d.rt.mv.length===0)st.phrase++;
   }
   k=d.ri%d.rt.mv.length;d.mv=d.rt.mv[k];m=MOVES[d.mv];
@@ -225,47 +325,56 @@ function nextMove(d,i,now,e,fresh){
     else if(st.kind===2)d.mir=false;
   }
   d.next=now+Math.max(4,m.len);
+  if(st.kind===2&&i>0){k=crowd[0];d.g=k.g;d.ph=k.ph;d.gp=k.gp;d.as=k.as;d.wx=k.wx;d.fa=k.fa;}else carry(d,st.kind===2?0.5*room(2):room(st.kind),m); /* the chorus line carries a move as its first figure does */
 }
 /* One step for the figures: dt seconds, with bt the bass's pulse and mp the mids', level how full the music is (0 to 1),
    drop true in the frame a drop lands, changed true when the sound has just changed greatly, slow for less motion, and
    time the app's clock, which the standing figures breathe by. */
 export function danceStep(dt,bt,mp,level,drop,changed,slow,time){
-  var b=tick(dt,bt),du=b.du*(slow?0.5:1),go,amp,e,i,j,d,k,w,now,m,v,lim=room(st.kind),beat;
+  var b=tick(dt,bt),du=b.du*(slow?0.5:1),go,amp,e,i,j,d,k,w,now,m,v,lim=room(st.kind),beat,far;
   st.u+=du;st.du=du;now=Math.floor(st.u);
   st.pa+=(Math.max(bt,0.6*mp)-st.pa)*Math.min(1,dt);
   st.kick+=(bt-st.kick)*Math.min(1,dt*(bt>st.kick?30:7)); /* the kick drum as the body feels it: up at once, down in a seventh of a second */
-  go=ease((st.pa-0.03)/0.09);
+  st.sure=b.sure;
+  go=ease((st.pa-0.03)/0.09)*ease((b.sure-0.7)/0.25); /* there must be sound, and a steady beat in it */
   st.en+=(go*(0.45+0.55*level)-st.en)*Math.min(1,dt/0.8);
   st.hype*=Math.exp(-dt/10);
   if(drop){st.hype=1;if(st.jump<0)st.jump=0;}
   e=st.en*(1+0.4*st.hype);amp=ease(e/0.4)*(slow?0.6:1); /* standing or dancing, with a short way between: half a move is not a move */
   if(st.jump>=0){st.jump+=du;if(st.jump>DN_JUMP)st.jump=-1;}
-  beat=0.3*(0.5+0.5*Math.cos(6.2831853*st.u))+1.7*st.kick; /* how far into the beat's give the figures are: a little by the count, mostly by the kick itself */
+  st.snap+=(mp-st.snap)*Math.min(1,dt*(mp>st.snap?30:9)); /* and the mids, which the arms flick to */
+  beat=0.3*(0.5+0.5*Math.cos(6.2831853*st.u))+2.4*st.kick; /* how far into the beat's give the figures are: a little by the count, mostly by the kick itself */
   for(i=0;i<crowd.length;i++){
     d=crowd[i];
     /* the next move of the routine when the one in hand has had its beats (four at least), a new routine at once after
        a great change in the sound and after a drop's jump; never while the figure is still going from the last move
        to this one, or the pose would jump. A move is begun from its own first beat. */
-    if(d.bl>=1&&(now>=d.next||changed||(st.jump<0&&d.late))){nextMove(d,i,now,e,changed||d.late);d.late=false;}
+    if(d.bl>=1&&(now>=d.next||changed||(st.jump<0&&d.late))){nextMove(d,i,now,e,changed||d.late||d.fresh||(st.kind===2&&crowd[0].rt!==d.rt&&i>0));d.late=false;d.fresh=false;}
     if(st.jump>=0)d.late=true;
     m=MOVES[d.mv];
-    movePose(m,st.u-d.u0,A);A[2]+=moveBob(m)*beat;A[9]+=1.5*moveBob(m)*st.kick;A[11]+=4*moveBob(m)*st.kick;
+    movePose(m,st.u-d.u0,A);A[2]+=moveBob(m)*beat;A[9]+=1.5*moveBob(m)*st.kick;A[11]+=6*moveBob(m)*st.kick;
     if(d.mir)flipPose(A);
+    A[4]+=d.fa;
+    groove(A,st.u,d,st.kick,st.snap);
     if(d.bl<1){
-      movePose(MOVES[d.pmv],st.u-d.pu0,B);B[2]+=moveBob(MOVES[d.pmv])*beat;if(d.pmir)flipPose(B);
+      movePose(MOVES[d.pmv],st.u-d.pu0,B);B[2]+=moveBob(MOVES[d.pmv])*beat;if(d.pmir)flipPose(B);B[4]+=d.pfa;
       k=ease(d.bl);w=turnTo(B[4],A[4]);for(j=0;j<MV_N;j++)A[j]=B[j]+(A[j]-B[j])*k;A[4]=B[4]+w*k;
       d.bl=Math.min(1,d.bl+du); /* a beat to go from one move to the next */
     }
-    /* a move that travels carries the figure along, more slowly the nearer it is to the end of its room; standing
-       still or dancing on the spot, the figure drifts back to its place too slowly to be seen sliding */
-    v=moveGo(m,st.u-d.u0)*(d.mir?-1:1)*amp;
+    /* how much this figure dances (d.a) follows how much they all do, but one that has walked out of the room it
+       dances in comes back first. A move that travels carries the figure along, more slowly the nearer it is to the
+       end of its room; dancing on the spot it drifts, as its feet shuffle, toward a place of its own choosing near
+       where it stands. With no beat it waits or walks about (idle), and the pose is between the two by d.a. */
+    far=amp>0.5&&Math.abs(d.tx)>lim+0.05;
+    d.a+=((far?0:amp)-d.a)*Math.min(1,dt*2.5);
+    v=moveGo(m,st.u-d.u0)*(d.mir?-1:1)*d.a;
     if(v){if(v*d.tx>0)v*=Math.max(0,1-Math.abs(d.tx)/lim);d.tx+=v*du;}
-    else d.tx-=d.tx*Math.min(1,dt*0.12);
-    rest(B);B[2]+=0.005*Math.sin(time*1.4+i);B[0]=0.01*Math.sin(time*0.45+2*i);B[8]=0.015*Math.sin(time*0.45+2*i);
-    w=turnTo(0,A[4]);for(j=0;j<MV_N;j++)A[j]=B[j]+(A[j]-B[j])*amp;A[4]=w*amp;
+    else d.tx+=(d.wx-d.tx)*Math.min(1,dt*0.45)*d.a;
+    idle(d,i,dt,time,far,B);
+    w=turnTo(B[4],A[4]);for(j=0;j<MV_N;j++)A[j]=B[j]+(A[j]-B[j])*d.a;A[4]=B[4]+w*d.a;
     if(st.jump>=0){
       jumpPose(st.jump,J);w=ease(st.jump/0.3)*(1-ease((st.jump-DN_JUMP+0.5)/0.5))*(slow?0.5:1);
-      k=A[4];for(j=0;j<MV_N;j++)A[j]+=(J[j]-A[j])*w;A[4]=k*(1-w); /* the turn has been brought within half a turn of facing front, so this is the short way */
+      k=A[4];for(j=0;j<MV_N;j++)A[j]+=(J[j]-A[j])*w;A[4]=k+turnTo(k,0)*w; /* the jump is made facing the viewer, turned to the short way round */
     }
     k=Math.min(1,dt*13);w=d.p[4]+turnTo(d.p[4],A[4])*k;for(j=0;j<MV_N;j++)d.p[j]+=(A[j]-d.p[j])*k;d.p[4]=w; /* the pose is gone toward, never jumped to; the turn goes the short way round */
     danceBody(d.p,d.b,d.mem,Math.min(1,dt*10));
@@ -311,5 +420,5 @@ tick=makeBeatClock();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={DN_MAX, DN_HIP, DN_SPINE, DN_HEAD, DN_NECK, DN_SHO, DN_HIPW, DN_ARM, DN_FORE, DN_CLEAR, DN_LEG, DN_FOOT, DN_STANCE, DN_NEAR, DN_EYE, DN_FAST, DN_SLOW, DN_SIZE, DN_JUMP, dnU, danceBody, danceFlat, makeBeatClock, pickMove, moveTier, makeRoutine,
+export const __dbg={DN_MAX, DN_HIP, DN_SPINE, DN_HEAD, DN_NECK, DN_SHO, DN_HIPW, DN_ARM, DN_FORE, DN_CLEAR, DN_LEG, DN_FOOT, DN_STANCE, DN_NEAR, DN_EYE, DN_FAST, DN_SLOW, DN_SIZE, DN_JUMP, DN_STEP, DN_WALK, DN_TURN, dnU, danceBody, danceFlat, makeBeatClock, pickMove, moveTier, makeRoutine, setDanceStyle, get danceStyle(){return danceStyle},
   danceKind, danceStep, stepDance, danceSpots, danceFill, crowd, danceSt:st, get danceTick(){return tick},set danceTick(v){tick=v}};
