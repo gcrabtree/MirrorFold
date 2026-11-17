@@ -1010,7 +1010,7 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   run(3, tt => { dn.danceStep(dt, hit(tt, 0.47), 0, 1, tt < dt, false, false, 64 + tt); dn.danceBody(dn.crowd[0].p, J); high = Math.max(high, Math.min(J[34], J[40])); });
   run(8, tt => dn.danceStep(dt, 0, 0, 0.1, false, false, false, 67 + tt)); const after = hand();
   expect("in silence a figure stands with its arms down, and with a beat it dances", still0 < 0.05 && moved > 0.15, still0 + " " + moved);
-  expect("at a drop the figures leave the floor, and come down again", high > 0.08 && Math.max(J[34], J[40]) < 0.01, String(high));
+  expect("at a drop the figures leave the floor, and come down again", high > 0.08 && Math.min(J[34], J[40]) < 0.01 && Math.max(J[34], J[40]) < 0.07, String(high)); // afterward a foot is on the floor, and the other no higher than a step lifts it
   expect("when the music goes quiet they stop dancing, and their arms hang again", dn.crowd.every(d => d.a < 0.05) && Math.abs(after[1] - quiet[1]) < 0.06, String(after[1] - quiet[1]));
   { // a voice talking: sound that comes and goes, but not evenly. The clock is not sure of it, and nobody dances; they wait or walk about.
     const talk = []; let at = 0.3; while (at < 90) { talk.push(at); at += 0.26 + 0.7 * rnd(); }
@@ -1019,6 +1019,15 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     for (let tt = 0; tt < 90; tt += dt) { o2 = bc2(dt, say(tt)); sum += o2.sure; cnt++; }
     bc2 = dn.makeBeatClock(); for (let tt = 0; tt < 12; tt += dt) o2 = bc2(dt, hit(tt, 0.47)); const sureBeat = o2.sure;
     for (let tt = 0; tt < 6; tt += dt) o2 = bc2(dt, 0);
+    { // bass lines that leave the beat: the clock keeps a beat it has found
+      const line = (steps, T) => { const h = []; for (let b = 0; b < T / 0.5 / 4; b++) for (const st2 of steps) h.push((b * 4 + st2) * 0.5 + (rnd() - 0.5) * 0.02); return h; };
+      const share = h => { const bc3 = dn.makeBeatClock(); let j = 0, on = 0, n = 0, o3; for (let tt = 0; tt < 90; tt += dt) { while (j < h.length - 1 && h[j + 1] <= tt) j++; o3 = bc3(dt, tt >= h[j] ? Math.exp(-7 * (tt - h[j])) : 0); if (tt > 10) { n++; if (o3.sure >= 0.95) on++; } } return on / n; };
+      const got = [[0, 1, 2, 3], [0, 2], [0, 1.5, 2, 3.75], [0, 0.75, 1.5, 2.25, 3, 3.5], [0, 1.5, 3]].map(st2 => share(line(st2, 90)));
+      expect("a bass line that is off the beat part of the time (hip-hop, funk, a dotted line) is still a beat to the clock", got.every(v => v > 0.7), got.map(v => v.toFixed(2)).join(" ")); }
+    { // changing from one overlay of figures to another while the music plays does not stop the dance
+      dn.danceTick = dn.makeBeatClock(); let tt = 0, low = 1; const go = (kd, secs) => { sel.ovi = OVERLAYS.findIndex(v => v.dance === kd); for (let n = 0; n < secs * 60; n++, tt += dt) { dn.stepDance({ dt, bt: hit(tt, 0.47), mp: 0 }); if (secs < 9) low = Math.min(low, ...dn.crowd.map(d => d.a)); } };
+      go(1, 10); go(2, 3); go(3, 3); go(1, 3); go(2, 3);
+      expect("figures newly set up while the others were dancing are dancing from their first frame", low > 0.9, String(low)); sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); dn.stepDance({ dt, bt: 0, mp: 0 }); prev = null; } // new figures: the speeds below are not measured against the old ones
     expect("the clock is sure of a steady beat within a few seconds, not of uneven hits, and stops being sure when the beat has gone", sureBeat > 0.9 && sum / cnt < 0.3 && o2.sure < 0.2, sureBeat + " " + sum / cnt + " " + o2.sure);
     dn.danceTick = dn.makeBeatClock(); let danced = 0, walked = 0, out = 0, turned = 0; const tx0 = dn.crowd.map(d => d.tx);
     run(90, tt => { dn.danceStep(dt, say(tt), 0.5 * say(tt + 0.1), 0.8, false, false, false, 80 + tt); dn.crowd.forEach((d, n) => { danced += d.a * dt; walked = Math.max(walked, Math.abs(d.tx - tx0[n])); out = Math.max(out, Math.abs(d.tx)); turned = Math.max(turned, Math.abs(Math.sin(d.p[4]))); }); });

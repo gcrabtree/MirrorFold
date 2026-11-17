@@ -46,7 +46,7 @@ export const DN_DRIFT=0.3;   /* how fast a dancing figure moves over the floor t
 export const dnU=[new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48)]; /* for the shader, four numbers a figure in each: neck and hips; the shoulders; left elbow and hand; right elbow and hand; the hip joints; left knee and ankle; right knee and ankle; the toes; the head's middle, its radius and how brightly the figure shows (0 for none) */
 const A=new Array(MV_N),B=new Array(MV_N),J=new Array(MV_N),flat=new Array(35),SP=[0,0],RM=[0,0,0,0],order=[];
 const crowd=[];              /* the figures: {rt, ri, mv, mir, u0, pmv, pmir, pu0, bl, next, tx, tz, p, b, mem, fa, sp, pfa, a, im, ic, idir, iface, itf, iph, iw}: the routine and how far through it; the move, whether it is faced the other way and the beat it began on; the same for the move before, and how far the figure has gone over from it; the beat to change on; how far the figure has travelled from its place; the pose; the body; where the elbows were; which way it is turned for this move and was for the last; how much it is dancing; and for when it is not, whether it walks, the seconds until it chooses again, which way it walks, the way it faces now and wants to, how far through its steps it is and how much it is walking */
-const st={asp:1.78,u:0,du:0,pa:0,sure:0,kick:0,snap:0,en:0,hype:0,jump:-1,kind:0,phrase:0}; /* how wide the picture is for 1 tall (danceFill says); the count of beats and this frame's step of it; how much pulse there has been lately; how sure the beat is; the kick as the figures feel it; how much they dance; how long since a drop; how far through a jump (in beats, -1 for none); which overlay they were set up for; how many times the chorus line has changed its dance */
+const st={amp:0,asp:1.78,u:0,du:0,pa:0,sure:0,kick:0,snap:0,en:0,hype:0,jump:-1,kind:0,phrase:0}; /* how much the figures are dancing, 0 to 1 (figures newly set up begin with it, so that changing from one overlay of figures to another does not stop the dance); how wide the picture is for 1 tall (danceFill says); the count of beats and this frame's step of it; how much pulse there has been lately; how sure the beat is; the kick as the figures feel it; how much they dance; how long since a drop; how far through a jump (in beats, -1 for none); which overlay they were set up for; how many times the chorus line has changed its dance */
 let tick=null;
 
 function ease(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);}
@@ -164,32 +164,46 @@ export function danceFlat(b,o){
    falls near a whole count pulls the count three quarters of the way to it; the pull is spread over the next frames, and the count never
    goes backward, so a figure following it never jerks. With no hits the count runs on as it was. sure (0 to 1) is
    how far the hits have been a steady beat: it rises with each hit that comes a whole number of half beats after the
-   last, falls with each that does not, and sinks when a second and a half pass without one. A voice talking makes hits too, but not evenly, so its sure stays low; the figures dance only to a
+   last, stays as it is for one a quarter beat off that (music has those), falls with each other, and sinks when a
+   second and a half pass without one. Once the beat has been as sure as can be (six hits or so on it, with none off)
+   it is kept: bass lines wander off the beat for a bar or two and a dancer does not stop for that. A kept beat is
+   given out as wholly sure until fewer than about half of the last dozen hits fit it (fit), or three seconds pass
+   with none. A voice talking makes hits too, but not evenly, so its sure stays low; the figures dance only to a
    beat that is sure. While it is low a hit sets the count outright, there being no beat to keep to. */
 export function makeBeatClock(){
-  var u=0,per=0.5,low=0,since=9,pend=0,odd=0,off=0,sure=0,got=false,out={u:0,per:0.5,du:0,sure:0};
+  var u=0,per=0.5,low=0,since=9,pend=0,odd=0,off=0,sure=0,fit=0,kept=false,got=false,out={u:0,per:0.5,du:0,sure:0};
   return function(dt,p){
-    var iv,e,c,du,ok,r;
+    var iv,e,c,du,ok,r,tol;
     since+=dt;low=Math.min(low,p);
     if(since>1.5)sure=Math.max(0,sure-0.4*dt);
+    if(since>3)kept=false;
     if(p>low+0.15&&p>0.2&&since>=0.24){
-      iv=since;since=0;low=p;ok=false;
+      iv=since;since=0;low=p;ok=-1;e=u+pend-Math.round(u+pend);
       if(iv<2.2){
-        r=iv/per;ok=got&&r>0.4&&Math.abs(r-Math.round(2*r)/2)<Math.max(0.07,0.03/per);
-        while(iv>=DN_SLOW)iv/=2;while(iv<DN_FAST)iv*=2;
-        if(!got){per=iv;got=true;odd=0;}
-        else if(Math.abs(iv-per)<0.18*per){per+=(iv-per)*0.3;odd=0;}
-        else if(++odd>=3){per=iv;odd=0;}
+        r=iv/per;tol=Math.max(0.07,0.03/per,1.5*dt/per); /* a frame and a half at least: a slow frame rate does not see a hit any nearer than that */
+        ok=!got?-1:r>0.4&&Math.abs(r-Math.round(2*r)/2)<tol?1:r>0.2&&Math.abs(r-Math.round(4*r)/4)<tol?0.5:0;
+        if(ok===1){c=iv/(Math.round(2*r)/2);per=Math.max(DN_FAST,Math.min(DN_SLOW,per+(c-per)*0.2));odd=0;} /* a hit on the beat says how long the beat is */
+        else{
+          if(ok>=0&&kept&&(Math.abs(e)<tol||Math.abs(e)>0.5-tol))ok=1; /* off the last hit but on the count: the last was the odd one */
+          while(iv>=DN_SLOW)iv/=2;while(iv<DN_FAST)iv*=2;
+          if(!got){per=iv;got=true;odd=0;}
+          else if(ok===0&&++odd>=(kept?8:3)){per=iv;odd=0;} /* hit after hit that fits nothing: the beat held is wrong */
+        }
       }
-      e=u-Math.round(u);
-      if(sure<0.2){pend=e>0.25?1-e:-e;off=0;}
-      else if(Math.abs(e)<0.3){pend=-0.75*e;off=0;}
-      else if(++off>=3){pend=-e;off=0;} /* three hits in a row between the counts: the count is what is out */
-      sure=ok?Math.min(1.5,sure+0.25):Math.max(0,sure-0.3); /* it is kept to half as much again as is given out, so that a beat that is sure is not lost to a hit or two off it: music has those */
+      if(sure<0.2&&!kept){pend=e>0.25?1-e:-e;off=0;}
+      else if(Math.abs(e)<0.15){pend=-0.75*e;off=0;}
+      else if(Math.abs(e)>0.35){pend=-0.75*(e>0?e-0.5:e+0.5);off=0;} /* on the half beat: the count is pulled to that */
+      else if(++off>=(kept?6:3)){pend=-e;off=0;} /* hit after hit between the counts: the count is what is out */
+      if(ok>=0){
+        sure=ok===1?Math.min(1.5,sure+0.25):ok?sure:Math.max(0,sure-(kept?0.15:0.3)); /* it is kept to half as much again as is given out, so that a beat that is sure is not lost to a hit or two off it */
+        fit+=(ok-fit)*0.12;
+        if(sure>=1.45){kept=true;fit=Math.max(fit,0.8);}
+        if(kept&&fit<0.6)kept=false;
+      }
     }
     c=pend*Math.min(1,dt*12);pend-=c;
     du=Math.max(0.2*dt/per,dt/per+c);u+=du;
-    out.u=u;out.per=per;out.du=du;out.sure=Math.min(1,sure);
+    out.u=u;out.per=per;out.du=du;out.sure=kept?1:Math.min(1,sure);
     return out;
   };
 }
@@ -362,7 +376,7 @@ function setUp(kind){
   crowd.length=0;st.kind=kind;st.phrase=0;
   for(i=0;i<n;i++){
     r=kind===2&&i?crowd[0].rt:makeRoutine(st.en,Math.random,danceStyle);
-    d={rel:[0,0,0,0,0,0,0,0,0,0,0,0],dw:0,go:false,g:1,ph:0,gp:0,as:1,wx:0,wz:0,vx:0,vz:0,fa:0,sp:0,pfa:0,a:0,im:0,ic:3*Math.random(),ix:0,iz:0,iface:0,itf:(Math.random()-0.5)*3,iph:0,iw:0,
+    d={rel:[0,0,0,0,0,0,0,0,0,0,0,0],dw:0,go:false,a:st.amp,g:1,ph:0,gp:0,as:1,wx:0,wz:0,vx:0,vz:0,fa:kind===2?0:(Math.random()-0.5)*1.6,sp:0,pfa:0,im:0,ic:3*Math.random(),ix:0,iz:0,iface:0,itf:(Math.random()-0.5)*3,iph:0,iw:0,
       hf:h[i][0],hz:h[i][1],hc:h[i][2],id:i,
       rt:r,ri:0,mv:r.mv[0],mir:kind!==2&&r.mir[0],u0:now,pmv:0,pmir:false,pu0:now,bl:1,next:now+4+(kind===3?i%5:0),tx:0,tz:0,p:MV_REST.slice(),b:danceBody(MV_REST,[]),mem:[0,0,0,0,0,0]};
     if(kind===3){d.hf+=(Math.random()-0.5)*0.25;d.hz+=(Math.random()-0.5)*0.5;} /* a crowd does not stand in ranks */
@@ -407,7 +421,7 @@ export function danceStep(dt,bt,mp,level,drop,changed,slow,time){
   st.en+=(go*(0.45+0.55*level)-st.en)*Math.min(1,dt/0.8);
   st.hype*=Math.exp(-dt/10);
   if(drop){st.hype=1;if(st.jump<0)st.jump=0;}
-  e=st.en*(1+0.4*st.hype);amp=ease(e/0.4)*(slow?0.6:1); /* standing or dancing, with a short way between: half a move is not a move */
+  e=st.en*(1+0.4*st.hype);amp=st.amp=ease(e/0.4)*(slow?0.6:1); /* standing or dancing, with a short way between: half a move is not a move */
   if(st.jump>=0){st.jump+=du;if(st.jump>DN_JUMP)st.jump=-1;}
   st.snap+=(mp-st.snap)*Math.min(1,dt*(mp>st.snap?30:9)); /* and the mids, which the arms flick to */
   beat=0.3*(0.5+0.5*Math.cos(6.2831853*st.u))+2.4*st.kick; /* how far into the beat's give the figures are: a little by the count, mostly by the kick itself */
