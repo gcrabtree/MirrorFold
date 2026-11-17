@@ -23,10 +23,34 @@ export const SC_MARKS=300;   /* the most marks in a track */
 export const SC_LEN=3*3600;  /* the longest track, in seconds */
 export const SC_TAKES=24;    /* the most camera takes in a track */
 export const SC_TAKE_MAX=600; /* the longest take, in seconds */
+export const SC_CURVES=["morph","speed"]; /* what a line can be drawn for over a track: the world's shape, and how fast the flight goes */
+export const SC_CURVE_PTS=200; /* the most points in one line */
 export const SC_NEAR_LEN=1.5; /* a file is taken for a track if their lengths are within this many seconds */
 
 function num(x,lo,hi){return typeof x==="number"&&isFinite(x)?Math.max(lo,Math.min(hi,x)):null;}
 function cs(x){return Math.round(x*100)/100;} /* times are kept to a hundredth of a second */
+/* A drawn line, checked: its points [seconds, height] in order of time, the height 0 to 1, no two at one moment. [] for nothing usable. */
+export function cleanCurve(src,len){
+  var out=[],i,p,t,v,raw=[];
+  if(!Array.isArray(src))return out;
+  for(i=0;i<src.length&&raw.length<SC_CURVE_PTS*4;i++){
+    p=src[i];if(!Array.isArray(p))continue;
+    t=num(p[0],0,len);v=num(p[1],0,1);
+    if(t===null||v===null)continue;
+    raw.push([cs(t),Math.round(v*1000)/1000]);
+  }
+  raw.sort(function(a,b){return a[0]-b[0];});
+  for(i=0;i<raw.length&&out.length<SC_CURVE_PTS;i++)if(!out.length||raw[i][0]-out[out.length-1][0]>=0.05-1e-6)out.push(raw[i]);
+  return out;
+}
+/* The height of a drawn line at time t: straight from point to point, level before the first and after the last. null if it has no points. */
+export function curveAt(pts,t){
+  var i,a,b;
+  if(!pts||!pts.length)return null;
+  if(t<=pts[0][0])return pts[0][1];
+  for(i=1;i<pts.length;i++)if(t<pts[i][0]){a=pts[i-1];b=pts[i];return a[1]+(b[1]-a[1])*(t-a[0])/(b[0]-a[0]);}
+  return pts[pts.length-1][1];
+}
 /* A camera take, checked, or null: {t, w, d}. t is the moment of the track it begins at; w the ids of the worlds it
    passes through; d the camera twice a second, as a recorded flight keeps it (js/flightdata.js), in the letters of a
    link. What comes out is a number, names, and bytes that are only ever read as numbers. len is the track's length. */
@@ -82,6 +106,11 @@ export function cleanTrack(src){
       tks.push(tk);end=tk.t+takeLen(tk);
     });
     if(tks.length)out.takes=tks; /* a track with none has no list of them */
+  }
+  if(src.curves&&typeof src.curves==="object"&&!Array.isArray(src.curves)){
+    var cv={},any=false;
+    SC_CURVES.forEach(function(n){var c=cleanCurve(src.curves[n],len);if(c.length){cv[n]=c;any=true;}});
+    if(any)out.curves=cv; /* and a track with no lines has none of this */
   }
   return out;
 }
@@ -146,4 +175,4 @@ export function init(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={SC_TAKES, SC_TAKE_MAX, cleanTake, takeLen, takeAt, SC_CUTS, SC_KINDS, SC_BEHIND, SC_LEAD, SC_GAP, SC_NEAR, SC_SOFT, SC_TRACKS, SC_CUES, SC_MARKS, SC_LEN, SC_NEAR_LEN, cleanTrack, cleanScore, scOrder, scChase, scSeek, scMatch, scAt, scLen};
+export const __dbg={SC_CURVES, SC_CURVE_PTS, cleanCurve, curveAt, SC_TAKES, SC_TAKE_MAX, cleanTake, takeLen, takeAt, SC_CUTS, SC_KINDS, SC_BEHIND, SC_LEAD, SC_GAP, SC_NEAR, SC_SOFT, SC_TRACKS, SC_CUES, SC_MARKS, SC_LEN, SC_NEAR_LEN, cleanTrack, cleanScore, scOrder, scChase, scSeek, scMatch, scAt, scLen};

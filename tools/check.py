@@ -156,6 +156,11 @@ setTimeout(function(){
   log("take="+(tk?tk.t+"/"+takeLen(tk)+"/"+tk.w.join():"none")+" flown="+(Math.abs(cam.pos[0]-(p0[0]+0.025))<0.002)+" hold="+takeHold);
   notes.mx=1;scoreFrame(notes);notes.mx=0;cam.pos=[9,9,9];scoreClock();scoreFrame(notes);log("hands off="+(cam.pos[0]===9));
   cam.pos=p0;setStudio(false);
+  /* drawn lines: the world's shape is gone toward where the line says, and the flight's speed likewise */
+  scoreEdit(0,scoreUse().tracks[0].cues,[],[],{morph:[[100,0],[120,1]],speed:[[100,0],[120,1]]});
+  var mv=[],sp=[];[100,110,120].forEach(function(t){player.offset=t;scoreClock({dt:10});mv.push(scoreMorph().toFixed(2));sp.push(cam.baseSpeed.toFixed(2));});
+  player.offset=60;scoreClock({dt:10});scoreEdit(0,scoreUse().tracks[0].cues,[],[],{});scoreClock({dt:10});
+  log("lines morph="+mv.join("/")+" speed="+sp.join("/")+" none="+scoreMorph());cam.baseSpeed=1;
   scoreSet(null);scoreRemove("Check album");player.mode=null;player.buf=null;musicMode=wm;calm=wc;setLook(0);
   log("score off="+(jt.name!=="none")+" kept="+scores.length);
 },3760);
@@ -175,6 +180,7 @@ packs_ok = all(json.loads(t)["name"] + ":true:%d/%d" % ((len(json.loads(t).get("
 if not packs_ok:
     print("   a published pack did not load whole, or one of its filters did not compile")
 score_ok = "score=julia/Spectrum/none/Calm julia/Sunset/none/Calm julia/Sunset/none/Calm temple/Sunset/none/Calm temple/Sunset/Neon/Calm temple/Sunset/Neon/none julia/Sunset/Neon/Calm button=Score: Check album" in log and "score off=true kept=0" in log
+score_ok = score_ok and "lines morph=-0.98/0.00/0.98 speed=0.20/0.89/4.00 none=null" in log
 score_ok = score_ok and "take=50/4/temple flown=true hold=false" in log and "hands off=true" in log
 score_ok = score_ok and "studio=true written=1 as palette@3 again=0 undone=true lanes=journey+world+palette+filter" in log
 if not score_ok:

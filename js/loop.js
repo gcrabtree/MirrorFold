@@ -10,7 +10,7 @@ import { fbSet } from "./fabric.js";
 import { measure } from "./flight.js";
 import { flightClock, flightFrame } from "./flightplay.js";
 import { stepFlits } from "./flits.js";
-import { scoreClock, scoreFrame } from "./scoreplay.js";
+import { scoreClock, scoreFrame, scoreMorph } from "./scoreplay.js";
 import { studioFrame } from "./studio.js";
 import { wakeHud } from "./input.js";
 import { stepZoom } from "./zoom.js";
@@ -94,9 +94,10 @@ function frame(now){
 
   /* what time it is, what the music is doing */
   soundFrame(notes);
-  if(!still&&!lapOn())tickClock(notes,morph,morph===2?songAim(scene.world,clock.time):null); /* Hold still stops the clocks, and with them the morph, the colour drift and the turning mirrors */
+  var drawn=scoreMorph(); /* a score's drawn line for the world's shape, which comes before the song's say and the Morph setting (js/scoreplay.js) */
+  if(!still&&!lapOn())tickClock(notes,drawn!==null?2:morph,drawn!==null?drawn:morph===2?songAim(scene.world,clock.time):null); /* Hold still stops the clocks, and with them the morph, the colour drift and the turning mirrors */
   flightClock(notes); /* a recorded flight being played makes its changes and sets the morph (js/flightplay.js) */
-  scoreClock(); /* a score in use makes the changes that have come due in the music (js/scoreplay.js) */
+  scoreClock(notes); /* a score in use makes the changes that have come due in the music (js/scoreplay.js) */
   togetherClock(notes); /* flying together: a guest takes the host's world and morph (js/together.js) */
   lapClock(notes); /* a loop being flown sets every clock from how far round the lap is, and stands in for the sound (js/lap.js) */
   stepWarp(dt);

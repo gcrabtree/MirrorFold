@@ -21,13 +21,16 @@ import { flightPlaying } from "./flightplay.js";
 import { tgGuest } from "./together.js";
 import { musicMode } from "./listen.js";
 import { cleanName } from "./packs.js";
-import { SC_GAP, SC_KINDS, SC_NEAR, SC_SOFT, SC_TAKE_MAX, scLen, takeLen } from "./scoredata.js";
+import { SC_CURVES, SC_GAP, SC_KINDS, SC_NEAR, SC_SOFT, SC_TAKE_MAX, scLen, takeLen } from "./scoredata.js";
 import { draftAlbum, hearFile, heardFile } from "./scoremake.js";
 import { scMade, scoreEdit, scoreNow, scoreRemove, scoreRename, scoreSet, scoreUse, scores, setTakeHold } from "./scoreplay.js";
 import { still } from "./still.js";
 import { resize } from "./targets.js";
-export const ST_GUT=96,ST_RULER=20,ST_WAVE=56,ST_LANE=22; /* the timeline's measures in CSS pixels: the lanes' names, the ruler, the music, one lane */
+export const ST_GUT=96,ST_RULER=20,ST_WAVE=44,ST_LANE=22; /* the timeline's measures in CSS pixels: the lanes' names, the ruler, the music, one lane */
 export const ST_ALBUM=22;    /* the strip across the top with every track of the album on it */
+export const ST_CURVE=38;    /* the height of a lane with a drawn line in it */
+export const ST_CURVE_NAME={morph:"Shape",speed:"Speed"};
+export const ST_CURVE_HINT={morph:"Press here to draw how the world's shape changes: low is its open end, high its dense end. With no line, the shape follows the song.",speed:"Press here to draw how fast the flight goes: low is a fifth of the usual speed, high four times it. With no line, the speed is as you set it."};
 export const ST_UNDO=100;    /* how many changes can be undone */
 export const ST_LANE_NAME={journey:"By chance",world:"World",palette:"Palette",mirrors:"Mirrors",motion:"Motion",filter:"Filter",overlay:"Overlay",surface:"Surface",land:"Land",packing:"Packing",pulse:"Pulse",shapes:"Shapes",inside:"Inside out",dance:"Dance style",camera:"Camera"};
 export let studioOpen=false;
@@ -36,6 +39,7 @@ const view={a:0,b:1,ti:-1,sc:null}; /* the seconds shown from left to right, the
 let follow=true;             /* the track shown is the one playing, and changes with it; false once another has been chosen to work on */
 let wantSeek=null;           /* a moment to go to in a track whose file is being started: {i, t} */
 let trayKey="";              /* what the tray of pictures was last filled with */
+let pickPt=null;             /* the chosen point of a drawn line: {c, i}, the line's name and the point's place in it; or null */
 let pickTake=-1;             /* the chosen camera take, or -1 */
 let tape=null;               /* the camera being recorded: {t0, n, bytes, worlds, last} */
 let pick=-1;                 /* the chosen cue: its place in the track's list, or -1 */
@@ -105,7 +109,7 @@ function playing(){return view.ti>=0&&view.ti===playI();}
 function showTrack(i){
   var sc=scoreUse();
   if(!sc||!sc.tracks[i])return;
-  follow=i===playI();view.ti=i;view.sc=sc;view.a=0;view.b=sc.tracks[i].len;pick=-1;pickTake=-1;loop=null;
+  follow=i===playI();view.ti=i;view.sc=sc;view.a=0;view.b=sc.tracks[i].len;pick=-1;pickTake=-1;pickPt=null;loop=null;
 }
 /* keep the track shown in step with the score in use and, while following, with the music */
 function viewSync(){
@@ -129,23 +133,23 @@ export function stAlbumAt(lens,part){
 }
 function xOf(t,W){return ST_GUT+(t-view.a)/(view.b-view.a)*(W-ST_GUT);}
 function tOf(x,W){return view.a+(x-ST_GUT)/(W-ST_GUT)*(view.b-view.a);}
-function say(text){$("stSay").textContent=text;}
+function say(text){$("stSay").textContent=text;$("stSay").title=text;}
 /* Change the playing track: fn is given copies of its cues and marks and returns the new {cues, marks}, or null for no change. */
 function edit(fn){
   var tr=track(),i=ti(),got,u;
   if(!tr)return false;
-  got=fn(tr.cues.map(function(c){return c.slice();}),tr.marks.slice(),(tr.takes||[]).slice());
+  got=fn(tr.cues.map(function(c){return c.slice();}),tr.marks.slice(),(tr.takes||[]).slice(),JSON.parse(JSON.stringify(tr.curves||{})));
   if(!got)return false;
-  u=undo[i]||(undo[i]=[]);u.push(JSON.stringify({cues:tr.cues,marks:tr.marks,takes:tr.takes||[]}));if(u.length>ST_UNDO)u.shift();
+  u=undo[i]||(undo[i]=[]);u.push(JSON.stringify({cues:tr.cues,marks:tr.marks,takes:tr.takes||[],curves:tr.curves||{}}));if(u.length>ST_UNDO)u.shift();
   undo["r"+i]=[];
-  return scoreEdit(i,got.cues,got.marks,got.takes);
+  return scoreEdit(i,got.cues,got.marks,got.takes,got.curves);
 }
 function goBack(from,to){
   var tr=track(),i=ti(),a=undo[from+i],s;
   if(!tr||!a||!a.length){toast(from?"Nothing to do again.":"Nothing to undo.");return;}
   s=JSON.parse(a.pop());
-  (undo[to+i]||(undo[to+i]=[])).push(JSON.stringify({cues:tr.cues,marks:tr.marks,takes:tr.takes||[]}));
-  scoreEdit(i,s.cues,s.marks,s.takes||[]);pick=-1;pickTake=-1;
+  (undo[to+i]||(undo[to+i]=[])).push(JSON.stringify({cues:tr.cues,marks:tr.marks,takes:tr.takes||[],curves:tr.curves||{}}));
+  scoreEdit(i,s.cues,s.marks,s.takes||[],s.curves||{});pick=-1;pickTake=-1;pickPt=null;
 }
 /* Write a cue at time t. Says so if there is no room. */
 function put(t,k,v){
@@ -198,8 +202,16 @@ function takeFrame(){
     if(tape.n>=SC_TAKE_MAX/FL_DT){takeStop("A take is at most ten minutes. ");return;}
   }
 }
+/* the drawn lines: where a height (0 to 1) is in the lane whose top is y, and the height at a place of the mouse */
+function vY(v,y){return y+4+(1-v)*(ST_CURVE-8);}
+function curveTop(ci){return ST_RULER+ST_WAVE+rows.length*ST_LANE+ci*ST_CURVE;}
+function vOf(e,ci){var r=cv.getBoundingClientRect();return Math.max(0,Math.min(1,1-(e.clientY-r.top-ST_ALBUM-curveTop(ci)-4)/(ST_CURVE-8)));}
 function removePick(){
-  var tr=track(),c=tr&&tr.cues[pick],p=pickTake;
+  var tr=track(),c=tr&&tr.cues[pick],p=pickTake,q=pickPt;
+  if(tr&&q&&tr.curves&&tr.curves[q.c]&&tr.curves[q.c][q.i]){
+    edit(function(cues,marks,takes,curves){curves[q.c].splice(q.i,1);return {cues:cues,marks:marks,curves:curves};});
+    pickPt=null;say("Removed the point from the "+ST_CURVE_NAME[q.c].toLowerCase()+" line.");return;
+  }
   if(tr&&tr.takes&&tr.takes[p]){
     edit(function(cues,marks,takes){takes.splice(p,1);return {cues:cues,marks:marks,takes:takes};});
     pickTake=-1;say("Removed the camera take.");return;
@@ -213,7 +225,7 @@ function draw(){
   var tr=track(),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H,i,k,x,x1,t,step,an,y,c,n,lane,list,pos,j,nx,css=getComputedStyle(document.body),sc=scoreUse(),tot,acc,f;
   rows=tr?stLanes(tr.cues):[];
   if(tr&&((tr.takes&&tr.takes.length)||tape))rows.push("camera");
-  H=ST_ALBUM+ST_RULER+ST_WAVE+Math.max(3,rows.length)*ST_LANE+2;
+  H=ST_ALBUM+ST_RULER+ST_WAVE+rows.length*ST_LANE+SC_CURVES.length*ST_CURVE+2;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.height=H+"px";}
   cx.setTransform(dpr,0,0,dpr,0,0);
   cx.fillStyle="#0b0716";cx.fillRect(0,0,W,H);
@@ -286,6 +298,22 @@ function draw(){
       cx.restore();
     }
   }
+  /* the drawn lines: one lane each, the line straight from point to point and level before the first and after the last */
+  SC_CURVES.forEach(function(name,ci){
+    var y0=curveTop(ci),pts=((tr.curves&&tr.curves[name])||[]).map(function(p,pi){return drag&&drag.kind==="pt"&&drag.c===name&&drag.i===pi?[drag.t,drag.v]:p;}).slice().sort(function(p,q){return p[0]-q[0];}),pi,px;
+    cx.fillStyle=ci%2?"rgba(95,240,255,.04)":"rgba(95,240,255,.07)";cx.fillRect(0,y0,W,ST_CURVE);
+    cx.fillStyle="rgba(243,236,255,.8)";cx.fillText(ST_CURVE_NAME[name],8,y0+ST_CURVE/2);
+    if(!pts.length){cx.fillStyle="rgba(243,236,255,.45)";cx.fillText(ST_CURVE_HINT[name],ST_GUT+8,y0+ST_CURVE/2);return;}
+    cx.save();cx.beginPath();cx.rect(ST_GUT,y0,W-ST_GUT,ST_CURVE);cx.clip();
+    cx.strokeStyle="#5ff0ff";cx.lineWidth=1.5;cx.beginPath();cx.moveTo(ST_GUT,vY(pts[0][1],y0));
+    for(pi=0;pi<pts.length;pi++)cx.lineTo(xOf(pts[pi][0],W),vY(pts[pi][1],y0));
+    cx.lineTo(W,vY(pts[pts.length-1][1],y0));cx.stroke();
+    for(pi=0;pi<pts.length;pi++){
+      px=pickPt&&pickPt.c===name&&tr.curves&&tr.curves[name]&&tr.curves[name][pickPt.i]&&(drag&&drag.kind==="pt"?pts[pi][0]===drag.t:pts[pi][0]===tr.curves[name][pickPt.i][0]);
+      cx.fillStyle=px?"#fff":"#5ff0ff";cx.beginPath();cx.arc(xOf(pts[pi][0],W),vY(pts[pi][1],y0),px?5:3.5,0,6.2832);cx.fill();
+    }
+    cx.restore();
+  });
   /* the marks, over the music and the lanes */
   cx.strokeStyle="rgba(243,236,255,.35)";cx.lineWidth=1;cx.setLineDash([3,3]);
   for(i=0;i<tr.marks.length;i++){x=Math.round(xOf(drag&&drag.kind==="mark"&&drag.i===i?drag.t:tr.marks[i],W))+0.5;if(x<ST_GUT||x>W)continue;cx.beginPath();cx.moveTo(x,ST_RULER);cx.lineTo(x,H);cx.stroke();}
@@ -308,7 +336,14 @@ function under(e){
     return o;
   }
   lane=Math.floor((y-ST_RULER-ST_WAVE)/ST_LANE);
-  if(lane<0||lane>=rows.length)return o;
+  if(lane>=rows.length){ /* below the lanes of cues: the lanes of drawn lines. A point is taken hold of within seven pixels. */
+    i=Math.floor((y-curveTop(0))/ST_CURVE);
+    if(i<0||i>=SC_CURVES.length)return o;
+    o.zone="curve";o.k=SC_CURVES[i];o.ci=i;list=(tr.curves&&tr.curves[o.k])||[];
+    for(j=0;j<list.length;j++)if(Math.abs(xOf(list[j][0],W)-x)<=7&&Math.abs(vY(list[j][1],curveTop(i))-y)<=7)o.i=j;
+    return o;
+  }
+  if(lane<0)return o;
   if(rows[lane]==="camera"){o.zone="take";for(i=0;tr.takes&&i<tr.takes.length;i++)if(o.t>=tr.takes[i].t&&o.t<tr.takes[i].t+takeLen(tr.takes[i]))o.i=i;return o;}
   o.zone="lane";o.k=rows[lane];
   list=[];for(i=0;i<tr.cues.length;i++)if(tr.cues[i][1]===o.k)list.push(i);
@@ -329,7 +364,19 @@ function down(e){
   if(!tr||e.button!==0)return;
   e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}
   if(u.zone==="lane"&&u.i>=0){pick=u.i;pickTake=-1;drag={kind:"cue",i:u.i,t:tr.cues[u.i][0],from:u.t,moved:false};say(ST_LANE_NAME[u.k]+" "+(tr.cues[u.i][2]||"none")+" at "+stClock(tr.cues[u.i][0])+". Drag to move it, Delete to remove it.");return;}
-  pick=-1;pickTake=-1;
+  pick=-1;pickTake=-1;pickPt=null;
+  if(u.zone==="curve"){
+    /* on a point: take hold of it. Elsewhere in the lane: a new point there, held at once, so that one press and a drag places it. */
+    var pv=vOf(e,u.ci),pi=u.i;
+    if(pi<0){
+      edit(function(cues,marks,takes,curves){(curves[u.k]=curves[u.k]||[]).push([u.t,pv]);return {cues:cues,marks:marks,curves:curves};});
+      tr=track();pi=-1;
+      ((tr.curves&&tr.curves[u.k])||[]).forEach(function(p,j){if(Math.abs(p[0]-u.t)<0.006)pi=j;});
+      if(pi<0){toast("There is no room for a point there: two points must be a twentieth of a second apart.");return;}
+    }
+    pickPt={c:u.k,i:pi};drag={kind:"pt",c:u.k,ci:u.ci,i:pi,t:tr.curves[u.k][pi][0],v:tr.curves[u.k][pi][1],moved:false};
+    say(ST_CURVE_NAME[u.k]+" at "+stClock(drag.t)+". Drag the point to move it; Delete, or two presses on it, removes it.");return;
+  }
   if(u.zone==="album"){showTrack(u.i);say("Track "+(u.i+1)+(playing()?"":". It is not the one playing: click its ruler to play it from there, or work on its changes as they are."));return;}
   if(u.zone==="top"&&u.mark>=0&&!e.shiftKey){drag={kind:"mark",i:u.mark,t:tr.marks[u.mark]};say("A mark at "+stClock(tr.marks[u.mark])+". Drag to move it; press twice to remove it.");return;}
   if(u.zone==="take"&&u.i>=0){pickTake=u.i;say("A camera take from "+stClock(tr.takes[u.i].t)+", "+Math.round(takeLen(tr.takes[u.i]))+" seconds. Delete removes it.");return;}
@@ -344,6 +391,7 @@ function move(e){
   if(drag.kind==="scrub"){now=performance.now();if(now-drag.at>120){drag.at=now;seek(u.t);}}
   else if(drag.kind==="loop"){loop={a:Math.min(drag.a,u.t),b:Math.max(drag.a,u.t)};}
   else if(drag.kind==="mark"){drag.t=u.t;}
+  else if(drag.kind==="pt"){drag.t=e.altKey?u.t:stSnap(u.t,tr.marks,reach);drag.v=vOf(e,drag.ci);drag.moved=true;}
   else if(drag.kind==="cue"){
     if(Math.abs(u.t-drag.from)>reach/2)drag.moved=true;
     if(drag.moved)drag.t=Math.max(0,Math.min(tr.len,e.altKey?u.t:stSnap(tr.cues[drag.i][0]+u.t-drag.from,tr.marks,reach)));
@@ -354,6 +402,12 @@ function up(e){
   drag=null;
   if(!d||!tr)return;
   if(d.kind==="scrub"||d.kind==="jump")seek(under(e).t);
+  else if(d.kind==="pt"){
+    if(!d.moved)return;
+    edit(function(cues,marks,takes,curves){if(!curves[d.c]||!curves[d.c][d.i])return null;curves[d.c][d.i]=[d.t,d.v];return {cues:cues,marks:marks,curves:curves};});
+    tr=track();pickPt=null;
+    ((tr.curves&&tr.curves[d.c])||[]).forEach(function(p,j){if(Math.abs(p[0]-d.t)<0.006)pickPt={c:d.c,i:j};});
+  }
   else if(d.kind==="mark"){
     edit(function(cues,marks){marks[d.i]=d.t;return {cues:cues,marks:marks};});
     say("Mark moved to "+stClock(d.t));
@@ -376,6 +430,7 @@ function wheel(e){
 function twice(e){
   var u=under(e),tr=track();
   if(u.zone==="album"){showTrack(u.i);seek(0);return;}
+  if(u.zone==="curve"){if(pickPt)removePick();return;} /* the first press took hold of the point, or made one: the second takes it away */
   /* in the music: a mark there is removed, and where there is none one is made */
   if(u.zone==="top"&&u.wave&&tr){
     edit(function(cues,marks){if(u.mark>=0)marks.splice(u.mark,1);else marks.push(u.t);return {cues:cues,marks:marks};});
@@ -552,7 +607,7 @@ cv.addEventListener("wheel",wheel,{passive:false});cv.addEventListener("dblclick
 window.addEventListener("keydown",function(e){
   var t=e.target&&e.target.tagName;
   if(!studioOpen||t==="INPUT"||t==="TEXTAREA"||t==="SELECT")return;
-  if(e.code==="Delete"||e.code==="Backspace"){if(pick>=0||pickTake>=0){e.preventDefault();e.stopImmediatePropagation();removePick();}}
+  if(e.code==="Delete"||e.code==="Backspace"){if(pick>=0||pickTake>=0||pickPt){e.preventDefault();e.stopImmediatePropagation();removePick();}}
   else if(e.code==="KeyZ"&&(e.ctrlKey||e.metaKey)){e.preventDefault();e.stopImmediatePropagation();if(e.shiftKey)goBack("r","");else goBack("","r");}
   else if(e.code==="KeyY"&&(e.ctrlKey||e.metaKey)){e.preventDefault();e.stopImmediatePropagation();goBack("r","");}
   else if(e.code==="Enter"){e.preventDefault();e.stopImmediatePropagation();$("bPlay").click();}
@@ -560,7 +615,8 @@ window.addEventListener("keydown",function(e){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={ST_ALBUM, stAlbumAt, stShowTrack:showTrack, stFillTray:fillTray, stDrop:drop, stPlayI:playI, get stFollow(){return follow},set stFollow(v){follow=v},
+export const __dbg={ST_CURVE, ST_CURVE_NAME, ST_CURVE_HINT, get stPickPt(){return pickPt},set stPickPt(v){pickPt=v},
+  ST_ALBUM, stAlbumAt, stShowTrack:showTrack, stFillTray:fillTray, stDrop:drop, stPlayI:playI, get stFollow(){return follow},set stFollow(v){follow=v},
   ST_GUT, ST_RULER, ST_WAVE, ST_LANE, ST_UNDO, ST_LANE_NAME, stStep, stClock, stZoom, stSnap, stPut, stLanes, setStudio, studioFrame, stView:view, stUndoList:undo, stWas:was,
   stTakeStart:takeStart, stTakeStop:takeStop, get stTape(){return tape}, get stPickTake(){return pickTake},set stPickTake(v){pickTake=v},
   stTrack:track, stEdit:edit, stGoBack:goBack, stPutCue:put, stRemovePick:removePick, stDraw:draw, stUnder:under, stSavePack:savePack, stFillTpl:fillTpl,

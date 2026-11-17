@@ -16,7 +16,7 @@ import { findT, jApply, jMove, jOverNow, jUse, journey, setJourney } from "./jou
 import { lapOn } from "./lap.js";
 import { musicMode } from "./listen.js";
 import { mediaClock, mediaTitle } from "./media.js";
-import { SC_KINDS, cleanScore, cleanTrack, scChase, scMatch, scOrder, scSeek, takeAt } from "./scoredata.js";
+import { SC_KINDS, cleanScore, cleanTrack, curveAt, scChase, scMatch, scOrder, scSeek, takeAt } from "./scoredata.js";
 import { still } from "./still.js";
 import { tgGuest } from "./together.js";
 import { WORLDS } from "./worlds.js";
@@ -26,7 +26,7 @@ let use=null;                /* the score in use, or null */
 /* where the playing is: the file it was last matched to (tok, dur), the track that file is (ti, -1 for none of them),
    that track's cues in order of asking (ord) and how many have been asked for (pi), the file's time at the last frame
    (last), and the changes asked for that are waiting for a transition to end (pend) */
-const st={tok:-1,dur:0,ti:-1,ord:null,pi:0,last:-10,t:0,pend:[],take:null};
+const st={tok:-1,dur:0,ti:-1,ord:null,pi:0,last:-10,t:0,pend:[],take:null,live:false}; /* live: the score made its step this frame */
 /* Camera takes. A track may hold passages where the camera's path was recorded (the composing screen does it): while
    the music is in one, the camera is put on that path and the morph where it was, as a played flight is, and the
    moment the user steers they have the controls until the take ends. */
@@ -49,10 +49,10 @@ export function scoreUse(){return use;}
 export function scoreNow(){return use&&st.ti>=0&&st.ord?{i:st.ti,t:st.t}:null;}
 /* Change a track of the score in use: its cues and marks are replaced by these, through the cleaner. The picture is
    then brought to what the score now asks for at this moment. False if they were refused. */
-export function scoreEdit(ti,cues,marks,takes){
+export function scoreEdit(ti,cues,marks,takes,curves){
   var tr=use&&use.tracks[ti],got;
   if(!tr)return false;
-  got=cleanTrack({name:tr.name,len:tr.len,marks:marks,cues:cues,takes:takes===undefined?tr.takes:takes});
+  got=cleanTrack({name:tr.name,len:tr.len,marks:marks,cues:cues,takes:takes===undefined?tr.takes:takes,curves:curves===undefined?tr.curves:curves});
   if(!got)return false;
   use.tracks[ti]=got;scoresSave();
   if(ti===st.ti){st.ord=scOrder(got.cues);st.last=-10;st.pend=[];}
@@ -115,9 +115,16 @@ function match(d){
   else if(st.ti!==was)toast("Score "+use.name+": track "+(st.ti+1)+(use.tracks[st.ti].name?", "+use.tracks[st.ti].name:"")+".");
 }
 /* A step of the frame, after the clocks: make the score's changes that have come due in the music. */
-export function scoreClock(){
-  var d,pos,c,want,i,k,tk,at;
-  st.take=null;
+/* Where the score's drawn line for the world's shape puts the morph now, -0.98 to 0.98, or null if the playing track has
+   no such line (then the morph is left to the song or to itself). The frame hands it to the morph's clock as the song's
+   aim is handed, so the shape is gone toward and never jumps. */
+export function scoreMorph(){
+  var v=st.live&&use&&use.tracks[st.ti]&&use.tracks[st.ti].curves?curveAt(use.tracks[st.ti].curves.morph,st.t):null;
+  return v===null?null:(2*v-1)*0.98;
+}
+export function scoreClock(fr){
+  var d,pos,c,want,i,k,tk,at,v;
+  st.take=null;st.live=false;
   if(!use||musicMode!=="file"||!player.mode||still||lapOn()||flightPlaying()||tgGuest())return;
   d=pDur();
   if(!(d>0))return;
@@ -131,7 +138,10 @@ export function scoreClock(){
     for(i=0;i<SC_KINDS.length;i++){k=SC_KINDS[i];if(k in want)st.pend.push({k:k,v:want[k],now:true});}
     st.pi=scSeek(st.ord,pos);
   }else while(st.pi<st.ord.length&&st.ord[st.pi].at<=pos)st.pend.push(st.ord[st.pi++]);
-  st.last=st.t=pos;
+  st.last=st.t=pos;st.live=true;
+  /* the drawn line for the speed of flight: 0 is a fifth of the usual speed and 1 four times it, as the wheel gives, gone toward over half a second */
+  v=use.tracks[st.ti].curves?curveAt(use.tracks[st.ti].curves.speed,pos):null;
+  if(v!==null)cam.baseSpeed+=(0.2*Math.pow(20,v)-cam.baseSpeed)*Math.min(1,(fr?fr.dt:0.016)/0.5);
   while(st.pend.length){c=st.pend[0];if(!apply(c.k,c.v,c.now,c.cut))break;st.pend.shift();}
   /* a camera take over this moment: the morph is put where it was when the path was flown, so that the path is through open space again */
   tk=takeHold?null:takeAt(use.tracks[st.ti],pos);
@@ -178,4 +188,4 @@ $("bScore").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={setTakeHold, scoreFrame, scoreFlOf:flOf, get takeHold(){return takeHold}, get scoreHandsOff(){return handsOff},set scoreHandsOff(v){handsOff=v}, scMade, scoreEdit, scoreRename, SCORES_MAX, scores, scoreUse, scoreNow, scoreLabel:label, scoresSave, scoreAdd, scoreRemove, scoreSet, scoreWorldIndex:worldIndex, scoreApply:apply, scoreMatch:match, scoreClock, scoresAdopt, scoreSt:st};
+export const __dbg={scoreMorph, setTakeHold, scoreFrame, scoreFlOf:flOf, get takeHold(){return takeHold}, get scoreHandsOff(){return handsOff},set scoreHandsOff(v){handsOff=v}, scMade, scoreEdit, scoreRename, SCORES_MAX, scores, scoreUse, scoreNow, scoreLabel:label, scoresSave, scoreAdd, scoreRemove, scoreSet, scoreWorldIndex:worldIndex, scoreApply:apply, scoreMatch:match, scoreClock, scoresAdopt, scoreSt:st};

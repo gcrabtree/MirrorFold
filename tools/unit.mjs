@@ -1224,6 +1224,15 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     expect("score: the take over a moment", takeAt(tr, 21) === tr.takes[0] && takeAt(tr, 22.6) === null && takeAt(tr, 41) === tr.takes[1] && takeAt({}, 3) === null);
     expect("score: a track with no takes has no list of them", !("takes" in cleanTrack({ len: 100, takes: [] })) && !("takes" in cleanTrack({ len: 100 })));
   }
+  {
+    const { cleanCurve, curveAt, SC_CURVE_PTS } = scoreM;
+    const c = cleanCurve([[30, 0.5], [10, 0], [10.02, 1], [20, 2], [-5, 0.25], ["x", 1], [40, NaN], 7, [50, 0.33333]], 100);
+    expect("score: a drawn line comes out in order, held to the track and to 0..1, with no two points at one moment and broken ones dropped", JSON.stringify(c) === "[[0,0.25],[10,0],[20,1],[30,0.5],[50,0.333]]", JSON.stringify(c));
+    expect("score: a line is straight between points and level outside them", curveAt(c, 5) === 0.125 && curveAt(c, 15) === 0.5 && curveAt(c, -3) === 0.25 && curveAt(c, 99) === 0.333 && curveAt([], 5) === null && curveAt(undefined, 5) === null);
+    expect("score: a line holds no more points than SC_CURVE_PTS", cleanCurve(Array.from({ length: 900 }, (_, i) => [i / 5, 0.5]), 500).length === SC_CURVE_PTS);
+    const tr = cleanTrack({ len: 100, curves: { morph: [[10, 0.2], [20, 0.9]], speed: "no", bogus: [[1, 1]], __proto__: { x: 1 } } });
+    expect("score: a track keeps the lines it knows, and one with none has no list of them", JSON.stringify(tr.curves) === '{"morph":[[10,0.2],[20,0.9]]}' && !("curves" in cleanTrack({ len: 100, curves: { morph: [] } })) && !("curves" in cleanTrack({ len: 100, curves: [1] })));
+  }
   const ord = scOrder(sc.tracks[0].cues);
   expect("score: a change behind a transition is asked for early", ord.find(o => o.t === 40 && o.k === "world").at === 40 - SC_LEAD && ord.find(o => o.k === "palette").at === 12 && ord[0].at === 0);
   const ch = scChase(sc.tracks[0].cues, 60);
