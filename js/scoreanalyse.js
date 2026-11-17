@@ -46,19 +46,25 @@ export function anStart(mono,rate){
     det:makeChangeDetector(),song:makeSongTracker(),bank:makeBeatBank(),
     e:new Float32Array(n),lv:new Float32Array(n),fired:[],drops:[],beats:[],beatN:0};
 }
+/* One look at the sound, as the analyser would give it: the 1024 samples beginning at sample number at, into S.bins.
+   Each look is smoothed with the one before, so they must be asked for in order. (Filming a score asks for one a
+   picture, in place of the analyser: js/film.js.) */
+export function anLook(S,at){
+  var T=tables(),N=AN_N,i,x,m,db;
+  for(i=0;i<N;i++){x=at+i;S.re[i]=(x>=0&&x<S.mono.length?S.mono[x]:0)*T.win[i];S.im[i]=0;}
+  anFft(S.re,S.im);
+  for(i=0;i<N/2;i++){
+    m=Math.hypot(S.re[i],S.im[i])/N;
+    S.sm[i]=AN_SMOOTH*S.sm[i]+(1-AN_SMOOTH)*m;
+    db=S.sm[i]>0?20*Math.log10(S.sm[i]):-1000;
+    S.bins[i]=Math.max(0,Math.min(255,Math.floor(255/70*(db+100)))); /* -100 to -30 decibels, as the analyser counts */
+  }
+}
 /* Listen to up to count more looks of it. True once the whole piece has been heard. */
 export function anStep(S,count){
-  var T=tables(),N=AN_N,dt=1/AN_FPS,end=Math.min(S.n,S.i+count),f,i,at,x,m,db,rb,rm,rt,e,o,b,u;
+  var N=AN_N,dt=1/AN_FPS,end=Math.min(S.n,S.i+count),f,i,rb,rm,rt,e,o,b,u;
   for(f=S.i;f<end;f++){
-    at=Math.round((f+1)*S.rate/AN_FPS)-N; /* the look ends at this frame's moment, as the analyser's last 1024 samples do */
-    for(i=0;i<N;i++){x=at+i;S.re[i]=(x>=0&&x<S.mono.length?S.mono[x]:0)*T.win[i];S.im[i]=0;}
-    anFft(S.re,S.im);
-    for(i=0;i<N/2;i++){
-      m=Math.hypot(S.re[i],S.im[i])/N;
-      S.sm[i]=AN_SMOOTH*S.sm[i]+(1-AN_SMOOTH)*m;
-      db=S.sm[i]>0?20*Math.log10(S.sm[i]):-1000;
-      S.bins[i]=Math.max(0,Math.min(255,Math.floor(255/70*(db+100)))); /* -100 to -30 decibels, as the analyser counts */
-    }
+    anLook(S,Math.round((f+1)*S.rate/AN_FPS)-N); /* the look ends at this frame's moment, as the analyser's last 1024 samples do */
     rb=avg(S.bins,1,4);rm=avg(S.bins,6,45);rt=avg(S.bins,60,250); /* the three bands of readMusic (js/listen.js) */
     e=0.5*rb+0.35*rm+0.15*rt;
     if(S.first){for(i=0;i<N/2;i++)S.was[i]=S.bins[i];S.first=false;}else onsetStep(S.bins,S.was,S.on,dt);
@@ -149,4 +155,4 @@ export function init(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={AN_N, AN_FPS, AN_HZ, AN_SMOOTH, DRAFT_GAP, anFft, anStart, anStep, anDone, analyse, anLevel, draftTier, scDraft, anSharpest:sharpest};
+export const __dbg={anLook, AN_N, AN_FPS, AN_HZ, AN_SMOOTH, DRAFT_GAP, anFft, anStart, anStep, anDone, analyse, anLevel, draftTier, scDraft, anSharpest:sharpest};

@@ -9,6 +9,7 @@ import { $, calm, canvas, errBox, toast } from "./dom.js";
 import { fbSet } from "./fabric.js";
 import { measure } from "./flight.js";
 import { flightClock, flightFrame } from "./flightplay.js";
+import { filming } from "./film.js";
 import { stepFlits } from "./flits.js";
 import { scoreClock, scoreFrame, scoreMorph } from "./scoreplay.js";
 import { studioFrame } from "./studio.js";
@@ -78,9 +79,14 @@ const notes={
   landLit:1,bloom:0,           /* how much glow and fringing the land allows, and the glow's strength */
   vrOff:0,vrTan:0              /* VR viewer: each lens centre's distance from the middle of the picture in pixels, and the tangent of the angle one pixel covers */
 };
-function frame(now){
-  requestAnimationFrame(frame);
-  if(document.hidden){last=now;return;}
+/* The browser's call for a picture. While a score is filmed the film asks for the pictures itself, one for each of its own moments, and this stands by. */
+function tick(now){
+  requestAnimationFrame(tick);
+  if(filming()){last=now;return;}
+  frame(now);
+}
+export function frame(now){
+  if(document.hidden&&!filming()){last=now;return;}
   if(learnOpen){learnFrame(now);last=now;return;} /* the lessons cover the page: draw the lesson, and leave the world as it is */
   var rawDt=(now-last)/1000,dt=notes.dt=Math.min(0.05,rawDt);last=now;notes.raw=Math.max(0,Math.min(1,rawDt));
   /* wait for the graphics chip (Stats' probe and a pack world's probe do the same job, so not twice) */
@@ -163,8 +169,8 @@ if(eb){window.mfEarly="";if(eb.getAttribute("data-was"))eb.textContent=eb.getAtt
 last=performance.now();
 canvas.addEventListener("webglcontextlost",function(e){e.preventDefault();detailLower();errBox.textContent="The graphics context was lost. Reload the page to continue. It will start less sharp.";});
 if(fellBack)toast("The last visit stopped while starting, so the picture starts less sharp.");
-requestAnimationFrame(frame);
+requestAnimationFrame(tick);
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={begin, notes, frame, get started(){return started},set started(v){started=v}, get last(){return last},set last(v){last=v}};
+export const __dbg={begin, notes, frame, loopTick:tick, get started(){return started},set started(v){started=v}, get last(){return last},set last(v){last=v}};

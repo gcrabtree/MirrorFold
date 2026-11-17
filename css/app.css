@@ -301,3 +301,5 @@ body.panelOpen #toast{bottom:62vh}
 .stTile span{padding:5px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stBar label.btn{color:var(--ink)}
 .stBar label.btn.advGo{color:var(--void)}
+/* while a score is filmed the picture is the film's size, shown whole in whatever room there is */
+body.filming>canvas#c{object-fit:contain}

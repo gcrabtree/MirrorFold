@@ -33,6 +33,10 @@ export const player={mode:null,buf:null,src:null,offset:0,startAt:0,playing:fals
 /* Several files chosen together are an album: they play one after another in the order of their names, and after the
    last comes the first. One file alone goes round by itself. */
 let list=[],li=0;
+let held=false; /* a score is being filmed: the player's time is the film's, and nothing may start the music (js/film.js) */
+export function pHold(v){held=!!v;}
+/* say which of the files chosen is the one in hand, without starting it: for filming, which reads the files itself */
+export function plPoint(i){if(list[i])li=i;}
 export function plCount(){return list.length;}
 export function plAt(){return li;}
 export function plName(i){return list[i]?list[i].name:"";}
@@ -52,6 +56,7 @@ export function pPos(){
 }
 function pIsPlaying(){return player.mode==="buf"?player.playing:(player.mode==="el"&&audioEl&&!audioEl.paused);}
 export function pPlay(){
+  if(held)return;
   if(player.mode==="buf"){
     if(player.playing)return;
     var src=ac.createBufferSource();src.buffer=player.buf;src.loop=list.length<2;src.connect(bus);
@@ -75,7 +80,7 @@ export function pPause(){
   syncPlayBtn();
 }
 export function pSeek(t){
-  var d=pDur();if(!(d>0))return;
+  var d=pDur();if(!(d>0)||held)return;
   t=Math.max(0,Math.min(d-0.05,t));
   if(player.mode==="buf"){
     var was=player.playing;
@@ -147,7 +152,7 @@ function decodeFile(f,tk,dur){
 /* Start track i of the files chosen (past the last is the first again). */
 export function plGo(i){
   var n=list.length,f;
-  if(!n||!ac)return;
+  if(!n||!ac||held)return;
   li=((i%n)+n)%n;f=list[li];
   mediaFile(f.name); /* its name is noted, to go with pictures made while it plays (js/media.js) */
   errBox.textContent="";
@@ -229,7 +234,7 @@ $("bPlay").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={plCount, plAt, plName, plFile, plSort, plGo, get plList(){return list},set plList(v){list=v}, cap, ensureAudio, pluck, player, mmss, pDur, pPos, pIsPlaying, pPlay, pPause,
+export const __dbg={pHold, plPoint, plCount, plAt, plName, plFile, plSort, plGo, get plList(){return list},set plList(v){list=v}, cap, ensureAudio, pluck, player, mmss, pDur, pPos, pIsPlaying, pPlay, pPause,
   pSeek, syncPlayBtn, showScrub, scrubAt, scrubEnd, fileReady, prepElement, showElError, useElement, DECODE_MAX_SEC,
   DECODE_MAX_BYTES, decodeFile, showScrubIdle, scrubFollow, get ac(){return ac},set ac(v){ac=v}, get master(){return master},set master(v){master=v}, get analyser(){return analyser},set analyser(v){analyser=v}, get fbins(){return fbins},set fbins(v){fbins=v}, get scrubbing(){return scrubbing},set scrubbing(v){scrubbing=v}, get bus(){return bus},set bus(v){bus=v},
   get audioEl(){return audioEl},set audioEl(v){audioEl=v}, get elNode(){return elNode},set elNode(v){elNode=v}, get objUrl(){return objUrl},set objUrl(v){objUrl=v}, get scrub(){return scrub},set scrub(v){scrub=v}, get scrubFill(){return scrubFill},set scrubFill(v){scrubFill=v}, get scrubThumb(){return scrubThumb},set scrubThumb(v){scrubThumb=v}, get tLabel(){return tLabel},set tLabel(v){tLabel=v}, get scrubFr(){return scrubFr},set scrubFr(v){scrubFr=v}, get lastSeek(){return lastSeek},set lastSeek(v){lastSeek=v}, get elErr(){return elErr},set elErr(v){elErr=v}};

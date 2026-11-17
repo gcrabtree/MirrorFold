@@ -14,6 +14,8 @@ let taps=[],tapInt=0,tapAt=0;
 /* the tempo tapped, in beats a minute; 0 for none */
 export function tapBpm(){return tapInt>0?Math.round(60/tapInt):0;}
 export let soundChanged;
+let feed=null; /* sound handed in from elsewhere in place of the analyser's: {bins(bytes), wave(bytes)}. A score being filmed gives the music's sound at the picture's own moment (js/film.js). */
+export function setSoundFeed(f){feed=f||null;}
 let canTab, canMic, detectChange;
 const friend={stream:null,node:null,el:null}; /* music sent by the host while flying together: the stream, its way into the sound, and an unheard player that keeps the browser feeding it */
 
@@ -132,7 +134,7 @@ function bandStep(o,raw,dt,gain){
   o.lv+=(x-o.lv)*Math.min(1,dt*(x>o.lv?10:2));
 }
 function bandAvg(a,b){var t=0;for(var i=a;i<=b;i++)t+=fbins[i];return t/((b-a+1)*255);}
-export function liveAudio(){return (musicMode==="built"||musicMode==="file"||musicMode==="video"||(musicMode==="friend"&&!!friend.node)||listening())&&!!analyser&&!!ac&&ac.state==="running";}
+export function liveAudio(){if(feed)return true;return (musicMode==="built"||musicMode==="file"||musicMode==="video"||(musicMode==="friend"&&!!friend.node)||listening())&&!!analyser&&!!ac&&ac.state==="running";}
 /* A major change in the sound: the last second or so differs sharply from the last several, in loudness or in
    the balance of low to high. It fires once, then takes the new sound as normal. */
 export function makeChangeDetector(){
@@ -159,7 +161,7 @@ export function readMusic(dt){
     bands.t.p=0.5*Math.exp(-((ph*2)%1)*6);bands.t.lv=0.3;
     onsets[0]=0.1*bands.b.p;onsets[1]=onsets[2]=onsets[3]=0;onsetsLive=false; /* the figures hear the taps as a kick drum */
   }else if(liveAudio()){
-    analyser.getByteFrequencyData(fbins);
+    if(feed)feed.bins(fbins);else analyser.getByteFrequencyData(fbins);
     var rb=bandAvg(1,4),rm=bandAvg(6,45),rt=bandAvg(60,250); /* roughly below 200 Hz, 250 Hz to 2 kHz, above 2.5 kHz */
     bandStep(bands.b,rb,dt,3.2);bandStep(bands.m,rm,dt,4);bandStep(bands.t,rt,dt,4.5);
     en=0.5*rb+0.35*rm+0.15*rt;live=true;
@@ -187,7 +189,7 @@ export function updateWave(){
     else{for(i=0;i<128;i++)waveBuf[i]=255*(0.18+0.6*beat)*Math.abs(Math.sin(i*0.21+clock.time*1.3)*Math.sin(i*0.047-clock.time*0.6));}
   }else if(live){
     if(!tbins)tbins=new Uint8Array(analyser.fftSize);
-    analyser.getByteTimeDomainData(tbins);
+    if(feed)feed.wave(tbins);else analyser.getByteTimeDomainData(tbins);
     for(i=0;i<128;i++)waveBuf[i]=Math.max(0,Math.min(255,128+(tbins[i*4]-128)*2.2));
   }else{ /* no sound to read: a soft shape that swells on the beat */
     for(i=0;i<128;i++)waveBuf[i]=128+(18+80*beat)*Math.sin(i*0.33+clock.time*3.1)*Math.sin(i*0.05+clock.time*0.7);
@@ -222,6 +224,6 @@ soundChanged=false,detectChange=makeChangeDetector();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={ONSET_BINS, onsets, onsetStep, tapBpm, friend, setFriendSound, friendPlay, stopListening, startListening, listening, setMusic, tap, bands, bandStep, bandAvg, liveAudio, makeChangeDetector,
+export const __dbg={setSoundFeed, ONSET_BINS, onsets, onsetStep, tapBpm, friend, setFriendSound, friendPlay, stopListening, startListening, listening, setMusic, tap, bands, bandStep, bandAvg, liveAudio, makeChangeDetector,
   readMusic, soundFrame, waveBuf, updateWave, get musicMode(){return musicMode},set musicMode(v){musicMode=v}, get beat(){return beat},set beat(v){beat=v}, get level(){return level},set level(v){level=v}, get taps(){return taps},set taps(v){taps=v}, get tapInt(){return tapInt},set tapInt(v){tapInt=v}, get tapAt(){return tapAt},set tapAt(v){tapAt=v},
   get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get waveTex(){return waveTex},set waveTex(v){waveTex=v}, get tbins(){return tbins},set tbins(v){tbins=v}};

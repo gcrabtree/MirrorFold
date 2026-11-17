@@ -30,6 +30,7 @@
 <link rel="modulepreload" href="js/figures-more.js">
 <link rel="modulepreload" href="js/figures-space.js">
 <link rel="modulepreload" href="js/figures.js">
+<link rel="modulepreload" href="js/film.js">
 <link rel="modulepreload" href="js/flight.js">
 <link rel="modulepreload" href="js/flightdata.js">
 <link rel="modulepreload" href="js/flightplay.js">
@@ -90,6 +91,7 @@
 <link rel="modulepreload" href="js/vr.js">
 <link rel="modulepreload" href="js/warp.js">
 <link rel="modulepreload" href="js/worlds.js">
+<link rel="modulepreload" href="js/webm.js">
 <link rel="modulepreload" href="js/zoom.js">
 </head>
 <body>
@@ -420,6 +422,12 @@
     </span>
     <span class="stGrp" id="stGrpCam"><b>Camera</b>
       <button id="stTake" type="button" aria-pressed="false">Record the camera</button>
+    </span>
+    <span class="stGrp" id="stGrpFilm"><b>Film</b>
+      <select id="stFilmSize" aria-label="Size of the film's pictures"></select>
+      <select id="stFilmFps" aria-label="Pictures a second"></select>
+      <button id="stFilm" type="button">Film this track</button>
+      <button id="stFilmAll" type="button">Film the album</button>
     </span>
     <span class="stGap"></span>
     <button id="stClose" type="button">Close</button>

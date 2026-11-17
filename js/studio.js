@@ -17,6 +17,7 @@ import { pkDeep } from "./packing.js";
 import { wakeHud } from "./input.js";
 import { allT, catOf, jCur, jMade, store } from "./journey.js";
 import { pickSort, thumbName } from "./picker.js";
+import { filmCan, filming } from "./film.js";
 import { flightPlaying } from "./flightplay.js";
 import { tgGuest } from "./together.js";
 import { musicMode } from "./listen.js";
@@ -495,7 +496,9 @@ function sync(){
   $("stGrpScore").hidden=!files&&!scores.length;
   $("stDraft").hidden=$("stEmpty").hidden=!files;$("stDraft").classList.toggle("advGo",files&&!tr);
   s.hidden=!scores.length;n.hidden=$("stSave").hidden=$("stRemove").hidden=!sc;
-  $("stGrpEdit").hidden=$("stTray").hidden=!tr;$("stGrpCam").hidden=playI()<0;
+  $("stGrpEdit").hidden=$("stTray").hidden=!tr;$("stGrpCam").hidden=playI()<0||filming();
+  $("stGrpFilm").hidden=!filmCan()||(playI()<0&&!filming());$("stFilmAll").hidden=!sc||plCount()!==sc.tracks.length;
+  $("stFilmSize").disabled=$("stFilmFps").disabled=filming();
   if(tr)fillTray(false);
   if(names!==scoreList){
     scoreList=names;s.textContent="";
@@ -508,7 +511,7 @@ function sync(){
     !tr?"There is no score in use. Draft one for these files, or choose one from the list.":
     playI()<0?"None of this score's tracks is playing, so nothing is heard. Its changes can still be moved, removed and added: click a track in the album strip.":
     "Change anything while the music plays or is paused, and it is written here at that moment. Click the ruler to move the music; Shift and drag to play a passage round. Drag a change to move it; press twice in a lane to write what is showing now.";
-  if(h!==hint){hint=h;say(h);}
+  if(h!==hint&&!filming()){hint=h;say(h);}
   $("stKeep").setAttribute("aria-pressed",keep?"true":"false");$("stKeep").textContent="Keep my changes: "+(keep?"on":"off");
   $("stTake").textContent=tape?"Stop and keep the take":"Record the camera";$("stTake").setAttribute("aria-pressed",tape?"true":"false");
   if(document.activeElement!==n)n.value=sc?sc.name:"";
@@ -539,7 +542,7 @@ export function studioFrame(){
     /* the score asked for it, or Journey chose it: not the user's doing */
     if(scMade[k]===now){delete scMade[k];continue;}
     if(jMade[k]===now){delete jMade[k];continue;}
-    if(keep&&playI()>=0&&!still&&musicMode==="file"&&!tgGuest()&&!flightPlaying()){if(!playing())showTrack(playI());put(pPos(),k,now);} /* written into the track that is playing, which is brought into view */
+    if(keep&&playI()>=0&&!still&&musicMode==="file"&&!tgGuest()&&!flightPlaying()&&!filming()){if(!playing())showTrack(playI());put(pPos(),k,now);} /* written into the track that is playing, which is brought into view */
   }
   if(tape)takeFrame();
   if(loop&&playing()&&player.mode&&pPos()>=loop.b)pSeek(loop.a);

@@ -1327,5 +1327,69 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("index.html has a modulepreload line for every file in js/, and for no other", lacking.length === 0 && named.length === 0, lacking.concat(named).join(", "));
 }
 
+// ---- writing a WebM file (js/webm.js): what is written is read back as a tree of elements
+{
+  const { webmStart, opusHead, ebml } = (await import("../js/webm.js")).__dbg;
+  let file = new Uint8Array(0);
+  const sink = { write: b => { const n = new Uint8Array(file.length + b.length); n.set(file); n.set(b, file.length); file = n; }, patch: (at, b) => file.set(b, at) };
+  const w = webmStart({ w: 640, h: 360, fps: 30, codec: "V_VP9", audio: { channels: 2, rate: 48000, head: null } }, sink);
+  // five seconds: pictures every 33.3 ms with a whole one every two seconds, sound every 20 ms, handed over out of step as two encoders would
+  let ai = 0;
+  for (let i = 0; i < 150; i++) {
+    w.video(new Uint8Array([1, 2, 3, i & 255]), i * 1000 / 30, i % 60 === 0);
+    if (i % 7 === 6) for (; ai * 20 < i * 1000 / 30 + 300 && ai < 250; ai++) w.audio(new Uint8Array([9, ai & 255]), ai * 20);
+  }
+  for (; ai < 250; ai++) w.audio(new Uint8Array([9, ai & 255]), ai * 20);
+  const total = w.end(5000);
+  // a reader: an element's number, its length, and where its contents begin
+  const read = at => {
+    let l = 1; while (!(file[at] & (0x80 >> (l - 1)))) l++;
+    const id = [...file.slice(at, at + l)].map(x => x.toString(16).padStart(2, "0")).join("");
+    let p = at + l, sl = 1; while (!(file[p] & (0x80 >> (sl - 1)))) sl++;
+    let size = file[p] & (0xff >> sl); for (let k = 1; k < sl; k++) size = size * 256 + file[p + k];
+    return { id, size, body: p + sl, end: p + sl + size };
+  };
+  const kids = (a, b) => { const o = []; for (let p = a; p < b;) { const e = read(p); o.push(e); p = e.end; } return o; };
+  const top = kids(0, file.length), seg = top[1], inSeg = kids(seg.body, seg.end);
+  expect("webm: the file is a heading and one Segment whose length is the rest of the file", total === file.length && top.length === 2 && top[0].id === "1a45dfa3" && seg.id === "18538067" && seg.end === file.length, top.map(e => e.id).join());
+  const ids = inSeg.map(e => e.id), clusters = inSeg.filter(e => e.id === "1f43b675");
+  expect("webm: in it, the list of places, Info, Tracks, the Clusters and Cues, in that order", ids[0] === "114d9b74" && ids[1] === "1549a966" && ids[2] === "1654ae6b" && ids[ids.length - 1] === "1c53bb6b" && clusters.length === ids.length - 4 && clusters.length === 3, ids.join());
+  const u64 = at => { let n = 0; for (let k = 0; k < 8; k++) n = n * 256 + file[at + k]; return n; };
+  const seeks = kids(inSeg[0].body, inSeg[0].end).map(s => { const k = kids(s.body, s.end); return [[...file.slice(k[0].body, k[0].end)].map(x => x.toString(16).padStart(2, "0")).join(""), u64(k[1].body)]; });
+  expect("webm: each place in the list is where that element is", seeks.length === 3 && seeks.every(([id, at]) => read(seg.body + at).id === id), JSON.stringify(seeks));
+  const info = kids(inSeg[1].body, inSeg[1].end), dur = info.find(e => e.id === "4489");
+  expect("webm: it says how long it lasts", new DataView(file.buffer, dur.body, 8).getFloat64(0) === 5000);
+  const tracks = kids(inSeg[2].body, inSeg[2].end);
+  expect("webm: a track of pictures and a track of sound", tracks.length === 2 && String.fromCharCode(...file.slice(inSeg[2].body, inSeg[2].end)).includes("V_VP9") && String.fromCharCode(...file.slice(inSeg[2].body, inSeg[2].end)).includes("A_OPUS") && String.fromCharCode(...file.slice(inSeg[2].body, inSeg[2].end)).includes("OpusHead"));
+  let order = true, nv = 0, na = 0, firstKey = true, lastT = -1;
+  for (const c of clusters) {
+    const k = kids(c.body, c.end); let ct = 0; for (let q = k[0].body; q < k[0].end; q++) ct = ct * 256 + file[q];
+    k.slice(1).forEach((b, bi) => {
+      const track = file[b.body] & 127, t = ct + ((file[b.body + 1] << 8) | file[b.body + 2]), key = !!(file[b.body + 3] & 0x80);
+      if (t < lastT) order = false; lastT = t;
+      if (track === 1) { nv++; if (bi === 0 && !key) firstKey = false; } else na++;
+    });
+    if ((file[k[1].body] & 127) !== 1) firstKey = false;
+  }
+  expect("webm: every picture and every piece of sound is there, in order of time, and each Cluster begins with a whole picture", nv === 150 && na === 250 && order && firstKey, nv + "/" + na + "/" + order + "/" + firstKey);
+  const cues = kids(inSeg[inSeg.length - 1].body, inSeg[inSeg.length - 1].end);
+  expect("webm: Cues has a place for each Cluster, and each is a Cluster", cues.length === 3 && cues.every(c => { const k = kids(c.body, c.end), tp = kids(k[1].body, k[1].end); return read(seg.body + u64(tp[1].body)).id === "1f43b675"; }));
+  const oh = opusHead(2, 312);
+  expect("webm: an OpusHead says two channels, 312 samples to pass over, 48000 a second", oh.length === 19 && oh[9] === 2 && (oh[10] | oh[11] << 8) === 312 && (oh[12] | oh[13] << 8 | oh[14] << 16) === 48000);
+  expect("webm: a long element's length is written in eight bytes", ebml([0xA3], new Uint8Array(300)).length === 1 + 8 + 300 && ebml([0xA3], new Uint8Array(5)).length === 7);
+}
+
+// ---- filming a score (js/film.js): the arithmetic, and the file held in memory
+{
+  const { filmCodec, filmBitrate, filmLine, filmMemSink, FILM_SIZES } = (await import("../js/film.js")).__dbg;
+  expect("film: the VP9 level is high enough for the size and rate", filmCodec(1280, 720, 30) === "vp09.00.31.08" && filmCodec(1920, 1080, 60) === "vp09.00.41.08" && filmCodec(3840, 2160, 60) === "vp09.00.52.08" && filmCodec(2560, 1440, 60) === "vp09.00.51.08");
+  expect("film: the bits a second grow with the size and are held between 2 and 80 million", filmBitrate(1920, 1080, 60) > filmBitrate(1280, 720, 30) && filmBitrate(160, 90, 30) === 2e6 && filmBitrate(3840, 2160, 60) <= 80e6);
+  expect("film: every size has even sides, as the encoders need", FILM_SIZES.every(s => s[1] % 2 === 0 && s[2] % 2 === 0));
+  expect("film: what is said while filming", filmLine(1, 3, 75, 200, 2.04).startsWith("Filming track 2 of 3: 1:15 of 3:20, 2 times as fast as the music.") && filmLine(0, 1, 5, 60, 0.4).startsWith("Filming: 0:05 of 1:00, at 40 hundredths of the music's speed."), filmLine(1, 3, 75, 200, 2.04));
+  const m = filmMemSink("x.webm");
+  m.write(new Uint8Array([1, 2, 3, 4]));m.write(new Uint8Array([5, 6, 7, 8, 9]));m.patch(5, new Uint8Array([60, 70]));m.patch(0, new Uint8Array([10]));
+  expect("film: held in memory, a file's bytes can be written over once their true values are known", m.size() === 9 && m.waiting() === 0 && m.failed() === null);
+}
+
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);
