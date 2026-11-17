@@ -98,7 +98,7 @@ function scrubEnd(){
 }
 function fileReady(){
   $("bPlay").hidden=false;$("scrubWrap").hidden=false;showScrub(0);
-  $("bPrevT").hidden=$("bNextT").hidden=list.length<2;
+  $("bPrevT").hidden=$("bNextT").hidden=list.length<2;$("bDraft").hidden=false;
   if(musicMode==="file")pPlay();
   syncPlayBtn();wakeHud();
 }

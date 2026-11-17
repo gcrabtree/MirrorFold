@@ -134,7 +134,7 @@ function bandAvg(a,b){var t=0;for(var i=a;i<=b;i++)t+=fbins[i];return t/((b-a+1)
 export function liveAudio(){return (musicMode==="built"||musicMode==="file"||musicMode==="video"||(musicMode==="friend"&&!!friend.node)||listening())&&!!analyser&&!!ac&&ac.state==="running";}
 /* A major change in the sound: the last second or so differs sharply from the last several, in loudness or in
    the balance of low to high. It fires once, then takes the new sound as normal. */
-function makeChangeDetector(){
+export function makeChangeDetector(){
   var sE=0,lE=0,sB=0,lB=0,age=0,hold=0,first=true;
   return function(dt,e,bal){
     if(first){sE=lE=e;sB=lB=bal;first=false;}

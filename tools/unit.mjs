@@ -30,6 +30,7 @@ import { __dbg as togetherM } from "../js/together.js";
 import { __dbg as doorsM } from "../js/doors.js";
 import { __dbg as worldsM } from "../js/worlds.js";
 import { __dbg as scoreM } from "../js/scoredata.js";
+import { __dbg as hearM } from "../js/scoreanalyse.js";
 import { tidy, slug, problems, packText, indexEntry } from "./packlib.mjs";
 import { handle, answer, packField } from "./offer.mjs";
 const { makeChangeDetector } = listen, { jPick } = journey, { devMat, gyroTurn } = vr, { userActive } = camera;
@@ -1214,6 +1215,43 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const twins = cleanScore({ tracks: [{ name: "A", len: 100 }, { name: "B", len: 100 }, { name: "C", len: 100 }] });
   expect("score: among tracks of one length, the name decides, then the place in the album", scMatch(twins, 100, "B", 0) === 1 && scMatch(twins, 100, "", 2) === 2 && scMatch(twins, 100, "", -1) === 0);
   expect("score: a second of the album is a track and a time in it", scAt(sc, 250).i === 1 && Math.abs(scAt(sc, 250).t - 50) < 1e-9 && scAt(sc, 1e6).i === 1 && scLen(sc) === 500);
+}
+
+// ---- hearing a whole piece ahead of playing it, and the draft made from it (js/scoreanalyse.js)
+{
+  const { analyse, anFft, anLevel, scDraft, draftTier, AN_N, DRAFT_GAP } = hearM, { cleanTrack } = scoreM;
+  const re = new Float32Array(AN_N), im = new Float32Array(AN_N);
+  for (let i = 0; i < AN_N; i++) re[i] = Math.cos(2 * Math.PI * 37 * i / AN_N);
+  anFft(re, im);
+  let top = 0; for (let i = 1; i < AN_N / 2; i++) if (Math.hypot(re[i], im[i]) > Math.hypot(re[top], im[top])) top = i;
+  expect("hearing: the spectrum of a pure tone is at that tone", top === 37 && Math.abs(Math.hypot(re[37], im[37]) - AN_N / 2) < 0.01);
+  // ninety seconds: a quiet pad, then thirty seconds with a kick drum on the beat at 120 a minute, then quiet again
+  const rate = 44100, len = 90, x = new Float32Array(rate * len);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < x.length; i++) {
+    const t = i / rate, full = t >= 30 && t < 60, ph = t % 0.5, hp = (t + 0.25) % 0.5;
+    let s = 0.03 * Math.sin(2 * Math.PI * 220 * t) * (1 + 0.5 * Math.sin(t * 0.7));
+    if (full) s += 0.6 * Math.exp(-ph * 14) * Math.sin(2 * Math.PI * (50 + 100 * Math.exp(-ph * 30)) * ph) + 0.12 * Math.sin(2 * Math.PI * 110 * t) + 0.1 * Math.sin(2 * Math.PI * 440 * t);
+    x[i] = s + (full ? 0.15 : 0.02) * Math.exp(-hp * 60) * (rnd() * 2 - 1);
+  }
+  const an = analyse(x, rate), mk = an.marks;
+  expect("hearing: the drop and the breakdown are marked where they happen, to a quarter of a second", mk.length === 2 && Math.abs(mk[0].t - 30) < 0.25 && mk[0].drop && Math.abs(mk[1].t - 60) < 0.25, JSON.stringify(mk));
+  expect("hearing: the quiet parts are heard as quiet and the full part as full", anLevel(an, 5, 25) < 0.1 && anLevel(an, 35, 55) > 0.9 && anLevel(an, 65, 85) < 0.1);
+  const gaps = an.beats.slice(1).map((b, i) => b - an.beats[i]).sort((a, b) => a - b);
+  expect("hearing: the beat is counted at its tempo", an.beats.length > 40 && Math.abs(gaps[gaps.length >> 1] - 0.5) < 0.03, String(gaps[gaps.length >> 1]));
+  expect("hearing: the curves have five numbers a second", an.en.length === 450 && an.lv.length === 450 && Math.abs(an.len - 90) < 0.01);
+  const pool = tier => tier === "quiet" ? ["coral", "julia", "aurora"] : ["lattice", "temple", "gates"];
+  const d = scDraft(an, { quiet: "Calm", mid: "Classic", full: "MilkDrop" }, pool, rnd, ["coral"]);
+  const tr = cleanTrack({ len: an.len, marks: d.marks, cues: d.cues }), wc = tr.cues.filter(c => c[1] === "world"), jc = tr.cues.filter(c => c[1] === "journey");
+  expect("draft: a section for each part of the music, each in a world of its tier's and under its tier's template",
+    wc.length === 3 && jc.length === 3 && jc.map(c => c[2]).join() === "Calm,MilkDrop,Calm" && pool("quiet").includes(wc[0][2]) && pool("full").includes(wc[1][2]) && pool("quiet").includes(wc[2][2]), JSON.stringify(tr.cues));
+  expect("draft: it does not begin in the world the last track ended in, nor go straight back to one", wc[0][2] !== "coral" && wc[2][2] !== wc[0][2]);
+  expect("draft: the cleaner changes nothing in it", JSON.stringify(tr.cues) === JSON.stringify(d.cues));
+  const busy = { len: 100, hz: 5, en: new Uint8Array(500), lv: new Uint8Array(500).fill(200), marks: Array.from({ length: 60 }, (_, i) => ({ t: 5 + i * 1.5, drop: i % 7 === 3 })), beats: [] };
+  const db = scDraft(busy, { quiet: "", mid: "", full: "" }, () => ["a", "b", "c", "d"], rnd, []);
+  let near = 1e9; for (let i = 1; i < db.marks.length; i++) near = Math.min(near, db.marks[i] - db.marks[i - 1]);
+  expect("draft: music that changes every moment still gets sections no shorter than DRAFT_GAP, less one move to a drop", db.marks.length >= 3 && near >= DRAFT_GAP - 12, String(near));
+  expect("draft: the tiers", draftTier(0.1) === "quiet" && draftTier(0.5) === "mid" && draftTier(0.9) === "full");
 }
 
 console.log(failed ? failed + " failed" : "all passed");
