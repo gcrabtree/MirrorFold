@@ -50,6 +50,7 @@ function begin(withMusic){
    and called fr inside the steps. Every field is listed here, so a step never adds one. */
 const notes={
   dt:0,                        /* seconds since the last frame, at most 0.05 */
+  raw:0,                       /* seconds since the last frame as they really were, at most 1: for what must keep time with the music however slow the frames (the dancers' count of beats) */
   bt:0,lv:0,                   /* the sound: the beat's pulse and the low end's level */
   mp:0,mv:0,hp:0,hv:0,         /* the mids' pulse and level, the treble's pulse and level */
   m:0,                         /* the morph, about -1.2 to 1.2 */
@@ -76,7 +77,7 @@ function frame(now){
   requestAnimationFrame(frame);
   if(document.hidden){last=now;return;}
   if(learnOpen){learnFrame(now);last=now;return;} /* the lessons cover the page: draw the lesson, and leave the world as it is */
-  var rawDt=(now-last)/1000,dt=notes.dt=Math.min(0.05,rawDt);last=now;
+  var rawDt=(now-last)/1000,dt=notes.dt=Math.min(0.05,rawDt);last=now;notes.raw=Math.max(0,Math.min(1,rawDt));
   /* wait for the graphics chip (Stats' probe and a pack world's probe do the same job, so not twice) */
   if(!(statsOn&&!scene.world.volume)&&!scene.world.pack)chipWait();
   statsBegin();

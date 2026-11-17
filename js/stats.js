@@ -1,6 +1,7 @@
 /* Stats: a readout of how fast the picture is drawn and what is drawing it, and a trial of the distance probe. */
 import { cam } from "./camera.js";
 import { scene } from "./choose.js";
+import { danceSays } from "./dance.js";
 import { morphValue } from "./clock.js";
 import { $, gl } from "./dom.js";
 import { press, wakeHud } from "./input.js";
@@ -18,6 +19,7 @@ export function statsShow(){
     "drawn by: "+gpuName.slice(0,70)];
   if(ST.pn)lines.push("distance probe, waiting for the chip "+(ST.pr/ST.pn).toFixed(2)+" ms: chip "+ST.gd.toFixed(4)+(ST.jd===ST.jd?", script "+ST.jd.toFixed(4):", no script for this world"));
   else lines.push("distance probe: not for this world");
+  if(danceSays())lines.push(danceSays()); /* what the dancing figures hear: if they stand when there is a beat, this says which part thinks there is none */
   $("stats").textContent=lines.join("\n");
   ST.n=0;ST.t=0;ST.worst=0;ST.js=0;ST.pr=0;ST.pn=0;
 }

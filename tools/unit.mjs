@@ -1029,6 +1029,16 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
       const a1 = after(0.47, 6, 0.4), a2 = after(0.5, 6, 0.375), a3 = after(0.5, 0, 0.375), a4 = after(0.5, 0, 0.625);
       expect("after a gap in the sound the clock is sure of the new beat within two seconds, at the new speed", a1[0] < 0.2 && a1[1] >= 0 && a1[1] < 2 && Math.abs(a1[2] - 0.4) < 0.02 && a2[1] >= 0 && a2[1] < 2 && Math.abs(a2[2] - 0.375) < 0.02, a1.concat(a2).map(v => v.toFixed(2)).join(" "));
       expect("a beat that changes speed with no gap, even to three quarters or five quarters of what it was, has been taken up at the new speed twenty seconds on", a3[3] >= 0.95 && Math.abs(a3[2] - 0.375) < 0.02 && a4[3] >= 0.95 && Math.abs(a4[2] - 0.625) < 0.02, a3.concat(a4).map(v => v.toFixed(2)).join(" ")); }
+    { // slow frames (a doorway open, with two worlds to draw) and a frame that takes a second (a world's program being made): the count keeps real time
+      const slowRun = (frameSecs, hitchAt) => { dn.danceTick = dn.makeBeatClock(); let tt = 0, n = 0; while (tt < 24) { const real = hitchAt && Math.abs(tt - hitchAt) < frameSecs / 2 ? 1 : frameSecs; tt += real; dn.danceStep(Math.min(0.05, real), hit(tt, 0.47), 0, 0.8, false, false, false, tt, real); n++; } return [Math.min(...dn.crowd.map(d => d.a)), dn.danceSt.sure, Math.abs(dn.danceSt.u - Math.round(dn.danceSt.u) - ((tt % 0.47) / 0.47 > 0.5 ? (tt % 0.47) / 0.47 - 1 : (tt % 0.47) / 0.47))]; };
+      const s12 = slowRun(0.08), s8 = slowRun(0.125), hitch = slowRun(1 / 60, 18);
+      expect("at twelve and at eight frames a second the figures still find the beat and dance on it, and a frame that takes a whole second does not stop them", s12[0] > 0.9 && s12[1] > 0.95 && s8[0] > 0.9 && s8[1] > 0.95 && hitch[0] > 0.9 && hitch[1] > 0.95, [s12, s8, hitch].map(v => v.map(x => x.toFixed(2)).join("/")).join(" ")); prev = null; }
+    { // one loud moment, or a quieter track put on: the same beat comes through as much smaller pulses, and the figures go on
+      dn.danceTick = dn.makeBeatClock(); let tt = 0, low = 1, sum = 0, cnt = 0; const sec = (secs, size) => { for (let n = 0; n < secs * 60; n++, tt += dt) { dn.danceStep(dt, size * hit(tt, 0.47), 0.5 * size * hit(tt + 0.2, 0.47), 0.8, false, false, false, tt, dt); if (size < 1 && n > 360) { low = Math.min(low, dn.crowd[0].a); sum += dn.danceSt.sure; cnt++; } } };
+      sec(12, 1); sec(20, 0.12);
+      expect("a beat whose pulses have become eight times smaller is still danced to, six seconds on", low > 0.9 && sum / cnt > 0.95, low + " " + sum / cnt);
+      for (let n = 0; n < 600; n++, tt += dt) dn.danceStep(dt, 0, 0, 0.8, false, false, false, tt, dt);
+      expect("and with no sound at all they stop, and Stats is told so in a line", dn.crowd.every(d => d.a < 0.05) && /^dancers: 0% dancing, beat 0% sure/.test(dn.danceSays()), dn.danceSays()); prev = null; }
     { // changing from one overlay of figures to another while the music plays does not stop the dance
       dn.danceTick = dn.makeBeatClock(); let tt = 0, low = 1; const go = (kd, secs) => { sel.ovi = OVERLAYS.findIndex(v => v.dance === kd); for (let n = 0; n < secs * 60; n++, tt += dt) { dn.stepDance({ dt, bt: hit(tt, 0.47), mp: 0 }); if (secs < 9) low = Math.min(low, ...dn.crowd.map(d => d.a)); } };
       go(1, 10); go(2, 3); go(3, 3); go(1, 3); go(2, 3);

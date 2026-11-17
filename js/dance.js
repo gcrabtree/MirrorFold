@@ -42,11 +42,12 @@ export const DN_UP=1.5;      /* and the floor is looked down on from this many f
 export const DN_FLOOR=4;     /* how deep the floor is that the dancer alone has, in figure heights */
 export const DN_QUICK=4;     /* the fastest a hand or a foot is moved within the body, in figure heights a second */
 export const DN_TOP=5;       /* the fastest an elbow or a hand is shown going from its shoulder, in figure heights a second */
+export const DN_FAINT=0.06;  /* a pulse under this is taken as that much weaker than one that counts: there is nearly no sound */
 export const DN_DRIFT=0.3;   /* how fast a dancing figure moves over the floor toward the place it has chosen, in figure heights a second */
 export const dnU=[new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48)]; /* for the shader, four numbers a figure in each: neck and hips; the shoulders; left elbow and hand; right elbow and hand; the hip joints; left knee and ankle; right knee and ankle; the toes; the head's middle, its radius and how brightly the figure shows (0 for none) */
 const A=new Array(MV_N),B=new Array(MV_N),J=new Array(MV_N),flat=new Array(35),SP=[0,0],RM=[0,0,0,0],order=[];
 const crowd=[];              /* the figures: {rt, ri, mv, mir, u0, pmv, pmir, pu0, bl, next, tx, tz, p, b, mem, fa, sp, pfa, a, im, ic, idir, iface, itf, iph, iw}: the routine and how far through it; the move, whether it is faced the other way and the beat it began on; the same for the move before, and how far the figure has gone over from it; the beat to change on; how far the figure has travelled from its place; the pose; the body; where the elbows were; which way it is turned for this move and was for the last; how much it is dancing; and for when it is not, whether it walks, the seconds until it chooses again, which way it walks, the way it faces now and wants to, how far through its steps it is and how much it is walking */
-const st={amp:0,asp:1.78,u:0,du:0,pa:0,sure:0,kick:0,snap:0,en:0,hype:0,jump:-1,kind:0,phrase:0}; /* how much the figures are dancing, 0 to 1 (figures newly set up begin with it, so that changing from one overlay of figures to another does not stop the dance); how wide the picture is for 1 tall (danceFill says); the count of beats and this frame's step of it; how much pulse there has been lately; how sure the beat is; the kick as the figures feel it; how much they dance; how long since a drop; how far through a jump (in beats, -1 for none); which overlay they were set up for; how many times the chorus line has changed its dance */
+const st={per:0.5,pk:0.06,pm:0.06,amp:0,asp:1.78,u:0,du:0,pa:0,sure:0,kick:0,snap:0,en:0,hype:0,jump:-1,kind:0,phrase:0}; /* the strongest pulse of the bass and of the mids in the last few seconds; how much the figures are dancing, 0 to 1 (figures newly set up begin with it, so that changing from one overlay of figures to another does not stop the dance); how wide the picture is for 1 tall (danceFill says); the count of beats and this frame's step of it; how much pulse there has been lately; how sure the beat is; the kick as the figures feel it; how much they dance; how long since a drop; how far through a jump (in beats, -1 for none); which overlay they were set up for; how many times the chorus line has changed its dance */
 let tick=null;
 
 function ease(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);}
@@ -182,7 +183,7 @@ export function makeBeatClock(){
       iv=since;since=0;low=p;ok=by=-1;e=u+pend-Math.round(u+pend);
       if(iv>=2.2){if(got&&warm<30)sure=Math.max(sure,0.75);got=false;odd=0;} /* sound again after a gap (the music was stopped, or another track chosen): the beat is found afresh from the next two hits, whatever it was before, and if the figures were dancing lately one more hit on it has them dancing again */
       else{
-        r=iv/per;tol=Math.max(0.07,0.03/per,1.5*dt/per); /* a frame and a half at least: a slow frame rate does not see a hit any nearer than that */
+        r=iv/per;tol=Math.min(0.2,Math.max(0.07,0.03/per,1.5*dt/per)); /* a frame and a half at least: a slow frame rate does not see a hit any nearer than that */
         ok=!got?-1:r>0.4&&Math.abs(r-Math.round(2*r)/2)<tol?1:r>0.2&&Math.abs(r-Math.round(4*r)/4)<tol?0.5:0;
         by=ok;
         if(ok===1){c=iv/(Math.round(2*r)/2);per=Math.max(DN_FAST,Math.min(DN_SLOW,per+(c-per)*0.2));odd=0;} /* a hit on the beat says how long the beat is */
@@ -412,14 +413,24 @@ function nextMove(d,i,now,e,fresh){
 }
 /* One step for the figures: dt seconds, with bt the bass's pulse and mp the mids', level how full the music is (0 to 1),
    drop true in the frame a drop lands, changed true when the sound has just changed greatly, slow for less motion, and
-   time the app's clock, which the standing figures breathe by. */
-export function danceStep(dt,bt,mp,level,drop,changed,slow,time){
+   time the app's clock, which the standing figures breathe by. real is the seconds that really passed, where dt has
+   been cut short (a frame's time is held to a twentieth of a second for everything that eases): the count of beats
+   is kept by real, or with slow frames it would fall behind the music and every hit would seem off the beat. */
+export function danceStep(dt,bt,mp,level,drop,changed,slow,time,real){
   dt=Math.max(0,Math.min(0.1,dt||0));bt=Math.max(0,Math.min(1.5,bt||0));mp=Math.max(0,Math.min(1.5,mp||0)); /* a pulse is 0 to 1 and time goes forward; whatever is handed in, the figures are not thrown about by it (a frame's time has been seen below zero in the test harness, and every easing here would then run away) */
-  var b=tick(dt,bt),du=b.du*(slow?0.5:1),go,amp,e,i,j,d,k,w,now,m,v,beat,far,F=front(st.kind,st.asp),dx,dz,n;
+  real=Math.max(dt,Math.min(1.5,real||0));
+  /* How strong a pulse is depends on how loud the loudest thing lately was: the app measures each band against its
+     own greatest level, which sinks only over tens of seconds, so after one loud moment, or with a quieter track put
+     on in place of a louder, the same kick drum is a pulse several times smaller. The figures must not stop for
+     that. Each pulse is measured here against the strongest of the last few seconds (st.pk, st.pm, never less than
+     DN_FAINT), and that is what the count of beats hears and what says there is sound at all. */
+  st.pk=Math.max(DN_FAINT,st.pk*Math.exp(-real/2.5),bt);st.pm=Math.max(DN_FAINT,st.pm*Math.exp(-real/2.5),mp);
+  var bn=bt/st.pk,mn=mp/st.pm,b=tick(real,bn),du=b.du*(slow?0.5:1),go,amp,e,i,j,d,k,w,now,m,v,beat,far,F=front(st.kind,st.asp),dx,dz,n;
   st.u+=du;st.du=du;now=Math.floor(st.u);
-  st.pa+=(Math.max(bt,0.6*mp)-st.pa)*Math.min(1,dt);
+  st.pa+=(Math.max(bn,0.6*mn)-st.pa)*Math.min(1,dt);
+  bt=Math.max(bt,0.5*bn);mp=Math.max(mp,0.5*mn); /* the body gives to a kick by how hard it is, but to a faint one at least half as much as to the hardest */
   st.kick+=(bt-st.kick)*Math.min(1,dt*(bt>st.kick?30:7)); /* the kick drum as the body feels it: up at once, down in a seventh of a second */
-  st.sure=b.sure;
+  st.sure=b.sure;st.per=b.per;
   go=ease((st.pa-0.03)/0.09)*ease((b.sure-0.7)/0.25); /* there must be sound, and a steady beat in it */
   st.en+=(go*(0.45+0.55*level)-st.en)*Math.min(1,dt/0.8);
   st.hype*=Math.exp(-dt/10);
@@ -488,12 +499,17 @@ export function danceStep(dt,bt,mp,level,drop,changed,slow,time){
     d.rel.on=true;
   }
 }
+/* For Stats: what the figures hear and what they are doing about it, in a line, or "" with no figures chosen. */
+export function danceSays(){
+  if(!st.kind)return "";
+  return "dancers: "+Math.round(100*st.amp)+"% dancing, beat "+Math.round(100*st.sure)+"% sure at "+Math.round(60/Math.max(0.1,st.per))+" a minute, sound "+Math.round(100*Math.min(1,st.pa/0.12))+"%, bass pulse "+st.pk.toFixed(2);
+}
 /* A step of the frame: the count of beats is kept whatever is chosen, so that figures chosen later are in time at once. */
 export function stepDance(fr){
   var kind=danceKind(),react=calm?0.25:1;
   if(still||lapOn())return;
   if(kind!==st.kind)setUp(kind);
-  danceStep(fr.dt,fr.bt/react,fr.mp/react,heard.live?heard.level:0.6,heard.drop,soundChanged,calm,clock.time);
+  danceStep(fr.dt,fr.bt/react,fr.mp/react,heard.live?heard.level:0.6,heard.drop,soundChanged,calm,clock.time,fr.raw);
 }
 /* Where a place on the floor is in the picture: x across and z deep, in figure heights, on the floor whose front is
    F, into o as [across, up, size, brightness]. Across and up are measured from the picture's middle in units of its
@@ -534,5 +550,5 @@ tick=makeBeatClock();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={DN_MAX, DN_HIP, DN_SPINE, DN_HEAD, DN_NECK, DN_SHO, DN_HIPW, DN_ARM, DN_FORE, DN_CLEAR, DN_BACK, DN_LEG, DN_FOOT, DN_STANCE, DN_NEAR, DN_EYE, DN_FAST, DN_SLOW, DN_SIZE, DN_DEEP, DN_UP, DN_FLOOR, DN_DRIFT, DN_QUICK, DN_TOP, DN_JUMP, DN_STEP, DN_WALK, DN_TURN, dnU, danceBody, danceFlat, makeBeatClock, pickMove, moveTier, makeRoutine, setDanceStyle, get danceStyle(){return danceStyle},
+export const __dbg={DN_MAX, DN_HIP, DN_SPINE, DN_HEAD, DN_NECK, DN_SHO, DN_HIPW, DN_ARM, DN_FORE, DN_CLEAR, DN_BACK, DN_LEG, DN_FOOT, DN_STANCE, DN_NEAR, DN_EYE, DN_FAST, DN_SLOW, DN_SIZE, DN_DEEP, DN_UP, DN_FLOOR, DN_DRIFT, DN_FAINT, danceSays, DN_QUICK, DN_TOP, DN_JUMP, DN_STEP, DN_WALK, DN_TURN, dnU, danceBody, danceFlat, makeBeatClock, pickMove, moveTier, makeRoutine, setDanceStyle, get danceStyle(){return danceStyle},
   danceKind, danceStep, stepDance, danceSpots, danceFill, crowd, danceSt:st, get danceTick(){return tick},set danceTick(v){tick=v}};
