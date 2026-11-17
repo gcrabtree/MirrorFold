@@ -868,6 +868,87 @@ export const WORLDS=[
   if(dh<d)d=dh;
   return .75*d;
  }},
+/* Eyes, in homage to the visionary paintings on the band Tool's records and stage (Alex Grey's among them): a lattice
+   of eyes that look both ways, each between two lids, in a sun of seven long flames and seven short ones with a
+   beaded halo round their tips. The pupil is a hole right through, so a row of eyes is seen through the eye in
+   front. Three eyes to a cell of 3.2, one facing along each axis, and the cell is mirror-tiled, so the sevenfold suns
+   need not match the cube. An eye is worked out only within a quarter of a unit of the ball that holds it. The morph
+   opens the pupil as it narrows the lids, and sways the flames. Three quarters of the distance is used, since the
+   flames' sway and the beads make it a little too large in places. */
+{id:"seer",name:"Seer",hue:.6,fog:.1,maxd:26,speed:1.0,start:[1.6,1.6,.5],
+ period:function(){return [6.4,6.4,6.4]},
+ glsl:[
+ "vec4 srC;",
+ "float srFl(vec3 f,float tip){", /* one flame: a flat tongue from the lids out to tip, bent to one side */
+ "  float s=clamp((f.x-0.45)/(tip-0.45),0.0,1.0);",
+ "  return (length(vec3(f.x-clamp(f.x,0.45,tip),f.y-0.13*(tip-0.45)*(0.7+0.5*uM)*s*sin(4.712389*s),1.8*f.z))-(0.008+0.075*(1.0-s)*(0.25+1.6*s)))*0.5555556;",
+ "}",
+ "float srEye(vec3 l){", /* one eye about the origin, looking along z both ways; srC is its colour measures */
+ "  float r=length(l);float rho=length(l.xy);float a=atan(l.y,l.x);",
+ "  float pu=0.1+0.04*uM;",
+ "  float d=max(max(r-0.42,pu-rho),0.8883+0.012*rho*cos(24.0*a)-length(vec3(l.xy,abs(l.z)-1.2)));", /* the ball, less the pupil, less the iris's shallow dish */
+ "  float k=clamp((rho-pu)/(0.24-pu),0.0,1.0);",
+ "  srC=rho<0.245?vec4(0.5+0.5*cos(24.0*a),k,0.5*k,0.32+0.5*k):vec4(0.0,0.0,0.0,0.04);",
+ "  float th=atan(rho,abs(l.z));", /* the lids: a shell with hoops round the way it looks, and an almond cut through it */
+ "  float e=max(abs(r-0.46-0.008*cos(24.0*th))-0.012,0.5-length(vec2(l.x,abs(l.y)+0.3-0.04*uM)));",
+ "  if(e<d){d=e;srC=vec4(0.5+0.5*cos(24.0*th),0.2,0.0,0.55+0.18*th);}",
+ "  float af=mod(a+0.4487990,0.8975979)-0.4487990;float bf=af<0.0?af+0.4487990:af-0.4487990;", /* the angle folded onto one long flame, and onto the short one beside it */
+ "  e=min(srFl(vec3(rho*cos(af),rho*sin(af),l.z),0.98),srFl(vec3(rho*cos(bf),rho*sin(bf),l.z),0.74));",
+ "  if(e<d){d=e;srC=vec4(0.2,0.6,0.5,0.2+0.5*rho);}",
+ "  e=min(length(vec2(rho-1.0,l.z))-(0.026+0.008*cos(28.0*a)),length(vec2(rho-0.74,l.z))-0.011);", /* the halo, and a thin one at the short flames' tips */
+ "  if(e<d){d=e;srC=vec4(0.5+0.5*cos(28.0*a),0.1,0.0,0.8);}",
+ "  return d;",
+ "}",
+ "float srSt(vec3 l){", /* a star of seven points in a ring: each of its seven lines joins a point to the third from it */
+ "  vec2 v=l.xy;float d2=1e5;float rho=length(v);",
+ "  for(int i=0;i<7;i++){",
+ "    v=vec2(0.6234898*v.x-0.7818315*v.y,0.7818315*v.x+0.6234898*v.y);",
+ "    vec2 g=vec2(v.x-0.2003,max(abs(v.y)-0.8774,0.0));d2=min(d2,dot(g,g));",
+ "  }",
+ "  float d=sqrt(d2+l.z*l.z)-0.016;srC=vec4(0.3,0.5,0.4,0.3+0.5*rho);",
+ "  float e=length(vec2(rho-0.9,l.z))-0.022;",
+ "  if(e<d){d=e;srC=vec4(0.0,0.1,0.0,0.8);}",
+ "  return d;",
+ "}",
+ "float map(vec3 p){",
+ "  vec3 q=abs(mod(p+1.6,6.4)-3.2)-1.6;",
+ "  vec3 l2=vec3(q.y,q.z,abs(q.x)-1.6);vec3 l3=vec3(q.z,q.x,abs(q.y)-1.6);vec3 l4=vec3(q.xy,abs(q.z)-1.6);",
+ "  float d=length(q)-1.06;float e;vec4 c=vec4(0.0);",
+ "  if(d<0.25){d=srEye(q);c=srC;}",
+ "  e=length(l2)-1.06;if(e<0.25)e=srEye(l2);if(e<d){d=e;c=srC;}",
+ "  e=length(l3)-1.06;if(e<0.25)e=srEye(l3);if(e<d){d=e;c=srC;}",
+ "  e=length(l4)-0.95;if(e<0.25)e=srSt(l4);if(e<d){d=e;c=srC;}",
+ "  orb=c;return 0.75*d;",
+ "}"],
+ de:function(x,y,z,m){
+  function fl(fx,fy,fz,tip){
+    var s=Math.max(0,Math.min(1,(fx-.45)/(tip-.45)));
+    return (Math.hypot(fx-Math.max(.45,Math.min(tip,fx)),fy-.13*(tip-.45)*(.7+.5*m)*s*Math.sin(4.712389*s),1.8*fz)-(.008+.075*(1-s)*(.25+1.6*s)))*.5555556;
+  }
+  function eye(lx,ly,lz){
+    var r=Math.hypot(lx,ly,lz),rho=Math.hypot(lx,ly),a=Math.atan2(ly,lx),pu=.1+.04*m,th=Math.atan2(rho,Math.abs(lz));
+    var d=Math.max(r-.42,pu-rho,.8883+.012*rho*Math.cos(24*a)-Math.hypot(lx,ly,Math.abs(lz)-1.2));
+    d=Math.min(d,Math.max(Math.abs(r-.46-.008*Math.cos(24*th))-.012,.5-Math.hypot(lx,Math.abs(ly)+.3-.04*m)));
+    var af=md(a+.4487990,.8975979)-.4487990,bf=af<0?af+.4487990:af-.4487990;
+    d=Math.min(d,fl(rho*Math.cos(af),rho*Math.sin(af),lz,.98),fl(rho*Math.cos(bf),rho*Math.sin(bf),lz,.74));
+    return Math.min(d,Math.hypot(rho-1,lz)-(.026+.008*Math.cos(28*a)),Math.hypot(rho-.74,lz)-.011);
+  }
+  function star(lx,ly,lz){
+    var d2=1e5,rho=Math.hypot(lx,ly),i,t,gx,gy;
+    for(i=0;i<7;i++){
+      t=.6234898*lx-.7818315*ly;ly=.7818315*lx+.6234898*ly;lx=t;
+      gx=lx-.2003;gy=Math.max(Math.abs(ly)-.8774,0);d2=Math.min(d2,gx*gx+gy*gy);
+    }
+    return Math.min(Math.sqrt(d2+lz*lz)-.016,Math.hypot(rho-.9,lz)-.022);
+  }
+  var qx=Math.abs(md(x+1.6,6.4)-3.2)-1.6,qy=Math.abs(md(y+1.6,6.4)-3.2)-1.6,qz=Math.abs(md(z+1.6,6.4)-3.2)-1.6;
+  var ax=Math.abs(qx)-1.6,ay=Math.abs(qy)-1.6,az=Math.abs(qz)-1.6,d=Math.hypot(qx,qy,qz)-1.06,e;
+  if(d<.25)d=eye(qx,qy,qz);
+  e=Math.hypot(qy,qz,ax)-1.06;if(e<.25)e=eye(qy,qz,ax);if(e<d)d=e;
+  e=Math.hypot(qz,qx,ay)-1.06;if(e<.25)e=eye(qz,qx,ay);if(e<d)d=e;
+  e=Math.hypot(qx,qy,az)-.95;if(e<.25)e=star(qx,qy,az);if(e<d)d=e;
+  return .75*d;
+ }},
 /* A net, in homage to the visionary paintings on the band Tool's records and stage (Alex Grey's among them): strands
    fringed with flames join into a net that fills space, each strand has an almond eye set into its middle, looking out
    both ways, and every large gap in the net holds a ball of cloud. The strands are the twelve ways from each place of
@@ -876,35 +957,35 @@ export const WORLDS=[
    the nearer is worked out, and the distance is held to what the other could be. A strand is worked out as a flat
    shape (u along it, v across, w out of its flat). The morph lengthens the flames and opens the pupils. The flames'
    teeth are steep, so little more than a third of their distance is used. */
-{id:"seer",name:"Seer",hue:0,fog:.11,maxd:22,speed:.9,start:[1.1,1.1,.7],
+{id:"net",name:"Net",hue:0,fog:.11,maxd:22,speed:.9,start:[1.1,1.1,.7],
  period:function(){return [4.4,4.4,4.4]},
  glsl:[
- "vec4 srC;",
- "float srS(vec3 l){",
+ "vec4 ntC;",
+ "float ntS(vec3 l){",
  "  float au=abs(l.x),aw=abs(l.z);float av=abs(l.y-0.08*sin(2.0190*l.x));", /* the strand sways once to each side between its ends */
  "  float tooth=1.0-abs(2.0*fract(6.5*au-4.0*av)-1.0);", /* the flames: teeth along both edges, leaning away from the eye */
  "  float en=smoothstep(0.26,0.42,au)*(1.0-0.6*smoothstep(0.9,1.55,au))*(1.0+0.25*uM)*(0.72+0.28*cos(9.4*au));",
  "  float g=0.37*(av-0.025-0.13*en*tooth);float h=aw-0.006-0.02*(1.0-clamp((av-0.03)*7.0,0.0,1.0));", /* thinner toward the tips */
  "  float d=length(max(vec2(g,h),0.0))+min(max(g,h),0.0)-0.008;",
- "  srC=vec4(tooth,0.3,0.3*en*tooth,0.36+0.3*en*tooth);",
+ "  ntC=vec4(tooth,0.3,0.3*en*tooth,0.36+0.3*en*tooth);",
  "  float e=max(length(vec2(av,aw))-0.04,0.3-au)*0.95;", /* the rib down the middle */
- "  if(e<d){d=e;srC=vec4(0.0,0.2,0.0,0.5);}",
+ "  if(e<d){d=e;ntC=vec4(0.0,0.2,0.0,0.5);}",
  "  av=abs(l.y);float alm=length(vec2(au,av+0.225))-0.375;", /* the eye: lids round an almond, and a flattened ball inside it */
  "  e=length(max(vec2(abs(alm)-0.012,aw-0.05),0.0))-0.012;",
- "  if(e<d){d=e;srC=vec4(0.2,0.2,0.0,0.45);}",
+ "  if(e<d){d=e;ntC=vec4(0.2,0.2,0.0,0.45);}",
  "  float rho=length(l.xy);float pu=0.04+0.012*uM;",
  "  e=max((length(vec3(l.xy,1.7*l.z))-0.155)*0.5882353,alm);",
- "  if(e<d){d=e;srC=rho<pu?vec4(0.0):(rho<0.1?vec4(0.0,rho*5.0,0.0,0.1+2.2*rho):vec4(0.0,0.0,0.0,0.62));}",
+ "  if(e<d){d=e;ntC=rho<pu?vec4(0.0):(rho<0.1?vec4(0.0,rho*5.0,0.0,0.1+2.2*rho):vec4(0.0,0.0,0.0,0.62));}",
  "  return d;",
  "}",
  "float map(vec3 p){",
  "  vec3 q=abs(mod(p+2.2,4.4)-2.2);float e;",
  "  float a=(q.x+q.y-2.2)*0.7071068;float b=(q.x-q.y)*0.7071068;",
- "  float d=q.z<1.1?srS(vec3(a,b,q.z)):srS(vec3(b,a,q.z-2.2));vec4 c=srC;",
+ "  float d=q.z<1.1?ntS(vec3(a,b,q.z)):ntS(vec3(b,a,q.z-2.2));vec4 c=ntC;",
  "  a=(q.z+q.x-2.2)*0.7071068;b=(q.z-q.x)*0.7071068;",
- "  e=q.y<1.1?srS(vec3(a,b,q.y)):srS(vec3(b,a,q.y-2.2));if(e<d){d=e;c=srC;}",
+ "  e=q.y<1.1?ntS(vec3(a,b,q.y)):ntS(vec3(b,a,q.y-2.2));if(e<d){d=e;c=ntC;}",
  "  a=(q.y+q.z-2.2)*0.7071068;b=(q.y-q.z)*0.7071068;",
- "  e=q.x<1.1?srS(vec3(a,b,q.x)):srS(vec3(b,a,q.x-2.2));if(e<d){d=e;c=srC;}",
+ "  e=q.x<1.1?ntS(vec3(a,b,q.x)):ntS(vec3(b,a,q.x-2.2));if(e<d){d=e;c=ntC;}",
  "  d=min(d,min(abs(q.x-1.1),min(abs(q.y-1.1),abs(q.z-1.1)))+1.0);", /* the strands not worked out are at least this far */
  "  e=min(min(length(q),length(q-vec3(2.2,2.2,0.0))),min(length(q-vec3(2.2,0.0,2.2)),length(q-vec3(0.0,2.2,2.2))))-0.09;", /* a knot where strands meet */
  "  if(e<d){d=e;c=vec4(0.0,0.3,0.0,0.55);}",
