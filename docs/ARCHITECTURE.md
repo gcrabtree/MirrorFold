@@ -98,6 +98,7 @@ Several design decisions were forced by the artifact sandbox and are no longer c
 | `js/still.js` | Hold still: the pause, and averaging shifted frames into a sharp picture while nothing moves; Lens blur (`setLens`, `lensFocus`) |
 | `js/ribbons.js` | Ribbons: the line of light behind the camera and behind friends (`rbAdd`, `rbFill`, `stepRibbons`) |
 | `js/lightwave.js` | The light wave: bands of light that run outward on the beat (`lwStep`, `lwBright`, `stepLightWave`) |
+| `js/eye.js` | The eye: a human eye drawn over the finished picture, with the world in its pupil (`FS_EYE`, `stepEye`, `drawEye`, `blinkStep`, `setEye`, `setIris`, `setBlink`) |
 | `js/dance.js` | The dancers: the count of beats (`makeBeatClock`), a figure's body from a pose (`danceBody`) and how it looks from in front (`danceFlat`), and `stepDance`, `danceFill` for the overlays Dancer, Chorus line and Dance floor |
 | `js/moves.js` | The dancers' moves: what a pose's numbers are, `MOVES` (143 of them, as poses at given beats) and `movePose` |
 | `js/photo.js` | Photo mode (`setPhoto`, the sliders, `photoFrame` and the large picture) and postcards (`cardDraw`, `cardCode`) |
@@ -144,6 +145,7 @@ Each frame draws five passes. All use one full-screen triangle and the vertex sh
              FS_BLUR  horizontal   -> tB[1]
              FS_BLUR  vertical     -> tB[0]
 4. final     FS_FINAL (tT[cur], tB[0]) -> screen
+5. the eye   FS_EYE   (the finished picture) -> screen   (only while the eye is on: pass 4 then draws into tE; section 8g)
 ```
 
 Targets are RGBA8 textures with linear filtering and clamped edges, created by `target(w,h)` and recreated in `resize()` whenever the drawing-buffer size changes (which also clears the feedback history). Bloom passes are skipped when bloom strength is zero.
@@ -591,6 +593,26 @@ Tested: the cleaner, the text, the file-name part and Reddit's address in `tools
 
 **Tested.** `tools/unit.mjs`: `lapClear`, `lapLine` and `lapPose` against a made-up world, that each kind of path ends as it began, and the pulse. In headless Chrome, with frames of equal length: the finished picture at five moments of one lap against the same moments of the next was identical to the last pixel in Sponge (with the Vortex motion and three mirrors), Temple (whose period follows the morph), Klein with grain, nested Julia with Pulse wave, the descent, Cell (a ring) and Nebula (a cloud world); the recorder started, was handed every frame of the lap, and saved. A node script over every built-in world at three morphs found a line in all but Box and Cell, in every packing, in under 15 ms. Not tested: a real device, where frames are not of equal length (the trails then differ slightly at the join), the saved file in any player, and `captureStream` without `requestFrame`.
 
+## 8g. The eye
+
+`js/eye.js`. A human eye that fills the screen, with the world showing only in its pupil. It was asked for as "a world, a land or an overlay", and is none of them: an overlay is drawn into the trails and is bent by the motion and the filter, and a land is part of the scene, so either would have had the overlays and filters running over the eye. The eye is a fifth pass, after the final one. While it is on, `drawFinal` draws the finished picture into `tE` (or into `tF`, when the flash limiter is on) and `drawEye` then draws the eye to the screen, reading that picture in the pupil. So the world, the land, the motion, the overlay, the filter and the transitions all live in the pupil, and nothing is drawn over the iris, the white or the lids.
+
+**Settings** (three buttons in the Look group, kept in this browser as `mirrorfold-eye`, `-iris`, `-blink`): `eyeMode` (`EYES`: off, on, close up; `r` is the iris's radius where the picture's shorter side is 1, and the whole eye is made smaller to fit a tall picture), `irisI` (`IRIS`: follows the palette, or one of five colours of its own, each three colours: round the pupil, the body, the rim), `blinkMode` (`BLINKS`: off, now and then, changes the world).
+
+**The shader** (`FS_EYE`) works in units where the picture's shorter side is 1, with the eye in the middle.
+
+- *The lids* are two curves, `up` and `lo`, that meet at the corners (`W` either side). `uBlink` (0 to 1) takes the upper one down to `shut`, a line a little above the lower lid, which rises to meet it. `open` is the distance inside the nearer lid, below zero on the skin.
+- *The pupil* (radius `uPu` of the iris's) shows the middle of the finished picture, somewhat smaller than life (`hf`: a small pupil shows about half the picture's shorter side, a large one nearly all of it), bulged a little toward the edge, read four times a pixel because it is made smaller, and darkened at its rim.
+- *The iris* is noise in the angle round the pupil and in `t`, which runs from 0 at the pupil's edge to 1 at the rim, so the fibres stretch as the pupil opens. `vn(p, per)` is value noise whose second number comes round every `per`, so it wraps round the circle with no seam; every use of it here gives a whole number for `per`, and anything added to the angle is itself made that way. Two ridged noises (`f1` fine and stretched outward, `f2` coarser and crossing it) make the network; a slower noise `w` bends both, and `uMo` (the clock, and the world's morph) moves it, which is what changes the network's shape. The three colours are worked out in JavaScript (`drawEye`): three places along the palette in use, or the iris's own.
+- *The white* is a little of the palette's colour (16%) over off-white, darker and pinker toward the corners, with the pink corner by the nose. *The blood vessels* are the lines where a noise crosses its middle value: the noise changes quickly round the eye and slowly outward, so the lines run outward and wander, and there are more of them, and thicker, toward the corners. `uVes` moves the noise that bends them: slowly with the clock, and with the eased level of the mids. They thicken a little on the beat.
+- *The skin* is kept in shadow and takes the palette's colour, so it never reads as one person's skin; it is brightest near the eye. The fold above the lid, the lids' rims and the lashes (`lash`: a stroke to each step along the lid, each leaning its own way) move with the lid.
+
+**What moves it** (`stepEye`, a step of `frame()`): the blink (`blinkStep`: shut in `BLINK_SHUT`, held `BLINK_HELD`, open in `BLINK_OPEN`, then a wait from `BLINK_GAP`, all doubled when reduced motion is asked for; the lid follows a curve that starts and ends gently, and `tools/unit.mjs` holds it under a sixth of the way a frame); the gaze, which follows the turning of the view (`fr.lx`, `fr.ly`); and the pupil, which opens with the low end. Everything else comes from `clock` and the frame's sound. Hold still stops `stepEye`, and its clocks are already stopped. While a loop is flown the lids stay open, the gaze is ahead and the pupil takes the loop's own beat, so the lap comes round.
+
+**A blink that changes the world** (`blinkShut`, with Blink set to "changes the world"): about every half minute, at the moment the lids come shut, `setWorldNow` is called with no transition: the lids are the transition. The world is Journey's choice (`jPick`) where Journey is choosing worlds, and otherwise any other world. It is not done while a transition is running, a doorway is owed, a flight is being played or a host is being followed.
+
+**Not in the VR viewer**: it is flat on the screen, and each eye would see half of it (`eyeShown`). It is not in packs, scenes, Journey's templates, share links, recorded flights or Fly together: it is this browser's setting only.
+
 ## 8a. Video (an experiment)
 
 `js/video.js` shows a video file the user picks, or the camera, in the picture. Nothing is uploaded or kept, and a pack cannot name a video. The frame step `videoFrame` runs before the drawing steps; `videoUniforms` hands the result to the scene shader and the trails pass on texture unit 5 (`uVid`, `uVidK` = way, strength, fit to screen; `uVidS` = repeat scale on surfaces).
@@ -944,6 +966,7 @@ Verified in headless Chrome: the VR viewer renders two lens-shaped pictures with
 Not verified, because they need a real device or a human:
 
 - Frame rate on phones. Bulbs, Julia and the Mandelbox worlds are the heaviest.
+- The eye (section 8g) on a real screen: stills of it open, half shut and shut were looked at, in both sizes, wide and tall. Nobody has watched it move: the blink's speed, whether the gaze turns the way the view does, how far the vessels move with real music, and what the extra pass costs a phone. A blink that changes the world waits, lids shut, while the new world's program is made if it was not made ahead of need.
 - The lessons on a phone: dragging in the drawings, how fast step 5 paints, and the voice. Nobody has listened to the sound files; they were made and measured, not heard.
 - Programs made ahead of need on a phone: how long it takes, and whether the picture keeps moving meanwhile (section 4).
 - The lower start after a visit that ended while starting, on a device that really gives up.
@@ -975,6 +998,7 @@ Not verified, because they need a real device or a human:
 - Fly together across networks that block direct connections (it needs a relay, which is charged by volume), and with voice or pointing.
 - Flights that record a zoom world's view and the land's flight; flights longer than four minutes (a file instead of a link); the song for music that is not the built-in.
 - A list of saved scenes in the app. A scene can be kept as a picture (Save picture) or in a pack, but there is no list of them to tap.
+- The eye in Journey's templates (a category of its own), in a saved scene, and in the VR viewer (it would need a place in depth and a picture for each eye); a blink in place of the transition for every change of world while the eye is on; a second eye.
 - Per-band reaction strength controls.
 - A proper MilkDrop-style per-pixel equation system, if the fixed motion list feels limiting.
 - Jittered supersampling while flying (Hold still, section 8b, does it only while nothing moves). It needs each pixel's place in the last frame, which the scene shader does not work out.

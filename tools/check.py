@@ -123,9 +123,17 @@ setTimeout(function(){
   log("lessons open="+learnOpen+" "+out.join(" ")+" missing="+(document.getElementById("learn").textContent.match(/learn\.[a-z]+\.[a-zA-Z.]+/)||["none"])[0]);
   closeLearn();log("lessons shut="+$("learn").hidden);
 },2740);
-setTimeout(function(){setStereo(true);setMirrors(3);log("vr="+stereo);},2750);
+setTimeout(function(){
+  /* the eye: its program is made, each setting can be chosen, a blink changes the world while the lids are shut, and it is left out of the VR viewer */
+  setEye(1);var shown=eyeShown();$("bIris").click();$("bBlink").click();
+  var w0=world.id,why=warpDir+"/"+doorOwed()+"/"+blinkPick();ey.wt=999;blinkShut();var w1=world.id;warpDir=0;warp=0;warpFn=null;ey.wt=999;blinkShut();
+  log("eye="+eyeMode+" drawn="+shown+" program="+!!pEye+" buttons="+$("bEye").textContent+"|"+$("bIris").textContent+"|"+$("bBlink").textContent+" blink changed world="+(world.id!==w0)+" (first try "+(w1!==w0)+", with a transition, a doorway and a choice of "+why+")");
+  setIris(0);setBlink(1);
+},2745);
+setTimeout(function(){setStereo(true);setMirrors(3);log("vr="+stereo+" eye in viewer="+eyeShown());},2750);
 setTimeout(function(){stepWorld(1);},2900);
 setTimeout(function(){setStereo(false);setMirrors(0);},3500);
+setTimeout(function(){drawFinal(notes);log("eye picture="+!!tE+" glerr="+gl.getError());setEye(0);log("eye off="+(tE===null&&$("bIris").hidden));},3700);
 setTimeout(function(){log("world="+world.id+" music="+musicMode+" audio="+(ac?ac.state:"none")+" glerr="+gl.getError()+" DONE")},3800);
 '''
 # every pack published in packs/, as text, so the page can load them the way the site would

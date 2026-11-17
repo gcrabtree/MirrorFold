@@ -16,6 +16,7 @@ import { landMode, moveLand } from "./land.js";
 import { lapClock, lapFrame, lapOn, lapShot } from "./lap.js";
 import { stepRibbons } from "./ribbons.js";
 import { stepDance } from "./dance.js";
+import { stepEye } from "./eye.js";
 import { stepLightWave } from "./lightwave.js";
 import { photoFrame } from "./photo.js";
 import { learnFrame, learnOpen, openLearn } from "./learn.js";
@@ -118,6 +119,7 @@ function frame(now){
   stepLightWave(notes); /* the bands of light that run outward on the beat (js/lightwave.js) */
   stepRibbons(notes); /* the lines of light left behind the camera and behind friends (js/ribbons.js) */
   stepDance(notes); /* the stick figures of the dancing overlays keep time and take up their poses (js/dance.js) */
+  stepEye(notes); /* the eye blinks, looks the way the view turns, and its pupil opens with the sound (js/eye.js) */
   musicFollowsSpeed(notes.spN);
 
   /* drawing */

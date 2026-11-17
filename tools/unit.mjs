@@ -1116,6 +1116,20 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     expect("the Dance party journey leaves out the Echo filter, which lays a second, larger, upside-down picture of the figures over them", party.includes('overlay:{mode:"random",every:40,set:["Dancer","Chorus line","Dance floor"]}') && !party.includes("Echo")); }
   sel.ovi = was; Math.random = rand;
 }
+// ---- the eye's blink: it shuts and opens along a gentle curve, once, and then waits
+{
+  const { blinkStep, BLINK_GAP, BLINK_SHUT, BLINK_HELD, BLINK_OPEN, EYES, IRIS, BLINKS } = await import("../js/eye.js");
+  for (const slow of [false, true]) {
+    const s = { ph: 0, t: 0, next: 1, b: 0 }, dt = 1 / 60; let hits = 0, most = 0, top = 0, range = true, shutFor = 0, n = 0, was = 0;
+    for (; n < 60 * 4; n++) { was = s.b; if (blinkStep(s, dt, slow, 0.5)) hits++; most = Math.max(most, Math.abs(s.b - was)); top = Math.max(top, s.b); if (!(s.b >= 0 && s.b <= 1)) range = false; if (s.b > 0.5) shutFor += dt; }
+    const k = slow ? 2 : 1;
+    expect("a blink" + (slow ? " with reduced motion asked for" : "") + " shuts the lids once, never moves them more than a sixth of the way in one frame, and ends open with the next one at least five seconds off",
+      hits === 1 && top === 1 && range && most < 1 / 6 && s.ph === 0 && s.b === 0 && s.next >= BLINK_GAP[0] && s.next <= BLINK_GAP[1] * k && shutFor < (BLINK_SHUT + BLINK_HELD + BLINK_OPEN) * k, [hits, top, most.toFixed(3), s.ph, s.next, shutFor.toFixed(2)].join(" "));
+  }
+  { const s = { ph: 0, t: 0, next: 0.1, b: 0 }; let hits = 0; for (let n = 0; n < 200; n++) if (blinkStep(s, 0.05, false, 0)) hits++;
+    expect("at the slowest frames a blink still shuts once and opens, and the shortest wait is kept", hits >= 1 && hits <= 2 && s.next === BLINK_GAP[0], hits + " " + s.next); }
+  expect("the eye starts off, the iris can keep a colour of its own, and a blink can be off", EYES[0].r === 0 && !IRIS[0].c && IRIS.slice(1).every(i => i.c.length === 3 && i.c.every(c => c.length === 3 && c.every(v => v >= 0 && v <= 1))) && BLINKS[0] === "off");
+}
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {
   const { readdirSync } = await import("node:fs"), dir = new URL("../js/", import.meta.url), seen = {}, twice = [];

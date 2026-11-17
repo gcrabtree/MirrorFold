@@ -1,5 +1,6 @@
 /* The effect programs, the pictures they draw into, and the picture size. */
 import { canvas, gl } from "./dom.js";
+import { eyeFree } from "./eye.js";
 import { landFreeTargets, landMode } from "./land.js";
 import { stillFree } from "./still.js";
 export let di=0,q=0.85; /* the detail setting (a position in DETAIL) and the sharpness it currently gives, 0.35 to 1 */
@@ -103,7 +104,7 @@ export function resize(){
   }
   if(canvas.width!==w||canvas.height!==h||!tA){
     canvas.width=w;canvas.height=h;
-    freeT(tA);freeT(tT[0]);freeT(tT[1]);freeT(tB[0]);freeT(tB[1]);freeT(tF[0]);freeT(tF[1]);tF=[null,null];freeT(tD);tD=null;landFreeTargets();stillFree();
+    freeT(tA);freeT(tT[0]);freeT(tT[1]);freeT(tB[0]);freeT(tB[1]);freeT(tF[0]);freeT(tF[1]);tF=[null,null];freeT(tD);tD=null;landFreeTargets();stillFree();eyeFree();
     tA=target(w,h);tT[0]=target(w,h);tT[1]=target(w,h);
     var bw=Math.max(2,w>>2),bh=Math.max(2,h>>2);
     tB[0]=target(bw,bh);tB[1]=target(bw,bh);

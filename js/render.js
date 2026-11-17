@@ -13,6 +13,7 @@ import { driven } from "./packs.js";
 import { packing, pkDeep, pkMix, pkMw, pkWave, pkZoom } from "./packing.js";
 import { bindTex, filterProg, overlayProg, pBlur, pCopy, pDown, pFinal, pTrail, passTo } from "./programs.js";
 import { doorN, doorTurn, doorU, doorView } from "./doors.js";
+import { drawEye, eyeShown, eyeTarget } from "./eye.js";
 import { lapOn } from "./lap.js";
 import { photoExp, photoFov } from "./photo.js";
 import { lwA, lwR } from "./lightwave.js";
@@ -188,7 +189,9 @@ export function drawFinal(fr){
   if(lk.code&&!lp&&!lk.told){lk.told=1;toast("Filter "+lk.name+" does not work on this device.");}
   var slow=(!!lp&&!lk.reviewed)||(!!op&&!ov.reviewed)||(scene.world.pack&&!scene.world.reviewed&&(!landOn||landOver)),PF=lp||pFinal,FU=PF.U;
   if(slow&&!tF[0]){tF[0]=target(canvas.width,canvas.height);tF[1]=target(canvas.width,canvas.height);}
-  passTo(slow?tF[flip.fcur]:null,PF);bindTex(0,tc.t);bindTex(1,tB[0].t);
+  /* the eye is drawn last, with the finished picture in its pupil, so the finished picture goes into a picture of its own first */
+  var eye=eyeShown(),done=slow?tF[flip.fcur]:eye?eyeTarget(canvas.width,canvas.height):null;
+  passTo(done,PF);bindTex(0,tc.t);bindTex(1,tB[0].t);
   bindTex(3,slow?tF[1-flip.fcur].t:tc.t);gl.uniform1i(FU.uPrev,3);gl.uniform1f(FU.uKeep,slow?Math.exp(-dt/0.25):0);
   gl.uniform1i(FU.uT,0);gl.uniform1i(FU.uB,1);
   gl.uniform1f(FU.uLandMix,landOver&&!stereo?landFx:0);if(landOver&&landFx>0&&!stereo){bindTex(6,tL.t);bindTex(7,tA.t);gl.uniform1i(FU.uLandT,6);gl.uniform1i(FU.uSkyT,7);}
@@ -208,7 +211,9 @@ export function drawFinal(fr){
   setPal(FU);
   gl.uniform3f(FU.uTint,tint[0],tint[1],tint[2]);
   gl.drawArrays(gl.TRIANGLES,0,3);
-  if(slow){passTo(null,pCopy);bindTex(0,tF[flip.fcur].t);gl.uniform1i(pCopy.U.uT,0);gl.drawArrays(gl.TRIANGLES,0,3);flip.fcur=1-flip.fcur;}
+  if(eye)drawEye(fr,done);
+  else if(slow){passTo(null,pCopy);bindTex(0,done.t);gl.uniform1i(pCopy.U.uT,0);gl.drawArrays(gl.TRIANGLES,0,3);}
+  if(slow)flip.fcur=1-flip.fcur;
   flip.cur=1-flip.cur;
 }
 
