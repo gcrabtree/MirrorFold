@@ -1292,6 +1292,8 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("studio: a cue moved is not doubled", r.cues.filter(c => c[2] === "temple").length === 1 && r.cues.find(c => c[2] === "temple")[0] === 30 && r.cues.length === 4);
   expect("studio: no room at the very end", stPut([[99.9, "filter", "Neon"]], 99.95, "mirrors", "6", 100, -1) === null);
   expect("studio: a soft kind may sit beside anything", stPut(cues, 40.1, "palette", "Ember", 100, -1).t === 40.1);
+  const { stAlbumAt } = (await import("../js/studio.js")).__dbg;
+  expect("studio: a place across the album strip is the track that lies there", stAlbumAt([95, 50], 0) === 0 && stAlbumAt([95, 50], 0.65) === 0 && stAlbumAt([95, 50], 0.66) === 1 && stAlbumAt([95, 50], 0.999) === 1 && stAlbumAt([10], 0.5) === 0);
   expect("studio: the lanes are By chance, then those in use", stLanes(cues).join() === "journey,world,palette,filter" && stLanes([]).join() === "journey,world,palette");
 }
 

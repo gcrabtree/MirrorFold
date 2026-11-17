@@ -13,6 +13,7 @@ import { doorOwed } from "./doors.js";
 import { flightPlaying } from "./flightplay.js";
 import { press, wakeHud } from "./input.js";
 import { jPick, jPool, journey, jt } from "./journey.js";
+import { scoreNow } from "./scoreplay.js";
 import { lapOn } from "./lap.js";
 import { palCur } from "./palettes.js";
 import { bindTex, link, passTo } from "./programs.js";
@@ -187,7 +188,7 @@ function blinkPick(){
 function blinkShut(){
   var i;
   if(blinkMode!==2||ey.wt<ey.wnext)return;
-  if(tr.warpDir!==0||doorOwed()||flightPlaying()||tgGuest())return;
+  if(tr.warpDir!==0||doorOwed()||flightPlaying()||tgGuest()||scoreNow())return; /* nor while a score is playing: the world is the score's */
   i=blinkPick();
   if(i>=0&&setWorldNow(i)){ey.wt=0;ey.wnext=24+20*Math.random();}
 }

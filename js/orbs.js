@@ -1,4 +1,5 @@
 /* The orb: one hidden in each world. Flying into it unlocks a palette, or warps on to another world once all are unlocked. */
+import { scoreNow } from "./scoreplay.js";
 import { ac, pluck } from "./audio.js";
 import { cam } from "./camera.js";
 import { requestWorld, scene } from "./choose.js";
@@ -35,7 +36,12 @@ function chime(){
 }
 export function collectOrb(){
   bands.b.p=1;cam.boost=Math.max(cam.boost,0.5);chime();
-  if(orbCounted()){
+  /* while a score is playing, the palette and the world are the score's: an orb still counts and still unlocks, but changes neither */
+  if(scoreNow()){
+    if(orbCounted()){labelPalettes();toast("Orb found. Palette unlocked: "+PALETTES[BASE_PALS+unlocked-1].name);}
+    else toast("Orb found. "+orbsFound+" so far.");
+    spawnOrb();
+  }else if(orbCounted()){
     labelPalettes();setPalette(BASE_PALS+unlocked-1);
     toast("Orb found. Palette unlocked: "+PALETTES[sel.pi].name);
     spawnOrb();

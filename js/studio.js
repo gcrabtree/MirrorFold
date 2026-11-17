@@ -15,20 +15,27 @@ import { $, isTouch, toast } from "./dom.js";
 import { FL_BYTES, FL_DT, flB64, flSample, flWrite } from "./flightdata.js";
 import { pkDeep } from "./packing.js";
 import { wakeHud } from "./input.js";
-import { allT, jCur, jMade, store } from "./journey.js";
+import { allT, catOf, jCur, jMade, store } from "./journey.js";
+import { pickSort, thumbName } from "./picker.js";
+import { flightPlaying } from "./flightplay.js";
+import { tgGuest } from "./together.js";
 import { musicMode } from "./listen.js";
 import { cleanName } from "./packs.js";
-import { SC_GAP, SC_KINDS, SC_NEAR, SC_SOFT, SC_TAKE_MAX, takeLen } from "./scoredata.js";
+import { SC_GAP, SC_KINDS, SC_NEAR, SC_SOFT, SC_TAKE_MAX, scLen, takeLen } from "./scoredata.js";
 import { draftAlbum, hearFile, heardFile } from "./scoremake.js";
 import { scMade, scoreEdit, scoreNow, scoreRemove, scoreRename, scoreSet, scoreUse, scores, setTakeHold } from "./scoreplay.js";
 import { still } from "./still.js";
 import { resize } from "./targets.js";
 export const ST_GUT=96,ST_RULER=20,ST_WAVE=56,ST_LANE=22; /* the timeline's measures in CSS pixels: the lanes' names, the ruler, the music, one lane */
+export const ST_ALBUM=22;    /* the strip across the top with every track of the album on it */
 export const ST_UNDO=100;    /* how many changes can be undone */
 export const ST_LANE_NAME={journey:"By chance",world:"World",palette:"Palette",mirrors:"Mirrors",motion:"Motion",filter:"Filter",overlay:"Overlay",surface:"Surface",land:"Land",packing:"Packing",pulse:"Pulse",shapes:"Shapes",inside:"Inside out",dance:"Dance style",camera:"Camera"};
 export let studioOpen=false;
 let cv=null,cx=null;         /* the timeline's canvas and its drawing context */
-const view={a:0,b:1,ti:-1};  /* the seconds shown from left to right, and the track they belong to */
+const view={a:0,b:1,ti:-1,sc:null}; /* the seconds shown from left to right, the track they belong to, and the score that track is of */
+let follow=true;             /* the track shown is the one playing, and changes with it; false once another has been chosen to work on */
+let wantSeek=null;           /* a moment to go to in a track whose file is being started: {i, t} */
+let trayKey="";              /* what the tray of pictures was last filled with */
 let pickTake=-1;             /* the chosen camera take, or -1 */
 let tape=null;               /* the camera being recorded: {t0, n, bytes, worlds, last} */
 let pick=-1;                 /* the chosen cue: its place in the track's list, or -1 */
@@ -88,8 +95,38 @@ export function stLanes(cues){
   return SC_KINDS.filter(function(k){return has[k];}).sort(function(p,q){return (p==="journey"?-1:0)-(q==="journey"?-1:0);});
 }
 
-function track(){var n=scoreNow(),sc=scoreUse();return sc&&n?sc.tracks[n.i]:null;}
-function ti(){var n=scoreNow();return n?n.i:-1;}
+/* The track shown and worked on is not always the one playing: any track of the score can be chosen from the album
+   strip and its changes moved, removed and added without its music. track() and ti() are the one shown; playI() is
+   the one playing (-1 for none), and playing() says they are the same. */
+function playI(){var n=scoreNow();return n?n.i:-1;}
+function ti(){return view.ti;}
+function track(){var sc=scoreUse();return sc&&sc.tracks[view.ti]||null;}
+function playing(){return view.ti>=0&&view.ti===playI();}
+function showTrack(i){
+  var sc=scoreUse();
+  if(!sc||!sc.tracks[i])return;
+  follow=i===playI();view.ti=i;view.sc=sc;view.a=0;view.b=sc.tracks[i].len;pick=-1;pickTake=-1;loop=null;
+}
+/* keep the track shown in step with the score in use and, while following, with the music */
+function viewSync(){
+  var sc=scoreUse(),p=playI();
+  if(!sc){view.ti=-1;view.sc=null;return;}
+  if(view.sc!==sc||!sc.tracks[view.ti]){showTrack(p>=0?p:0);follow=true;}
+  else if(follow&&p>=0&&p!==view.ti){showTrack(p);}
+}
+/* the audio file that is a track's, where it can be told: the one playing, or by its place when the files chosen are as many as the tracks; -1 for none */
+function fileI(i){
+  var sc=scoreUse();
+  if(i===playI())return plAt();
+  return sc&&plCount()===sc.tracks.length?i:-1;
+}
+/* which track a place across the album strip is (part: 0 at its left end to 1 at its right): the tracks lie side by side, each as wide as it is long */
+export function stAlbumAt(lens,part){
+  var tot=0,i,acc=0;
+  for(i=0;i<lens.length;i++)tot+=lens[i];
+  for(i=0;i<lens.length;i++){acc+=lens[i];if(part*tot<acc)return i;}
+  return lens.length-1;
+}
 function xOf(t,W){return ST_GUT+(t-view.a)/(view.b-view.a)*(W-ST_GUT);}
 function tOf(x,W){return view.a+(x-ST_GUT)/(W-ST_GUT)*(view.b-view.a);}
 function say(text){$("stSay").textContent=text;}
@@ -128,8 +165,10 @@ function findPick(t,k){
 }
 /* Begin recording the camera at the music's moment; and end it, keeping the take in place of any it lies over. */
 function takeStart(){
-  var tr=track();
-  if(!tr){toast("There is no track of the score playing.");return;}
+  var tr;
+  if(playI()<0){toast("There is no track of the score playing.");return;}
+  if(!playing())showTrack(playI());
+  tr=track();
   if(pkDeep(scene.world)){toast("The camera cannot be recorded in the descent: its places are moved outward as it goes. Choose another packing.");return;}
   tape={t0:pPos(),n:0,bytes:new Uint8Array((SC_TAKE_MAX/FL_DT+2)*FL_BYTES),worlds:[],last:pPos()};
   setTakeHold(true);
@@ -147,7 +186,8 @@ function takeStop(why){
 }
 function takeFrame(){
   var pos=pPos(),w=scene.world,wi;
-  if(!track()||pos<tape.last-0.05||pos>tape.last+1.5){takeStop("The music moved, so the recording ended. ");return;}
+  if(!playing()){tape=null;setTakeHold(false);toast("Another track was chosen, so the recording was given up.");return;}
+  if(pos<tape.last-0.05||pos>tape.last+1.5){takeStop("The music moved, so the recording ended. ");return;}
   if(pkDeep(w)){takeStop("The recording ended where the descent began. ");return;}
   tape.last=pos;
   if(still)return;
@@ -170,26 +210,39 @@ function removePick(){
 }
 
 function draw(){
-  var tr=track(),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H,i,k,x,x1,t,step,an,y,c,n,lane,list,pos,j,nx,css=getComputedStyle(document.body);
+  var tr=track(),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H,i,k,x,x1,t,step,an,y,c,n,lane,list,pos,j,nx,css=getComputedStyle(document.body),sc=scoreUse(),tot,acc,f;
   rows=tr?stLanes(tr.cues):[];
   if(tr&&((tr.takes&&tr.takes.length)||tape))rows.push("camera");
-  H=ST_RULER+ST_WAVE+Math.max(3,rows.length)*ST_LANE+2;
+  H=ST_ALBUM+ST_RULER+ST_WAVE+Math.max(3,rows.length)*ST_LANE+2;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.height=H+"px";}
   cx.setTransform(dpr,0,0,dpr,0,0);
   cx.fillStyle="#0b0716";cx.fillRect(0,0,W,H);
   cx.font="11px "+(css.getPropertyValue("--body")||"monospace");cx.textBaseline="middle";
   if(!tr){
     cx.fillStyle="rgba(243,236,255,.62)";
-    cx.fillText("The timeline appears here once a track of a score is playing.",12,H/2);
+    cx.fillText("The timeline appears here once there is a score.",12,H/2);
     return;
   }
-  if(view.ti!==ti()){view.ti=ti();view.a=0;view.b=tr.len;pick=-1;loop=null;}
+  /* the album: every track side by side, each as wide as it is long, with its changes of world as ticks; the one shown is lit, and the music's place is a white line */
+  tot=scLen(sc);acc=0;
+  cx.fillStyle="rgba(243,236,255,.62)";cx.fillText("Album",8,ST_ALBUM/2);
+  for(i=0;i<sc.tracks.length;i++){
+    x=ST_GUT+acc/tot*(W-ST_GUT);x1=ST_GUT+(acc+sc.tracks[i].len)/tot*(W-ST_GUT);
+    cx.fillStyle=i===view.ti?"rgba(95,240,255,.3)":i%2?"rgba(243,236,255,.07)":"rgba(243,236,255,.12)";cx.fillRect(x,2,x1-x-1,ST_ALBUM-4);
+    cx.fillStyle="rgba(255,95,210,.8)";
+    for(j=0;j<sc.tracks[i].cues.length;j++)if(sc.tracks[i].cues[j][1]==="world")cx.fillRect(x+sc.tracks[i].cues[j][0]/sc.tracks[i].len*(x1-x-1),ST_ALBUM-6,1,4);
+    if(i===playI()){cx.fillStyle="#fff";cx.fillRect(x+Math.min(1,pPos()/sc.tracks[i].len)*(x1-x-1),2,1,ST_ALBUM-4);}
+    cx.save();cx.beginPath();cx.rect(x,0,Math.max(0,x1-x-3),ST_ALBUM);cx.clip();
+    cx.fillStyle=i===view.ti?"#f3ecff":"rgba(243,236,255,.62)";cx.fillText((i+1)+(sc.tracks[i].name?" "+sc.tracks[i].name:""),x+4,ST_ALBUM/2-1);
+    cx.restore();acc+=sc.tracks[i].len;
+  }
+  cx.save();cx.translate(0,ST_ALBUM);H-=ST_ALBUM; /* everything below is drawn as if the album strip were not there */
   /* the ruler */
   step=stStep((W-ST_GUT)/(view.b-view.a));
   cx.fillStyle="rgba(243,236,255,.62)";cx.strokeStyle="rgba(243,236,255,.22)";cx.lineWidth=1;
   for(t=Math.ceil(view.a/step)*step;t<=view.b;t+=step){x=Math.round(xOf(t,W))+0.5;cx.beginPath();cx.moveTo(x,ST_RULER-6);cx.lineTo(x,ST_RULER);cx.stroke();cx.fillText(stClock(t).replace(/\.0$/,""),x+3,ST_RULER/2);}
   /* the music as it was heard: loudness as bars, fullness as a line */
-  an=heardFile(plFile(plAt()));y=ST_RULER;
+  f=plFile(fileI(view.ti));an=heardFile(f);y=ST_RULER;
   cx.fillStyle="rgba(95,240,255,.08)";cx.fillRect(ST_GUT,y,W-ST_GUT,ST_WAVE);
   if(an){
     cx.fillStyle="rgba(95,240,255,.55)";
@@ -197,7 +250,7 @@ function draw(){
     cx.strokeStyle="#ff5fd2";cx.lineWidth=1.5;cx.beginPath();
     for(x=ST_GUT;x<W;x+=2){i=Math.floor(tOf(x,W)*an.hz);if(i>=0&&i<an.lv.length){n=y+ST_WAVE-2-an.lv[i]/255*(ST_WAVE-6);if(x===ST_GUT)cx.moveTo(x,n);else cx.lineTo(x,n);}}
     cx.stroke();
-  }else{cx.fillStyle="rgba(243,236,255,.62)";cx.fillText(asked[plFile(plAt())&&plFile(plAt()).name]?"Listening to this track…":"This track has not been listened to.",ST_GUT+8,y+ST_WAVE/2);}
+  }else{cx.fillStyle="rgba(243,236,255,.62)";cx.fillText(f&&asked[f.name]?"Listening to this track\u2026":f?"This track has not been listened to.":"This track's music is not among the files chosen. Its changes can still be moved, removed and added.",ST_GUT+8,y+ST_WAVE/2);}
   cx.fillStyle="rgba(243,236,255,.62)";cx.fillText("Music",8,y+ST_WAVE/2);
   /* a passage played round and round */
   if(loop){cx.fillStyle="rgba(255,95,210,.16)";x=xOf(loop.a,W);cx.fillRect(Math.max(ST_GUT,x),0,xOf(loop.b,W)-Math.max(ST_GUT,x),H);}
@@ -235,19 +288,25 @@ function draw(){
   }
   /* the marks, over the music and the lanes */
   cx.strokeStyle="rgba(243,236,255,.35)";cx.lineWidth=1;cx.setLineDash([3,3]);
-  for(i=0;i<tr.marks.length;i++){x=Math.round(xOf(tr.marks[i],W))+0.5;if(x<ST_GUT||x>W)continue;cx.beginPath();cx.moveTo(x,ST_RULER);cx.lineTo(x,H);cx.stroke();}
+  for(i=0;i<tr.marks.length;i++){x=Math.round(xOf(drag&&drag.kind==="mark"&&drag.i===i?drag.t:tr.marks[i],W))+0.5;if(x<ST_GUT||x>W)continue;cx.beginPath();cx.moveTo(x,ST_RULER);cx.lineTo(x,H);cx.stroke();}
   cx.setLineDash([]);
   /* where the music is */
   pos=pPos();x=Math.round(xOf(pos,W))+0.5;
-  if(x>=ST_GUT){cx.strokeStyle="#fff";cx.lineWidth=1;cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke();}
-  cx.fillStyle="#0b0716";cx.fillRect(0,0,ST_GUT,ST_RULER);cx.fillStyle="#f3ecff";cx.fillText(stClock(pos)+" / "+stClock(tr.len).replace(/\.\d$/,""),8,ST_RULER/2);
+  if(playing()&&x>=ST_GUT){cx.strokeStyle="#fff";cx.lineWidth=1;cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke();}
+  cx.fillStyle="#0b0716";cx.fillRect(0,0,ST_GUT,ST_RULER);cx.fillStyle="#f3ecff";cx.fillText((playing()?stClock(pos):"not playing")+" / "+stClock(tr.len).replace(/\.\d$/,""),8,ST_RULER/2);
+  cx.restore();
 }
 /* What is under a place on the timeline: {zone, t, k, i} with zone "top" (the ruler and the music) or "lane", the kind of that lane and the cue there (-1 for none). */
 function under(e){
-  var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,W=r.width,tr=track(),o={zone:"",t:0,k:"",i:-1,W:W},lane,i,j,list,nx;
+  var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top-ST_ALBUM,W=r.width,tr=track(),o={zone:"",t:0,k:"",i:-1,W:W,wave:false,mark:-1},lane,i,j,list,nx,sc=scoreUse();
   if(!tr)return o;
   o.t=Math.max(0,Math.min(tr.len,tOf(Math.max(ST_GUT,x),W)));
-  if(y<ST_RULER+ST_WAVE){o.zone="top";return o;}
+  if(y<0){o.zone="album";o.i=stAlbumAt(sc.tracks.map(function(q){return q.len;}),Math.max(0,Math.min(0.999999,(x-ST_GUT)/(W-ST_GUT))));return o;}
+  if(y<ST_RULER+ST_WAVE){
+    o.zone="top";o.wave=y>=ST_RULER;
+    for(i=0;o.wave&&i<tr.marks.length;i++)if(Math.abs(xOf(tr.marks[i],W)-x)<=5)o.mark=i; /* a mark is taken hold of in the music, within five pixels of its line */
+    return o;
+  }
   lane=Math.floor((y-ST_RULER-ST_WAVE)/ST_LANE);
   if(lane<0||lane>=rows.length)return o;
   if(rows[lane]==="camera"){o.zone="take";for(i=0;tr.takes&&i<tr.takes.length;i++)if(o.t>=tr.takes[i].t&&o.t<tr.takes[i].t+takeLen(tr.takes[i]))o.i=i;return o;}
@@ -256,15 +315,26 @@ function under(e){
   for(j=0;j<list.length;j++){nx=j+1<list.length?tr.cues[list[j+1]][0]:tr.len;if(o.t>=tr.cues[list[j]][0]-3*(view.b-view.a)/(W-ST_GUT)&&o.t<nx)o.i=list[j];}
   return o;
 }
-function seek(t){pSeek(t);wakeHud();}
+/* Go to a moment of the track shown. If it is not the one playing, its file is started first. */
+function seek(t){
+  var fi;
+  wakeHud();
+  if(playing()){pSeek(t);return;}
+  fi=fileI(view.ti);
+  if(fi<0||!plFile(fi)){toast("This track's music is not among the files chosen, so it cannot be played.");return;}
+  wantSeek={i:view.ti,t:t};follow=true;plGo(fi);
+}
 function down(e){
   var u=under(e),tr=track();
   if(!tr||e.button!==0)return;
   e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}
   if(u.zone==="lane"&&u.i>=0){pick=u.i;pickTake=-1;drag={kind:"cue",i:u.i,t:tr.cues[u.i][0],from:u.t,moved:false};say(ST_LANE_NAME[u.k]+" "+(tr.cues[u.i][2]||"none")+" at "+stClock(tr.cues[u.i][0])+". Drag to move it, Delete to remove it.");return;}
   pick=-1;pickTake=-1;
+  if(u.zone==="album"){showTrack(u.i);say("Track "+(u.i+1)+(playing()?"":". It is not the one playing: click its ruler to play it from there, or work on its changes as they are."));return;}
+  if(u.zone==="top"&&u.mark>=0&&!e.shiftKey){drag={kind:"mark",i:u.mark,t:tr.marks[u.mark]};say("A mark at "+stClock(tr.marks[u.mark])+". Drag to move it; press twice to remove it.");return;}
   if(u.zone==="take"&&u.i>=0){pickTake=u.i;say("A camera take from "+stClock(tr.takes[u.i].t)+", "+Math.round(takeLen(tr.takes[u.i]))+" seconds. Delete removes it.");return;}
   if(u.zone==="top"&&e.shiftKey){drag={kind:"loop",a:u.t};loop={a:u.t,b:u.t};return;}
+  if(!playing()){drag={kind:"jump"};return;} /* another track: its file is started once, when the mouse is let go */
   drag={kind:"scrub",at:0};seek(u.t);
 }
 function move(e){
@@ -273,6 +343,7 @@ function move(e){
   u=under(e);reach=8*(view.b-view.a)/(u.W-ST_GUT);
   if(drag.kind==="scrub"){now=performance.now();if(now-drag.at>120){drag.at=now;seek(u.t);}}
   else if(drag.kind==="loop"){loop={a:Math.min(drag.a,u.t),b:Math.max(drag.a,u.t)};}
+  else if(drag.kind==="mark"){drag.t=u.t;}
   else if(drag.kind==="cue"){
     if(Math.abs(u.t-drag.from)>reach/2)drag.moved=true;
     if(drag.moved)drag.t=Math.max(0,Math.min(tr.len,e.altKey?u.t:stSnap(tr.cues[drag.i][0]+u.t-drag.from,tr.marks,reach)));
@@ -282,7 +353,11 @@ function up(e){
   var d=drag,tr=track(),c;
   drag=null;
   if(!d||!tr)return;
-  if(d.kind==="scrub")seek(under(e).t);
+  if(d.kind==="scrub"||d.kind==="jump")seek(under(e).t);
+  else if(d.kind==="mark"){
+    edit(function(cues,marks){marks[d.i]=d.t;return {cues:cues,marks:marks};});
+    say("Mark moved to "+stClock(d.t));
+  }
   else if(d.kind==="loop"){if(loop&&loop.b-loop.a<1){loop=null;say("No passage is played round.");}else{say("Playing round "+stClock(loop.a)+" to "+stClock(loop.b)+". Shift and click the ruler to let go.");seek(loop.a);}}
   else if(d.kind==="cue"&&d.moved){
     c=tr.cues[d.i];
@@ -299,7 +374,13 @@ function wheel(e){
 }
 /* A press twice in a lane: a cue there of what is showing now (for By chance, the template chosen in the list beside it). */
 function twice(e){
-  var u=under(e);
+  var u=under(e),tr=track();
+  if(u.zone==="album"){showTrack(u.i);seek(0);return;}
+  /* in the music: a mark there is removed, and where there is none one is made */
+  if(u.zone==="top"&&u.wave&&tr){
+    edit(function(cues,marks){if(u.mark>=0)marks.splice(u.mark,1);else marks.push(u.t);return {cues:cues,marks:marks};});
+    say(u.mark>=0?"Mark removed.":"Mark made at "+stClock(u.t)+". Changes that are dragged catch on it.");return;
+  }
   if(u.zone==="lane")put(u.t,u.k,u.k==="journey"?$("stTpl").value:jCur(u.k));
 }
 function fillTpl(){
@@ -311,6 +392,46 @@ function fillTpl(){
 }
 let scoreList="\u0000";       /* the names in the list of scores as it was last filled */
 let hint="";                 /* the last thing said by the screen itself about what to do next */
+/* The tray: a row of pictures of one kind of thing (worlds, palettes and so on), by name. One is dragged onto the
+   timeline to write it at that moment of the track shown, or pressed to write it where the music is. */
+function trayPic(k,key){
+  if(k==="land")return key==="none"?"":thumbName("land",key.split(" ")[0]);
+  return ["world","palette","motion","filter","overlay","surface","packing","mirrors"].indexOf(k)>=0?thumbName(k,key):"";
+}
+function fillTray(force){
+  var k=$("stTrayKind").value||"world",c=catOf(k),box=$("stTiles"),sig,order;
+  if(!c)return;
+  sig=k+":"+c.opts.map(function(o){return o[0];}).join("\u0001");
+  if(!force&&sig===trayKey)return; /* filled again only when the kind or the list has changed (a pack was added) */
+  trayKey=sig;box.textContent="";
+  order=pickSort(c.opts.map(function(o){return o[1];}));
+  order.forEach(function(i){
+    var o=c.opts[i],b=document.createElement("button"),pic=trayPic(k,o[0]),im,t=document.createElement("span");
+    b.type="button";b.className="stTile";b.draggable=true;b.title=o[1];
+    if(pic){im=document.createElement("img");im.alt="";im.loading="lazy";im.draggable=false;im.addEventListener("error",function(){im.remove();});im.src=pic;b.appendChild(im);} /* what came from a pack has no picture */
+    t.textContent=o[1];b.appendChild(t);
+    b.addEventListener("dragstart",function(e){try{e.dataTransfer.setData("text/plain","mirrorfold\u0001"+k+"\u0001"+o[0]);e.dataTransfer.effectAllowed="copy";}catch(_){}});
+    b.addEventListener("click",function(){
+      if(!track())return;
+      if(playI()<0){toast("Nothing is playing. Drag it onto the timeline to write it at a moment of this track.");return;}
+      if(!playing())showTrack(playI());
+      put(pPos(),k,o[0]);
+    });
+    box.appendChild(b);
+  });
+}
+/* something from the tray let go over the timeline: written at that moment (on a near mark, unless Alt is held) */
+function drop(e){
+  var d="",p,c,u=under(e),tr=track(),t,ok=false,i;
+  e.preventDefault();
+  try{d=e.dataTransfer.getData("text/plain");}catch(_){}
+  p=String(d).split("\u0001");
+  if(!tr||p.length!==3||p[0]!=="mirrorfold"||SC_KINDS.indexOf(p[1])<0||p[1]==="journey"||u.zone==="album"||!u.zone)return;
+  c=catOf(p[1]);for(i=0;c&&i<c.opts.length;i++)if(c.opts[i][0]===p[2])ok=true; /* only what is in the app's own lists */
+  if(!ok)return;
+  t=e.altKey?u.t:stSnap(u.t,tr.marks,8*(view.b-view.a)/(u.W-ST_GUT));
+  put(t,p[1],p[2]);
+}
 function sync(){
   var sc=scoreUse(),n=$("stName"),files=plCount()>0,tr=track(),s=$("stScore"),names=scores.map(function(x){return x.name;}).join("\u0001"),o,h;
   /* each group shows only what can be done now, so the next thing to do is always in sight */
@@ -319,7 +440,8 @@ function sync(){
   $("stGrpScore").hidden=!files&&!scores.length;
   $("stDraft").hidden=$("stEmpty").hidden=!files;$("stDraft").classList.toggle("advGo",files&&!tr);
   s.hidden=!scores.length;n.hidden=$("stSave").hidden=$("stRemove").hidden=!sc;
-  $("stGrpEdit").hidden=$("stGrpCam").hidden=!tr;
+  $("stGrpEdit").hidden=$("stTray").hidden=!tr;$("stGrpCam").hidden=playI()<0;
+  if(tr)fillTray(false);
   if(names!==scoreList){
     scoreList=names;s.textContent="";
     o=document.createElement("option");o.value="";o.textContent="No score";s.appendChild(o);
@@ -328,7 +450,8 @@ function sync(){
   s.value=sc?String(scores.indexOf(sc)):"";
   h=!files?"Step 1: choose the audio files of your album. They play in the order of their names.":
     !tr&&!sc?"Step 2: press Draft a score to have a first one written from the music, or Start empty.":
-    !tr?"The file that is playing is not a track of this score. Draft a score for these files, or choose another score.":
+    !tr?"There is no score in use. Draft one for these files, or choose one from the list.":
+    playI()<0?"None of this score's tracks is playing, so nothing is heard. Its changes can still be moved, removed and added: click a track in the album strip.":
     "Change anything while the music plays or is paused, and it is written here at that moment. Click the ruler to move the music; Shift and drag to play a passage round. Drag a change to move it; press twice in a lane to write what is showing now.";
   if(h!==hint){hint=h;say(h);}
   $("stKeep").setAttribute("aria-pressed",keep?"true":"false");$("stKeep").textContent="Keep my changes: "+(keep?"on":"off");
@@ -343,13 +466,15 @@ export function setStudio(on){
   $("bStudio").setAttribute("aria-pressed",on?"true":"false");
   if(!on&&tape)takeStop("");
   if(on){SC_KINDS.forEach(function(k){if(k!=="journey")was[k]=jCur(k);delete scMade[k];delete jMade[k];}); /* notes from before the screen was open would be taken for this moment's */
-    fillTpl();sync();view.ti=-1;}
+    view.ti=-1;view.sc=null;follow=true;viewSync();fillTpl();sync();}
   resize(); /* the picture is given the room the panel leaves */
 }
 /* A step of the frame, last of all: write down what was changed by hand, keep a passage going round, and draw the timeline. */
 export function studioFrame(){
   var i,k,now,n,f,pos,tr;
   if(!studioOpen)return;
+  viewSync();
+  if(wantSeek&&playI()===wantSeek.i&&player.mode){pSeek(wantSeek.t);wantSeek=null;} /* the file asked for has started: go to the moment that was clicked */
   n=scoreNow();tr=track();
   for(i=0;i<SC_KINDS.length;i++){
     k=SC_KINDS[i];if(k==="journey")continue;
@@ -359,12 +484,12 @@ export function studioFrame(){
     /* the score asked for it, or Journey chose it: not the user's doing */
     if(scMade[k]===now){delete scMade[k];continue;}
     if(jMade[k]===now){delete jMade[k];continue;}
-    if(keep&&tr&&!still&&musicMode==="file")put(pPos(),k,now);
+    if(keep&&playI()>=0&&!still&&musicMode==="file"&&!tgGuest()&&!flightPlaying()){if(!playing())showTrack(playI());put(pPos(),k,now);} /* written into the track that is playing, which is brought into view */
   }
   if(tape)takeFrame();
-  if(loop&&tr&&player.mode&&pPos()>=loop.b)pSeek(loop.a);
+  if(loop&&playing()&&player.mode&&pPos()>=loop.b)pSeek(loop.a);
   /* a track that has not been listened to is, once, so that its music can be drawn */
-  f=plFile(plAt());
+  f=plFile(fileI(view.ti));
   if(tr&&f&&!heardFile(f)&&!asked[f.name]){asked[f.name]=1;hearFile(f,function(){}).then(function(){},function(){});}
   sync();draw();
 }
@@ -391,7 +516,10 @@ $("stPlay").addEventListener("click",function(){$("bPlay").click();});
 $("stPrev").addEventListener("click",function(){plGo(pPos()>3?plAt():plAt()-1);});
 $("stNext").addEventListener("click",function(){plGo(plAt()+1);});
 $("stKeep").addEventListener("click",function(){keep=!keep;sync();toast(keep?"What you change by hand is written into the score at the moment the music is at.":"Your changes are not written into the score.");});
-$("stTpl").addEventListener("change",function(){if(track())put(pPos(),"journey",this.value);});
+$("stTpl").addEventListener("change",function(){if(playI()<0){toast("Nothing is playing. Press twice in the By chance lane to write this at a moment.");return;}if(!playing())showTrack(playI());put(pPos(),"journey",this.value);});
+SC_KINDS.forEach(function(k){var o;if(k==="journey")return;o=document.createElement("option");o.value=k;o.textContent=ST_LANE_NAME[k];$("stTrayKind").appendChild(o);});
+$("stTrayKind").addEventListener("change",function(){fillTray(true);});
+cv.addEventListener("dragover",function(e){if(track())e.preventDefault();});cv.addEventListener("drop",drop);
 $("stDel").addEventListener("click",removePick);
 /* how the chosen change of world is made: behind a transition, or through a doorway that opens at that moment */
 $("stCut").addEventListener("click",function(){
@@ -432,7 +560,8 @@ window.addEventListener("keydown",function(e){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={ST_GUT, ST_RULER, ST_WAVE, ST_LANE, ST_UNDO, ST_LANE_NAME, stStep, stClock, stZoom, stSnap, stPut, stLanes, setStudio, studioFrame, stView:view, stUndoList:undo, stWas:was,
+export const __dbg={ST_ALBUM, stAlbumAt, stShowTrack:showTrack, stFillTray:fillTray, stDrop:drop, stPlayI:playI, get stFollow(){return follow},set stFollow(v){follow=v},
+  ST_GUT, ST_RULER, ST_WAVE, ST_LANE, ST_UNDO, ST_LANE_NAME, stStep, stClock, stZoom, stSnap, stPut, stLanes, setStudio, studioFrame, stView:view, stUndoList:undo, stWas:was,
   stTakeStart:takeStart, stTakeStop:takeStop, get stTape(){return tape}, get stPickTake(){return pickTake},set stPickTake(v){pickTake=v},
   stTrack:track, stEdit:edit, stGoBack:goBack, stPutCue:put, stRemovePick:removePick, stDraw:draw, stUnder:under, stSavePack:savePack, stFillTpl:fillTpl,
   get studioOpen(){return studioOpen}, get stPick(){return pick},set stPick(v){pick=v}, get stLoop(){return loop},set stLoop(v){loop=v}, get stKeep(){return keep},set stKeep(v){keep=v}, get stRows(){return rows}};
