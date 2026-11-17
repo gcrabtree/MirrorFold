@@ -1,7 +1,8 @@
 /* The eye: a human eye drawn last of all, over the finished picture. The pupil is a window: the world, with its
    motion, overlay and filter, shows only there. The iris is a network of fibres that changes shape and takes its colours
-   from the palette, or keeps a colour of its own. The white has a few blood vessels that move with the music, and the
-   lids blink now and then; a blink can change the world while the lids are shut.
+   from the palette, or keeps a colour of its own. The white has a few blood vessels that move with the music. The view
+   stays close in on the eye, and what shows beyond the lids is a bumpy surface of pores that open and shut with the
+   beat. The lids blink now and then; a blink can change the world while the lids are shut.
    It is flat on the screen, so it is left out in the VR viewer. Everything in it that changes with time comes from
    the clocks and the frame's sound, so that Hold still stops it and a loop comes round; the blink, the gaze and the
    pupil's easing are the exceptions, and stepEye stops them while still and leaves them out while a loop is flown. */
@@ -23,7 +24,7 @@ import { tr } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 import { zoomOk } from "./zoom.js";
 
-export const EYES=[{name:"off",r:0},{name:"on",r:0.24},{name:"close up",r:0.4}]; /* r: the iris's radius, where the shorter side of the picture is 1 */
+export const EYES=[{name:"off",r:0},{name:"on",r:0.4}]; /* r: the iris's radius, where the shorter side of the picture is 1: the view stays close in on the eye */
 /* The iris's colour: the palette's, or one of its own. c is three colours: round the pupil, the body of the iris, and its rim. */
 export const IRIS=[
  {name:"follows the palette"},
@@ -44,12 +45,13 @@ const ey={
   ph:0,t:0,next:6,b:0, /* the blink: 0 open, 1 shutting, 2 shut, 3 opening; seconds into that; seconds until the next; how out2 shut, 0 to 1 */
   wt:0,wnext:30,       /* seconds since a blink last changed the world, and how long until one does */
   gx:0,gy:0,           /* where the eye looks, as a part of the iris's radius: it follows the turning of the view */
-  pu:0.55,mv:0         /* the pupil's radius as a part of the iris's, and the eased level of the mids, which moves the vessels */
+  pu:0.55,mv:0,        /* the pupil's radius as a part of the iris's, and the eased level of the mids, which moves the vessels */
+  por:0                /* how far the pores' cycles have run: it moves on with time, and faster on the beat */
 };
 const col=[[0,0,0],[0,0,0],[0,0,0]];
 
 export const FS_EYE=[
-"precision highp float;varying vec2 v;uniform sampler2D uT;uniform vec2 uRes,uGaze;uniform float uTime,uR,uPu,uBlink,uVes,uBeat,uMo;uniform vec3 uI0,uI1,uI2,uTint;",
+"precision highp float;varying vec2 v;uniform sampler2D uT;uniform vec2 uRes,uGaze;uniform float uTime,uR,uPu,uBlink,uVes,uBeat,uMo,uPor;uniform vec3 uI0,uI1,uI2,uTint;",
 "float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}",
 /* smooth noise whose second number comes round every per, so that it can be wrapped round a circle with no seam */
 "float vn(vec2 p,float per){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);float y0=mod(i.y,per),y1=mod(i.y+1.0,per);",
@@ -57,12 +59,18 @@ export const FS_EYE=[
 "float fbm(vec2 p,float per){float s=0.0,a=0.5;for(int i=0;i<4;i++){s+=a*vn(p,per);p*=2.0;per*=2.0;a*=0.5;}return s/0.9375;}",
 "float fb2(vec2 p,float per){return 0.667*vn(p,per)+0.333*vn(p*2.0,per*2.0);}",
 "vec3 world(vec2 uv){return texture2D(uT,clamp(uv,0.0,1.0)).rgb;}",
-/* the lashes along a lid: s counts them, h is the height above the lid as a part of a lash's length. Each is a stroke
-   that thins toward its tip and leans; a lash can lean over its neighbours' places, so three are looked at. */
-"float lash(float s,float h,float lean,float th){float m=0.0;for(int k=-1;k<=1;k++){",
-"  float id=floor(s)+float(k),f=s-id-0.5,hh=h/(0.55+0.45*h2(vec2(id,3.0)));",
-"  m=max(m,smoothstep(th*(1.0-hh)+0.035,th*0.3*(1.0-hh),abs(f-(lean+0.9*(h2(vec2(id,9.0))-0.5))*hh*(0.4+hh)))*step(0.0,hh)*step(hh,1.0));}",
-"  return m;}",
+/* The surround: what little shows beyond the lids is not skin but a bumpy surface full of pores. This is its height at
+   a place: low swells, and a pit with a raised rim to most squares of a grid, set off-centre by chance, large or small. Each pore opens
+   and shuts on a cycle of its own, at its own speed, as uPor moves on; uPor runs faster on the beat (stepEye). */
+"float surf(vec2 p,float c){",
+"  vec2 g=p/c,i0=floor(g);float ht=1.1*fb2(g*0.4,256.0)+0.18*fb2(g*2.3,256.0);",
+/* a pore and its rim reach at most 0.62 of a square from its middle, which is at most a quarter off-centre: so the
+   nine squares round a place hold every pore that can reach it. A larger pore would show the squares' edges. */
+"  for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){",
+"    vec2 id=i0+vec2(float(i),float(j));float a=h2(id),b=h2(id+37.0),s=0.5+0.5*sin(6.2831853*(a+uPor*(0.5+b)));",
+"    float d=length(g-id-0.5-0.5*(vec2(b,h2(id+71.0))-0.5)),rr=(0.07+0.23*s)*(0.3+0.7*b);",
+"    ht+=step(0.2,h2(id+11.0))*(0.22*(0.4+0.6*s)*exp(-pow((d-rr*1.2)/(rr*0.35),2.0))-(0.5+0.6*s)*smoothstep(rr,rr*0.2,d));}",
+"  return ht;}",
 "void main(){",
 "  float asp=uRes.x/uRes.y,mn=min(asp,1.0),px=1.0/min(uRes.x,uRes.y);",
 "  vec2 p=(v-0.5)*vec2(asp,1.0)/mn;", /* the shorter side of the picture is 1 */
@@ -122,20 +130,15 @@ export const FS_EYE=[
 "    col+=vec3(0.5)*smoothstep(0.03*uR,0.012*uR,dL)*smoothstep(0.0,0.01*uR,dL)*xx;",
 "  }",
 "  if(open<2.0*px){",
-/* the skin: in shadow, lit by the palette's colour and by the light that comes out of the eye; the fold above the
-   upper lid; the lids' rims */
-"    float nearE=exp(-max(-open,0.0)/(uR*1.1)),above=p.y-yU,cx=smoothstep(0.0,0.3,xx);",
-"    vec3 sk=vec3(0.34,0.24,0.21)*(0.5+0.8*uTint)*(0.9+0.14*fb2(p*14.0/uR*0.2,256.0)+0.1*fb2(p*90.0,256.0)+0.05*h2(floor(p/px)));",
-"    sk*=(0.3+0.9*nearE)*(1.0+0.25*smoothstep(-2.0,2.0,(p.y-p.x)/uR));", /* brighter near the eye, and toward the light, up and to the left */
-"    float fold=up+uR*0.46*pow(xx,0.45)*(1.0-0.22*x);",
-"    sk*=1.0-0.62*exp(-pow((p.y-fold)/(uR*0.06),2.0))*cx-0.3*smoothstep(0.0,uR*0.5,p.y-fold)*cx;", /* the fold, and the hollow under the brow above it */
-"    sk*=1.0+0.5*sin(3.14159*clamp(above/max(fold-yU,1e-4),0.0,1.0))*cx;", /* the lid bulges over the ball, and catches the light */
-"    sk*=1.0-0.25*exp(-pow((p.y-lo+uR*0.42)/(uR*0.12),2.0))*cx;", /* the crease under the lower lid */
-"    sk=mix(sk,vec3(0.66,0.40,0.38)*(0.55+0.6*uTint),0.8*smoothstep(0.055*uR,0.0,-dL)*step(dL,0.0)*cx);", /* the lower lid's rim */
-"    sk*=1.0-0.8*smoothstep(0.07*uR,0.0,above)*step(0.0,above)*cx;", /* the dark line the lashes grow from */
-"    float la=lash(p.x/uR*10.0,above/max(uR*0.46*pow(xx,0.3),1e-5),1.1*x-0.15,0.26);",
-"    la=max(la,0.7*lash(p.x/uR*8.0+0.4,(-dL-0.012*uR)/max(uR*0.17*pow(xx,0.5),1e-5),0.8*x,0.16));",
-"    sk=mix(sk,vec3(0.03,0.02,0.02),la);",
+/* the surround, lit from the upper left, in the palette's colour, brightest near the eye. Each lid's part of it moves
+   with that lid, so a blink carries the pores down with it. */
+"    float above=p.y-yU,cx=smoothstep(0.0,0.3,xx),c=uR*0.16,e=c*0.05;",
+"    vec2 sp=p-vec2(0.0,p.y>0.5*(yU+yL)?yU-up:yL-lo);",
+"    float h0=surf(sp,c);vec3 nn=normalize(vec3((h0-surf(sp+vec2(e,0.0),c))/e,(h0-surf(sp+vec2(0.0,e),c))/e,1.6/c));",
+"    float lit=max(dot(nn,normalize(vec3(-0.45,0.55,0.7))),0.0),sp2=pow(max(dot(nn,normalize(vec3(-0.3,0.37,1.2))),0.0),24.0);",
+"    vec3 sk=mix(vec3(0.22,0.19,0.21),uTint,0.5)*(0.12+0.95*lit)*(0.75+0.35*smoothstep(-1.2,0.4,h0))+vec3(0.35)*sp2*(0.3+0.7*uTint);",
+"    sk*=0.35+0.75*exp(-max(-open,0.0)/(uR*0.9));",
+"    sk*=1.0-0.7*smoothstep(0.05*uR,0.0,max(above,-dL))*cx;", /* the lids' dark rims */
 "    col=mix(sk,col,smoothstep(-px,px,open));",
 "  }",
 "  gl_FragColor=vec4(col,1.0);",
@@ -179,7 +182,7 @@ function blinkShut(){
 export function stepEye(fr){
   var dt=fr.dt,k;
   if(!eyeMode||still)return;
-  if(lapOn()){ey.ph=0;ey.t=0;ey.b=0;ey.gx=ey.gy=0;ey.mv=0;ey.pu=0.55+0.06*fr.bt;return;}
+  if(lapOn()){ey.ph=0;ey.t=0;ey.b=0;ey.gx=ey.gy=0;ey.mv=0;ey.pu=0.55+0.06*fr.bt;ey.por=clock.time*0.5;return;} /* the pores take the loop's clock, which comes round */
   ey.wt+=dt;
   if(blinkMode===0){if(ey.ph===0){ey.t=0;ey.b=0;}else blinkStep(ey,dt,calm,Math.random());} /* a blink under way is finished */
   else if(blinkStep(ey,dt,calm,Math.random()))blinkShut();
@@ -190,12 +193,13 @@ export function stepEye(fr){
   /* the pupil opens with the low end, and a little more on the beat */
   ey.pu+=(0.53+(calm?0.04:0.13)*Math.min(1,fr.lv)+(calm?0:0.04)*fr.bt-ey.pu)*(1-Math.exp(-dt*4));
   ey.mv+=(fr.mv-ey.mv)*(1-Math.exp(-dt*2));
+  ey.por+=dt*(calm?0.2:0.3+1.6*fr.bt); /* the pores' cycles run on in surges, one to a beat */
 }
 /* whether the eye is drawn this frame; makes its program the first time, and turns the eye off if that fails */
 export function eyeShown(){
   if(!eyeMode||stereo||eyeBad)return false;
   if(!pEye){
-    try{pEye=link(FS_EYE,["uT","uRes","uGaze","uTime","uR","uPu","uBlink","uVes","uBeat","uMo","uI0","uI1","uI2","uTint"]);}
+    try{pEye=link(FS_EYE,["uT","uRes","uGaze","uTime","uR","uPu","uBlink","uVes","uBeat","uMo","uPor","uI0","uI1","uI2","uTint"]);}
     catch(e){eyeBad=true;setEye(0);toast("The eye does not work on this device.");return false;}
   }
   return true;
@@ -217,8 +221,7 @@ export function drawEye(fr,src){
   }
   passTo(null,pEye);bindTex(0,src.t);gl.uniform1i(U.uT,0);
   gl.uniform2f(U.uRes,src.w,src.h);gl.uniform1f(U.uTime,clock.time);
-  gl.uniform1f(U.uR,eyeMode===1?Math.min(EYES[1].r,0.18*Math.max(1,src.w/src.h)):EYES[eyeMode].r); /* the whole eye is made to fit a tall picture */
-  gl.uniform1f(U.uPu,ey.pu);gl.uniform2f(U.uGaze,ey.gx+0.02*Math.sin(clock.time*0.31),ey.gy+0.015*Math.sin(clock.time*0.23+1));
+  gl.uniform1f(U.uR,EYES[eyeMode].r);gl.uniform1f(U.uPor,ey.por);gl.uniform1f(U.uPu,ey.pu);gl.uniform2f(U.uGaze,ey.gx+0.02*Math.sin(clock.time*0.31),ey.gy+0.015*Math.sin(clock.time*0.23+1));
   gl.uniform1f(U.uBlink,ey.b);gl.uniform1f(U.uBeat,calm?0:fr.bt);
   gl.uniform1f(U.uVes,clock.time*0.02+0.35*ey.mv);       /* the vessels wander slowly, and move with the mids */
   gl.uniform1f(U.uMo,clock.time*0.035+0.6*fr.m);        /* the iris changes shape with the clock and with the world's morph */
@@ -228,7 +231,7 @@ export function drawEye(fr,src){
 }
 function keep(k,v){try{localStorage.setItem("mirrorfold-"+k,v)}catch(_){}}
 function kept(k,list){var s="",i;try{s=localStorage.getItem("mirrorfold-"+k)||""}catch(_){}for(i=0;i<list.length;i++)if((list[i].name||list[i])===s)return i;return -1;}
-/* The eye: off, on, or close up. Its other two buttons show only while it is on. */
+/* The eye: off or on. Its other two buttons show only while it is on. */
 export function setEye(i){
   eyeMode=EYES[i]?i:0;
   $("bEye").textContent="Eye "+EYES[eyeMode].name;press($("bEye"),eyeMode>0);
