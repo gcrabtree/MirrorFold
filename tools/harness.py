@@ -7,7 +7,7 @@ name internal variables and functions directly, as it could when the app was one
 
 Requires: google-chrome (or chromium) on PATH. Pillow is only needed for contact sheets.
 """
-import os, re, shutil, subprocess, tempfile
+import os, re, shutil, signal, subprocess, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INDEX = os.path.join(ROOT, "index.html")
@@ -73,10 +73,30 @@ def _band(path):
     return n if n < h else 0
 
 
+def run_chrome(args, timeout=240, text=False):
+    """Run headless Chrome with FLAGS and args, and return what it printed.
+
+    Chrome is several processes. If only the first is stopped when the time runs out, the others (the network
+    service, the crash handlers) are left with no parent, and the network service then uses a whole processor for
+    ever. So Chrome is started in a process group of its own, and the whole group is stopped when it is done or out
+    of time. It is given a profile folder of its own, which is removed afterwards."""
+    profile = tempfile.mkdtemp(prefix="mirrorfold-chrome-")
+    proc = subprocess.Popen([chrome()] + FLAGS + [f"--user-data-dir={profile}"] + args,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=text, start_new_session=True)
+    try:
+        return proc.communicate(timeout=timeout)[0]
+    finally:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)  # the group's number is the first process's
+        except ProcessLookupError:
+            pass
+        proc.wait()
+        shutil.rmtree(profile, ignore_errors=True)
+
+
 def _shot(page, out, size, budget_ms, hash_):
-    subprocess.run([chrome()] + FLAGS + [
-        f"--window-size={size[0]},{size[1]}", f"--virtual-time-budget={budget_ms}",
-        f"--screenshot={out}", f"file://{page}#{hash_}"], capture_output=True, timeout=240)
+    run_chrome([f"--window-size={size[0]},{size[1]}", f"--virtual-time-budget={budget_ms}",
+                f"--screenshot={out}", f"file://{page}#{hash_}"])
 
 
 def screenshot(out, inject="", hash_="lattice", size=(420, 700), budget_ms=2500, hide_ui=True, quality="sharp"):
@@ -111,9 +131,8 @@ def dump(inject="", hash_="lattice", size=(420, 760), budget_ms=4000):
     setTimeout steps. A requestAnimationFrame loop alone will stall after a frame or two."""
     page = make_page(inject)
     try:
-        out = subprocess.run([chrome()] + FLAGS + [
-            f"--window-size={size[0]},{size[1]}", f"--virtual-time-budget={budget_ms}",
-            "--dump-dom", f"file://{page}#{hash_}"], capture_output=True, text=True, timeout=240).stdout
+        out = run_chrome([f"--window-size={size[0]},{size[1]}", f"--virtual-time-budget={budget_ms}",
+                          "--dump-dom", f"file://{page}#{hash_}"], text=True)
     finally:
         os.unlink(page)
     def grab(pattern):
