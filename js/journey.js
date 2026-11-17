@@ -269,7 +269,7 @@ BUILTIN_T=[
  /* the Biomech world and what goes with it: near-grey palettes, the ribbed and chrome surfaces, the Airbrush filter */
  {name:"Biomech",world:{every:80,set:["biomech","web","thicket","tangle"]},palette:{every:35,set:["Gunmetal","Tallow","Verdigris","Bone"]},mirrors:{mode:"off"},
   motion:{mode:"off"},filter:{mode:"random",every:60,set:["Airbrush","none","Noir"]},overlay:{mode:"off"},surface:{mode:"random",every:50,set:["ribbed","plain","chrome","pearl"]}},
- /* the Seer world and others of rings, wires and halls, in the Vision palette and bright ones, often through mirrors */
+ /* the Seer world and others of nets, wires and halls, in the Vision palette and bright ones, often through mirrors */
  {name:"Visions",world:{every:80,set:["seer","lattice","web","gates","temple","tangle"]},palette:{every:35,set:["Vision","Spectrum","Sunset","Orchid"]},
   mirrors:{mode:"random",every:60,none:"50",set:["6","8","12"]},motion:{mode:"off"},filter:{mode:"off"},overlay:{mode:"off"},surface:{mode:"off"}},
  {name:"Landscapes",world:{every:70},mirrors:{mode:"off"},land:{mode:"random",every:80}},
