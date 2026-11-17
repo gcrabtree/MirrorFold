@@ -8,7 +8,8 @@ import { scene, setWorldNow } from "./choose.js";
 import { $, toast } from "./dom.js";
 import { flightPlaying } from "./flightplay.js";
 import { wakeHud } from "./input.js";
-import { findT, jApply, jOverNow, jUse, journey, setJourney } from "./journey.js";
+import { doorDrop, doorOpen } from "./doors.js";
+import { findT, jApply, jMove, jOverNow, jUse, journey, setJourney } from "./journey.js";
 import { lapOn } from "./lap.js";
 import { musicMode } from "./listen.js";
 import { mediaClock, mediaTitle } from "./media.js";
@@ -76,11 +77,14 @@ export function scoreSet(sc){
 }
 function worldIndex(id){for(var i=0;i<WORLDS.length;i++)if(WORLDS[i].id===id)return i;return -1;}
 /* Make one change. False if it must wait (a transition is running). With now it is made at once, with nothing to cover it: after a jump in the music. */
-function apply(k,v,now){
+function apply(k,v,now,cut){
   var i;
   if(k==="journey"){i=v?findT(v):null;if(jOverNow()!==i)jUse(i);return true;} /* a template that is not here is none: nothing changes by chance. One already in use is left running. */
   scMade[k]=v;
+  if(k==="world")doorDrop(); /* a doorway an earlier cue opened and nobody has gone through is overtaken by this one */
   if(k==="world"&&now){i=worldIndex(v);if(i>=0&&WORLDS[i]!==scene.world)setWorldNow(i,true);return true;}
+  /* through a doorway, while Journey is flying to go through it; where there cannot be one, or it is not gone through, the world changes the old way */
+  if(k==="world"&&cut==="door"&&journey&&jMove==="travel"){i=worldIndex(v);if(i>=0&&WORLDS[i]!==scene.world&&doorOpen(i,true))return true;}
   return jApply(k,v,now);
 }
 /* The file is another one, or the first: find which track it is. */
@@ -109,7 +113,7 @@ export function scoreClock(){
     st.pi=scSeek(st.ord,pos);
   }else while(st.pi<st.ord.length&&st.ord[st.pi].at<=pos)st.pend.push(st.ord[st.pi++]);
   st.last=st.t=pos;
-  while(st.pend.length){c=st.pend[0];if(!apply(c.k,c.v,c.now))break;st.pend.shift();}
+  while(st.pend.length){c=st.pend[0];if(!apply(c.k,c.v,c.now,c.cut))break;st.pend.shift();}
 }
 /* Scores from a pack or from what was kept: each through cleanScore. How many were taken. */
 export function scoresAdopt(list){

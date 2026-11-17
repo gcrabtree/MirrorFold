@@ -1206,6 +1206,9 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const fast = cleanTrack({ len: 60, cues: Array.from({ length: 600 }, (_, i) => [i / 10, i % 2 ? "filter" : "overlay", "n" + i]) });
   let nearest = 9; for (let i = 1; i < fast.cues.length; i++) nearest = Math.min(nearest, fast.cues[i][0] - fast.cues[i - 1][0]);
   expect("score: nothing may strobe: cues written ten a second come out no nearer than 0.4 s", nearest >= 0.4 - 1e-9, String(nearest));
+  const cut = cleanTrack({ len: 100, cues: [[10, "world", "julia", "door"], [20, "world", "temple", "nope"], [30, "palette", "Sunset", "door"], [40, "world", "gates", 7]] });
+  expect("score: a doorway is kept on a change of world only, and any other fourth thing is dropped", JSON.stringify(cut.cues) === '[[10,"world","julia","door"],[20,"world","temple"],[30,"palette","Sunset"],[40,"world","gates"]]', JSON.stringify(cut.cues));
+  expect("score: a doorway is asked for on its moment, not early", scOrder(cut.cues)[0].at === 10 && scOrder(cut.cues)[0].cut === "door" && scOrder(cut.cues)[1].at === 20 - SC_LEAD);
   const ord = scOrder(sc.tracks[0].cues);
   expect("score: a change behind a transition is asked for early", ord.find(o => o.t === 40 && o.k === "world").at === 40 - SC_LEAD && ord.find(o => o.k === "palette").at === 12 && ord[0].at === 0);
   const ch = scChase(sc.tracks[0].cues, 60);

@@ -12,6 +12,7 @@ export const SC_KINDS=["world","palette","mirrors","motion","filter","overlay","
 /* these kinds are changed behind a transition, which takes SC_LEAD seconds to reach its peak: they are asked for that much early, so that the change lands on its moment */
 export const SC_BEHIND=["world","mirrors","surface","packing","pulse","shapes","inside","land"];
 export const SC_LEAD=0.5;
+export const SC_CUTS=["door"]; /* how a change of world may be made, other than behind a transition: "door", a doorway to it opens at that moment and the flight goes through it. A fourth thing in a world's cue. */
 export const SC_GAP=1;       /* two cues of one kind are at least this many seconds apart; a nearer one is dropped. Nothing may strobe. */
 export const SC_NEAR=0.4;    /* and two cues of any kinds that change the picture at once are at least this far apart */
 export const SC_SOFT=["palette","dance","journey"]; /* kinds that do not change the picture at once: a palette is eased in, a dance style is taken up at the next move, a template only chooses later */
@@ -42,14 +43,14 @@ export function cleanTrack(src){
       t=num(c[0],0,len);k=c[1];v=cleanName(c[2]);
       if(t===null||typeof k!=="string"||SC_KINDS.indexOf(k)<0||typeof c[2]!=="string"||c[2].length>60)continue;
       if(!v&&k!=="journey")continue;
-      raw.push([cs(t),k,v,i]);
+      raw.push([cs(t),k,v,i,k==="world"&&SC_CUTS.indexOf(c[3])>=0?c[3]:""]);
     }
     raw.sort(function(a,b){return a[0]-b[0]||a[3]-b[3];}); /* by time; two at one time keep the order they came in */
     for(i=0;i<raw.length&&cues.length<SC_CUES;i++){
       c=raw[i];t=c[0];k=c[1];
       if(k in lastOf&&t-lastOf[k]<SC_GAP-1e-6)continue; /* times are in hundredths, so a gap of exactly the least is let through whatever the arithmetic makes of it */
       if(SC_SOFT.indexOf(k)<0){if(t>0&&t-lastHard<SC_NEAR-1e-6)continue;lastHard=t;} /* cues at the very start set the scene together, before anything is seen */
-      lastOf[k]=t;cues.push([t,k,c[2]]);
+      lastOf[k]=t;cues.push(c[4]?[t,k,c[2],c[4]]:[t,k,c[2]]);
     }
   }
   return out;
@@ -65,7 +66,7 @@ export function cleanScore(src){
 /* A track's cues as they are to be asked for: each with the moment to ask (at), which for a change made behind a
    transition is a little before its time, in order of asking. */
 export function scOrder(cues){
-  var o=cues.map(function(c,i){return {at:Math.max(0,c[0]-(SC_BEHIND.indexOf(c[1])>=0?SC_LEAD:0)),t:c[0],k:c[1],v:c[2],i:i};});
+  var o=cues.map(function(c,i){return {at:Math.max(0,c[0]-(SC_BEHIND.indexOf(c[1])>=0&&!c[3]?SC_LEAD:0)),t:c[0],k:c[1],v:c[2],cut:c[3]||"",i:i};}); /* a doorway opens on the moment itself */
   o.sort(function(a,b){return a.at-b.at||a.i-b.i;});
   return o;
 }
@@ -109,4 +110,4 @@ export function init(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={SC_KINDS, SC_BEHIND, SC_LEAD, SC_GAP, SC_NEAR, SC_SOFT, SC_TRACKS, SC_CUES, SC_MARKS, SC_LEN, SC_NEAR_LEN, cleanTrack, cleanScore, scOrder, scChase, scSeek, scMatch, scAt, scLen};
+export const __dbg={SC_CUTS, SC_KINDS, SC_BEHIND, SC_LEAD, SC_GAP, SC_NEAR, SC_SOFT, SC_TRACKS, SC_CUES, SC_MARKS, SC_LEN, SC_NEAR_LEN, cleanTrack, cleanScore, scOrder, scChase, scSeek, scMatch, scAt, scLen};

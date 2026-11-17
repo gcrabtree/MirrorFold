@@ -58,7 +58,7 @@ export function stSnap(t,marks,reach){
    too near it gives way, and if a cue of another kind that changes the picture at once is too near, the new one is put
    just after it. Returns {cues, t}, or null if there is no room within two seconds. skip is a cue to leave out (the
    one being moved). */
-export function stPut(cues,t,k,v,len,skip){
+export function stPut(cues,t,k,v,len,skip,cut){
   var hard=SC_SOFT.indexOf(k)<0,out,tries,i,c,clash;
   t=Math.max(0,Math.min(len,Math.round(t*100)/100));
   for(tries=0;tries<6;tries++){
@@ -70,7 +70,7 @@ export function stPut(cues,t,k,v,len,skip){
   }
   if(tries>=6)return null;
   out=cues.filter(function(c,i){return i!==skip&&!(c[1]===k&&Math.abs(c[0]-t)<SC_GAP-1e-6);});
-  out.push([t,k,v]);
+  out.push(cut?[t,k,v,cut]:[t,k,v]);
   out.sort(function(p,q){return p[0]-q[0];});
   return {cues:out,t:t};
 }
@@ -175,7 +175,7 @@ function draw(){
       cx.fillStyle="hsl("+n+",90%,75%)";cx.fillRect(x,y+2,2,ST_LANE-4);
       if(list[j]===pick){cx.strokeStyle="#fff";cx.lineWidth=1;cx.strokeRect(x+0.5,y+2.5,Math.max(3,x1-x-1)-1,ST_LANE-5);}
       cx.beginPath();cx.rect(Math.max(ST_GUT,x),y,Math.max(0,x1-Math.max(ST_GUT,x)-2),ST_LANE);cx.clip();
-      cx.fillStyle="#f3ecff";cx.fillText(c[2]||"none",Math.max(ST_GUT,x)+6,y+ST_LANE/2);
+      cx.fillStyle="#f3ecff";cx.fillText((c[2]||"none")+(c[3]==="door"?" (doorway)":""),Math.max(ST_GUT,x)+6,y+ST_LANE/2);
       cx.restore();
     }
   }
@@ -230,7 +230,7 @@ function up(e){
   else if(d.kind==="loop"){if(loop&&loop.b-loop.a<1){loop=null;say("No passage is played round.");}else{say("Playing round "+stClock(loop.a)+" to "+stClock(loop.b)+". Shift and click the ruler to let go.");seek(loop.a);}}
   else if(d.kind==="cue"&&d.moved){
     c=tr.cues[d.i];
-    var at=-1,ok=edit(function(cues,marks){var r=stPut(cues,d.t,c[1],c[2],tr.len,d.i);if(!r)return null;at=r.t;return {cues:r.cues,marks:marks};});
+    var at=-1,ok=edit(function(cues,marks){var r=stPut(cues,d.t,c[1],c[2],tr.len,d.i,c[3]);if(!r)return null;at=r.t;return {cues:r.cues,marks:marks};});
     if(ok){findPick(at,c[1]);say(ST_LANE_NAME[c[1]]+" "+(c[2]||"none")+" moved to "+stClock(at));}else toast("There is no room for it there.");
   }
 }
@@ -314,6 +314,13 @@ $("stNext").addEventListener("click",function(){plGo(plAt()+1);});
 $("stKeep").addEventListener("click",function(){keep=!keep;sync();toast(keep?"What you change by hand is written into the score at the moment the music is at.":"Your changes are not written into the score.");});
 $("stTpl").addEventListener("change",function(){if(track())put(pPos(),"journey",this.value);});
 $("stDel").addEventListener("click",removePick);
+/* how the chosen change of world is made: behind a transition, or through a doorway that opens at that moment */
+$("stCut").addEventListener("click",function(){
+  var tr=track(),c=tr&&tr.cues[pick],p=pick;
+  if(!c||c[1]!=="world"){toast("Click a change of world on the timeline first.");return;}
+  edit(function(cues,marks){cues[p]=c[3]?[c[0],c[1],c[2]]:[c[0],c[1],c[2],"door"];return {cues:cues,marks:marks};});
+  pick=p;say("World "+c[2]+" at "+stClock(c[0])+(c[3]?": behind a transition.":": a doorway to it opens at that moment, and the flight goes through. Where there cannot be a doorway, a transition."));
+});
 $("stUndo").addEventListener("click",function(){goBack("","r");});
 $("stRedo").addEventListener("click",function(){goBack("r","");});
 $("stDraft").addEventListener("click",function(){draftAlbum(false);});

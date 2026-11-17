@@ -225,6 +225,8 @@ export function doorSteer(fr){
   return own;
 }
 /* Is a doorway of Journey's standing, not yet gone through? Journey does not ask for another world meanwhile. */
+/* Forget a doorway that was to change the world, and the change with it: something else has the world in hand now (a score's next cue). */
+export function doorDrop(){if(door&&door.warp&&!door.back){door=null;doorU[3]=0;}}
 export function doorOwed(){return !!door&&door.warp&&!door.back;}
 /* A step of the frame, after the camera has moved: find a waiting doorway its place, open or close it, take the camera
    through if it has crossed the ring, and say where to draw it. Under Hold still nothing about it changes. */
@@ -305,5 +307,5 @@ $("bLie").addEventListener("click",function(){lieByHand();wakeHud();});
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={DOOR_LIES, DOOR_SMALL, LIE_EVERY, doorTurn, doorUnturn, doorLieTurn, doorSmall, doorMayLie, doorOpenLie, lieByHand, get lieT(){return lieT},set lieT(v){lieT=v}, get lieNext(){return lieNext},set lieNext(v){lieNext=v}, DOOR_LIFE, DOOR_BACK, DOOR_BACK_J, DOOR_TRY, doorClear, doorOwed, doorU, doorN, doorWorld, doorWrap, doorAhead, doorSpot, doorCross, doorBox, doorMay, doorOpen, doorEnd, doorPlace, doorThrough, doorSteer, stepDoor, doorView, doorByHand,
+export const __dbg={doorDrop, DOOR_LIES, DOOR_SMALL, LIE_EVERY, doorTurn, doorUnturn, doorLieTurn, doorSmall, doorMayLie, doorOpenLie, lieByHand, get lieT(){return lieT},set lieT(v){lieT=v}, get lieNext(){return lieNext},set lieNext(v){lieNext=v}, DOOR_LIFE, DOOR_BACK, DOOR_BACK_J, DOOR_TRY, doorClear, doorOwed, doorU, doorN, doorWorld, doorWrap, doorAhead, doorSpot, doorCross, doorBox, doorMay, doorOpen, doorEnd, doorPlace, doorThrough, doorSteer, stepDoor, doorView, doorByHand,
   get doorsOn(){return doorsOn},set doorsOn(v){doorsOn=v}, get door(){return door},set door(v){door=v}};

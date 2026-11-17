@@ -250,6 +250,7 @@ A score is a journey made for a piece of music. It names no file and holds no mu
 - `len`: the track's length in seconds, 1 to 10800.
 - `marks`: optional moments where the music changes, at most 300.
 - `cues`: at most 1500 a track, each `[seconds, kind, name]`. The kinds are `world`, `palette`, `mirrors`, `motion`, `filter`, `overlay`, `surface`, `land`, `packing`, `pulse`, `shapes`, `inside`, `dance`, with the names a template's `set` uses, and `journey`, whose name is a template that makes changes by chance from that moment (`""` for none). A name the app does not know is passed over.
+- A `world` cue may have a fourth thing, `"door"`: a doorway to that world opens at that moment and the flight goes through it, where there can be one. Anything else there is dropped.
 - Two cues of one kind must be at least 1 second apart, and two that change the picture at once (all kinds but `palette`, `dance` and `journey`) at least 0.4 seconds apart; a nearer one is dropped. Cues at 0 are exempt.
 - At most 40 tracks a score, and 4 scores in a gallery pack.
 
