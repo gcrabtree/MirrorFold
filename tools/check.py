@@ -135,6 +135,18 @@ setTimeout(function(){setStereo(true);setMirrors(3);log("vr="+stereo+" eye in vi
 setTimeout(function(){stepWorld(1);},2900);
 setTimeout(function(){setStereo(false);setMirrors(0);},3500);
 setTimeout(function(){drawFinal(notes);log("eye picture="+!!tE+" glerr="+gl.getError());setEye(0);log("eye off="+(tE===null&&$("bIris").hidden));},3700);
+/* a score: its cues are made at the music's time. The audio file is stood in for by a player that is paused at a chosen moment, and calm makes each change at once */
+setTimeout(function(){
+  var wc=calm,wm=musicMode,sl=[],at=function(t){player.offset=t;scoreClock();scoreClock();sl.push(world.id+"/"+jCur("palette")+"/"+jCur("filter")+"/"+jt.name);};
+  calm=true;tr.warpDir=0;tr.warp=0;tr.warpFn=null;setPalette(0);setLook(0);
+  loadPack(JSON.stringify({mirrorfold:1,name:"x",scores:[{name:"Check album",tracks:[{name:"One",len:200,cues:[[0,"world","julia"],[0,"journey","Calm"],[12,"palette","Sunset"],[40,"world","temple"],[41,"filter","Neon"],[90,"journey",""]]}]}]}));
+  scoreSet(scores[scores.length-1]);
+  player.mode="buf";player.buf={duration:200.4};player.playing=false;musicMode="file";
+  at(5);at(38);at(38.5);at(39.6);at(41.1);at(95);at(3);
+  log("score="+sl.join(" ")+" button="+$("bScore").textContent);
+  scoreSet(null);scoreRemove("Check album");player.mode=null;player.buf=null;musicMode=wm;calm=wc;setLook(0);
+  log("score off="+(jt.name!=="none")+" kept="+scores.length);
+},3760);
 setTimeout(function(){log("world="+world.id+" music="+musicMode+" audio="+(ac?ac.state:"none")+" glerr="+gl.getError()+" DONE")},3800);
 '''
 # every pack published in packs/, as text, so the page can load them the way the site would
@@ -150,6 +162,9 @@ for line in log.split(" ; "):
 packs_ok = all(json.loads(t)["name"] + ":true:%d/%d" % ((len(json.loads(t).get("filters", [])) + len(json.loads(t).get("overlays", [])),) * 2) in log for t in PACKS)
 if not packs_ok:
     print("   a published pack did not load whole, or one of its filters did not compile")
-ok = title == "Mirrorfold" and not err and "FAILED" not in log and "glerr=0" in log and "DONE" in log and packs_ok
+score_ok = "score=julia/Spectrum/none/Calm julia/Sunset/none/Calm julia/Sunset/none/Calm temple/Sunset/none/Calm temple/Sunset/Neon/Calm temple/Sunset/Neon/none julia/Sunset/Neon/Calm button=Score: Check album" in log and "score off=true kept=0" in log
+if not score_ok:
+    print("   the score did not make its changes at the music's time")
+ok = score_ok and title == "Mirrorfold" and not err and "FAILED" not in log and "glerr=0" in log and "DONE" in log and packs_ok
 print("PASS" if ok else "FAIL")
 sys.exit(0 if ok else 1)

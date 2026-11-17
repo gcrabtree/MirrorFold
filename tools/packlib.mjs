@@ -1,9 +1,10 @@
 // What the pack tools share: checking a pack with the app's own cleaners, tidying an offered pack, and the gallery's index.
 // Used by pack.mjs (the checker), gallery.mjs (writes packs/index.json) and offer.mjs (turns an offered pack into a file).
+import { cleanScore } from "../js/scoredata.js";
 import { cleanName, cleanAbout, cleanPalette, cleanMotion, cleanFilter, cleanOverlay, cleanWorld, cleanScene } from "../js/packs.js";
 
 export const LIB_MAX = 16, MAX_BYTES = 200000;
-export const KEYS = ["mirrorfold", "name", "author", "about", "scene", "palettes", "motions", "filters", "overlays", "worlds", "templates", "sets"];
+export const KEYS = ["mirrorfold", "name", "author", "about", "scene", "palettes", "motions", "filters", "overlays", "worlds", "templates", "sets", "scores"];
 export const CATS = ["world", "palette", "mirrors", "motion", "filter", "overlay", "land"];
 const LISTS = [["world", "worlds", cleanWorld], ["palette", "palettes", cleanPalette], ["motion", "motions", cleanMotion], ["filter", "filters", cleanFilter], ["overlay", "overlays", cleanOverlay]];
 // the same value, whatever order its fields were written in
@@ -51,6 +52,11 @@ export function problems(text) {
     if (!s || typeof s !== "object" || cleanName(s.name) !== s.name || !s.name) { out.push("a set has no plain name"); continue; }
     if (!Array.isArray(s.items)) out.push('set "' + s.name + '" has no items');
   }
+  if (p.scores !== undefined && !Array.isArray(p.scores)) out.push("scores is not a list");
+  (Array.isArray(p.scores) ? p.scores : []).forEach((s, i) => {
+    if (!same(cleanScore(s), s)) out.push("score " + (i + 1) + " would be refused or changed (see packs/README.md, Scores)");
+  });
+  if (Array.isArray(p.scores) && p.scores.length > 4) out.push("more than 4 scores");
   return out;
 }
 
@@ -132,8 +138,14 @@ export function tidy(raw, name, author, about) {
   }
   if (tp.length) p.templates = tp;
   if (st.length) p.sets = st;
+  const scs = [];
+  for (const s of Array.isArray(raw.scores) ? raw.scores : []) {
+    const got = cleanScore(s);
+    if (!got || scs.some(x => x.name === got.name) || scs.length >= 4) dropped.push("a score"); else scs.push(got);
+  }
+  if (scs.length) p.scores = scs;
   const c = counts(p);
-  if (!Object.values(c).some(v => v > 0)) return { pack: null, dropped };
+  if (!Object.values(c).some(v => v > 0) && !scs.length) return { pack: null, dropped };
   return { pack: p, dropped };
 }
 

@@ -30,6 +30,15 @@ export function pluck(t,f){
 /* File playback. The file is decoded into memory and played from a buffer, so seeking is exact and instant.
    Very large files, or ones that fail to decode, fall back to a streaming audio element. */
 export const player={mode:null,buf:null,src:null,offset:0,startAt:0,playing:false,token:0};
+/* Several files chosen together are an album: they play one after another in the order of their names, and after the
+   last comes the first. One file alone goes round by itself. */
+let list=[],li=0;
+export function plCount(){return list.length;}
+export function plAt(){return li;}
+export function plName(i){return list[i]?list[i].name:"";}
+export function plFile(i){return list[i]||null;}
+/* names in the order a person would put them: "2 Song" before "10 Song" */
+export function plSort(names){return names.slice().sort(function(a,b){return a.localeCompare(b,undefined,{numeric:true,sensitivity:"base"});});}
 function mmss(x){x=Math.max(0,Math.floor(x||0));var sec=x%60;return Math.floor(x/60)+":"+(sec<10?"0":"")+sec;}
 export function pDur(){
   if(player.mode==="buf")return player.buf.duration;
@@ -37,7 +46,7 @@ export function pDur(){
   return 0;
 }
 export function pPos(){
-  if(player.mode==="buf"){var d=player.buf.duration;return player.playing?((player.offset+ac.currentTime-player.startAt)%d):player.offset;}
+  if(player.mode==="buf"){var d=player.buf.duration,x;if(!player.playing)return player.offset;x=player.offset+ac.currentTime-player.startAt;return list.length<2?x%d:Math.min(d,x);}
   if(player.mode==="el"&&audioEl)return audioEl.currentTime||0;
   return 0;
 }
@@ -45,7 +54,8 @@ function pIsPlaying(){return player.mode==="buf"?player.playing:(player.mode==="
 export function pPlay(){
   if(player.mode==="buf"){
     if(player.playing)return;
-    var src=ac.createBufferSource();src.buffer=player.buf;src.loop=true;src.connect(bus);
+    var src=ac.createBufferSource();src.buffer=player.buf;src.loop=list.length<2;src.connect(bus);
+    src.onended=function(){if(player.src===src&&player.playing)plGo(li+1);}; /* the end of a track of an album: on to the next. A pause takes the source away first, so it is not taken for an end. */
     src.start(0,player.offset%player.buf.duration);
     player.src=src;player.startAt=ac.currentTime;player.playing=true;
   }else if(player.mode==="el"&&audioEl){
@@ -57,6 +67,7 @@ export function pPause(){
   if(player.mode==="buf"){
     if(!player.playing)return;
     player.offset=pPos();player.playing=false;
+    player.src.onended=null;
     try{player.src.stop()}catch(_){}
     try{player.src.disconnect()}catch(_){}
     player.src=null;
@@ -78,7 +89,7 @@ export function showScrub(fr){
   var d=pDur(),pc=(Math.max(0,Math.min(1,fr))*100);
   scrubFill.style.width=pc+"%";scrubThumb.style.left=pc+"%";
   scrub.setAttribute("aria-valuenow",String(Math.round(pc)));
-  tLabel.textContent=mmss(fr*d)+" / "+mmss(d);
+  tLabel.textContent=(list.length>1?(li+1)+" of "+list.length+"  ":"")+mmss(fr*d)+" / "+mmss(d);
 }
 function scrubAt(e){var r=scrub.getBoundingClientRect();return Math.max(0,Math.min(1,(e.clientX-r.left)/Math.max(1,r.width)));}
 function scrubEnd(){
@@ -87,18 +98,21 @@ function scrubEnd(){
 }
 function fileReady(){
   $("bPlay").hidden=false;$("scrubWrap").hidden=false;showScrub(0);
+  $("bPrevT").hidden=$("bNextT").hidden=list.length<2;
   if(musicMode==="file")pPlay();
   syncPlayBtn();wakeHud();
 }
 function prepElement(f){
   if(!audioEl){
-    audioEl=new Audio();audioEl.loop=true;audioEl.preload="auto";
+    audioEl=new Audio();audioEl.preload="auto";
+    audioEl.addEventListener("ended",function(){if(player.mode==="el"&&list.length>1)plGo(li+1);});
     audioEl.addEventListener("error",function(){elErr=true;if(player.mode==="el")showElError();});
     audioEl.addEventListener("loadedmetadata",function(){if(player.mode==="el")showScrub(0)});
     audioEl.addEventListener("durationchange",function(){if(player.mode==="el"&&!scrubbing&&pDur()>0)showScrub(pPos()/pDur())});
     try{elNode=ac.createMediaElementSource(audioEl);elNode.connect(bus);}catch(e){}
   }
   if(objUrl){try{URL.revokeObjectURL(objUrl)}catch(_){}}
+  audioEl.loop=list.length<2;
   elErr=false;objUrl=URL.createObjectURL(f);audioEl.src=objUrl;
   try{audioEl.load()}catch(_){}
 }
@@ -129,6 +143,31 @@ function decodeFile(f,tk,dur){
     }catch(e){useElement(tk);}
   };
   rd.readAsArrayBuffer(f);
+}
+/* Start track i of the files chosen (past the last is the first again). */
+export function plGo(i){
+  var n=list.length,f;
+  if(!n||!ac)return;
+  li=((i%n)+n)%n;f=list[li];
+  mediaFile(f.name); /* its name is noted, to go with pictures made while it plays (js/media.js) */
+  errBox.textContent="";
+  pPause();if(audioEl)audioEl.pause();
+  var tk=++player.token;player.mode=null;player.buf=null;player.offset=0;
+  $("scrubWrap").hidden=false;$("bPlay").hidden=true;tLabel.textContent="Loading\u2026";showScrubIdle();
+  try{ac.resume()}catch(_){}
+  prepElement(f);
+  var decided=false;
+  var decide=function(){
+    if(decided||tk!==player.token)return;decided=true;
+    var dur=(audioEl&&isFinite(audioEl.duration)&&audioEl.duration>0)?audioEl.duration:0;
+    var tooLong=dur>0?dur>DECODE_MAX_SEC:f.size>25e6;
+    if(tooLong||f.size>DECODE_MAX_BYTES)useElement(tk,n>1?"":"Long file: streaming it rather than loading it whole.");
+    else decodeFile(f,tk,dur);
+  };
+  audioEl.addEventListener("loadedmetadata",decide,{once:true});
+  audioEl.addEventListener("error",decide,{once:true});
+  setTimeout(decide,4000);
+  wakeHud();
 }
 function showScrubIdle(){scrubFill.style.width="0%";scrubThumb.style.left="0%";}
 
@@ -170,28 +209,16 @@ scrub.addEventListener("keydown",function(e){
   e.preventDefault();e.stopPropagation();pSeek(pPos()+stp);wakeHud();
 });
 $("fileIn").addEventListener("change",function(){
-  var f=this.files&&this.files[0];if(!f)return;
+  var fs=this.files?Array.prototype.slice.call(this.files):[],order;
+  if(!fs.length)return;
   if(!ensureAudio()){errBox.textContent="This browser cannot play audio here.";return;}
-  mediaFile(f.name); /* its name is noted, to go with pictures made while it plays (js/media.js) */
-  errBox.textContent="";
-  pPause();if(audioEl)audioEl.pause();
-  var tk=++player.token;player.mode=null;player.buf=null;player.offset=0;
-  $("scrubWrap").hidden=false;$("bPlay").hidden=true;tLabel.textContent="Loading\u2026";showScrubIdle();
-  try{ac.resume()}catch(_){}
-  prepElement(f);
-  var decided=false;
-  var decide=function(){
-    if(decided||tk!==player.token)return;decided=true;
-    var dur=(audioEl&&isFinite(audioEl.duration)&&audioEl.duration>0)?audioEl.duration:0;
-    var tooLong=dur>0?dur>DECODE_MAX_SEC:f.size>25e6;
-    if(tooLong||f.size>DECODE_MAX_BYTES)useElement(tk,"Long file: streaming it rather than loading it whole.");
-    else decodeFile(f,tk,dur);
-  };
-  audioEl.addEventListener("loadedmetadata",decide,{once:true});
-  audioEl.addEventListener("error",decide,{once:true});
-  setTimeout(decide,4000);
-  wakeHud();
+  order=plSort(fs.map(function(f){return f.name;}));
+  fs.sort(function(a,b){return order.indexOf(a.name)-order.indexOf(b.name);});
+  list=fs;plGo(0);
+  if(fs.length>1)toast(fs.length+" files: they play in the order of their names.");
 });
+$("bPrevT").addEventListener("click",function(){plGo(pPos()>3?li:li-1);wakeHud();}); /* as a record player does: back to the start of this track first */
+$("bNextT").addEventListener("click",function(){plGo(li+1);wakeHud();});
 $("bPlay").addEventListener("click",function(){
   try{ac.resume()}catch(_){}
   if(pIsPlaying())pPause();else pPlay();
@@ -200,7 +227,7 @@ $("bPlay").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={cap, ensureAudio, pluck, player, mmss, pDur, pPos, pIsPlaying, pPlay, pPause,
+export const __dbg={plCount, plAt, plName, plFile, plSort, plGo, get plList(){return list},set plList(v){list=v}, cap, ensureAudio, pluck, player, mmss, pDur, pPos, pIsPlaying, pPlay, pPause,
   pSeek, syncPlayBtn, showScrub, scrubAt, scrubEnd, fileReady, prepElement, showElError, useElement, DECODE_MAX_SEC,
   DECODE_MAX_BYTES, decodeFile, showScrubIdle, scrubFollow, get ac(){return ac},set ac(v){ac=v}, get master(){return master},set master(v){master=v}, get analyser(){return analyser},set analyser(v){analyser=v}, get fbins(){return fbins},set fbins(v){fbins=v}, get scrubbing(){return scrubbing},set scrubbing(v){scrubbing=v}, get bus(){return bus},set bus(v){bus=v},
   get audioEl(){return audioEl},set audioEl(v){audioEl=v}, get elNode(){return elNode},set elNode(v){elNode=v}, get objUrl(){return objUrl},set objUrl(v){objUrl=v}, get scrub(){return scrub},set scrub(v){scrub=v}, get scrubFill(){return scrubFill},set scrubFill(v){scrubFill=v}, get scrubThumb(){return scrubThumb},set scrubThumb(v){scrubThumb=v}, get tLabel(){return tLabel},set tLabel(v){tLabel=v}, get scrubFr(){return scrubFr},set scrubFr(v){scrubFr=v}, get lastSeek(){return lastSeek},set lastSeek(v){lastSeek=v}, get elErr(){return elErr},set elErr(v){elErr=v}};

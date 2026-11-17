@@ -31,6 +31,14 @@ let jFrom="";                /* the world left most recently: Journey does not g
 export let jLast="";         /* the category Journey changed most recently, for Less like this */
 export let jMove="travel";  /* "travel" flies and steers for you; "drift" leaves the flying to you and only changes the scenery */
 export function jtReset(){jt=BUILTIN_T[0];}
+let HOLD_T;                  /* a template that changes nothing */
+let jOver;                   /* a score's say in which template is in use (js/scoreplay.js): a template, null for none (nothing changes by chance), and undefined while no score has a say */
+/* A score takes over the choice of template, or with undefined gives it back to the list. */
+export function jUse(t){
+  jOver=t;
+  if(t===undefined){if(journey)selectJourney(store.sel);return;}
+  jset=null;applyTemplate(t||HOLD_T);
+}
 export let CATS, BUILTIN_T, BUILTIN_S, jset;
 
 export const MODE_LABEL={off:"off",keep:"as set",random:"random"};
@@ -152,6 +160,7 @@ export function selectJourney(sel){
   var kind=sel.charAt(0),name=sel.slice(2),S=kind==="s"?findS(name):null,T=kind==="t"?findT(name):null;
   if(S){store.sel=sel;jset={s:S,idx:-1,t:0,len:0};advanceSet();}
   else{if(!T){T=BUILTIN_T[0];sel="t:"+T.name;}store.sel=sel;jset=null;applyTemplate(T);}
+  if(jOver!==undefined){jset=null;applyTemplate(jOver||HOLD_T);} /* a score is in use: the choice is kept for afterwards, and the score's template stays */
   fillJT();saveStore();
 }
 export function fillJT(){
@@ -281,6 +290,7 @@ BUILTIN_T=[
  {name:"Landscapes",world:{every:70},mirrors:{mode:"off"},land:{mode:"random",every:80}},
  {name:"Follow the music",world:{trigger:"sound",every:45},mirrors:{mode:"random",none:"75"},motion:{mode:"random"},overlay:{mode:"random",set:["Ring","Scope","Spectrum","Spokes"]},surface:{mode:"random"}}
 ].map(function(t){return normT(t,true)});
+HOLD_T=normT({name:"none",world:{mode:"keep"},palette:{mode:"keep"}},true);
 BUILTIN_S=[normS({name:"Grand tour",order:"cycle",items:[{tpl:"Clean flight",min:2},{tpl:"MilkDrop",min:2},{tpl:"Kaleidoscope",min:2},{tpl:"Everything",min:3}]},true)];
 try{
   var rawJ=JSON.parse(localStorage.getItem("mirrorfold-journeys")||"{}"),got=adopt(rawJ);
@@ -301,7 +311,7 @@ $("advForget").addEventListener("click",function(){var n=tasteCount();tasteClear
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, get jWas(){return jWas},set jWas(v){jWas=v}, get jFrom(){return jFrom},set jFrom(v){jFrom=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
+export const __dbg={jUse, get HOLD_T(){return HOLD_T}, get jOver(){return jOver},set jOver(v){jOver=v}, jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, get jWas(){return jWas},set jWas(v){jWas=v}, get jFrom(){return jFrom},set jFrom(v){jFrom=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
   findT, findS, jCur, jNone, jIndex, jApply, jPool, jPick, applyTemplate, advanceSet,
   selectJourney, fillJT, setJMove, setJourney, autopilot, stepJourney, J, jReset, jResetAll, get jt(){return jt},set jt(v){jt=v},
   get journey(){return journey},set journey(v){journey=v}, get jMove(){return jMove},set jMove(v){jMove=v}, get CATS(){return CATS},set CATS(v){CATS=v}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v}, get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get jset(){return jset},set jset(v){jset=v}};

@@ -234,6 +234,25 @@ These are the same as the ones made in the app's Journey setup panel. The easies
 
 A template has one entry for each of `world`, `palette`, `mirrors`, `motion`, `filter`, `overlay`, `surface` and `land`. Each entry may have `mode` (`"keep"`, `"random"` or, except for worlds and palettes, `"off"`), `every` (seconds, 4 to 600) and `set` (the names allowed; leave it out to allow all). Worlds are named by id (`"julia"`), mirrors by number (`"6"`), the land by `"none"` or a landscape (`alps`, `canyon`, `planet`, `ball`, `city`) followed by ` alone` or ` over` (`"canyon over"`), everything else by the name shown in the app. A template can name palettes and motions from the same pack.
 
+### Scores
+
+A score is a journey made for a piece of music. It names no file and holds no music: whoever plays it supplies their own copy, and a file is taken for a track if it is the same length to within a second and a half.
+
+```json
+"scores": [
+ {"name": "My album", "tracks": [
+  {"name": "First song", "len": 213.4, "marks": [31.2, 64],
+   "cues": [[0, "world", "julia"], [0, "journey", "Calm"], [31.2, "palette", "Sunset"], [64, "world", "temple"], [120, "journey", ""]]}
+ ]}
+]
+```
+
+- `len`: the track's length in seconds, 1 to 10800.
+- `marks`: optional moments where the music changes, at most 300.
+- `cues`: at most 1500 a track, each `[seconds, kind, name]`. The kinds are `world`, `palette`, `mirrors`, `motion`, `filter`, `overlay`, `surface`, `land`, `packing`, `pulse`, `shapes`, `inside`, `dance`, with the names a template's `set` uses, and `journey`, whose name is a template that makes changes by chance from that moment (`""` for none). A name the app does not know is passed over.
+- Two cues of one kind must be at least 1 second apart, and two that change the picture at once (all kinds but `palette`, `dance` and `journey`) at least 0.4 seconds apart; a nearer one is dropped. Cues at 0 are exempt.
+- At most 40 tracks a score, and 4 scores in a gallery pack.
+
 ## What the app does with a pack
 
 - **Wrong shape is refused.** A palette, motion, filter or overlay with a missing part, text where a number belongs, or no name is skipped. A filter or overlay whose program breaks a rule or does not compile is skipped.

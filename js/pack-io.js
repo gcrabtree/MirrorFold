@@ -12,6 +12,7 @@ import { NLOOK, NMOT, NOV, addToLibrary, myFilters, myOverlays, myWorlds, saveLi
 import { NWORLD } from "./pack-worlds.js";
 import { cleanFilter, cleanMotion, cleanName, cleanOverlay, cleanPalette, cleanScene, cleanWorld } from "./packs.js";
 import { NPAL, PALETTES, fillPalettes, palOpen, setPalette } from "./palettes.js";
+import { scores, scoresAdopt } from "./scoreplay.js";
 import { applySpot, encodeSpot } from "./spots.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, mirrors, sel } from "./state.js";
 import { WORLDS } from "./worlds.js";
@@ -28,10 +29,11 @@ export function refreshLists(){ /* after palettes or motions are added or remove
 function count(n,word){return n+" "+word+(n===1?"":"s")}
 export function packNow(){ /* everything of the user's own, as a pack */
   var strip=function(list){return JSON.parse(JSON.stringify(list)).map(function(x){delete x.builtin;return x})};
-  return {mirrorfold:1,name:"My Mirrorfold pack",author:"",palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(false),overlays:myOverlays(false),worlds:myWorlds(false),templates:strip(store.tpls),sets:strip(store.sets)};
+  return {mirrorfold:1,name:"My Mirrorfold pack",author:"",palettes:PALETTES.slice(NPAL),motions:MOTIONS.slice(NMOT),filters:myFilters(false),overlays:myOverlays(false),worlds:myWorlds(false),templates:strip(store.tpls),sets:strip(store.sets),scores:JSON.parse(JSON.stringify(scores))};
 }
 export function packSummary(k){ /* "2 palettes, 1 filter and 3 templates": only what is there */
-  var parts=[["worlds","world"],["palettes","palette"],["motions","motion"],["filters","filter"],["overlays","overlay"],["templates","template"],["sets","set"]]
+  var parts=[["worlds","world"],["palettes","palette"],["motions","motion"],["filters","filter"],["overlays","overlay"],["templates","template"],["sets","set"],["scores","score"]]
+    .filter(function(x){return !!k[x[0]]})
     .filter(function(x){return k[x[0]].length>0}).map(function(x){return count(k[x[0]].length,x[1])});
   if(!parts.length)return "nothing";
   var last=parts.pop();
@@ -87,8 +89,9 @@ export function loadPack(txt,from){
   var n=addToLibrary(raw,from==="site"?"site":undefined);
   if(n.p||n.m||n.f||n.o||n.w){saveLibrary();refreshLists();} /* before the templates, so they can name what was just added */
   var got=adopt(raw);
+  var ns=scoresAdopt(raw.scores); /* after the templates would be better still, but a score only names them: they are looked up as it plays */
   var sc=cleanScene(raw.scene),went=!!sc&&goScene(sc); /* after the library, so the scene can use what came with it */
-  if(!n.p&&!n.m&&!n.f&&!n.o&&!n.w&&!got.tpls.length&&!got.sets.length){
+  if(!n.p&&!n.m&&!n.f&&!n.o&&!n.w&&!got.tpls.length&&!got.sets.length&&!ns){
     toast(went?"Going to that scene.":sc?"That scene is in a world this copy does not have.":"Nothing in that pack could be used.");return went;
   }
   var tn=got.tpls.map(function(q){return q.name}),sn=got.sets.map(function(q){return q.name});
@@ -97,7 +100,7 @@ export function loadPack(txt,from){
   advPick(findT(advT.name)||BUILTIN_T[0],findS(advS.name)||BUILTIN_S[0]);
   if(journey)selectJourney(store.sel);
   saveStore();fillJT();advFill();
-  toast("Loaded "+packSummary({worlds:{length:n.w},palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},overlays:{length:n.o},templates:got.tpls,sets:got.sets})+(went?", and going to its scene.":"."));
+  toast("Loaded "+packSummary({worlds:{length:n.w},palettes:{length:n.p},motions:{length:n.m},filters:{length:n.f},overlays:{length:n.o},templates:got.tpls,sets:got.sets,scores:{length:ns}})+(went?", and going to its scene.":"."));
   return true;
 }
 function libRemove(kind,i){

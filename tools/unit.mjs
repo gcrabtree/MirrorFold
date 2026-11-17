@@ -29,6 +29,7 @@ import { __dbg as flightM } from "../js/flightdata.js";
 import { __dbg as togetherM } from "../js/together.js";
 import { __dbg as doorsM } from "../js/doors.js";
 import { __dbg as worldsM } from "../js/worlds.js";
+import { __dbg as scoreM } from "../js/scoredata.js";
 import { tidy, slug, problems, packText, indexEntry } from "./packlib.mjs";
 import { handle, answer, packField } from "./offer.mjs";
 const { makeChangeDetector } = listen, { jPick } = journey, { devMat, gyroTurn } = vr, { userActive } = camera;
@@ -1180,6 +1181,39 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     for (const k of Object.keys(m.__dbg || {})) { if (seen[k]) twice.push(k + " (" + seen[k] + ", " + f + ")"); seen[k] = f; }
   }
   expect("no name is listed for the test tools by two modules", twice.length === 0, twice.join("; "));
+}
+
+// ---- a score: a journey made for a piece of music (js/scoredata.js)
+{
+  const { cleanScore, cleanTrack, scOrder, scChase, scSeek, scMatch, scAt, scLen, SC_LEAD, SC_CUES } = scoreM;
+  const good = { name: "Album", tracks: [
+    { name: "One", len: 200, marks: [30, 10], cues: [[12, "palette", "Sunset"], [0, "world", "julia"], [0, "journey", "Calm"], [40, "world", "temple"], [40.2, "mirrors", "6"], [41, "filter", "Neon"], [90, "journey", ""]] },
+    { name: "Two", len: 300.004, cues: [] } ] };
+  const sc = cleanScore(good);
+  expect("score: a good one passes, cues in order of time", !!sc && sc.tracks.length === 2 && sc.tracks[0].cues[0][0] === 0 && sc.tracks[0].cues[2][0] === 12);
+  expect("score: marks are sorted", sc.tracks[0].marks.join() === "10,30");
+  expect("score: cleaning twice changes nothing", JSON.stringify(cleanScore(sc)) === JSON.stringify(sc));
+  expect("score: a change of the picture too soon after another is dropped", !sc.tracks[0].cues.some(c => c[1] === "mirrors") && sc.tracks[0].cues.some(c => c[1] === "filter"));
+  expect("score: a template of no name is allowed, and means none", sc.tracks[0].cues.some(c => c[1] === "journey" && c[2] === ""));
+  const bad = [null, 3, "x", [], {}, { tracks: 3 }, { tracks: [] }, { tracks: [{ len: "9" }] }, { tracks: [{ len: NaN }] }, { tracks: [null, 4, []] }];
+  expect("score: broken ones are refused", bad.every(b => cleanScore(b) === null));
+  const odd = cleanTrack({ len: 100, name: 7, marks: "no", cues: [[5, "world"], [5, "nope", "x"], ["5", "world", "x"], [5, "world", ""], [5, "world", 9], [1e9, "world", "far"], [-4, "world", "early"], [7, "__proto__", "x"], [8, "palette", "x".repeat(61)], { 0: 1 }, [50, "palette", "ok\u0000name"]] });
+  expect("score: broken cues are dropped, times are held in the track, names are made plain",
+    odd.cues.length === 3 && odd.cues[0][0] === 0 && odd.cues[0][2] === "early" && odd.cues[1][2] === "ok name" && odd.cues[2][0] === 100 && odd.name === "", JSON.stringify(odd));
+  const many = cleanTrack({ len: 9000, cues: Array.from({ length: 9000 }, (_, i) => [i, "palette", "p" + i]) });
+  expect("score: a track holds no more cues than SC_CUES", many.cues.length === SC_CUES);
+  const fast = cleanTrack({ len: 60, cues: Array.from({ length: 600 }, (_, i) => [i / 10, i % 2 ? "filter" : "overlay", "n" + i]) });
+  let nearest = 9; for (let i = 1; i < fast.cues.length; i++) nearest = Math.min(nearest, fast.cues[i][0] - fast.cues[i - 1][0]);
+  expect("score: nothing may strobe: cues written ten a second come out no nearer than 0.4 s", nearest >= 0.4 - 1e-9, String(nearest));
+  const ord = scOrder(sc.tracks[0].cues);
+  expect("score: a change behind a transition is asked for early", ord.find(o => o.t === 40 && o.k === "world").at === 40 - SC_LEAD && ord.find(o => o.k === "palette").at === 12 && ord[0].at === 0);
+  const ch = scChase(sc.tracks[0].cues, 60);
+  expect("score: what is asked for at a moment is each kind's last cue", ch.world === "temple" && ch.palette === "Sunset" && ch.journey === "Calm" && ch.filter === "Neon" && scChase(sc.tracks[0].cues, 95).journey === "");
+  expect("score: going on after a jump starts with the first cue after it", ord[scSeek(ord, 39.8)].t === 40 && scSeek(ord, 500) === ord.length && scSeek(ord, -1) === 0);
+  expect("score: a file is matched to the track of its length", scMatch(sc, 200.9, "", -1) === 0 && scMatch(sc, 299, "", -1) === 1 && scMatch(sc, 250, "One", 0) === -1);
+  const twins = cleanScore({ tracks: [{ name: "A", len: 100 }, { name: "B", len: 100 }, { name: "C", len: 100 }] });
+  expect("score: among tracks of one length, the name decides, then the place in the album", scMatch(twins, 100, "B", 0) === 1 && scMatch(twins, 100, "", 2) === 2 && scMatch(twins, 100, "", -1) === 0);
+  expect("score: a second of the album is a track and a time in it", scAt(sc, 250).i === 1 && Math.abs(scAt(sc, 250).t - 50) < 1e-9 && scAt(sc, 1e6).i === 1 && scLen(sc) === 500);
 }
 
 console.log(failed ? failed + " failed" : "all passed");
