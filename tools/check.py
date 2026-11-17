@@ -126,8 +126,9 @@ setTimeout(function(){
 setTimeout(function(){
   /* the eye: its program is made, each setting can be chosen, a blink changes the world while the lids are shut, and it is left out of the VR viewer */
   setEye(1);var shown=eyeShown();$("bIris").click();$("bBlink").click();
+  setEyeZoom(5);$("bEyeIn").click();var zin=eyeZoom+"/"+$("bEyeIn").disabled;setEyeZoom(1);$("bEyeOut").click();zin+=" "+eyeZoom+"/"+$("bEyeOut").disabled;setEyeZoom(3);
   var w0=world.id,why=warpDir+"/"+doorOwed()+"/"+blinkPick();ey.wt=999;blinkShut();var w1=world.id;warpDir=0;warp=0;warpFn=null;ey.wt=999;blinkShut();
-  log("eye="+eyeMode+" drawn="+shown+" program="+!!pEye+" buttons="+$("bEye").textContent+"|"+$("bIris").textContent+"|"+$("bBlink").textContent+" blink changed world="+(world.id!==w0)+" (first try "+(w1!==w0)+", with a transition, a doorway and a choice of "+why+")");
+  log("eye="+eyeMode+" drawn="+shown+" program="+!!pEye+" buttons="+$("bEye").textContent+"|"+$("bIris").textContent+"|"+$("bBlink").textContent+" nearest and furthest="+zin+" blink changed world="+(world.id!==w0)+" (first try "+(w1!==w0)+", with a transition, a doorway and a choice of "+why+")");
   setIris(0);setBlink(1);
 },2745);
 setTimeout(function(){setStereo(true);setMirrors(3);log("vr="+stereo+" eye in viewer="+eyeShown());},2750);

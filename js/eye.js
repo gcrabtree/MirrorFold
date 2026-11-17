@@ -24,7 +24,19 @@ import { tr } from "./warp.js";
 import { WORLDS } from "./worlds.js";
 import { zoomOk } from "./zoom.js";
 
-export const EYES=[{name:"off",r:0},{name:"on",r:0.4}]; /* r: the iris's radius, where the shorter side of the picture is 1: the view stays close in on the eye */
+export const EYES=[{name:"off"},{name:"on"}];
+/* How near the eye is seen from: a step from 0, the whole eye, to EYE_STEPS, where the iris fills the picture.
+   eyeRadius gives the iris's radius for a step, where the shorter side of the picture is 1 and asp is the picture's
+   width over its height: each step multiplies it by the same amount, from EYE_FAR up to a little more than the way
+   from the middle of the picture to its corner. */
+export const EYE_STEPS=6,EYE_FAR=0.2;
+export function eyeFill(asp){var l=0.5*Math.max(asp,1/asp);return 1.04*Math.sqrt(0.25+l*l);}
+/* The pupil's radius as a part of the iris's, as drawn: pu is what the sound asks for, r the iris's radius. Seen from
+   very near, a pupil of its full size would take the whole of a tall picture and leave the iris to the corners, so
+   it is held to about a third of the picture's shorter side (EYE_PUPIL at rest), and still opens with the sound. */
+export const EYE_PUPIL=0.34;
+export function eyePupil(pu,r){return Math.min(pu,EYE_PUPIL*pu/0.55/r);}
+export function eyeRadius(step,asp){return EYE_FAR*Math.pow(eyeFill(asp)/EYE_FAR,Math.max(0,Math.min(EYE_STEPS,step))/EYE_STEPS);}
 /* The iris's colour: the palette's, or one of its own. c is three colours: round the pupil, the body of the iris, and its rim. */
 export const IRIS=[
  {name:"follows the palette"},
@@ -40,12 +52,14 @@ export const BLINK_GAP=[5,11]; /* seconds between blinks: at least, and at most 
 export let eyeMode=0;   /* which of EYES */
 export let irisI=0;     /* which of IRIS */
 export let blinkMode=1; /* which of BLINKS */
+export let eyeZoom=3;   /* how near the eye is seen from, 0 to EYE_STEPS */
 let pEye=null,eyeBad=false,tE=null;
 const ey={
   ph:0,t:0,next:6,b:0, /* the blink: 0 open, 1 shutting, 2 shut, 3 opening; seconds into that; seconds until the next; how out2 shut, 0 to 1 */
   wt:0,wnext:30,       /* seconds since a blink last changed the world, and how long until one does */
   gx:0,gy:0,           /* where the eye looks, as a part of the iris's radius: it follows the turning of the view */
   pu:0.55,mv:0,        /* the pupil's radius as a part of the iris's, and the eased level of the mids, which moves the vessels */
+  z:3,                 /* how near the eye is seen from now, as a step that need not be whole: it eases toward eyeZoom */
   por:0                /* how far the pores' cycles have run: it moves on with time, and faster on the beat */
 };
 const col=[[0,0,0],[0,0,0],[0,0,0]];
@@ -221,7 +235,9 @@ export function drawEye(fr,src){
   }
   passTo(null,pEye);bindTex(0,src.t);gl.uniform1i(U.uT,0);
   gl.uniform2f(U.uRes,src.w,src.h);gl.uniform1f(U.uTime,clock.time);
-  gl.uniform1f(U.uR,EYES[eyeMode].r);gl.uniform1f(U.uPor,ey.por);gl.uniform1f(U.uPu,ey.pu);gl.uniform2f(U.uGaze,ey.gx+0.02*Math.sin(clock.time*0.31),ey.gy+0.015*Math.sin(clock.time*0.23+1));
+  ey.z+=(eyeZoom-ey.z)*(1-Math.exp(-fr.dt*(calm?2:4))); /* eased here, not in stepEye, so that the buttons work under Hold still too */
+  if(Math.abs(eyeZoom-ey.z)<1e-3)ey.z=eyeZoom;
+  var R=eyeRadius(ey.z,src.w/src.h);gl.uniform1f(U.uR,R);gl.uniform1f(U.uPor,ey.por);gl.uniform1f(U.uPu,eyePupil(ey.pu,R));gl.uniform2f(U.uGaze,ey.gx+0.02*Math.sin(clock.time*0.31),ey.gy+0.015*Math.sin(clock.time*0.23+1));
   gl.uniform1f(U.uBlink,ey.b);gl.uniform1f(U.uBeat,calm?0:fr.bt);
   gl.uniform1f(U.uVes,clock.time*0.02+0.35*ey.mv);       /* the vessels wander slowly, and move with the mids */
   gl.uniform1f(U.uMo,clock.time*0.035+0.6*fr.m);        /* the iris changes shape with the clock and with the world's morph */
@@ -235,16 +251,26 @@ function kept(k,list){var s="",i;try{s=localStorage.getItem("mirrorfold-"+k)||""
 export function setEye(i){
   eyeMode=EYES[i]?i:0;
   $("bEye").textContent="Eye "+EYES[eyeMode].name;press($("bEye"),eyeMode>0);
-  $("bIris").hidden=$("bBlink").hidden=!eyeMode;
+  $("bIris").hidden=$("bBlink").hidden=$("bEyeIn").hidden=$("bEyeOut").hidden=!eyeMode;
   if(eyeMode){ey.ph=0;ey.t=0;ey.b=0;ey.next=BLINK_GAP[0];}else eyeFree();
   keep("eye",EYES[eyeMode].name);
+}
+/* How near the eye is seen from. The two buttons go one step each way, and say so when there is no further to go. */
+export function setEyeZoom(k){
+  eyeZoom=Math.max(0,Math.min(EYE_STEPS,Math.round(+k)||0));
+  $("bEyeIn").disabled=eyeZoom>=EYE_STEPS;$("bEyeOut").disabled=eyeZoom<=0;
+  keep("eyezoom",String(eyeZoom));
 }
 export function setIris(i){irisI=IRIS[i]?i:0;$("bIris").textContent="Iris "+IRIS[irisI].name;keep("iris",IRIS[irisI].name);}
 export function setBlink(i){blinkMode=BLINKS[i]?i:0;$("bBlink").textContent="Blink "+BLINKS[blinkMode];press($("bBlink"),blinkMode>0);ey.wt=0;keep("blink",BLINKS[blinkMode]);}
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-var a=kept("iris",IRIS),b=kept("blink",BLINKS),c=kept("eye",EYES);
+var a=kept("iris",IRIS),b=kept("blink",BLINKS),c=kept("eye",EYES),z="";
+try{z=localStorage.getItem("mirrorfold-eyezoom")||""}catch(_){}
+setEyeZoom(/^[0-6]$/.test(z)?+z:3);ey.z=eyeZoom;
+$("bEyeIn").addEventListener("click",function(){setEyeZoom(eyeZoom+1);toast(eyeZoom>=EYE_STEPS?"The iris fills the picture":"Nearer the eye");wakeHud()});
+$("bEyeOut").addEventListener("click",function(){setEyeZoom(eyeZoom-1);toast(eyeZoom<=0?"The whole eye":"Further from the eye");wakeHud()});
 setIris(a<0?0:a);setBlink(b<0?1:b);setEye(c<0?0:c);
 $("bEye").addEventListener("click",function(){
   setEye((eyeMode+1)%EYES.length);
@@ -258,6 +284,6 @@ $("bBlink").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={EYES, IRIS, BLINKS, BLINK_SHUT, BLINK_HELD, BLINK_OPEN, BLINK_GAP, FS_EYE, ey, blinkStep, blinkPick, blinkShut, stepEye, eyeShown, eyeTarget, eyeFree, drawEye, setEye, setIris, setBlink,
+export const __dbg={EYES, IRIS, BLINKS, BLINK_SHUT, BLINK_HELD, BLINK_OPEN, BLINK_GAP, FS_EYE, ey, blinkStep, blinkPick, blinkShut, stepEye, eyeShown, eyeTarget, eyeFree, drawEye, setEye, setIris, setBlink, setEyeZoom, eyeFill, eyeRadius, eyePupil, EYE_PUPIL, EYE_STEPS, EYE_FAR, get eyeZoom(){return eyeZoom},set eyeZoom(v){eyeZoom=v},
   get eyeMode(){return eyeMode},set eyeMode(v){eyeMode=v}, get irisI(){return irisI},set irisI(v){irisI=v}, get blinkMode(){return blinkMode},set blinkMode(v){blinkMode=v},
   get pEye(){return pEye},set pEye(v){pEye=v}, get eyeBad(){return eyeBad},set eyeBad(v){eyeBad=v}, get tE(){return tE},set tE(v){tE=v}};

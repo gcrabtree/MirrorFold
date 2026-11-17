@@ -1118,7 +1118,7 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
 }
 // ---- the eye's blink: it shuts and opens along a gentle curve, once, and then waits
 {
-  const { blinkStep, BLINK_GAP, BLINK_SHUT, BLINK_HELD, BLINK_OPEN, EYES, IRIS, BLINKS } = await import("../js/eye.js");
+  const { blinkStep, BLINK_GAP, BLINK_SHUT, BLINK_HELD, BLINK_OPEN, EYES, IRIS, BLINKS, eyeRadius, eyeFill, eyePupil, EYE_STEPS, EYE_FAR } = await import("../js/eye.js");
   for (const slow of [false, true]) {
     const s = { ph: 0, t: 0, next: 1, b: 0 }, dt = 1 / 60; let hits = 0, most = 0, top = 0, range = true, shutFor = 0, n = 0, was = 0;
     for (; n < 60 * 4; n++) { was = s.b; if (blinkStep(s, dt, slow, 0.5)) hits++; most = Math.max(most, Math.abs(s.b - was)); top = Math.max(top, s.b); if (!(s.b >= 0 && s.b <= 1)) range = false; if (s.b > 0.5) shutFor += dt; }
@@ -1128,7 +1128,16 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   }
   { const s = { ph: 0, t: 0, next: 0.1, b: 0 }; let hits = 0; for (let n = 0; n < 200; n++) if (blinkStep(s, 0.05, false, 0)) hits++;
     expect("at the slowest frames a blink still shuts once and opens, and the shortest wait is kept", hits >= 1 && hits <= 2 && s.next === BLINK_GAP[0], hits + " " + s.next); }
-  expect("the eye starts off, the iris can keep a colour of its own, and a blink can be off", EYES[0].r === 0 && !IRIS[0].c && IRIS.slice(1).every(i => i.c.length === 3 && i.c.every(c => c.length === 3 && c.every(v => v >= 0 && v <= 1))) && BLINKS[0] === "off");
+  { let ok = true, why = "";
+    for (const asp of [0.46, 0.6, 1, 1.78, 2.4]) {
+      const hw = 0.5 * Math.max(asp, 1) / Math.min(asp, 1) * Math.min(asp, 1) / Math.min(asp, 1), l = 0.5 * Math.max(asp, 1 / asp), corner = Math.hypot(0.5, l), top = eyeRadius(EYE_STEPS, asp);
+      let grows = true; for (let k = 0; k < EYE_STEPS; k++) if (!(eyeRadius(k + 1, asp) > eyeRadius(k, asp) * 1.15)) grows = false;
+      /* at the nearest step the iris reaches past the corner, and the lids, which stand 0.96 of the radius or more above and below the middle, are out of the picture */
+      if (!(top > corner && 0.96 * top > 0.5 && grows && Math.abs(eyeRadius(0, asp) - EYE_FAR) < 1e-9 && eyeRadius(99, asp) === top && eyeRadius(-5, asp) === EYE_FAR)) { ok = false; why += asp + ":" + top.toFixed(3) + "/" + corner.toFixed(3) + " "; }
+    }
+    expect("the eye's nearest step has the iris past every corner of the picture, wide or tall, each step is nearer than the last, and a step out of range is held in", ok, why); }
+  expect("seen from far the pupil is the size the sound asks for, and seen from nearest it leaves the iris more than half of the picture's shorter side", eyePupil(0.6, 0.3) === 0.6 && [0.46, 1, 1.78].every(a => { const r = eyeRadius(EYE_STEPS, a); return eyePupil(0.72, r) * r < 0.46 && eyePupil(0.72, r) > eyePupil(0.5, r); }));
+  expect("the eye starts off, the iris can keep a colour of its own, and a blink can be off", EYES[0].name === "off" && !IRIS[0].c && IRIS.slice(1).every(i => i.c.length === 3 && i.c.every(c => c.length === 3 && c.every(v => v >= 0 && v <= 1))) && BLINKS[0] === "off");
 }
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {
