@@ -58,7 +58,7 @@ export function hearFile(f,say){
 }
 function pool(tier){var t=findT(DRAFT_TPL[tier]);return t?jPool("world",t.world):[];}
 /* Draft a score for every file chosen, keep it and put it in use. */
-export function draftAlbum(){
+export function draftAlbum(empty){
   var n=plCount(),tracks=[],used=[],i=0,b=$("bDraft"),name;
   if(busy){stop=true;return;}
   if(!n||!ac){toast("Choose the audio files first.");return;}
@@ -73,13 +73,13 @@ export function draftAlbum(){
       if(!sc){end("None of the files could be read, so there is no draft.");return;}
       if(!scoreAdd(sc)){end("There is no room for another score. Remove one first.");return;}
       scoreSet(sc);
-      end("Drafted the score "+sc.name+": "+sc.tracks.length+(sc.tracks.length===1?" track, ":" tracks, ")+sc.tracks.reduce(function(a,t){return a+t.cues.length;},0)+" changes. It is in use.");
+      end((empty?"Started the score ":"Drafted the score ")+sc.name+": "+sc.tracks.length+(sc.tracks.length===1?" track, ":" tracks, ")+sc.tracks.reduce(function(a,t){return a+t.cues.length;},0)+" changes. It is in use.");
       return;
     }
     hearFile(f,function(part){b.textContent="Listening: "+(i+1)+" of "+n+", "+Math.round(part*100)+"%. Press to give up";}).then(function(an){
       var d;
-      if(an&&an.far)tracks.push({name:mediaTitle(f.name),len:an.len,cues:[[0,"journey",DRAFT_TPL.mid]]}); /* not heard ahead: left to the middling template all through */
-      else if(an){d=scDraft(an,DRAFT_TPL,pool,Math.random,used);used=d.used;tracks.push({name:mediaTitle(f.name),len:an.len,marks:d.marks,cues:d.cues});}
+      if(an&&an.far)tracks.push({name:mediaTitle(f.name),len:an.len,cues:empty?[]:[[0,"journey",DRAFT_TPL.mid]]}); /* not heard ahead: left to the middling template all through */
+      else if(an){d=scDraft(an,DRAFT_TPL,pool,Math.random,used);used=d.used;tracks.push({name:mediaTitle(f.name),len:an.len,marks:d.marks,cues:empty?[]:d.cues});}
       i++;next();
     },function(){i++;next();});
   })();
@@ -87,7 +87,7 @@ export function draftAlbum(){
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-$("bDraft").addEventListener("click",function(){draftAlbum();wakeHud();});
+$("bDraft").addEventListener("click",function(){draftAlbum(false);wakeHud();});
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */

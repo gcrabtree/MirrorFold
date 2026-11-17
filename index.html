@@ -42,6 +42,7 @@
     <button id="mShare" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuShare">Save and share</button>
     <button id="mMore" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuMore">More</button>
     <button id="bLearn" type="button">How it works</button>
+    <button id="bStudio" type="button" aria-pressed="false" hidden>Compose</button>
   </div>
   <!-- the four groups below open one at a time from the buttons above, and close when the controls fade -->
   <div class="row menu" id="menuLook" hidden>
@@ -271,6 +272,28 @@
   <div id="edDrive" class="edGrid" hidden></div>
   <button id="edFine" type="button" aria-expanded="false" aria-controls="edFineRows" hidden>Fine tuning</button>
   <div id="edFineRows" class="edGrid" hidden></div>
+</div>
+<!-- the composing screen, for a computer: a timeline of the playing track's score under the picture (js/studio.js) -->
+<div id="studio" hidden>
+  <div class="stBar">
+    <button id="stPlay" type="button">Play or pause</button>
+    <button id="stPrev" type="button">Previous track</button>
+    <button id="stNext" type="button">Next track</button>
+    <button id="stKeep" type="button" aria-pressed="true">Keep my changes: on</button>
+    <select id="stTpl" aria-label="What changes by chance from this moment"></select>
+    <button id="stDel" type="button">Remove the change</button>
+    <button id="stUndo" type="button">Undo</button>
+    <button id="stRedo" type="button">Do again</button>
+    <span class="stGap"></span>
+    <label for="stName">Score</label><input id="stName" type="text" maxlength="28" autocomplete="off" spellcheck="false">
+    <button id="stDraft" type="button">Draft a score</button>
+    <button id="stEmpty" type="button">Start empty</button>
+    <button id="stSave" type="button">Save as a pack file</button>
+    <button id="stRemove" type="button">Remove the score</button>
+    <button id="stClose" type="button">Close</button>
+  </div>
+  <p id="stSay" role="status">Change anything while the music plays or is paused, and it is written here at that moment. Click the ruler to move the music; hold Shift and drag on it to play a passage round and round. Drag a change to move it. Press twice in a lane to write what is showing now. Turn the wheel to look closer.</p>
+  <div id="stScroll"><canvas id="stCv"></canvas></div>
 </div>
 <div id="toast" role="status"></div>
 <div id="err"></div>

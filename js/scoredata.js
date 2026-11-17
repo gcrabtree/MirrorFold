@@ -47,8 +47,8 @@ export function cleanTrack(src){
     raw.sort(function(a,b){return a[0]-b[0]||a[3]-b[3];}); /* by time; two at one time keep the order they came in */
     for(i=0;i<raw.length&&cues.length<SC_CUES;i++){
       c=raw[i];t=c[0];k=c[1];
-      if(k in lastOf&&t-lastOf[k]<SC_GAP)continue;
-      if(SC_SOFT.indexOf(k)<0){if(t>0&&t-lastHard<SC_NEAR)continue;lastHard=t;} /* cues at the very start set the scene together, before anything is seen */
+      if(k in lastOf&&t-lastOf[k]<SC_GAP-1e-6)continue; /* times are in hundredths, so a gap of exactly the least is let through whatever the arithmetic makes of it */
+      if(SC_SOFT.indexOf(k)<0){if(t>0&&t-lastHard<SC_NEAR-1e-6)continue;lastHard=t;} /* cues at the very start set the scene together, before anything is seen */
       lastOf[k]=t;cues.push([t,k,c[2]]);
     }
   }

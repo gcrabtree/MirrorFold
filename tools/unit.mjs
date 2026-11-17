@@ -1254,5 +1254,28 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("draft: the tiers", draftTier(0.1) === "quiet" && draftTier(0.5) === "mid" && draftTier(0.9) === "full");
 }
 
+// ---- the composing screen's arithmetic (js/studio.js)
+{
+  const { stStep, stClock, stZoom, stSnap, stPut, stLanes } = (await import("../js/studio.js")).__dbg, { cleanTrack, SC_NEAR } = scoreM;
+  expect("studio: the ruler's ticks are a round step at least 70 pixels apart", stStep(100) === 1 && stStep(10) === 10 && stStep(3) === 30 && stStep(0.001) === 1200);
+  expect("studio: a time as written", stClock(62.46) === "1:02.5" && stClock(0) === "0:00.0" && stClock(-3) === "0:00.0");
+  let z = stZoom(0, 200, 200, 50, 0.5);
+  expect("studio: zooming keeps the moment under the mouse where it is", Math.abs(z[0] - 25) < 1e-9 && Math.abs(z[1] - 125) < 1e-9);
+  z = stZoom(0, 200, 200, 100, 4); const z2 = stZoom(99, 101.5, 200, 100, 0.01), z3 = stZoom(150, 200, 200, 199, 2);
+  expect("studio: the view stays inside the track and no closer than two seconds", z[0] === 0 && z[1] === 200 && Math.abs(z2[1] - z2[0] - 2) < 1e-9 && z3[1] <= 200 + 1e-9 && z3[0] >= 0);
+  expect("studio: a time catches on a near mark only", stSnap(30.3, [10, 30, 60], 0.5) === 30 && stSnap(31, [10, 30, 60], 0.5) === 31);
+  const cues = [[0, "world", "julia"], [20, "world", "temple"], [20.5, "palette", "Sunset"], [40, "filter", "Neon"]];
+  let r = stPut(cues, 20.3, "world", "gates", 100, -1);
+  expect("studio: a new cue takes the place of one of its kind too near it", r.cues.filter(c => c[1] === "world").length === 2 && r.cues.some(c => c[2] === "gates") && !r.cues.some(c => c[2] === "temple"));
+  r = stPut(cues, 40.1, "mirrors", "6", 100, -1);
+  expect("studio: a cue too near another kind's is put just after it", Math.abs(r.t - (40 + SC_NEAR)) < 1e-9 && r.cues.length === 5);
+  expect("studio: what it writes, the cleaner leaves alone", JSON.stringify(cleanTrack({ len: 100, cues: r.cues }).cues) === JSON.stringify(r.cues));
+  r = stPut(cues, 30, "world", "temple", 100, 1);
+  expect("studio: a cue moved is not doubled", r.cues.filter(c => c[2] === "temple").length === 1 && r.cues.find(c => c[2] === "temple")[0] === 30 && r.cues.length === 4);
+  expect("studio: no room at the very end", stPut([[99.9, "filter", "Neon"]], 99.95, "mirrors", "6", 100, -1) === null);
+  expect("studio: a soft kind may sit beside anything", stPut(cues, 40.1, "palette", "Ember", 100, -1).t === 40.1);
+  expect("studio: the lanes are By chance, then those in use", stLanes(cues).join() === "journey,world,palette,filter" && stLanes([]).join() === "journey,world,palette");
+}
+
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

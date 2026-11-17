@@ -32,8 +32,10 @@ export let jLast="";         /* the category Journey changed most recently, for 
 export let jMove="travel";  /* "travel" flies and steers for you; "drift" leaves the flying to you and only changes the scenery */
 export function jtReset(){jt=BUILTIN_T[0];}
 let HOLD_T;                  /* a template that changes nothing */
+export const jMade={};       /* for each kind, the last name Journey itself chose, so that the composing screen can tell a change made by hand from one made by chance (js/studio.js) */
 let jOver;                   /* a score's say in which template is in use (js/scoreplay.js): a template, null for none (nothing changes by chance), and undefined while no score has a say */
 /* A score takes over the choice of template, or with undefined gives it back to the list. */
+export function jOverNow(){return jOver;}
 export function jUse(t){
   jOver=t;
   if(t===undefined){if(journey)selectJourney(store.sel);return;}
@@ -224,7 +226,7 @@ export function stepJourney(dt){
   for(var ci=0;ci<CATS.length;ci++){
     var ck=CATS[ci].k,cf=jt[ck];
     if(tgGuest())continue; /* flying together as a guest: the host's Journey makes the changes, and they arrive from the host */
-    if(cf.mode==="off"){if(jCur(ck)!==jNone(ck))jApply(ck,jNone(ck));continue;}
+    if(cf.mode==="off"){if(jCur(ck)!==jNone(ck)){jMade[ck]=jNone(ck);jApply(ck,jNone(ck));}continue;}
     if(cf.mode!=="random")continue;
     var due=J[ck].t>J[ck].next;
     if(ck==="world"&&cf.trigger==="sound"&&liveAudio()){ /* wait for the music to shift, but never forever */
@@ -234,8 +236,8 @@ export function stepJourney(dt){
     if(ck==="world"&&(doorOwed()||tr.warpDir!==0))continue; /* a change of world is already on its way */
     var pick=jPick(ck,cf,jCur(ck),jPool(ck,cf),ck==="world"?jFrom:"");
     /* a new world while Journey is flying: through a doorway where there can be one (js/doors.js), which changes the world the old way itself if it is not gone through */
-    if(ck==="world"&&doorsOn&&jMove==="travel"&&pick!==jCur(ck)&&doorOpen(jIndex(ck,pick),true)){jReset(ck);jLast=ck;continue;}
-    if(jApply(ck,pick)){jReset(ck);jLast=ck;}
+    if(ck==="world"&&doorsOn&&jMove==="travel"&&pick!==jCur(ck)&&doorOpen(jIndex(ck,pick),true)){jMade[ck]=pick;jReset(ck);jLast=ck;continue;}
+    if(jApply(ck,pick)){jMade[ck]=pick;jReset(ck);jLast=ck;}
   }
 }
 /* journey clocks: each change has a target interval and fires within a fifth either side of it */
@@ -311,7 +313,7 @@ $("advForget").addEventListener("click",function(){var n=tasteCount();tasteClear
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={jUse, get HOLD_T(){return HOLD_T}, get jOver(){return jOver},set jOver(v){jOver=v}, jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, get jWas(){return jWas},set jWas(v){jWas=v}, get jFrom(){return jFrom},set jFrom(v){jFrom=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
+export const __dbg={jUse, jMade, jOverNow, get HOLD_T(){return HOLD_T}, get jOver(){return jOver},set jOver(v){jOver=v}, jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, get jWas(){return jWas},set jWas(v){jWas=v}, get jFrom(){return jFrom},set jFrom(v){jFrom=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
   findT, findS, jCur, jNone, jIndex, jApply, jPool, jPick, applyTemplate, advanceSet,
   selectJourney, fillJT, setJMove, setJourney, autopilot, stepJourney, J, jReset, jResetAll, get jt(){return jt},set jt(v){jt=v},
   get journey(){return journey},set journey(v){journey=v}, get jMove(){return jMove},set jMove(v){jMove=v}, get CATS(){return CATS},set CATS(v){CATS=v}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v}, get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get jset(){return jset},set jset(v){jset=v}};

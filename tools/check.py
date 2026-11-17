@@ -144,6 +144,10 @@ setTimeout(function(){
   player.mode="buf";player.buf={duration:200.4};player.playing=false;musicMode="file";
   at(5);at(38);at(38.5);at(39.6);at(41.1);at(95);at(3);
   log("score="+sl.join(" ")+" button="+$("bScore").textContent);
+  /* the composing screen: a change made by hand is written into the score at the music's moment, and can be undone */
+  setStudio(true);studioFrame();var c0=stTrack().cues.length;setPalette(pi+1);studioFrame();var c1=stTrack().cues.length,cu=stTrack().cues[stPick]||[];
+  scoreClock();studioFrame();var c2=stTrack().cues.length;stGoBack("","r");
+  log("studio="+studioOpen+" written="+(c1-c0)+" as "+cu[1]+"@"+cu[0]+" again="+(c2-c1)+" undone="+(stTrack().cues.length===c0)+" lanes="+stRows.join("+"));setStudio(false);
   scoreSet(null);scoreRemove("Check album");player.mode=null;player.buf=null;musicMode=wm;calm=wc;setLook(0);
   log("score off="+(jt.name!=="none")+" kept="+scores.length);
 },3760);
@@ -163,6 +167,7 @@ packs_ok = all(json.loads(t)["name"] + ":true:%d/%d" % ((len(json.loads(t).get("
 if not packs_ok:
     print("   a published pack did not load whole, or one of its filters did not compile")
 score_ok = "score=julia/Spectrum/none/Calm julia/Sunset/none/Calm julia/Sunset/none/Calm temple/Sunset/none/Calm temple/Sunset/Neon/Calm temple/Sunset/Neon/none julia/Sunset/Neon/Calm button=Score: Check album" in log and "score off=true kept=0" in log
+score_ok = score_ok and "studio=true written=1 as palette@3 again=0 undone=true lanes=journey+world+palette+filter" in log
 if not score_ok:
     print("   the score did not make its changes at the music's time")
 ok = score_ok and title == "Mirrorfold" and not err and "FAILED" not in log and "glerr=0" in log and "DONE" in log and packs_ok

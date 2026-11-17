@@ -226,3 +226,21 @@ p{margin:0;font-size:13px;line-height:1.6;color:var(--ink-dim)}
 /* photo mode's sliders: a name and a slider in one button-shaped box */
 .btn.slide{display:inline-flex;align-items:center;gap:8px}
 .btn.slide input[type=range]{width:110px;height:18px;margin:0;accent-color:var(--cool);touch-action:pan-y}
+
+/* the composing screen: a panel along the bottom, and the picture in the room above it */
+#studio{position:fixed;left:0;right:0;bottom:0;height:var(--st-h);z-index:5;background:#0b0716;border-top:1px solid var(--edge);display:flex;flex-direction:column;gap:6px;padding:8px 10px;
+  -webkit-user-select:none;user-select:none}
+#studio[hidden]{display:none}
+body.studio{--st-h:min(46vh,380px)}
+body.studio>canvas#c{inset:0 0 auto 0;height:calc(100% - var(--st-h))}
+body.studio #toast{bottom:calc(var(--st-h) + 24px)}
+body.studio #err{bottom:calc(var(--st-h) + 8px)}
+.stBar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.stBar button,.stBar select{padding:7px 10px;font-size:11px;border-radius:8px;-webkit-backdrop-filter:none;backdrop-filter:none}
+.stBar select{padding-right:26px;max-width:220px}
+.stBar label{font-size:11px;color:var(--ink-dim)}
+.stBar input{font:500 11px/1 var(--body);color:var(--ink);background:rgba(243,236,255,.06);border:1px solid var(--edge);border-radius:8px;padding:7px 8px;width:170px;-webkit-user-select:text;user-select:text}
+.stGap{flex:1}
+#stSay{margin:0;font-size:11px;line-height:1.35;color:var(--ink-dim);min-height:15px}
+#stScroll{flex:1;min-height:0;overflow-y:auto;border:1px solid var(--edge);border-radius:8px}
+#stCv{position:static;display:block;width:100%;height:120px;touch-action:none;cursor:default;background:#0b0716}

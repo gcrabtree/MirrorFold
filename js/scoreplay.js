@@ -8,11 +8,11 @@ import { scene, setWorldNow } from "./choose.js";
 import { $, toast } from "./dom.js";
 import { flightPlaying } from "./flightplay.js";
 import { wakeHud } from "./input.js";
-import { findT, jApply, jUse, journey, setJourney } from "./journey.js";
+import { findT, jApply, jOverNow, jUse, journey, setJourney } from "./journey.js";
 import { lapOn } from "./lap.js";
 import { musicMode } from "./listen.js";
 import { mediaClock, mediaTitle } from "./media.js";
-import { SC_KINDS, cleanScore, scChase, scMatch, scOrder, scSeek } from "./scoredata.js";
+import { SC_KINDS, cleanScore, cleanTrack, scChase, scMatch, scOrder, scSeek } from "./scoredata.js";
 import { still } from "./still.js";
 import { tgGuest } from "./together.js";
 import { WORLDS } from "./worlds.js";
@@ -22,11 +22,31 @@ let use=null;                /* the score in use, or null */
 /* where the playing is: the file it was last matched to (tok, dur), the track that file is (ti, -1 for none of them),
    that track's cues in order of asking (ord) and how many have been asked for (pi), the file's time at the last frame
    (last), and the changes asked for that are waiting for a transition to end (pend) */
-const st={tok:-1,dur:0,ti:-1,ord:null,pi:0,last:-10,pend:[]};
+const st={tok:-1,dur:0,ti:-1,ord:null,pi:0,last:-10,t:0,pend:[]};
+export const scMade={};      /* for each kind, the last name the score itself asked for, so that the composing screen can tell a change made by hand (js/studio.js) */
 
 export function scoreUse(){return use;}
 /* The track of the score that is playing, and the time in it: {i, t}, or null while the file is none of them. */
-export function scoreNow(){return use&&st.ti>=0&&st.ord?{i:st.ti,t:st.last}:null;}
+export function scoreNow(){return use&&st.ti>=0&&st.ord?{i:st.ti,t:st.t}:null;}
+/* Change a track of the score in use: its cues and marks are replaced by these, through the cleaner. The picture is
+   then brought to what the score now asks for at this moment. False if they were refused. */
+export function scoreEdit(ti,cues,marks){
+  var tr=use&&use.tracks[ti],got;
+  if(!tr)return false;
+  got=cleanTrack({name:tr.name,len:tr.len,marks:marks,cues:cues});
+  if(!got)return false;
+  use.tracks[ti]=got;scoresSave();
+  if(ti===st.ti){st.ord=scOrder(got.cues);st.last=-10;st.pend=[];}
+  return true;
+}
+/* Give the score in use another name (one no other score has). */
+export function scoreRename(name){
+  var i;
+  if(!use||!name)return false;
+  for(i=0;i<scores.length;i++)if(scores[i]!==use&&scores[i].name===name)return false;
+  use.name=name;scoresSave();label();
+  return true;
+}
 function label(){
   var b=$("bScore");
   b.hidden=!scores.length;b.textContent=use?"Score: "+use.name:"Score off";
@@ -58,7 +78,8 @@ function worldIndex(id){for(var i=0;i<WORLDS.length;i++)if(WORLDS[i].id===id)ret
 /* Make one change. False if it must wait (a transition is running). With now it is made at once, with nothing to cover it: after a jump in the music. */
 function apply(k,v,now){
   var i;
-  if(k==="journey"){jUse(v?findT(v):null);return true;} /* a template that is not here is none: nothing changes by chance */
+  if(k==="journey"){i=v?findT(v):null;if(jOverNow()!==i)jUse(i);return true;} /* a template that is not here is none: nothing changes by chance. One already in use is left running. */
+  scMade[k]=v;
   if(k==="world"&&now){i=worldIndex(v);if(i>=0&&WORLDS[i]!==scene.world)setWorldNow(i,true);return true;}
   return jApply(k,v,now);
 }
@@ -87,7 +108,7 @@ export function scoreClock(){
     for(i=0;i<SC_KINDS.length;i++){k=SC_KINDS[i];if(k in want)st.pend.push({k:k,v:want[k],now:true});}
     st.pi=scSeek(st.ord,pos);
   }else while(st.pi<st.ord.length&&st.ord[st.pi].at<=pos)st.pend.push(st.ord[st.pi++]);
-  st.last=pos;
+  st.last=st.t=pos;
   while(st.pend.length){c=st.pend[0];if(!apply(c.k,c.v,c.now))break;st.pend.shift();}
 }
 /* Scores from a pack or from what was kept: each through cleanScore. How many were taken. */
@@ -118,4 +139,4 @@ $("bScore").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={SCORES_MAX, scores, scoreUse, scoreNow, scoreLabel:label, scoresSave, scoreAdd, scoreRemove, scoreSet, scoreWorldIndex:worldIndex, scoreApply:apply, scoreMatch:match, scoreClock, scoresAdopt, scoreSt:st};
+export const __dbg={scMade, scoreEdit, scoreRename, SCORES_MAX, scores, scoreUse, scoreNow, scoreLabel:label, scoresSave, scoreAdd, scoreRemove, scoreSet, scoreWorldIndex:worldIndex, scoreApply:apply, scoreMatch:match, scoreClock, scoresAdopt, scoreSt:st};

@@ -11,6 +11,7 @@ import { measure } from "./flight.js";
 import { flightClock, flightFrame } from "./flightplay.js";
 import { stepFlits } from "./flits.js";
 import { scoreClock } from "./scoreplay.js";
+import { studioFrame } from "./studio.js";
 import { wakeHud } from "./input.js";
 import { stepZoom } from "./zoom.js";
 import { autopilot, jMove, journey, stepJourney } from "./journey.js";
@@ -141,6 +142,7 @@ function frame(now){
   pictureFrame(); /* Save picture takes the frame now, while it is still on the canvas */
   lapShot(); /* a loop being recorded is handed the frame */
   photoFrame(); /* photo mode: a large picture is saved once it has settled (js/photo.js) */
+  studioFrame(); /* the composing screen writes down what was changed by hand, and draws its timeline (js/studio.js) */
   statsEnd(rawDt);
 }
 
