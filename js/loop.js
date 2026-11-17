@@ -53,6 +53,7 @@ const notes={
   raw:0,                       /* seconds since the last frame as they really were, at most 1: for what must keep time with the music however slow the frames (the dancers' count of beats) */
   bt:0,lv:0,                   /* the sound: the beat's pulse and the low end's level */
   mp:0,mv:0,hp:0,hv:0,         /* the mids' pulse and level, the treble's pulse and level */
+  on:null,                     /* how much sound has just begun in each of four parts of the spectrum (listen.js's onsets), for the dancers */
   m:0,                         /* the morph, about -1.2 to 1.2 */
   w:null,wSpeed:0,pk:false,    /* the world, its top speed, and whether it came from a pack */
   dist:0,                      /* distance from the camera to the nearest surface */

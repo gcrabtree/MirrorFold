@@ -103,6 +103,26 @@ export function tap(){
 /* Three bands, each with a level (how loud, smoothed) and a pulse (a hit that decays).
    Bass drives zoom kicks, bloom and field of view. Mids drive the morph when it drifts by itself, rotation, wobble and the glowing bands.
    Treble drives highlights, colour fringing, colour drift and the small overlay lights. */
+/* For the dancing figures (js/dance.js): how much sound has just begun in each of four parts of the spectrum, low to
+   high. A band's pulse above says how far the band is over its own average, which hardly moves in music whose bass
+   rolls on without a clear kick; this says how much the bins rose since the last frame, which shows a hi-hat or a
+   clap as well as a kick, however loud the rest is. Each is a number that jumps up and dies away in a quarter of a
+   second or so. ONSET_BINS are the first and last bin of each part (about 50 to 230 Hz, to 2.8 kHz, to 7.5 kHz, to
+   19 kHz). */
+export const ONSET_BINS=[1,5,6,59,60,159,160,400];
+export const onsets=new Float32Array(4);
+const binsWas=new Uint8Array(512);
+let onsetsLive=false;
+/* one frame of that: bins is the spectrum now, was the spectrum last frame (which this brings up to date), out the four numbers */
+export function onsetStep(bins,was,out,dt){
+  var k,i,a,b,s,d;
+  for(k=0;k<4;k++){
+    a=ONSET_BINS[2*k];b=Math.min(bins.length-1,ONSET_BINS[2*k+1]);s=0;
+    for(i=a;i<=b;i++){d=bins[i]-was[i];if(d>0)s+=d;}
+    out[k]=Math.max(out[k]*Math.exp(-dt*8),s/((b-a+1)*255));
+  }
+  for(i=0;i<was.length&&i<bins.length;i++)was[i]=bins[i];
+}
 export const bands={b:{lv:0,p:0,mx:.08,av:0,fl:.08},m:{lv:0,p:0,mx:.05,av:0,fl:.05},t:{lv:0,p:0,mx:.03,av:0,fl:.03}};
 function bandStep(o,raw,dt,gain){
   o.mx=Math.max(o.mx*0.9995,raw,o.fl);var x=raw/o.mx;
@@ -136,13 +156,15 @@ export function readMusic(dt){
     bands.b.p=Math.exp(-ph*4.5);bands.b.lv=0.45;
     bands.m.p=0.7*Math.exp(-((ph+0.5)%1)*5);bands.m.lv=0.35;
     bands.t.p=0.5*Math.exp(-((ph*2)%1)*6);bands.t.lv=0.3;
+    onsets[0]=0.1*bands.b.p;onsets[1]=onsets[2]=onsets[3]=0;onsetsLive=false; /* the figures hear the taps as a kick drum */
   }else if(liveAudio()){
     analyser.getByteFrequencyData(fbins);
     var rb=bandAvg(1,4),rm=bandAvg(6,45),rt=bandAvg(60,250); /* roughly below 200 Hz, 250 Hz to 2 kHz, above 2.5 kHz */
     bandStep(bands.b,rb,dt,3.2);bandStep(bands.m,rm,dt,4);bandStep(bands.t,rt,dt,4.5);
     en=0.5*rb+0.35*rm+0.15*rt;live=true;
+    if(onsetsLive)onsetStep(fbins,binsWas,onsets,dt);else{for(k=0;k<binsWas.length&&k<fbins.length;k++)binsWas[k]=fbins[k];onsetsLive=true;} /* the first frame of sound is not a rise from nothing */
     soundChanged=detectChange(dt,en,(rt+0.5*rm)/(rb+rm+rt+0.001));
-  }else{for(k in bands){o=bands[k];o.p*=Math.exp(-dt*5);o.lv*=Math.exp(-dt*2);}}
+  }else{for(k in bands){o=bands[k];o.p*=Math.exp(-dt*5);o.lv*=Math.exp(-dt*2);}for(k=0;k<4;k++)onsets[k]*=Math.exp(-dt*8);onsetsLive=false;}
   songStep(dt,en,live); /* how full the music is, and whether a drop has landed (js/song.js) */
   beat=bands.b.p;level=bands.b.lv;
 }
@@ -153,6 +175,7 @@ export function soundFrame(fr){
   var react=calm?0.25:1;
   fr.bt=beat*react;fr.lv=level*react;
   fr.mp=bands.m.p*react;fr.mv=bands.m.lv*react;fr.hp=bands.t.p*react;fr.hv=bands.t.lv*react;
+  fr.on=onsets;
 }
 export let waveTex=null,tbins=null;        /* the sound's wave as a small picture for the overlays, and the samples it is made from */
 export const waveBuf=new Uint8Array(128);
@@ -198,6 +221,6 @@ soundChanged=false,detectChange=makeChangeDetector();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={tapBpm, friend, setFriendSound, friendPlay, stopListening, startListening, listening, setMusic, tap, bands, bandStep, bandAvg, liveAudio, makeChangeDetector,
+export const __dbg={ONSET_BINS, onsets, onsetStep, tapBpm, friend, setFriendSound, friendPlay, stopListening, startListening, listening, setMusic, tap, bands, bandStep, bandAvg, liveAudio, makeChangeDetector,
   readMusic, soundFrame, waveBuf, updateWave, get musicMode(){return musicMode},set musicMode(v){musicMode=v}, get beat(){return beat},set beat(v){beat=v}, get level(){return level},set level(v){level=v}, get taps(){return taps},set taps(v){taps=v}, get tapInt(){return tapInt},set tapInt(v){tapInt=v}, get tapAt(){return tapAt},set tapAt(v){tapAt=v},
   get soundChanged(){return soundChanged},set soundChanged(v){soundChanged=v}, get canTab(){return canTab},set canTab(v){canTab=v}, get canMic(){return canMic},set canMic(v){canMic=v}, get detectChange(){return detectChange},set detectChange(v){detectChange=v}, get waveTex(){return waveTex},set waveTex(v){waveTex=v}, get tbins(){return tbins},set tbins(v){tbins=v}};
