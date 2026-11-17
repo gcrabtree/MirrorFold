@@ -171,23 +171,26 @@ export function danceFlat(b,o){
    with none. A voice talking makes hits too, but not evenly, so its sure stays low; the figures dance only to a
    beat that is sure. While it is low a hit sets the count outright, there being no beat to keep to. */
 export function makeBeatClock(){
-  var u=0,per=0.5,low=0,since=9,pend=0,odd=0,off=0,sure=0,fit=0,kept=false,got=false,out={u:0,per:0.5,du:0,sure:0};
+  var u=0,per=0.5,low=0,since=9,pend=0,odd=0,off=0,sure=0,fit=0,warm=99,kept=false,got=false,out={u:0,per:0.5,du:0,sure:0};
   return function(dt,p){
-    var iv,e,c,du,ok,r,tol;
+    var iv,e,c,du,ok,r,tol,by;
     since+=dt;low=Math.min(low,p);
     if(since>1.5)sure=Math.max(0,sure-0.4*dt);
     if(since>3)kept=false;
+    if(kept||sure>=0.95)warm=0;else warm+=dt;
     if(p>low+0.15&&p>0.2&&since>=0.24){
-      iv=since;since=0;low=p;ok=-1;e=u+pend-Math.round(u+pend);
-      if(iv<2.2){
+      iv=since;since=0;low=p;ok=by=-1;e=u+pend-Math.round(u+pend);
+      if(iv>=2.2){if(got&&warm<30)sure=Math.max(sure,0.75);got=false;odd=0;} /* sound again after a gap (the music was stopped, or another track chosen): the beat is found afresh from the next two hits, whatever it was before, and if the figures were dancing lately one more hit on it has them dancing again */
+      else{
         r=iv/per;tol=Math.max(0.07,0.03/per,1.5*dt/per); /* a frame and a half at least: a slow frame rate does not see a hit any nearer than that */
         ok=!got?-1:r>0.4&&Math.abs(r-Math.round(2*r)/2)<tol?1:r>0.2&&Math.abs(r-Math.round(4*r)/4)<tol?0.5:0;
+        by=ok;
         if(ok===1){c=iv/(Math.round(2*r)/2);per=Math.max(DN_FAST,Math.min(DN_SLOW,per+(c-per)*0.2));odd=0;} /* a hit on the beat says how long the beat is */
         else{
           if(ok>=0&&kept&&(Math.abs(e)<tol||Math.abs(e)>0.5-tol))ok=1; /* off the last hit but on the count: the last was the odd one */
           while(iv>=DN_SLOW)iv/=2;while(iv<DN_FAST)iv*=2;
           if(!got){per=iv;got=true;odd=0;}
-          else if(ok===0&&++odd>=(kept?8:3)){per=iv;odd=0;} /* hit after hit that fits nothing: the beat held is wrong */
+          else if((odd+=by===0?1:kept?0:0.5)>=(kept?8:3)){per=iv;odd=0;} /* hit after hit that is not on the beat: the beat held is wrong (one a quarter beat off counts half, and not at all while the beat is kept) */
         }
       }
       if(sure<0.2&&!kept){pend=e>0.25?1-e:-e;off=0;}
@@ -195,10 +198,10 @@ export function makeBeatClock(){
       else if(Math.abs(e)>0.35){pend=-0.75*(e>0?e-0.5:e+0.5);off=0;} /* on the half beat: the count is pulled to that */
       else if(++off>=(kept?6:3)){pend=-e;off=0;} /* hit after hit between the counts: the count is what is out */
       if(ok>=0){
-        sure=ok===1?Math.min(1.5,sure+0.25):ok?sure:Math.max(0,sure-(kept?0.15:0.3)); /* it is kept to half as much again as is given out, so that a beat that is sure is not lost to a hit or two off it */
-        fit+=(ok-fit)*0.12;
-        if(sure>=1.45){kept=true;fit=Math.max(fit,0.8);}
-        if(kept&&fit<0.6)kept=false;
+        sure=ok===1?Math.min(1.5,sure+0.25):Math.max(0,sure-(ok?(kept?0:0.08):kept?0.15:0.3)); /* it is kept to half as much again as is given out, so that a beat that is sure is not lost to a hit or two off it */
+        fit+=(by-fit)*0.12; /* by the time since the last hit alone: if the hits only fit the count by turns, the count is at the wrong speed */
+        if(sure>=1.45&&by===1&&!kept){kept=true;fit=Math.max(fit,0.8);}
+        if(kept&&fit<0.55){kept=false;sure=Math.min(sure,0.9);}
       }
     }
     c=pend*Math.min(1,dt*12);pend-=c;

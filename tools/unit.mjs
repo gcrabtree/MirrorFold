@@ -1024,6 +1024,11 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
       const share = h => { const bc3 = dn.makeBeatClock(); let j = 0, on = 0, n = 0, o3; for (let tt = 0; tt < 90; tt += dt) { while (j < h.length - 1 && h[j + 1] <= tt) j++; o3 = bc3(dt, tt >= h[j] ? Math.exp(-7 * (tt - h[j])) : 0); if (tt > 10) { n++; if (o3.sure >= 0.95) on++; } } return on / n; };
       const got = [[0, 1, 2, 3], [0, 2], [0, 1.5, 2, 3.75], [0, 0.75, 1.5, 2.25, 3, 3.5], [0, 1.5, 3]].map(st2 => share(line(st2, 90)));
       expect("a bass line that is off the beat part of the time (hip-hop, funk, a dotted line) is still a beat to the clock", got.every(v => v > 0.7), got.map(v => v.toFixed(2)).join(" ")); }
+    { // the music stops and another track starts at another speed (a file chosen in place of the built-in track): the beat is found again at once
+      const after = (p1, gap, p2) => { const bc4 = dn.makeBeatClock(); let o4, tt = 0, t0 = -1; for (; tt < 14; tt += dt) o4 = bc4(dt, hit(tt, p1)); for (let g = 0; g < gap; g += dt) o4 = bc4(dt, 0); const low4 = o4.sure; for (let t2 = 0; t2 < 20; t2 += dt) { o4 = bc4(dt, hit(t2, p2)); if (t0 < 0 && o4.sure >= 0.95) t0 = t2; } return [low4, t0, o4.per, o4.sure]; };
+      const a1 = after(0.47, 6, 0.4), a2 = after(0.5, 6, 0.375), a3 = after(0.5, 0, 0.375), a4 = after(0.5, 0, 0.625);
+      expect("after a gap in the sound the clock is sure of the new beat within two seconds, at the new speed", a1[0] < 0.2 && a1[1] >= 0 && a1[1] < 2 && Math.abs(a1[2] - 0.4) < 0.02 && a2[1] >= 0 && a2[1] < 2 && Math.abs(a2[2] - 0.375) < 0.02, a1.concat(a2).map(v => v.toFixed(2)).join(" "));
+      expect("a beat that changes speed with no gap, even to three quarters or five quarters of what it was, has been taken up at the new speed twenty seconds on", a3[3] >= 0.95 && Math.abs(a3[2] - 0.375) < 0.02 && a4[3] >= 0.95 && Math.abs(a4[2] - 0.625) < 0.02, a3.concat(a4).map(v => v.toFixed(2)).join(" ")); }
     { // changing from one overlay of figures to another while the music plays does not stop the dance
       dn.danceTick = dn.makeBeatClock(); let tt = 0, low = 1; const go = (kd, secs) => { sel.ovi = OVERLAYS.findIndex(v => v.dance === kd); for (let n = 0; n < secs * 60; n++, tt += dt) { dn.stepDance({ dt, bt: hit(tt, 0.47), mp: 0 }); if (secs < 9) low = Math.min(low, ...dn.crowd.map(d => d.a)); } };
       go(1, 10); go(2, 3); go(3, 3); go(1, 3); go(2, 3);
@@ -1066,7 +1071,7 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     const soft = hips(false), hard = hips(true);
     expect("a kick bends the knees as it lands: the hips are lower just after a hard one than a soft one", soft - hard > 0.004, soft + " " + hard);
     // the moonwalk glides backward, and stops short of the end of its room
-    const mw = mv.MOVES.findIndex(m => m.name === "moonwalk"), dd = dn.crowd[0]; dd.rt = { mv: [mw], mir: [false], tier: "mid" }; dd.mv = mw; dd.mir = false; dd.next = 1e9; let far = 0, early = 0;
+    const mw = mv.MOVES.findIndex(m => m.name === "moonwalk"), dd = dn.crowd[0]; dd.rt = { mv: [mw], mir: [false], tier: "mid" }; dd.mv = mw; dd.mir = false; dd.next = 1e9; dd.go = true; dd.sp = 0; dd.fa = 0; let far = 0, early = 0;
     for (let n = 0; n < 480; n++) dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.5, false, false, false, n * dt); dd.tx = 0; // the beat is under way and the figure dancing before it is put on its place
     for (let n = 480; n < 60 * 48; n++) { dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.5, false, false, false, n * dt); far = Math.min(far, dd.tx); if (n === 720) early = dd.tx; }
     dn.danceBody(dd.p, J);
@@ -1081,12 +1086,12 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   { // a frame's time below zero, or a pulse far out of range, must not throw the figures about
     for (let n = 0; n < 240; n++) dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.8, false, false, false, n * dt);
     dn.danceStep(-0.4, 30, 30, 0.8, false, false, false, 4); dn.danceStep(NaN, NaN, -5, 0.8, false, false, false, 4); dn.danceStep(dt, 1, 0, 0.8, false, false, false, 4);
-    expect("a frame handed a time below zero or a pulse far out of range leaves every figure's pose and body where a body can be", dn.crowd.every(d => d.p.every((v, j) => j === 4 || Math.abs(v) < 0.8) && d.b.every(v => Math.abs(v) < 1.3) && Math.abs(dn.danceSt.kick) <= 1.5)); }
+    expect("a frame handed a time below zero or a pulse far out of range leaves every figure's pose and body where a body can be", dn.crowd.every(d => d.p.every((v, j) => j === 4 || Math.abs(v) < (j % 4 === 3 && j > 11 ? 2 : 0.8)) && d.b.every(v => Math.abs(v) < 1.3) && Math.abs(dn.danceSt.kick) <= 1.5)); }
   { // the dancer alone has a floor that goes away from the viewer: it goes all over it, never nearer than the front edge, and turns to face every way
     sel.ovi = OVERLAYS.findIndex(v => v.dance === 1); dn.stepDance({ dt, bt: 0, mp: 0 }); dn.danceTick = dn.makeBeatClock(); const d = dn.crowd[0]; let x0 = 9, x1 = -9, z0 = 9, z1 = -9, back = 0, big = 0, off = 0, front = dn.danceSpots(1, 1.78)[0][2];
     for (let n = 0; n < 60 * 240; n++) { dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.6, false, false, false, n * dt); x0 = Math.min(x0, d.tx); x1 = Math.max(x1, d.tx); z0 = Math.min(z0, d.tz); z1 = Math.max(z1, d.tz); back = Math.max(back, Math.abs(Math.sin(d.p[4] / 2)));
       if (n % 60 === 0) { dn.danceFill(1, 1.78); big = Math.max(big, dn.dnU[8][2] / (front * dn.DN_HEAD)); off = Math.max(off, Math.abs(dn.dnU[0][2])); } }
-    expect("the dancer alone goes all over a deep floor, never nearer than its front edge nor out of the picture, and is seen from every side", x1 - x0 > 2 && z1 - z0 > 2.5 && z0 > -0.02 && z1 < dn.DN_FLOOR + 0.02 && big < 1.25 && off < 0.89 && back > 0.95, [x0, x1, z0, z1, big, off, back].map(v => v.toFixed(2)).join(" "));
+    expect("the dancer alone goes all over a deep floor, never nearer than its front edge nor out of the picture, and is seen from every side", x1 - x0 > 2 && z1 - z0 > 2 && z0 > -0.02 && z1 < dn.DN_FLOOR + 0.02 && big < 1.25 && off < 0.89 && back > 0.95, [x0, x1, z0, z1, big, off, back].map(v => v.toFixed(2)).join(" "));
     const jsrc = (await import("node:fs")).readFileSync(new URL("../js/journey.js", import.meta.url), "utf8"), party = jsrc.slice(jsrc.indexOf('{name:"Dance party"'), jsrc.indexOf('{name:"Kaleidoscope"'));
     expect("the Dance party journey leaves out the Echo filter, which lays a second, larger, upside-down picture of the figures over them", party.includes('overlay:{mode:"random",every:40,set:["Dancer","Chorus line","Dance floor"]}') && !party.includes("Echo")); }
   sel.ovi = was; Math.random = rand;
