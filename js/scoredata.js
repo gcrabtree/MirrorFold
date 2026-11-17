@@ -7,6 +7,7 @@
    So a passage may be left loose and a moment pinned exactly, and the flight itself is always flown afresh.
    A score never holds the music, and a score from someone else is a stranger's text: it goes through cleanScore, and
    what comes out is numbers in a checked range and names that are only ever compared with the app's own lists. */
+import { FL_BYTES, FL_DT, flUnb64 } from "./flightdata.js";
 import { cleanName } from "./packs.js";
 export const SC_KINDS=["world","palette","mirrors","motion","filter","overlay","surface","land","packing","pulse","shapes","inside","dance","journey"];
 /* these kinds are changed behind a transition, which takes SC_LEAD seconds to reach its peak: they are asked for that much early, so that the change lands on its moment */
@@ -20,10 +21,31 @@ export const SC_TRACKS=40;   /* the most tracks in a score */
 export const SC_CUES=1500;   /* the most cues in a track */
 export const SC_MARKS=300;   /* the most marks in a track */
 export const SC_LEN=3*3600;  /* the longest track, in seconds */
+export const SC_TAKES=24;    /* the most camera takes in a track */
+export const SC_TAKE_MAX=600; /* the longest take, in seconds */
 export const SC_NEAR_LEN=1.5; /* a file is taken for a track if their lengths are within this many seconds */
 
 function num(x,lo,hi){return typeof x==="number"&&isFinite(x)?Math.max(lo,Math.min(hi,x)):null;}
 function cs(x){return Math.round(x*100)/100;} /* times are kept to a hundredth of a second */
+/* A camera take, checked, or null: {t, w, d}. t is the moment of the track it begins at; w the ids of the worlds it
+   passes through; d the camera twice a second, as a recorded flight keeps it (js/flightdata.js), in the letters of a
+   link. What comes out is a number, names, and bytes that are only ever read as numbers. len is the track's length. */
+export function cleanTake(src,len){
+  var t,w,d,bytes,n,i;
+  if(!src||typeof src!=="object"||Array.isArray(src))return null;
+  t=num(src.t,0,len);d=src.d;
+  if(t===null||!Array.isArray(src.w)||src.w.length<1||src.w.length>16||typeof d!=="string"||d.length>(SC_TAKE_MAX/FL_DT+2)*FL_BYTES*4/3+4||!/^[A-Za-z0-9_-]+$/.test(d))return null;
+  w=src.w.map(cleanName);
+  for(i=0;i<w.length;i++)if(!w[i]||w[i]!==src.w[i])return null;
+  try{bytes=flUnb64(d);}catch(_){return null;}
+  n=bytes.length/FL_BYTES;
+  if(n!==Math.floor(n)||n<2||n>SC_TAKE_MAX/FL_DT+2)return null;
+  for(i=0;i<n;i++)if(bytes[i*FL_BYTES+14]>=w.length)return null;
+  if(t+(n-1)*FL_DT>len+1)return null;
+  return {t:cs(t),w:w,d:d};
+}
+/* how long a take lasts, in seconds */
+export function takeLen(tk){return (Math.floor(tk.d.length*3/4/FL_BYTES)-1)*FL_DT;}
 /* A track, checked, or null. Cues come out in order of time; one too near another is dropped. */
 export function cleanTrack(src){
   var len,out,i,c,t,k,v,cues=[],marks=[],lastOf={},lastHard=-1e9;
@@ -53,7 +75,21 @@ export function cleanTrack(src){
       lastOf[k]=t;cues.push(c[4]?[t,k,c[2],c[4]]:[t,k,c[2]]);
     }
   }
+  if(Array.isArray(src.takes)){
+    var tks=[],end=-1;
+    src.takes.map(function(x){return cleanTake(x,len);}).filter(function(x){return !!x;}).sort(function(a,b){return a.t-b.t;}).forEach(function(tk){
+      if(tks.length>=SC_TAKES||tk.t<end)return; /* one that begins before the last has ended is dropped */
+      tks.push(tk);end=tk.t+takeLen(tk);
+    });
+    if(tks.length)out.takes=tks; /* a track with none has no list of them */
+  }
   return out;
+}
+/* The take that covers time t of a track, or null. */
+export function takeAt(track,t){
+  var a=track.takes,i;
+  if(a)for(i=0;i<a.length;i++)if(t>=a[i].t&&t<a[i].t+takeLen(a[i]))return a[i];
+  return null;
 }
 /* A score, checked, or null if it is not one. */
 export function cleanScore(src){
@@ -110,4 +146,4 @@ export function init(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={SC_CUTS, SC_KINDS, SC_BEHIND, SC_LEAD, SC_GAP, SC_NEAR, SC_SOFT, SC_TRACKS, SC_CUES, SC_MARKS, SC_LEN, SC_NEAR_LEN, cleanTrack, cleanScore, scOrder, scChase, scSeek, scMatch, scAt, scLen};
+export const __dbg={SC_TAKES, SC_TAKE_MAX, cleanTake, takeLen, takeAt, SC_CUTS, SC_KINDS, SC_BEHIND, SC_LEAD, SC_GAP, SC_NEAR, SC_SOFT, SC_TRACKS, SC_CUES, SC_MARKS, SC_LEN, SC_NEAR_LEN, cleanTrack, cleanScore, scOrder, scChase, scSeek, scMatch, scAt, scLen};

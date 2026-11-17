@@ -10,7 +10,7 @@ import { fbSet } from "./fabric.js";
 import { measure } from "./flight.js";
 import { flightClock, flightFrame } from "./flightplay.js";
 import { stepFlits } from "./flits.js";
-import { scoreClock } from "./scoreplay.js";
+import { scoreClock, scoreFrame } from "./scoreplay.js";
 import { studioFrame } from "./studio.js";
 import { wakeHud } from "./input.js";
 import { stepZoom } from "./zoom.js";
@@ -115,6 +115,7 @@ function frame(now){
   move(notes);
   stepZoom(notes);
   flightFrame(notes); /* a recorded flight being played puts the camera on its path; one being recorded notes it */
+  scoreFrame(notes); /* a score's camera take puts the camera on its path (js/scoreplay.js) */
   lapFrame(notes); /* a loop being flown puts the camera on its path (js/lap.js) */
   keepAbove(notes); /* over the Fabric the camera is kept above the cloth, which rises under it as a wave passes */
   stepDoor(notes); /* a doorway: opened, closed, and gone through (js/doors.js) */

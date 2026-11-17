@@ -8,22 +8,29 @@
    live and keeping the take. A block can then be dragged to another moment (it catches on the marks), or removed.
    Every change is written through the cleaner (scoreEdit), and can be undone. */
 import { pPos, pSeek, plAt, plCount, plFile, plGo, player } from "./audio.js";
+import { cam } from "./camera.js";
+import { scene } from "./choose.js";
+import { clock, morphValue } from "./clock.js";
 import { $, isTouch, toast } from "./dom.js";
+import { FL_BYTES, FL_DT, flB64, flSample, flWrite } from "./flightdata.js";
+import { pkDeep } from "./packing.js";
 import { wakeHud } from "./input.js";
 import { allT, jCur, jMade, store } from "./journey.js";
 import { musicMode } from "./listen.js";
 import { cleanName } from "./packs.js";
-import { SC_GAP, SC_KINDS, SC_NEAR, SC_SOFT } from "./scoredata.js";
+import { SC_GAP, SC_KINDS, SC_NEAR, SC_SOFT, SC_TAKE_MAX, takeLen } from "./scoredata.js";
 import { draftAlbum, hearFile, heardFile } from "./scoremake.js";
-import { scMade, scoreEdit, scoreNow, scoreRemove, scoreRename, scoreUse } from "./scoreplay.js";
+import { scMade, scoreEdit, scoreNow, scoreRemove, scoreRename, scoreUse, setTakeHold } from "./scoreplay.js";
 import { still } from "./still.js";
 import { resize } from "./targets.js";
 export const ST_GUT=96,ST_RULER=20,ST_WAVE=56,ST_LANE=22; /* the timeline's measures in CSS pixels: the lanes' names, the ruler, the music, one lane */
 export const ST_UNDO=100;    /* how many changes can be undone */
-export const ST_LANE_NAME={journey:"By chance",world:"World",palette:"Palette",mirrors:"Mirrors",motion:"Motion",filter:"Filter",overlay:"Overlay",surface:"Surface",land:"Land",packing:"Packing",pulse:"Pulse",shapes:"Shapes",inside:"Inside out",dance:"Dance style"};
+export const ST_LANE_NAME={journey:"By chance",world:"World",palette:"Palette",mirrors:"Mirrors",motion:"Motion",filter:"Filter",overlay:"Overlay",surface:"Surface",land:"Land",packing:"Packing",pulse:"Pulse",shapes:"Shapes",inside:"Inside out",dance:"Dance style",camera:"Camera"};
 export let studioOpen=false;
 let cv=null,cx=null;         /* the timeline's canvas and its drawing context */
 const view={a:0,b:1,ti:-1};  /* the seconds shown from left to right, and the track they belong to */
+let pickTake=-1;             /* the chosen camera take, or -1 */
+let tape=null;               /* the camera being recorded: {t0, n, bytes, worlds, last} */
 let pick=-1;                 /* the chosen cue: its place in the track's list, or -1 */
 let drag=null;               /* what the mouse is doing: {kind:"scrub"} or {kind:"loop",a} or {kind:"cue",i,t,moved} */
 let loop=null;               /* a passage that is played round and round: {a, b} in seconds, or null */
@@ -90,18 +97,18 @@ function say(text){$("stSay").textContent=text;}
 function edit(fn){
   var tr=track(),i=ti(),got,u;
   if(!tr)return false;
-  got=fn(tr.cues.map(function(c){return c.slice();}),tr.marks.slice());
+  got=fn(tr.cues.map(function(c){return c.slice();}),tr.marks.slice(),(tr.takes||[]).slice());
   if(!got)return false;
-  u=undo[i]||(undo[i]=[]);u.push(JSON.stringify({cues:tr.cues,marks:tr.marks}));if(u.length>ST_UNDO)u.shift();
+  u=undo[i]||(undo[i]=[]);u.push(JSON.stringify({cues:tr.cues,marks:tr.marks,takes:tr.takes||[]}));if(u.length>ST_UNDO)u.shift();
   undo["r"+i]=[];
-  return scoreEdit(i,got.cues,got.marks);
+  return scoreEdit(i,got.cues,got.marks,got.takes);
 }
 function goBack(from,to){
   var tr=track(),i=ti(),a=undo[from+i],s;
   if(!tr||!a||!a.length){toast(from?"Nothing to do again.":"Nothing to undo.");return;}
   s=JSON.parse(a.pop());
-  (undo[to+i]||(undo[to+i]=[])).push(JSON.stringify({cues:tr.cues,marks:tr.marks}));
-  scoreEdit(i,s.cues,s.marks);pick=-1;
+  (undo[to+i]||(undo[to+i]=[])).push(JSON.stringify({cues:tr.cues,marks:tr.marks,takes:tr.takes||[]}));
+  scoreEdit(i,s.cues,s.marks,s.takes||[]);pick=-1;pickTake=-1;
 }
 /* Write a cue at time t. Says so if there is no room. */
 function put(t,k,v){
@@ -119,8 +126,44 @@ function findPick(t,k){
   var tr=track(),i;pick=-1;
   if(tr)for(i=0;i<tr.cues.length;i++)if(tr.cues[i][1]===k&&Math.abs(tr.cues[i][0]-t)<0.006)pick=i;
 }
+/* Begin recording the camera at the music's moment; and end it, keeping the take in place of any it lies over. */
+function takeStart(){
+  var tr=track();
+  if(!tr){toast("There is no track of the score playing.");return;}
+  if(pkDeep(scene.world)){toast("The camera cannot be recorded in the descent: its places are moved outward as it goes. Choose another packing.");return;}
+  tape={t0:pPos(),n:0,bytes:new Uint8Array((SC_TAKE_MAX/FL_DT+2)*FL_BYTES),worlds:[],last:pPos()};
+  setTakeHold(true);
+  toast("Recording the camera from "+stClock(tape.t0)+". Fly, or let Journey fly. Press again to keep the take.");
+}
+function takeStop(why){
+  var r=tape,tk,a,b;
+  if(!r)return;
+  tape=null;setTakeHold(false);
+  if(r.n<4){toast((why||"")+"The take was too short to keep.");return;}
+  tk={t:r.t0,w:r.worlds,d:flB64(r.bytes.subarray(0,r.n*FL_BYTES))};a=tk.t;b=tk.t+(r.n-1)*FL_DT;
+  if(edit(function(cues,marks,takes){return {cues:cues,marks:marks,takes:takes.filter(function(x){return x.t+takeLen(x)<=a||x.t>=b;}).concat([tk])};}))
+    toast((why||"")+"Kept the camera from "+stClock(a)+" to "+stClock(b)+". When the score plays, that passage is flown this way.");
+  else toast("The take could not be kept.");
+}
+function takeFrame(){
+  var pos=pPos(),w=scene.world,wi;
+  if(!track()||pos<tape.last-0.05||pos>tape.last+1.5){takeStop("The music moved, so the recording ended. ");return;}
+  if(pkDeep(w)){takeStop("The recording ended where the descent began. ");return;}
+  tape.last=pos;
+  if(still)return;
+  while(tape&&pos>=tape.t0+tape.n*FL_DT){
+    wi=tape.worlds.indexOf(w.id);
+    if(wi<0){if(tape.worlds.length>=16){takeStop("A take passes through at most sixteen worlds. ");return;}tape.worlds.push(w.id);wi=tape.worlds.length-1;}
+    flWrite(tape.bytes,tape.n++,flSample(cam.pos,w.period(morphValue()),cam.F,cam.Up,clock.morphT,wi));
+    if(tape.n>=SC_TAKE_MAX/FL_DT){takeStop("A take is at most ten minutes. ");return;}
+  }
+}
 function removePick(){
-  var tr=track(),c=tr&&tr.cues[pick];
+  var tr=track(),c=tr&&tr.cues[pick],p=pickTake;
+  if(tr&&tr.takes&&tr.takes[p]){
+    edit(function(cues,marks,takes){takes.splice(p,1);return {cues:cues,marks:marks,takes:takes};});
+    pickTake=-1;say("Removed the camera take.");return;
+  }
   if(!c){toast("Click a change on the timeline first.");return;}
   edit(function(cues,marks){cues.splice(pick,1);return {cues:cues,marks:marks};});
   pick=-1;say("Removed "+ST_LANE_NAME[c[1]]+" "+(c[2]||"none")+" at "+stClock(c[0]));
@@ -129,6 +172,7 @@ function removePick(){
 function draw(){
   var tr=track(),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H,i,k,x,x1,t,step,an,y,c,n,lane,list,pos,j,nx,css=getComputedStyle(document.body);
   rows=tr?stLanes(tr.cues):[];
+  if(tr&&((tr.takes&&tr.takes.length)||tape))rows.push("camera");
   H=ST_RULER+ST_WAVE+Math.max(3,rows.length)*ST_LANE+2;
   if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.height=H+"px";}
   cx.setTransform(dpr,0,0,dpr,0,0);
@@ -162,6 +206,16 @@ function draw(){
     k=rows[lane];y=ST_RULER+ST_WAVE+lane*ST_LANE;
     cx.fillStyle=lane%2?"rgba(243,236,255,.03)":"rgba(243,236,255,.06)";cx.fillRect(0,y,W,ST_LANE);
     cx.fillStyle="rgba(243,236,255,.8)";cx.fillText(ST_LANE_NAME[k],8,y+ST_LANE/2);
+    if(k==="camera"){ /* the passages where the camera's path is kept, and the one being recorded */
+      list=tr.takes||[];
+      for(j=0;j<list.length;j++){
+        x=Math.max(ST_GUT,xOf(list[j].t,W));x1=xOf(list[j].t+takeLen(list[j]),W);if(x1<ST_GUT)continue;
+        cx.fillStyle=j===pickTake?"hsla(150,60%,42%,.9)":"hsla(150,60%,26%,.9)";cx.fillRect(x,y+2,Math.max(3,x1-x),ST_LANE-4);
+        cx.fillStyle="#f3ecff";if(x1-x>40)cx.fillText("take",x+6,y+ST_LANE/2);
+      }
+      if(tape){x=Math.max(ST_GUT,xOf(tape.t0,W));x1=xOf(tape.t0+tape.n*FL_DT,W);cx.fillStyle="hsla(0,80%,50%,.9)";cx.fillRect(x,y+2,Math.max(3,x1-x),ST_LANE-4);}
+      continue;
+    }
     list=[];for(i=0;i<tr.cues.length;i++)if(tr.cues[i][1]===k)list.push(i);
     for(j=0;j<list.length;j++){
       c=tr.cues[list[j]];t=drag&&drag.kind==="cue"&&drag.i===list[j]?drag.t:c[0];
@@ -196,6 +250,7 @@ function under(e){
   if(y<ST_RULER+ST_WAVE){o.zone="top";return o;}
   lane=Math.floor((y-ST_RULER-ST_WAVE)/ST_LANE);
   if(lane<0||lane>=rows.length)return o;
+  if(rows[lane]==="camera"){o.zone="take";for(i=0;tr.takes&&i<tr.takes.length;i++)if(o.t>=tr.takes[i].t&&o.t<tr.takes[i].t+takeLen(tr.takes[i]))o.i=i;return o;}
   o.zone="lane";o.k=rows[lane];
   list=[];for(i=0;i<tr.cues.length;i++)if(tr.cues[i][1]===o.k)list.push(i);
   for(j=0;j<list.length;j++){nx=j+1<list.length?tr.cues[list[j+1]][0]:tr.len;if(o.t>=tr.cues[list[j]][0]-3*(view.b-view.a)/(W-ST_GUT)&&o.t<nx)o.i=list[j];}
@@ -206,8 +261,9 @@ function down(e){
   var u=under(e),tr=track();
   if(!tr||e.button!==0)return;
   e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}
-  if(u.zone==="lane"&&u.i>=0){pick=u.i;drag={kind:"cue",i:u.i,t:tr.cues[u.i][0],from:u.t,moved:false};say(ST_LANE_NAME[u.k]+" "+(tr.cues[u.i][2]||"none")+" at "+stClock(tr.cues[u.i][0])+". Drag to move it, Delete to remove it.");return;}
-  pick=-1;
+  if(u.zone==="lane"&&u.i>=0){pick=u.i;pickTake=-1;drag={kind:"cue",i:u.i,t:tr.cues[u.i][0],from:u.t,moved:false};say(ST_LANE_NAME[u.k]+" "+(tr.cues[u.i][2]||"none")+" at "+stClock(tr.cues[u.i][0])+". Drag to move it, Delete to remove it.");return;}
+  pick=-1;pickTake=-1;
+  if(u.zone==="take"&&u.i>=0){pickTake=u.i;say("A camera take from "+stClock(tr.takes[u.i].t)+", "+Math.round(takeLen(tr.takes[u.i]))+" seconds. Delete removes it.");return;}
   if(u.zone==="top"&&e.shiftKey){drag={kind:"loop",a:u.t};loop={a:u.t,b:u.t};return;}
   drag={kind:"scrub",at:0};seek(u.t);
 }
@@ -256,6 +312,7 @@ function fillTpl(){
 function sync(){
   var sc=scoreUse(),n=$("stName");
   $("stKeep").setAttribute("aria-pressed",keep?"true":"false");$("stKeep").textContent="Keep my changes: "+(keep?"on":"off");
+  $("stTake").textContent=tape?"Stop and keep the take":"Record the camera";$("stTake").setAttribute("aria-pressed",tape?"true":"false");
   if(document.activeElement!==n)n.value=sc?sc.name:"";
   n.disabled=!sc;
 }
@@ -264,6 +321,7 @@ export function setStudio(on){
   if(on===studioOpen)return;
   studioOpen=on;$("studio").hidden=!on;document.body.classList.toggle("studio",on);
   $("bStudio").setAttribute("aria-pressed",on?"true":"false");
+  if(!on&&tape)takeStop("");
   if(on){SC_KINDS.forEach(function(k){if(k!=="journey")was[k]=jCur(k);delete scMade[k];delete jMade[k];}); /* notes from before the screen was open would be taken for this moment's */
     fillTpl();sync();view.ti=-1;}
   resize(); /* the picture is given the room the panel leaves */
@@ -283,6 +341,7 @@ export function studioFrame(){
     if(jMade[k]===now){delete jMade[k];continue;}
     if(keep&&tr&&!still&&musicMode==="file")put(pPos(),k,now);
   }
+  if(tape)takeFrame();
   if(loop&&tr&&player.mode&&pPos()>=loop.b)pSeek(loop.a);
   /* a track that has not been listened to is, once, so that its music can be drawn */
   f=plFile(plAt());
@@ -321,6 +380,7 @@ $("stCut").addEventListener("click",function(){
   edit(function(cues,marks){cues[p]=c[3]?[c[0],c[1],c[2]]:[c[0],c[1],c[2],"door"];return {cues:cues,marks:marks};});
   pick=p;say("World "+c[2]+" at "+stClock(c[0])+(c[3]?": behind a transition.":": a doorway to it opens at that moment, and the flight goes through. Where there cannot be a doorway, a transition."));
 });
+$("stTake").addEventListener("click",function(){if(tape)takeStop("");else takeStart();});
 $("stUndo").addEventListener("click",function(){goBack("","r");});
 $("stRedo").addEventListener("click",function(){goBack("r","");});
 $("stDraft").addEventListener("click",function(){draftAlbum(false);});
@@ -343,7 +403,7 @@ cv.addEventListener("wheel",wheel,{passive:false});cv.addEventListener("dblclick
 window.addEventListener("keydown",function(e){
   var t=e.target&&e.target.tagName;
   if(!studioOpen||t==="INPUT"||t==="TEXTAREA"||t==="SELECT")return;
-  if(e.code==="Delete"||e.code==="Backspace"){if(pick>=0){e.preventDefault();e.stopImmediatePropagation();removePick();}}
+  if(e.code==="Delete"||e.code==="Backspace"){if(pick>=0||pickTake>=0){e.preventDefault();e.stopImmediatePropagation();removePick();}}
   else if(e.code==="KeyZ"&&(e.ctrlKey||e.metaKey)){e.preventDefault();e.stopImmediatePropagation();if(e.shiftKey)goBack("r","");else goBack("","r");}
   else if(e.code==="KeyY"&&(e.ctrlKey||e.metaKey)){e.preventDefault();e.stopImmediatePropagation();goBack("r","");}
   else if(e.code==="Enter"){e.preventDefault();e.stopImmediatePropagation();$("bPlay").click();}
@@ -352,5 +412,6 @@ window.addEventListener("keydown",function(e){
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={ST_GUT, ST_RULER, ST_WAVE, ST_LANE, ST_UNDO, ST_LANE_NAME, stStep, stClock, stZoom, stSnap, stPut, stLanes, setStudio, studioFrame, stView:view, stUndoList:undo, stWas:was,
+  stTakeStart:takeStart, stTakeStop:takeStop, get stTape(){return tape}, get stPickTake(){return pickTake},set stPickTake(v){pickTake=v},
   stTrack:track, stEdit:edit, stGoBack:goBack, stPutCue:put, stRemovePick:removePick, stDraw:draw, stUnder:under, stSavePack:savePack, stFillTpl:fillTpl,
   get studioOpen(){return studioOpen}, get stPick(){return pick},set stPick(v){pick=v}, get stLoop(){return loop},set stLoop(v){loop=v}, get stKeep(){return keep},set stKeep(v){keep=v}, get stRows(){return rows}};

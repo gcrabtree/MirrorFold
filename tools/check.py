@@ -148,6 +148,14 @@ setTimeout(function(){
   setStudio(true);studioFrame();var c0=stTrack().cues.length;setPalette(pi+1);studioFrame();var c1=stTrack().cues.length,cu=stTrack().cues[stPick]||[];
   scoreClock();studioFrame();var c2=stTrack().cues.length;stGoBack("","r");
   log("studio="+studioOpen+" written="+(c1-c0)+" as "+cu[1]+"@"+cu[0]+" again="+(c2-c1)+" undone="+(stTrack().cues.length===c0)+" lanes="+stRows.join("+"));setStudio(false);
+  /* a camera take: the camera's path is recorded over a passage of the music, and flown again when the score plays it, until the user steers */
+  setStudio(true);player.offset=50;scoreClock();studioFrame();stTakeStart();
+  var p0=cam.pos.slice();for(var q=0;q<=8;q++){player.offset=50+q*0.5;cam.pos=[p0[0]+q*0.01,p0[1],p0[2]];studioFrame();}
+  stTakeStop("");var tk=(stTrack().takes||[])[0];
+  cam.pos=[9,9,9];player.offset=51.25;scoreClock();scoreFrame(notes);
+  log("take="+(tk?tk.t+"/"+takeLen(tk)+"/"+tk.w.join():"none")+" flown="+(Math.abs(cam.pos[0]-(p0[0]+0.025))<0.002)+" hold="+takeHold);
+  notes.mx=1;scoreFrame(notes);notes.mx=0;cam.pos=[9,9,9];scoreClock();scoreFrame(notes);log("hands off="+(cam.pos[0]===9));
+  cam.pos=p0;setStudio(false);
   scoreSet(null);scoreRemove("Check album");player.mode=null;player.buf=null;musicMode=wm;calm=wc;setLook(0);
   log("score off="+(jt.name!=="none")+" kept="+scores.length);
 },3760);
@@ -167,6 +175,7 @@ packs_ok = all(json.loads(t)["name"] + ":true:%d/%d" % ((len(json.loads(t).get("
 if not packs_ok:
     print("   a published pack did not load whole, or one of its filters did not compile")
 score_ok = "score=julia/Spectrum/none/Calm julia/Sunset/none/Calm julia/Sunset/none/Calm temple/Sunset/none/Calm temple/Sunset/Neon/Calm temple/Sunset/Neon/none julia/Sunset/Neon/Calm button=Score: Check album" in log and "score off=true kept=0" in log
+score_ok = score_ok and "take=50/4/temple flown=true hold=false" in log and "hands off=true" in log
 score_ok = score_ok and "studio=true written=1 as palette@3 again=0 undone=true lanes=journey+world+palette+filter" in log
 if not score_ok:
     print("   the score did not make its changes at the music's time")

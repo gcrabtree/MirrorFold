@@ -4,7 +4,10 @@
    The time is the file's own, so a pause holds the score and a move of the scrubber takes it to what the score asks
    for there. The scores are kept in this browser, and come and go in packs. */
 import { pDur, pPos, plAt, plName, player } from "./audio.js";
+import { cam } from "./camera.js";
 import { scene, setWorldNow } from "./choose.js";
+import { clock } from "./clock.js";
+import { FL_BYTES, flAt, flUnb64 } from "./flightdata.js";
 import { $, toast } from "./dom.js";
 import { flightPlaying } from "./flightplay.js";
 import { wakeHud } from "./input.js";
@@ -13,7 +16,7 @@ import { findT, jApply, jMove, jOverNow, jUse, journey, setJourney } from "./jou
 import { lapOn } from "./lap.js";
 import { musicMode } from "./listen.js";
 import { mediaClock, mediaTitle } from "./media.js";
-import { SC_KINDS, cleanScore, cleanTrack, scChase, scMatch, scOrder, scSeek } from "./scoredata.js";
+import { SC_KINDS, cleanScore, cleanTrack, scChase, scMatch, scOrder, scSeek, takeAt } from "./scoredata.js";
 import { still } from "./still.js";
 import { tgGuest } from "./together.js";
 import { WORLDS } from "./worlds.js";
@@ -23,7 +26,22 @@ let use=null;                /* the score in use, or null */
 /* where the playing is: the file it was last matched to (tok, dur), the track that file is (ti, -1 for none of them),
    that track's cues in order of asking (ord) and how many have been asked for (pi), the file's time at the last frame
    (last), and the changes asked for that are waiting for a transition to end (pend) */
-const st={tok:-1,dur:0,ti:-1,ord:null,pi:0,last:-10,t:0,pend:[]};
+const st={tok:-1,dur:0,ti:-1,ord:null,pi:0,last:-10,t:0,pend:[],take:null};
+/* Camera takes. A track may hold passages where the camera's path was recorded (the composing screen does it): while
+   the music is in one, the camera is put on that path and the morph where it was, as a played flight is, and the
+   moment the user steers they have the controls until the take ends. */
+const takeFl={};             /* takes made ready to fly, by their letters: {bytes, n, worlds} */
+let takeN=0;
+let handsOff=null;           /* the take the user has taken the controls from */
+let takeHold=false;          /* the composing screen is recording the camera: no take is flown meanwhile */
+export function setTakeHold(v){takeHold=!!v;}
+function flOf(tk){
+  var f=takeFl[tk.d],b;
+  if(f)return f;
+  if(++takeN>80){for(b in takeFl)delete takeFl[b];takeN=1;}
+  b=flUnb64(tk.d);
+  return takeFl[tk.d]={bytes:b,n:Math.floor(b.length/FL_BYTES),worlds:tk.w};
+}
 export const scMade={};      /* for each kind, the last name the score itself asked for, so that the composing screen can tell a change made by hand (js/studio.js) */
 
 export function scoreUse(){return use;}
@@ -31,10 +49,10 @@ export function scoreUse(){return use;}
 export function scoreNow(){return use&&st.ti>=0&&st.ord?{i:st.ti,t:st.t}:null;}
 /* Change a track of the score in use: its cues and marks are replaced by these, through the cleaner. The picture is
    then brought to what the score now asks for at this moment. False if they were refused. */
-export function scoreEdit(ti,cues,marks){
+export function scoreEdit(ti,cues,marks,takes){
   var tr=use&&use.tracks[ti],got;
   if(!tr)return false;
-  got=cleanTrack({name:tr.name,len:tr.len,marks:marks,cues:cues});
+  got=cleanTrack({name:tr.name,len:tr.len,marks:marks,cues:cues,takes:takes===undefined?tr.takes:takes});
   if(!got)return false;
   use.tracks[ti]=got;scoresSave();
   if(ti===st.ti){st.ord=scOrder(got.cues);st.last=-10;st.pend=[];}
@@ -98,7 +116,8 @@ function match(d){
 }
 /* A step of the frame, after the clocks: make the score's changes that have come due in the music. */
 export function scoreClock(){
-  var d,pos,c,want,i,k;
+  var d,pos,c,want,i,k,tk,at;
+  st.take=null;
   if(!use||musicMode!=="file"||!player.mode||still||lapOn()||flightPlaying()||tgGuest())return;
   d=pDur();
   if(!(d>0))return;
@@ -114,6 +133,22 @@ export function scoreClock(){
   }else while(st.pi<st.ord.length&&st.ord[st.pi].at<=pos)st.pend.push(st.ord[st.pi++]);
   st.last=st.t=pos;
   while(st.pend.length){c=st.pend[0];if(!apply(c.k,c.v,c.now,c.cut))break;st.pend.shift();}
+  /* a camera take over this moment: the morph is put where it was when the path was flown, so that the path is through open space again */
+  tk=takeHold?null:takeAt(use.tracks[st.ti],pos);
+  if(handsOff&&tk!==handsOff)handsOff=null;
+  if(tk&&tk!==handsOff&&cam.hand===1){
+    st.take=tk;
+    at=flAt(flOf(tk),pos-tk.t,tk.w.indexOf(scene.world.id),function(){return [1,1,1];});
+    if(at)clock.morphT=at.mt;
+  }
+}
+/* A step of the frame, after the camera has moved: in a camera take, put the camera on its path. Steering takes the controls until the take ends. */
+export function scoreFrame(fr){
+  var tk=st.take,w=scene.world,at;
+  if(!tk)return;
+  if(!fr.idle||fr.mx!==0||fr.my!==0||fr.uz!==0||cam.lookAct>0.05){handsOff=tk;st.take=null;toast("You have the controls until this take ends.");return;}
+  at=flAt(flOf(tk),st.t-tk.t,tk.w.indexOf(w.id),function(c,mt){return w.period(Math.sin(mt*0.09)+0.15*Math.sin(mt*0.31));});
+  if(at){cam.pos=at.pos;cam.F=at.F;cam.Up=at.Up;cam.R=at.R;cam.vel=[0,0,0];}
 }
 /* Scores from a pack or from what was kept: each through cleanScore. How many were taken. */
 export function scoresAdopt(list){
@@ -143,4 +178,4 @@ $("bScore").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={scMade, scoreEdit, scoreRename, SCORES_MAX, scores, scoreUse, scoreNow, scoreLabel:label, scoresSave, scoreAdd, scoreRemove, scoreSet, scoreWorldIndex:worldIndex, scoreApply:apply, scoreMatch:match, scoreClock, scoresAdopt, scoreSt:st};
+export const __dbg={setTakeHold, scoreFrame, scoreFlOf:flOf, get takeHold(){return takeHold}, get scoreHandsOff(){return handsOff},set scoreHandsOff(v){handsOff=v}, scMade, scoreEdit, scoreRename, SCORES_MAX, scores, scoreUse, scoreNow, scoreLabel:label, scoresSave, scoreAdd, scoreRemove, scoreSet, scoreWorldIndex:worldIndex, scoreApply:apply, scoreMatch:match, scoreClock, scoresAdopt, scoreSt:st};

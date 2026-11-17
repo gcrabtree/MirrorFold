@@ -1209,6 +1209,21 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const cut = cleanTrack({ len: 100, cues: [[10, "world", "julia", "door"], [20, "world", "temple", "nope"], [30, "palette", "Sunset", "door"], [40, "world", "gates", 7]] });
   expect("score: a doorway is kept on a change of world only, and any other fourth thing is dropped", JSON.stringify(cut.cues) === '[[10,"world","julia","door"],[20,"world","temple"],[30,"palette","Sunset"],[40,"world","gates"]]', JSON.stringify(cut.cues));
   expect("score: a doorway is asked for on its moment, not early", scOrder(cut.cues)[0].at === 10 && scOrder(cut.cues)[0].cut === "door" && scOrder(cut.cues)[1].at === 20 - SC_LEAD);
+  {
+    const { cleanTake, takeLen, takeAt } = scoreM, { flB64, flWrite, flSample, FL_BYTES } = flightM;
+    const bytes = new Uint8Array(6 * FL_BYTES);
+    for (let i = 0; i < 6; i++) flWrite(bytes, i, flSample([i * 0.1, 0, 0], [4, 4, 4], [0, 0, 1], [0, 1, 0], 10, i < 3 ? 0 : 1));
+    const d = flB64(bytes), tk = { t: 20, w: ["julia", "temple"], d };
+    expect("score: a camera take passes, and lasts its samples less one, half a second each", JSON.stringify(cleanTake(tk, 100)) === JSON.stringify(tk) && takeLen(tk) === 2.5);
+    const badTakes = [null, [], { t: 20, w: ["julia"], d }, { t: 20, w: [], d }, { t: "20", w: ["julia", "temple"], d }, { t: 20, w: ["julia", 7], d }, { t: 20, w: ["julia", "tem\u0000ple"], d },
+      { t: 20, w: ["julia", "temple"], d: d + "!" }, { t: 20, w: ["julia", "temple"], d: d.slice(0, 20) }, { t: 20, w: ["julia", "temple"], d: "" }, { t: 20, w: ["julia", "temple"], d: 5 },
+      { t: 99, w: ["julia", "temple"], d }, { t: 20, w: new Array(17).fill("julia"), d }, { t: 20, w: ["julia", "temple"], d: "A".repeat(40000) }];
+    expect("score: broken takes are refused (a world not in its list, letters that are not a flight's, one that runs past the track's end)", badTakes.every(b => cleanTake(b, 100) === null), badTakes.map(b => cleanTake(b, 100) === null ? 1 : 0).join(""));
+    const tr = cleanTrack({ len: 100, takes: [{ t: 21, w: ["julia", "temple"], d }, tk, { t: 40, w: ["julia", "temple"], d }, "x"] });
+    expect("score: takes come out in order, and one that begins inside another is dropped", tr.takes.length === 2 && tr.takes[0].t === 20 && tr.takes[1].t === 40);
+    expect("score: the take over a moment", takeAt(tr, 21) === tr.takes[0] && takeAt(tr, 22.6) === null && takeAt(tr, 41) === tr.takes[1] && takeAt({}, 3) === null);
+    expect("score: a track with no takes has no list of them", !("takes" in cleanTrack({ len: 100, takes: [] })) && !("takes" in cleanTrack({ len: 100 })));
+  }
   const ord = scOrder(sc.tracks[0].cues);
   expect("score: a change behind a transition is asked for early", ord.find(o => o.t === 40 && o.k === "world").at === 40 - SC_LEAD && ord.find(o => o.k === "palette").at === 12 && ord[0].at === 0);
   const ch = scChase(sc.tracks[0].cues, 60);

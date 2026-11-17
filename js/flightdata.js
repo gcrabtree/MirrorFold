@@ -64,6 +64,8 @@ export function flAt(fl,t,cur,per){
   mt=B.mt-A.mt;mt-=FL_TURN*Math.round(mt/FL_TURN);mt=A.mt+mt*u;if(mt<0)mt+=FL_TURN;
   return {pos:pos,F:F,Up:Up,R:R,mt:mt};
 }
+export function flB64(bytes){return b64(bytes);}
+export function flUnb64(t){return unb64(t);}
 function b64(bytes){
   var s="",i;for(i=0;i<bytes.length;i++)s+=String.fromCharCode(bytes[i]);
   return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
@@ -105,4 +107,4 @@ export function init(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={FL_DT, FL_MAX, FL_BYTES, FL_TURN, FL_KINDS, flSample, flRead, flWrite, flAt, flPack, flUnpack};
+export const __dbg={flB64, flUnb64, FL_DT, FL_MAX, FL_BYTES, FL_TURN, FL_KINDS, flSample, flRead, flWrite, flAt, flPack, flUnpack};
