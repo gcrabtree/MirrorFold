@@ -13,7 +13,7 @@
 >
 > Mirrorfold is designed to avoid strobing, but it has **not** been tested or certified against any photosensitivity standard, and no setting makes it safe for everyone. It is not a medical device and nothing here is medical advice. It is provided "as is", without warranty of any kind, and you use it entirely at your own risk; see the [licence](LICENSE).
 
-Fly through endless fractal worlds in your browser. Thirty worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
+Fly through endless fractal worlds in your browser. Thirty-one worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
 
 This project is inspired in part by the music visualizers from decades past… from Winamp plugins to the standalone visualizer MilkDrop. This has a familiar feel when in Journey mode (an autopilot that flies through the procedurally generated 3D worlds) while listening to music. 
 
@@ -31,7 +31,7 @@ Relax, unwind, and enjoy!
 
 **Try it: https://gcrabtree.github.io/MirrorFold/**
 
-![Contact sheet of all 30 worlds](docs/worlds.jpg)
+![Contact sheet of all 31 worlds](docs/worlds.jpg)
 
 The app is one page, one stylesheet and a folder of JavaScript modules. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
 
@@ -58,7 +58,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 
 ## What it does
 
-- **30 worlds.** Twenty-five are solid surfaces, all fractals but Cell (the inside of a living cell), Biomech, Seer and Net (see below); three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
+- **31 worlds.** Twenty-six are solid surfaces, all fractals but Cell (the inside of a living cell), Biomech, Seer, Net and Fabric (see below); three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
 - **Biomech**, a world in homage to the biomechanical paintings of H. R. Giger: an endless hall of tunnels whose walls are rib cages, with spines where the tunnels meet, tendons between ribs and spines, and ribbed hoses running alongside. The cages breathe with the morph. Nothing of his is copied; it is built from the kinds of thing he painted. With it come three near-grey palettes that are open from the start (**Gunmetal**, **Tallow**, **Verdigris**), the **ribbed** surface, the **Airbrush** filter and the **Biomech** journey template, all of which work in every other world too.
 - **Zooms a trillion times deep.** The two zoom worlds magnify the Mandelbrot set and Julia sets up to about a trillion times, on points where there is always something to see. See [The zoom worlds](#the-zoom-worlds).
 - **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
@@ -68,6 +68,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - **A picture beside every name.** The world, palette, motion, filter, overlay, mirrors, FX and landscape buttons each open a grid of small pictures that show what each choice looks like.
 - **Seer**, a world in homage to the visionary paintings on the band Tool's records and stage, Alex Grey's among them: an endless lattice of eyes that look both ways, each between two lids in a sun of fourteen flames with a beaded halo, and seven-pointed stars in rings in the spaces between. The pupils are holes, so a row of eyes can be seen through the eye in front, and flown through. The morph opens the pupils, narrows the lids and sways the flames. Nothing of theirs is copied; it is built from the kinds of thing those pictures are full of. With it come the **Vision** palette (gold through violet to deep blue, open from the start) and the **Visions** journey template.
 - **Net**, a second world in the same homage, nearer to those paintings: a net of strands fringed with flames that fills space, with an almond eye set into the middle of every strand, looking out both ways, and a pale ball of cloud in every large gap. Cut flat along the axes the net is diamonds. The morph lengthens the flames and opens the pupils. Nothing of theirs is copied; it is built from the kinds of thing those pictures are full of. With it come the **Cobalt** palette (deep blue to pale silver-blue and nothing else, open from the start); it is in the Visions template too.
+- **Fabric**, a woven cloth that waves as if in a wind: square threads bored through like the Sponge, each going over one and under the next, with open sky above and the same cloth again further down, seen through the mesh. You fly above it and cannot go through: the camera is kept clear of the threads as the cloth rises and falls under it. Five kinds of wave pass over it at once, and the music drives each: a long billow (the low end), a shorter wave running aslant and humps that rise and fall where they stand (the mids), a fine flutter (the treble), and a steep gust front that runs down the cloth (the beat). With no sound it still waves gently. Under Journey the view is held a little below level so the cloth fills most of it. No doorways and no inside out there.
 - **6 feedback motions, 23 filters, 10 overlays and 8 transitions**, in the style of the MilkDrop music visualiser.
 - **Music reactivity** from a built-in track, your own audio file, another browser tab such as Spotify or YouTube, the microphone, or a tapped tempo.
 - **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter, overlay, surface, land, packing, pulse and shapes over time. You control what it may change with templates.
@@ -529,7 +530,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `js/` | The app, as about 67 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
-| `docs/worlds.jpg` | Contact sheet of all 30 worlds |
+| `docs/worlds.jpg` | Contact sheet of all 31 worlds |
 | `thumbs/` | The choosers' small pictures, one for each built-in world, palette, motion, filter, overlay, mirror setting, FX setting and landscape |
 | `lang/` | The lessons' words, one flat file for each language (`en.json`) |
 | `voice/` | The lessons' voice: one sound file for each step, and `index.json`, which records the words each was made from |

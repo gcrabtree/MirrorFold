@@ -36,6 +36,7 @@ setTimeout(function(){
     if(opt===1&&!pi)return;
     if(opt===2&&pi)return;
     setPackingNow(pi);
+    var keep=sd;if(w.sheet)sd=24680; /* the Fabric has a run of numbers of its own, put back after it: the worlds after it are then asked about the same places as before it was added (two of them pass only by which places they are asked about, inside their shapes, where a distance means little) */
     var name=w.id+(pi?"/"+pkg.name:"")+(opt===1?"/mixed,wave":opt===2?"/inside-out":""),per=w.period(0).map(function(v){return pi===PK_DEEP?v/4:v}),worst=0,at="",n=0,bad=0,ms=[-0.9,0,0.9];
     for(var b=0;b<24;b++){
       var m=ms[b%3],k,d;
@@ -50,6 +51,7 @@ setTimeout(function(){
       }
     }
     out.push(name+" "+worst.toFixed(5)+" "+bad+"/"+n+" ("+at+")");
+    if(w.sheet)sd=keep;
     });
     setPackingNow(0);
   });

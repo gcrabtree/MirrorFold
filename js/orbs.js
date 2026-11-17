@@ -19,6 +19,7 @@ export function spawnOrb(){
   var w=scene.world,m=morphValue(),per=w.period(m),sc=Math.min(per[0],per[1],per[2])/2/pkMul(w),best=-1,bp=null,bd=0;
   var nc=w.pack?96:260,cand=new Float32Array(3*nc),k;
   for(k=0;k<3*nc;k++)cand[k]=(Math.random()-.5)*per[k%3];
+  if(w.band)for(k=1;k<3*nc;k+=3)cand[k]=w.band[0]+Math.random()*(w.band[1]-w.band[0]); /* a world with a ground (the Fabric): only at heights the camera can reach, clear of its waves */
   var cd=deMany(w,cand,nc,m);
   for(k=0;k<nc;k++){
     var c=[cand[3*k],cand[3*k+1],cand[3*k+2]];

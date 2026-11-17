@@ -51,7 +51,7 @@ let door=null;
 let lieT=0,lieNext=LIE_EVERY; /* how long Journey has flown since its last strange doorway, and when the next is due */
 
 /* Can this world have an end of a doorway in it? */
-export function doorWorld(w){return !!w&&!w.flat&&!w.volume&&!w.pack&&typeof w.de==="function";}
+export function doorWorld(w){return !!w&&!w.flat&&!w.volume&&!w.pack&&!w.sheet&&typeof w.de==="function";} /* not the Fabric: the camera is held above its cloth, and a doorway could stand below it */
 function unit(v){var l=Math.hypot(v[0],v[1],v[2])||1;return [v[0]/l,v[1]/l,v[2]/l];}
 function dot(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
 /* a turn T (nine numbers, row by row, or null for none) applied to v; and the turn that undoes it */

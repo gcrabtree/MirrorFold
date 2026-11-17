@@ -8,6 +8,7 @@ import { clock } from "./clock.js";
 import { setSurface } from "./controls.js";
 import { $, toast } from "./dom.js";
 import { deAt } from "./flight.js";
+import { FB_ALT, fbH } from "./fabric.js";
 import { press, wakeHud } from "./input.js";
 import { landH, landKind, landMode, lhead, lpos, setLand, setLandKind } from "./land.js";
 import { LK } from "./landscapes.js";
@@ -181,6 +182,11 @@ export function autopilot(fr){
     var hL=landH(lpos[0]+lhead[0]*lc-lrx*ls,lpos[2]+lhead[1]*lc-lrz*ls,4),hR=landH(lpos[0]+lhead[0]*lc+lrx*ls,lpos[2]+lhead[1]*lc+lrz*ls,4);
     cam.lookX+=(Math.max(-0.5,Math.min(0.5,(hL-hR)*1.6))+0.08*Math.sin(clock.time*0.13))*dt*hands;
     cam.lookY+=(cam.F[1]+0.10)*0.6*dt*hands;
+  }else if(fr.w.sheet){ /* over the Fabric there is nothing to steer between: wander from side to side, hold the view a little below level so that the cloth fills most of it, and keep a height above the cloth as its waves pass under */
+    var alt=cam.pos[1]-fbH(cam.pos[0],cam.pos[2]);
+    cam.lookX+=(0.25*Math.sin(clock.time*0.13)+0.12*Math.sin(clock.time*0.37+1.3))*dt*hands;
+    cam.lookY+=(cam.F[1]+0.3)*0.9*(cam.Up[1]<0?-1:1)*dt*hands; /* the other way while the camera is still upside down, before the horizon has been eased level */
+    cam.pos[1]+=(FB_ALT-alt)*(1-Math.exp(-dt*1.5))*hands;
   }else{
     var pr=Math.min(1,Math.max(0.06,dist*5)),shell=inShell(fr.w);
     if(shell>0)pr=Math.max(0.3*shell,dist*2); /* inside out, the open space is a layer about as thick as the shell, and the autopilot must feel its way within that */

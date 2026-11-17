@@ -1139,6 +1139,39 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("seen from far the pupil is the size the sound asks for, and seen from nearest it leaves the iris more than half of the picture's shorter side", eyePupil(0.6, 0.3) === 0.6 && [0.46, 1, 1.78].every(a => { const r = eyeRadius(EYE_STEPS, a); return eyePupil(0.72, r) * r < 0.46 && eyePupil(0.72, r) > eyePupil(0.5, r); }));
   expect("the eye starts off, the iris can keep a colour of its own, and a blink can be off", EYES[0].name === "off" && !IRIS[0].c && IRIS.slice(1).every(i => i.c.length === 3 && i.c.every(c => c.length === 3 && c.every(v => v >= 0 && v <= 1))) && BLINKS[0] === "off");
 }
+// ---- the Fabric: its waves, and the camera kept above the cloth
+{
+  const F = (await import("../js/fabric.js")).__dbg, w = worldsM.WORLDS.find(v => v.id === "fabric");
+  let sd = 4242; const rnd = () => { sd = (Math.imul(sd, 1664525) + 1013904223) >>> 0; return sd / 4294967296; };
+  F.fbSet(1234.5, 0.3, 0.6, 0.2, 1, false); const a = Array.from(F.fb);
+  F.fbSet(7, 1, 1, 1, 1, false); F.fbSet(1234.5, 0.3, 0.6, 0.2, 1, false);
+  expect("the same time and sound give the same cloth, whatever came before", Array.from(F.fb).every((v, i) => v === a[i]));
+  expect("the waves' angles are kept within one turn", a.slice(5).every(v => v >= 0 && v < 6.2832));
+  F.fbSet(1e6, 9, -3, NaN, 2, false);
+  expect("sound out of range is held to 0 to 1", Array.from(F.fb).slice(0, 5).every((v, i) => v >= F.FB_BASE[i] - 1e-6 && v <= F.FB_BASE[i] + F.FB_SND[i] + 1e-6));
+  F.fbSet(50, 1, 1, 1, 1, true); const calmH = F.fb[0]; F.fbSet(50, 1, 1, 1, 1, false);
+  expect("with reduced motion the waves are half as high", Math.abs(calmH * 2 - F.fb[0]) < 1e-6);
+  let per = true, clear = true, held = true, safe = true, least = 9;
+  for (let n = 0; n < 400; n++) {
+    F.fbSet(n * 0.37, rnd(), rnd(), rnd(), rnd(), false);
+    const x = (rnd() - 0.5) * 40, z = (rnd() - 0.5) * 40, y = (rnd() - 0.5) * 14;
+    if (Math.abs(F.fbH(x, z) - F.fbH(x + 12, z - 24)) > 1e-5 || Math.abs(w.de(x, y, z, 0) - w.de(x + 12, y, z - 24, 0)) > 1e-5) per = false; // the shader's pi has eight figures, so not to the last place
+    const p = [x, y, z], v = [0, y < 0 ? -1 : 1, 0]; F.fbHold(p, v);
+    const d = w.de(p[0], p[1], p[2], 0); least = Math.min(least, d);
+    if (!(d > 0.03)) clear = false;
+    if (p[1] - F.fbH(x, z) > F.FB_CEIL + 1e-9 || p[1] - F.fbH(x, z) < F.FB_TOP + F.FB_CLEAR - 1e-9) held = false;
+    // a ray from above the cloth, stepped by the world's own distance, never ends inside a thread
+    const q = [x, F.fbH(x, z) + 0.6 + 2 * rnd(), z], dir = [rnd() - 0.5, -0.3 - rnd(), rnd() - 0.5], dl = Math.hypot(dir[0], dir[1], dir[2]);
+    for (let i = 0, t = 0; i < 60; i++) { const e = w.de(q[0] + dir[0] / dl * t, q[1] + dir[1] / dl * t, q[2] + dir[2] / dl * t, 0); if (e < -0.004) safe = false; if (e < 0.002) break; t += e; }
+  }
+  expect("the Fabric and its waves repeat every 12 across the cloth", per);
+  expect("a place put back by fbHold is clear of the threads at every moment of the waves, and under the ceiling", clear && held, "least " + least.toFixed(3));
+  expect("a step as long as the Fabric's distance never ends inside a thread", safe);
+  worldsM.setInOutNow(true); const shell = worldsM.inShell(w); worldsM.setInOutNow(false);
+  expect("the Fabric has no inside out, and no doorways", shell === 0 && w.sheet === true);
+  F.fbSet(0, 0, 0, 0, 0, false);
+}
+
 // ---- window.MF: main.js merges every module's __dbg into one object, so a name used by two modules hides one of them
 {
   const { readdirSync } = await import("node:fs"), dir = new URL("../js/", import.meta.url), seen = {}, twice = [];

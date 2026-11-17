@@ -1,11 +1,12 @@
 /* The frame loop: the steps of one frame, in order. */
 import { scrubFollow } from "./audio.js";
-import { move, steering, turn } from "./camera.js";
+import { keepAbove, move, steering, turn } from "./camera.js";
 import { scene } from "./choose.js";
 import { clock, morphValue, tickClock } from "./clock.js";
 import { pkTick } from "./packing.js";
 import { morph } from "./controls.js";
-import { $, canvas, errBox, toast } from "./dom.js";
+import { $, calm, canvas, errBox, toast } from "./dom.js";
+import { fbSet } from "./fabric.js";
 import { measure } from "./flight.js";
 import { flightClock, flightFrame } from "./flightplay.js";
 import { stepFlits } from "./flits.js";
@@ -96,6 +97,8 @@ function frame(now){
   notes.m=morphValue();
   pkTick(clock.morphT); /* the packing's wave needs the morph's clock, to work out the morph some seconds ago (js/packing.js) */
 
+  if(!still)fbSet(clock.time,notes.lv,notes.mv,notes.hv,notes.bt,calm); /* the Fabric's waves, from the clock and the sound; Hold still leaves them where they are (js/fabric.js) */
+
   /* flying */
   measure(notes);
   scrubFollow();
@@ -110,6 +113,7 @@ function frame(now){
   stepZoom(notes);
   flightFrame(notes); /* a recorded flight being played puts the camera on its path; one being recorded notes it */
   lapFrame(notes); /* a loop being flown puts the camera on its path (js/lap.js) */
+  keepAbove(notes); /* over the Fabric the camera is kept above the cloth, which rises under it as a wave passes */
   stepDoor(notes); /* a doorway: opened, closed, and gone through (js/doors.js) */
   if(landMode)moveLand(notes);
   stepOrb(notes);

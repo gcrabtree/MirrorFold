@@ -1,6 +1,7 @@
 /* The camera: where it is, which way it faces, how fast it is going, and how much the user is steering. */
 import { drift } from "./controls.js";
 import { calm } from "./dom.js";
+import { fbHold } from "./fabric.js";
 import { keys, stick } from "./input.js";
 import { landMode } from "./land.js";
 import { started } from "./loop.js";
@@ -54,14 +55,15 @@ export function turn(fr){
   cam.F=rot(cam.F,cam.Up,ax*h);cam.F=rot(cam.F,cam.R,ay*h);cam.Up=rot(cam.Up,cam.R,ay*h);
   var rollT=((keys.KeyE?1:0)-(keys.KeyQ?1:0))*1.2;
   var idle=stick.id===null&&!keys.KeyW&&!keys.KeyS&&!keys.KeyA&&!keys.KeyD;
-  if((drift||travel)&&idle&&!calm&&!stereo&&!landMode&&!still)rollT+=0.035*hands; /* no automatic roll in the VR viewer */
+  var flatW=landMode||!!(fr.w&&fr.w.sheet); /* over the land, and over the Fabric, there is a ground: no slow roll, and the horizon is eased level */
+  if((drift||travel)&&idle&&!calm&&!stereo&&!flatW&&!still)rollT+=0.035*hands; /* no automatic roll in the VR viewer */
   cam.rollIn+=(rollT-cam.rollIn)*(1-Math.exp(-dt*4));
   if(still&&rollT===0&&Math.abs(cam.rollIn)<2e-3)cam.rollIn=0;
   cam.Up=rot(cam.Up,cam.F,-cam.rollIn*dt*h);
   fr.gr=cam.gRoll;
   if(cam.gRoll!==0){cam.Up=rot(cam.Up,cam.F,cam.gRoll*h);cam.gRoll=0;}
   camSquare();
-  if(landMode&&!stereo&&Math.abs(cam.F[1])<0.97){ /* over land the horizon is eased level */
+  if(flatW&&!stereo&&Math.abs(cam.F[1])<0.97){ /* over land the horizon is eased level */
     var lt=norm([-cam.F[0]*cam.F[1],1-cam.F[1]*cam.F[1],-cam.F[2]*cam.F[1]]),le=1-Math.exp(-dt*3);
     cam.Up=norm([cam.Up[0]+(lt[0]-cam.Up[0])*le,cam.Up[1]+(lt[1]-cam.Up[1])*le,cam.Up[2]+(lt[2]-cam.Up[2])*le]);camSquare();
   }
@@ -95,6 +97,9 @@ export function move(fr){
   fr.mx=mx;fr.my=my;fr.mz=mz;fr.vf=vf;fr.per=per;
   fr.spN=Math.min(1,cam.curSpeed/(wSpeed*cam.baseSpeed+1e-6)); /* speed as a part of the most this world allows */
 }
+/* A step of the frame, after everything that moves the camera. A world that is one sheet with sky above it (sheet:
+   the Fabric) is not flown through: the camera is put back above the cloth and under its ceiling. */
+export function keepAbove(fr){if(fr.w&&fr.w.sheet&&!fr.w.pack)fbHold(cam.pos,cam.vel);}
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={cam, camSquare, userLook, userActive, rot, norm, cross, steering, turn, move};
+export const __dbg={keepAbove, cam, camSquare, userLook, userActive, rot, norm, cross, steering, turn, move};

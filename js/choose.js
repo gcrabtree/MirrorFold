@@ -1,5 +1,5 @@
 /* what is showing */
-import { cam } from "./camera.js";
+import { cam, camSquare } from "./camera.js";
 import { morphValue } from "./clock.js";
 import { $, calm, errBox, toast } from "./dom.js";
 import { press } from "./input.js";
@@ -49,6 +49,7 @@ export function fillWorlds(){selWorld.textContent="";WORLDS.forEach(function(w,i
 function placeCam(w){
   var fixed=w.start&&!pkOn(w),m=morphValue();
   cam.pos=fixed?w.start.slice():[0,0,0];cam.vel=[0,0,0];cam.hand=1;
+  if(w.sheet){cam.F=[0.5,-0.42,0.757];cam.Up=[0,1,0];camSquare();} /* the Fabric: begin the right way up, looking down across the cloth */
   if(pkDeep(w)){cam.pos=[.12*w.grid,.08*w.grid,2.5*w.grid];cam.F=[0,0,-1];cam.R=[-1,0,0];cam.Up=[0,1,0];return;} /* the descent: between two cages, looking in along one of the six ways through */
   if(!fixed||w.de(cam.pos[0],cam.pos[1],cam.pos[2],m)<0.02){
     var per=w.period(m),best=-1,ns=w.pack?96:300,sc=new Float32Array(3*ns),k;
@@ -172,7 +173,7 @@ fillPalettes();
 $("bShaft").addEventListener("click",function(){setShaftsOn(!shafts);toast(shafts?"Light shafts on. Light falls in beams through the gaps between the shapes. It is heavier to draw.":"Light shafts off");wakeHud();});
 $("bInside").addEventListener("click",function(){
   var on=!inOut,w=scene.world,fn=function(){setInside(on)};
-  if(w.flat||w.volume||w.pack||pkDeep(w)){fn();toast("Inside out is "+(on?"on":"off")+". It does not show in a zoom, cloud or pack world, or in the descent.");}
+  if(w.flat||w.volume||w.pack||w.sheet||pkDeep(w)){fn();toast("Inside out is "+(on?"on":"off")+". It does not show in a zoom, cloud or pack world, over the Fabric, or in the descent.");}
   else if(!started||calm||!warpThen(fn))fn();
   wakeHud();
 });

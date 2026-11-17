@@ -1,5 +1,6 @@
 /* The worlds: each one's shader distance function beside the same function in JavaScript. */
 import { fr, md, tile } from "./dom.js";
+import { fbH } from "./fabric.js";
 import { packing, pkD, pkDeep, pkMix, pkP, pkPer } from "./packing.js";
 
 /* ---------- the worlds ----------
@@ -1019,6 +1020,66 @@ export const WORLDS=[
   d=Math.min(d,(Math.sqrt(best)-.62-.035*Math.cos(8*kx)*Math.cos(8*ky)*Math.cos(8*kz)-.012*Math.cos(19*kx)*Math.cos(19*ky)*Math.cos(19*kz))*.6);
   return .9*d;
  }},
+/* Cloth: a plain weave of square threads, each bored through like the Sponge, lying flat with open sky above it and
+   the same cloth again every 3 units below. Threads are 0.25 thick and 1 apart, one set along x and one along z,
+   each going over one and under the next. The whole cloth is lifted and dropped by waves (fbH: js/fabric.js works
+   the same sum out from the same twelve numbers, which the frame sets from the clock and the sound), as cloth moves
+   in a wind. Only the nearest thread of each set is worked out, and the distance is held to what the next thread and
+   the next cloth could be. The world does not repeat upward: its period there is only a number the camera never
+   reaches, because camera.js keeps it above the cloth and under a ceiling (sheet: true). The threads' rise and the
+   waves' slopes make the distance too large by up to a half, so 0.65 of it is used. The morph is not used. */
+{id:"fabric",name:"Fabric",hue:.08,fog:.07,maxd:30,speed:1.2,start:[0,1.5,0],sheet:true,band:[1.7,3],
+ period:function(){return [12,16,12]},
+ glsl:[
+ "uniform float uFb[12];",
+ "vec4 fbO;",
+ "float fbH(vec2 p){", /* how high the cloth's middle is here */
+ "  float k=0.5235988;",
+ "  float h=uFb[0]*sin(k*p.x-uFb[5]+0.6*sin(k*p.y+uFb[6]));",
+ "  h+=uFb[1]*sin(k*(2.0*p.x+3.0*p.y)-uFb[7]);",
+ "  h+=uFb[2]*sin(7.0*k*p.x-uFb[8]+2.0*sin(2.0*k*p.y+uFb[9]));",
+ "  h+=uFb[3]*sin(3.0*k*p.x)*sin(2.0*k*p.y)*cos(uFb[10]);",
+ "  h+=uFb[4]*exp(6.0*(cos(k*p.x-uFb[11]+sin(k*p.y))-1.0));",
+ "  return h;",
+ "}",
+ "float fbT(vec3 q){", /* one thread, in units of half its thickness: q is along it, up, and across. A square bar with the Sponge's holes, a little larger than the Sponge's own */
+ "  float d=max(abs(q.y),abs(q.z))-1.0;float s=1.0;",
+ "  for(int i=0;i<3;i++){",
+ "    vec3 a=mod(q*s,2.0)-1.0;s*=3.0;vec3 r=abs(1.0-3.0*abs(a));",
+ "    fbO=min(fbO,vec4(abs(a),dot(a,a)*0.4));",
+ "    d=max(d,(min(max(r.x,r.y),min(max(r.y,r.z),max(r.z,r.x)))-0.82)/s);",
+ "  }",
+ "  return d;",
+ "}",
+ "float map(vec3 p){",
+ "  float y=p.y-fbH(p.xz);float n=min(floor(y/3.0+0.5),0.0);y-=3.0*n;", /* the cloth this place is nearest: the top one, or one of those below */
+ "  float ci=floor(p.x),cj=floor(p.z);",
+ "  float si=1.0-2.0*mod(ci,2.0),sj=1.0-2.0*mod(cj,2.0);",
+ "  float ax=p.x-ci-0.5,az=p.z-cj-0.5;",
+ "  fbO=vec4(1000.0);float d=fbT(vec3(p.x,y-0.135*sj*sin(3.1415927*p.x),az)*8.0);vec4 c=fbO;", /* the thread along x */
+ "  fbO=vec4(1000.0);float e=fbT(vec3(p.z,y+0.135*si*sin(3.1415927*p.z),ax)*8.0);", /* the thread along z, under where the other is over */
+ "  if(e<d){d=e;c=fbO+vec4(0.0,0.0,0.0,0.35);}",
+ "  d*=0.125;float up=max(abs(y)-0.26,0.0);",
+ "  d=min(d,length(vec2(0.875-max(abs(ax),abs(az)),up)));", /* the next thread over is at least this far */
+ "  d=min(d,y+2.74);if(n<-0.5)d=min(d,2.74-y);", /* and so are the cloth below, and the one above if there is one */
+ "  orb=c;return 0.65*d;",
+ "}"],
+ de:function(x,y,z){
+  function th(al,up,ac){
+    var d=Math.max(Math.abs(up),Math.abs(ac))-1,s=1,i,rx,ry,rz;
+    for(i=0;i<3;i++){
+      rx=Math.abs(1-3*Math.abs(md(al*s,2)-1));ry=Math.abs(1-3*Math.abs(md(up*s,2)-1));rz=Math.abs(1-3*Math.abs(md(ac*s,2)-1));s*=3;
+      d=Math.max(d,(Math.min(Math.max(rx,ry),Math.max(ry,rz),Math.max(rz,rx))-.82)/s);
+    }
+    return d;
+  }
+  var n,ci=Math.floor(x),cj=Math.floor(z),si=1-2*md(ci,2),sj=1-2*md(cj,2),ax=x-ci-.5,az=z-cj-.5,d;
+  y-=fbH(x,z);n=Math.min(Math.floor(y/3+.5),0);y-=3*n;
+  d=.125*Math.min(th(8*x,8*(y-.135*sj*Math.sin(3.1415927*x)),8*az),th(8*z,8*(y+.135*si*Math.sin(3.1415927*z)),8*ax));
+  d=Math.min(d,Math.hypot(.875-Math.max(Math.abs(ax),Math.abs(az)),Math.max(Math.abs(y)-.26,0)),y+2.74);
+  if(n<-.5)d=Math.min(d,2.74-y);
+  return .65*d;
+ }},
 {id:"mzoom",name:"Mandelbrot zoom",hue:.55,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,
  period:function(){return [4,4,4]},glsl:[],de:function(){return .2}},
 {id:"jzoom",name:"Julia zoom",hue:.1,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,julia:true,
@@ -1061,7 +1122,8 @@ export function packSrc(w){
    number that means nothing, counts as nothing). It is taken a little short (IN_STEP), because far from the shapes
    an old distance may grow faster than the real one. The shell is three tenths of the most open space the world has,
    measured once for each world and packing on a fixed grid of places, so that every device gets the same number.
-   Not in the descent, whose distances grow with the camera's, nor in a cloud, zoom or pack world. */
+   Not in the descent, whose distances grow with the camera's, nor in a cloud, zoom or pack world, nor over the
+   Fabric (sheet), which has no far side to be inside of. */
 export const IN_STEP=0.8;
 export const IN_PART=0.3;
 export let inOut=false;
@@ -1069,7 +1131,7 @@ const inKept={};
 export function setInOutNow(on){inOut=!!on;}
 export function inShell(w){
   var k,per,i,j,l,best=0,d,n=7;
-  if(!inOut||!w||!w.de0||w.flat||w.volume||w.pack||pkDeep(w))return 0;
+  if(!inOut||!w||!w.de0||w.flat||w.volume||w.pack||w.sheet||pkDeep(w))return 0;
   k=w.id+","+packing+(pkMix?"m":"");
   if(inKept[k]===undefined){
     per=w.period(0);

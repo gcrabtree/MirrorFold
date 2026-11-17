@@ -1,5 +1,6 @@
 /* Drawing one frame: the scene, the trails, the glow, and the finished picture. Each step reads what it needs from fr,
    the frame's notes (see loop.js), and leaves there what later steps need. */
+import { fb } from "./fabric.js";
 import { cam } from "./camera.js";
 import { scene } from "./choose.js";
 import { clock } from "./clock.js";
@@ -76,6 +77,7 @@ function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip,
   camArr[0]=R[0];camArr[1]=R[1];camArr[2]=R[2];camArr[3]=Up[0];camArr[4]=Up[1];camArr[5]=Up[2];camArr[6]=F[0];camArr[7]=F[1];camArr[8]=F[2];
   gl.uniformMatrix3fv(U.uCam,false,camArr);
   if(w.flat)zoomUniforms(U,w);
+  if(w.sheet)gl.uniform1fv(U.uFb,fb); /* the Fabric's waves (js/fabric.js) */
   gl.drawArrays(gl.TRIANGLES,0,3);
 }
 

@@ -39,7 +39,7 @@ export function linkEnd(j,names){
   return {prog:p,U:U};
 }
 export function link(fs,names){return linkEnd(linkStart(fs),names);}
-const WORLD_U=["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uSurf","uPer","uFl","uFlA","uPe","uJit","uSpark","uRef","uZ","uZn","uZo","uZs","uDoor","uDoorN","uDoorT","uDoorC","uPk","uPkZ","uPkO","uMw","uLens","uRb","uRbW","uInv","uLwR","uLwA","uSh","uExp"];
+const WORLD_U=["uRes","uTime","uSeg","uM","uHue","uSpin","uFade","uPix","uPos","uCam","uPa","uPb","uPc","uPd","uFov","uBeat","uMid","uHi","uOrb","uVr","uLandT","uLandOn","uVid","uVidK","uVidS","uSurf","uPer","uFl","uFlA","uPe","uJit","uSpark","uRef","uZ","uZn","uZo","uZs","uDoor","uDoorN","uDoorT","uDoorC","uPk","uPkZ","uPkO","uMw","uLens","uRb","uRbW","uInv","uLwR","uLwA","uSh","uExp","uFb"];
 /* The built-in worlds' programs come in sets: one for each way of making them (with the chrome surface in them, with
    the shapes mixed; see fragSource). Only one set is in use. Changing the set puts away each world's program, the half
    made one and its distance probe under the old set's name and brings out what was made under the new one, if
