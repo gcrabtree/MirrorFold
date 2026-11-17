@@ -13,7 +13,7 @@
 >
 > Mirrorfold is designed to avoid strobing, but it has **not** been tested or certified against any photosensitivity standard, and no setting makes it safe for everyone. It is not a medical device and nothing here is medical advice. It is provided "as is", without warranty of any kind, and you use it entirely at your own risk; see the [licence](LICENSE).
 
-Fly through endless fractal worlds in your browser. Twenty-eight worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
+Fly through endless fractal worlds in your browser. Twenty-nine worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
 
 This project is inspired in part by the music visualizers from decades past… from Winamp plugins to the standalone visualizer MilkDrop. This has a familiar feel when in Journey mode (an autopilot that flies through the procedurally generated 3D worlds) while listening to music. 
 
@@ -31,7 +31,7 @@ Relax, unwind, and enjoy!
 
 **Try it: https://gcrabtree.github.io/MirrorFold/**
 
-![Contact sheet of all 28 worlds](docs/worlds.jpg)
+![Contact sheet of all 29 worlds](docs/worlds.jpg)
 
 The app is one page, one stylesheet and a folder of JavaScript modules. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
 
@@ -58,7 +58,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 
 ## What it does
 
-- **28 worlds.** Twenty-three are solid surfaces, all fractals but Cell (the inside of a living cell) and Biomech (see below); three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
+- **29 worlds.** Twenty-four are solid surfaces, all fractals but Cell (the inside of a living cell), Biomech and Seer (see below); three (Nebula, Aurora and Lanterns) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
 - **Biomech**, a world in homage to the biomechanical paintings of H. R. Giger: an endless hall of tunnels whose walls are rib cages, with spines where the tunnels meet, tendons between ribs and spines, and ribbed hoses running alongside. The cages breathe with the morph. Nothing of his is copied; it is built from the kinds of thing he painted. With it come three near-grey palettes that are open from the start (**Gunmetal**, **Tallow**, **Verdigris**), the **ribbed** surface, the **Airbrush** filter and the **Biomech** journey template, all of which work in every other world too.
 - **Zooms a trillion times deep.** The two zoom worlds magnify the Mandelbrot set and Julia sets up to about a trillion times, on points where there is always something to see. See [The zoom worlds](#the-zoom-worlds).
 - **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
@@ -66,6 +66,7 @@ The app is one page, one stylesheet and a folder of JavaScript modules. There is
 - **Kaleidoscope mirrors**: off, or 3, 4, 6, 8 or 12 segments.
 - **14 colour palettes.** Eight are available from the start (one of them, Wood, is browns). Six are unlocked by finding orbs.
 - **A picture beside every name.** The world, palette, motion, filter, overlay, mirrors, FX and landscape buttons each open a grid of small pictures that show what each choice looks like.
+- **Seer**, a world in homage to the visionary paintings on the band Tool's records and stage, Alex Grey's among them: an endless lattice of eyes that look both ways, each between two lids in a sun of fourteen flames with a beaded halo, and seven-pointed stars in rings in the spaces between. The pupils are holes, so a row of eyes can be seen through the eye in front, and flown through. The morph opens the pupils, narrows the lids and sways the flames. Nothing of theirs is copied; it is built from the kinds of thing those pictures are full of. With it come the **Vision** palette (gold through violet to deep blue, open from the start) and the **Visions** journey template.
 - **6 feedback motions, 23 filters, 10 overlays and 8 transitions**, in the style of the MilkDrop music visualiser.
 - **Music reactivity** from a built-in track, your own audio file, another browser tab such as Spotify or YouTube, the microphone, or a tapped tempo.
 - **Journey**, an autopilot that flies for you and changes the world, palette, mirrors, motion, filter, overlay, surface, land, packing, pulse and shapes over time. You control what it may change with templates.
@@ -346,7 +347,7 @@ A **template** says what Journey may change and how often. For each of world, pa
 
 A **set** plays several templates in turn, each for a number of minutes.
 
-Built-in templates: Classic, Everything, Clean flight, MilkDrop, Dance party, Kaleidoscope, Calm, Biomech, Landscapes, Follow the music. **Dance party** is MilkDrop's motions and filters behind the dancing figures: its overlay is always the Dancer, the Chorus line or the Dance floor, and it changes the kind of dancing every minute. The moves are sorted into seven kinds (groove, disco, sixties, hiphop, party, world, rave), and a template's **Dance style** row says which kinds the figures may dance. **Biomech** keeps to the Biomech world and three others made of rods and webs (Web, Thicket, Tangle), the near-grey palettes, the ribbed, chrome, pearl and plain surfaces and the Airbrush and Noir filters, with no mirrors, motions or overlays. Built-in set: Grand tour.
+Built-in templates: Classic, Everything, Clean flight, MilkDrop, Dance party, Kaleidoscope, Calm, Biomech, Visions, Landscapes, Follow the music. **Dance party** is MilkDrop's motions and filters behind the dancing figures: its overlay is always the Dancer, the Chorus line or the Dance floor, and it changes the kind of dancing every minute. The moves are sorted into seven kinds (groove, disco, sixties, hiphop, party, world, rave), and a template's **Dance style** row says which kinds the figures may dance. **Biomech** keeps to the Biomech world and three others made of rods and webs (Web, Thicket, Tangle), the near-grey palettes, the ribbed, chrome, pearl and plain surfaces and the Airbrush and Noir filters, with no mirrors, motions or overlays. **Visions** keeps to the Seer world and five others of rings, wires and halls (Lattice, Web, Gates, Temple, Tangle), the Vision, Spectrum, Sunset and Orchid palettes, and mirrors of 6, 8 or 12 half the time, with no motions, filters or overlays. Built-in set: Grand tour.
 
 Turn Journey on and press **Edit journeys** to make your own. Built-in templates cannot be edited; use **Duplicate** to start from one. Your templates and sets are saved in your browser only. To keep a copy or move them to another device, save them as a pack; see [Library and packs](#library-and-packs).
 
@@ -527,7 +528,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `js/` | The app, as about 67 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
-| `docs/worlds.jpg` | Contact sheet of all 28 worlds |
+| `docs/worlds.jpg` | Contact sheet of all 29 worlds |
 | `thumbs/` | The choosers' small pictures, one for each built-in world, palette, motion, filter, overlay, mirror setting, FX setting and landscape |
 | `lang/` | The lessons' words, one flat file for each language (`en.json`) |
 | `voice/` | The lessons' voice: one sound file for each step, and `index.json`, which records the words each was made from |

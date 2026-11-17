@@ -22,7 +22,9 @@ export const PALETTES=[
  /* three near-greys for the Biomech world: cold steel, old bone, and green bronze. They are open from the start (open:true), not found by orbs */
  {name:"Gunmetal",a:[.36,.40,.41],b:[.33,.35,.34],c:[1,1,1],d:[0,.02,.05],open:true},
  {name:"Tallow",a:[.42,.36,.25],b:[.38,.32,.22],c:[1,1,1],d:[0,.03,.08],open:true},
- {name:"Verdigris",a:[.20,.35,.30],b:[.20,.30,.26],c:[1,1,1],d:[.06,0,.11],open:true}
+ {name:"Verdigris",a:[.20,.35,.30],b:[.20,.30,.26],c:[1,1,1],d:[.06,0,.11],open:true},
+ /* for the Seer world: gold flames through violet to deep blue. Open from the start too */
+ {name:"Vision",a:[.5,.38,.42],b:[.5,.35,.42],c:[1,1,1],d:[0,.1,.5],open:true}
 ];
 export const BASE_PALS=8;
 export const ORB_PALS=6; /* how many palettes after those are opened by finding orbs */
