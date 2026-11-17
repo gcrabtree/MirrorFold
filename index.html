@@ -20,7 +20,7 @@
 <div id="stick"><div id="knob"></div></div>
 
 <div id="hud" class="hide">
-  <div class="row">
+  <div class="row" id="bar">
     <button id="pWorld" type="button" class="pick">World</button><select id="selWorld" aria-label="World" hidden></select>
     <button id="pPal" type="button" class="pick">Palette</button><select id="selPal" aria-label="Palette" hidden></select>
     <select id="selMusic" aria-label="Music">
@@ -32,77 +32,10 @@
       <option value="tab">Listen to a tab</option>
       <option value="mic">Microphone</option>
     </select>
-  </div>
-  <div class="row">
     <button id="bJourney" type="button" aria-pressed="false">Journey</button>
     <button id="bStill" type="button" aria-pressed="false">Hold still</button>
-    <button id="bSpark" type="button">Throw a light</button>
-    <button id="mLook" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuLook">Look</button>
-    <button id="mLand" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuLand">Land and video</button>
-    <button id="mShare" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuShare">Save and share</button>
-    <button id="mMore" type="button" class="menuBtn" aria-expanded="false" aria-controls="menuMore">More</button>
-    <button id="bLearn" type="button">How it works</button>
     <button id="bStudio" type="button" aria-pressed="false" hidden>Compose</button>
-  </div>
-  <!-- the four groups below open one at a time from the buttons above, and close when the controls fade -->
-  <div class="row menu" id="menuLook" hidden>
-    <button id="pMotion" type="button" class="pick">Motion</button><select id="selMotion" aria-label="Feedback motion" hidden></select>
-    <button id="pLook" type="button" class="pick">Filter</button><select id="selLook" aria-label="Filter" hidden></select>
-    <button id="pOv" type="button" class="pick">Overlay</button><select id="selOv" aria-label="Overlay" hidden></select>
-    <button id="bOvS" type="button">Overlay 50%</button>
-    <button id="bMirror" type="button" class="pick">Mirrors off</button>
-    <button id="bFx" type="button" class="pick">FX glow</button>
-    <button id="bSurf" type="button" class="pick">Surface plain</button>
-    <button id="bPack" type="button" class="pick">Packing grid</button>
-    <button id="bPulse" type="button" aria-pressed="false">Pulse together</button>
-    <button id="bMix" type="button" aria-pressed="false">Shapes one kind</button>
-    <button id="bInside" type="button" aria-pressed="false">Inside out off</button>
-    <button id="bShaft" type="button" aria-pressed="false">Light shafts off</button>
-    <button id="bLw" type="button" aria-pressed="true">Light wave on</button>
-    <button id="bLens" type="button" aria-pressed="false">Lens blur off</button>
-    <button id="bEye" type="button" aria-pressed="false">Eye off</button>
-    <button id="bEyeIn" type="button" hidden>Eye nearer</button>
-    <button id="bEyeOut" type="button" hidden>Eye further</button>
-    <button id="bIris" type="button" hidden>Iris follows the palette</button>
-    <button id="bBlink" type="button" aria-pressed="true" hidden>Blink now and then</button>
-    <button id="bMorph" type="button" aria-pressed="true">Morph follows song</button>
-    <button id="bDrift" type="button" aria-pressed="true">Drift</button>
-    <button id="bPattern" type="button">Pattern changes</button>
-  </div>
-  <div class="row menu" id="menuLand" hidden>
-    <button id="bLand" type="button">Land off</button>
-    <button id="bLandKind" type="button" class="pick" hidden>Land is the Alps</button>
-    <button id="bLandTint" type="button" hidden>Land colours natural</button>
-    <button id="bLandFx" type="button" hidden>Effects on everything</button>
-    <button id="bVideo" type="button">Video off</button>
-  </div>
-  <div class="row menu" id="menuShare" hidden>
-    <button id="bShot" type="button">Save picture</button>
-    <button id="bPhoto" type="button" aria-pressed="false">Photo mode</button>
-    <button id="bCard" type="button">Make a postcard</button>
-    <button id="bCode" type="button">Go to a code</button>
-    <button id="bRec" type="button" aria-pressed="false">Record video</button>
-    <button id="bLap" type="button" aria-pressed="false">Record a loop</button>
-    <button id="bShare" type="button">Share spot</button>
-    <button id="bFlight" type="button" aria-pressed="false">Record flight</button>
-    <button id="bTg" type="button" aria-pressed="false">Fly together</button>
-    <button id="bPlaying" type="button">What's playing?</button>
-    <button id="bMediaShare" type="button" aria-pressed="true">Music named in what I share: yes</button>
-    <button id="bLib" type="button">Gallery and library</button>
-  </div>
-  <div class="row menu" id="menuMore" hidden>
-    <button id="bOrbs" type="button" aria-pressed="true">Orbs</button>
-    <button id="bFlits" type="button" aria-pressed="true">Sprites</button>
-    <button id="bRibbon" type="button" aria-pressed="false">Ribbons</button>
-    <button id="bDoor" type="button">Open a doorway</button>
-    <button id="bLie" type="button">Open a strange doorway</button>
-    <button id="bDoors" type="button" aria-pressed="true">Journey uses doorways</button>
-    <button id="bDetail" type="button">Detail auto</button>
-    <button id="bStats" type="button" aria-pressed="false">Stats</button>
-    <button id="bFull" type="button">Fullscreen</button>
-    <button id="bVr" type="button" aria-pressed="false">VR viewer</button>
-    <button id="bMidi" type="button" aria-pressed="false">Knobs</button>
-    <a id="aHelp" class="btn" href="https://github.com/gcrabtree/MirrorFold#readme" target="_blank" rel="noopener">Help and source</a>
+    <button id="bPanel" type="button" aria-expanded="false" aria-controls="panel">Controls</button>
   </div>
   <div class="row" id="rowJourney" hidden>
     <select id="selJT" aria-label="Journey template or set"></select>
@@ -110,14 +43,6 @@
     <button id="bMore" type="button">More like this</button>
     <button id="bLess" type="button">Less like this</button>
     <button id="bAdv" type="button">Edit journeys</button>
-  </div>
-  <div class="row" id="rowVideo" hidden>
-    <label class="btn" for="vidIn">Choose video file<input id="vidIn" type="file" accept="video/*"></label>
-    <button id="bVidCam" type="button">Use the camera</button>
-    <button id="bVidSnd" type="button" hidden>Video sound off</button>
-    <button id="bVidMode" type="button">Video on the surfaces</button>
-    <button id="bVidAmt" type="button">Video strength 85%</button>
-    <button id="bVidPlay" type="button" hidden>Pause video</button>
   </div>
   <div class="row" id="rowSend" hidden>
     <span id="sendSay" role="status"></span>
@@ -157,6 +82,124 @@
     <button id="bPlay" type="button" hidden>Pause</button>
     <span class="btn" id="scrubWrap" hidden><span id="scrub" role="slider" tabindex="0" aria-label="Position in audio file" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="scrubFill"></span><span id="scrubThumb"></span></span><span id="tLabel">0:00 / 0:00</span></span>
   </div>
+</div>
+
+<!-- every control that is not in the bar: one panel, under headings that fold (js/controls.js) -->
+<div id="panel" hidden>
+  <div class="panHead"><h2>Controls</h2><button id="panClose" type="button">Close</button></div>
+  <input id="panFind" type="search" placeholder="Find a control" aria-label="Find a control" autocomplete="off" spellcheck="false">
+  <p id="panNone" hidden>No control has those words in its name.</p>
+  <section class="sec" data-name="Look" data-open="1">
+    <button type="button" class="secHead" aria-expanded="true">Look</button>
+    <div class="secBody">
+      <button id="pMotion" type="button" class="pick">Motion</button><select id="selMotion" aria-label="Feedback motion" hidden></select>
+      <button id="pLook" type="button" class="pick">Filter</button><select id="selLook" aria-label="Filter" hidden></select>
+      <button id="pOv" type="button" class="pick">Overlay</button><select id="selOv" aria-label="Overlay" hidden></select>
+      <button id="bOvS" type="button">Overlay 50%</button>
+      <button id="bMirror" type="button" class="pick">Mirrors off</button>
+      <button id="bFx" type="button" class="pick">FX glow</button>
+      <button id="bSurf" type="button" class="pick">Surface plain</button>
+      <button id="bPattern" type="button">Pattern changes</button>
+      <button id="bMorph" type="button" aria-pressed="true">Morph follows song</button>
+      <button id="bDrift" type="button" aria-pressed="true">Drift</button>
+    </div>
+  </section>
+  <section class="sec" data-name="Shapes" data-open="1">
+    <button type="button" class="secHead" aria-expanded="true">Shapes</button>
+    <div class="secBody">
+      <button id="bPack" type="button" class="pick">Packing grid</button>
+      <button id="bPulse" type="button" aria-pressed="false">Pulse together</button>
+      <button id="bMix" type="button" aria-pressed="false">Shapes one kind</button>
+      <button id="bInside" type="button" aria-pressed="false">Inside out off</button>
+    </div>
+  </section>
+  <section class="sec" data-name="Light" data-open="1">
+    <button type="button" class="secHead" aria-expanded="true">Light</button>
+    <div class="secBody">
+      <button id="bSpark" type="button">Throw a light</button>
+      <button id="bShaft" type="button" aria-pressed="false">Light shafts off</button>
+      <button id="bLw" type="button" aria-pressed="true">Light wave on</button>
+      <button id="bLens" type="button" aria-pressed="false">Lens blur off</button>
+    </div>
+  </section>
+  <section class="sec" data-name="Eye">
+    <button type="button" class="secHead" aria-expanded="false">Eye</button>
+    <div class="secBody">
+      <button id="bEye" type="button" aria-pressed="false">Eye off</button>
+      <button id="bEyeIn" type="button" hidden>Eye nearer</button>
+      <button id="bEyeOut" type="button" hidden>Eye further</button>
+      <button id="bIris" type="button" hidden>Iris follows the palette</button>
+      <button id="bBlink" type="button" aria-pressed="true" hidden>Blink now and then</button>
+    </div>
+  </section>
+  <section class="sec" data-name="Land and video">
+    <button type="button" class="secHead" aria-expanded="false">Land and video</button>
+    <div class="secBody">
+      <button id="bLand" type="button">Land off</button>
+      <button id="bLandKind" type="button" class="pick" hidden>Land is the Alps</button>
+      <button id="bLandTint" type="button" hidden>Land colours natural</button>
+      <button id="bLandFx" type="button" hidden>Effects on everything</button>
+      <button id="bVideo" type="button">Video off</button>
+  <div class="secRow" id="rowVideo" hidden>
+    <label class="btn" for="vidIn">Choose video file<input id="vidIn" type="file" accept="video/*"></label>
+    <button id="bVidCam" type="button">Use the camera</button>
+    <button id="bVidSnd" type="button" hidden>Video sound off</button>
+    <button id="bVidMode" type="button">Video on the surfaces</button>
+    <button id="bVidAmt" type="button">Video strength 85%</button>
+    <button id="bVidPlay" type="button" hidden>Pause video</button>
+  </div>
+    </div>
+  </section>
+  <section class="sec" data-name="In the world">
+    <button type="button" class="secHead" aria-expanded="false">In the world</button>
+    <div class="secBody">
+      <button id="bOrbs" type="button" aria-pressed="true">Orbs</button>
+      <button id="bFlits" type="button" aria-pressed="true">Sprites</button>
+      <button id="bRibbon" type="button" aria-pressed="false">Ribbons</button>
+      <button id="bDoor" type="button">Open a doorway</button>
+      <button id="bLie" type="button">Open a strange doorway</button>
+      <button id="bDoors" type="button" aria-pressed="true">Journey uses doorways</button>
+    </div>
+  </section>
+  <section class="sec" data-name="Save and share">
+    <button type="button" class="secHead" aria-expanded="false">Save and share</button>
+    <div class="secBody">
+      <button id="bShot" type="button">Save picture</button>
+      <button id="bPhoto" type="button" aria-pressed="false">Photo mode</button>
+      <button id="bCard" type="button">Make a postcard</button>
+      <button id="bCode" type="button">Go to a code</button>
+      <button id="bRec" type="button" aria-pressed="false">Record video</button>
+      <button id="bLap" type="button" aria-pressed="false">Record a loop</button>
+      <button id="bShare" type="button">Share spot</button>
+      <button id="bFlight" type="button" aria-pressed="false">Record flight</button>
+      <button id="bPlaying" type="button">What's playing?</button>
+      <button id="bMediaShare" type="button" aria-pressed="true">Music named in what I share: yes</button>
+    </div>
+  </section>
+  <section class="sec" data-name="With others and packs">
+    <button type="button" class="secHead" aria-expanded="false">With others and packs</button>
+    <div class="secBody">
+      <button id="bTg" type="button" aria-pressed="false">Fly together</button>
+      <button id="bLib" type="button">Gallery and library</button>
+    </div>
+  </section>
+  <section class="sec" data-name="Display">
+    <button type="button" class="secHead" aria-expanded="false">Display</button>
+    <div class="secBody">
+      <button id="bDetail" type="button">Detail auto</button>
+      <button id="bStats" type="button" aria-pressed="false">Stats</button>
+      <button id="bFull" type="button">Fullscreen</button>
+      <button id="bVr" type="button" aria-pressed="false">VR viewer</button>
+      <button id="bMidi" type="button" aria-pressed="false">Knobs</button>
+    </div>
+  </section>
+  <section class="sec" data-name="Help">
+    <button type="button" class="secHead" aria-expanded="false">Help</button>
+    <div class="secBody">
+      <button id="bLearn" type="button">How it works</button>
+      <a id="aHelp" class="btn" href="https://github.com/gcrabtree/MirrorFold#readme" target="_blank" rel="noopener">Help and source</a>
+    </div>
+  </section>
 </div>
 
 <div id="start">

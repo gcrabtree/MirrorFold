@@ -159,9 +159,9 @@ The controls at the top of the screen fade after five seconds without input and 
 
 The controls fade after five seconds and come back when you touch the picture.
 
-**First row:** World, Palette and Music. **World** and **Palette** each open a chooser: a grid of small pictures, one for each choice, with its name under it. Press a picture to choose it; **Close**, the Escape key or a press beside the grid leaves things as they were. Motion, Filter, Overlay, Mirrors, FX and the landscape button open the same kind of chooser. A world, palette, motion, filter or overlay that came from a pack has no picture: a palette shows a stripe of its colours, the others say so.
+**The bar:** World, Palette and Music. **World** and **Palette** each open a chooser: a grid of small pictures, one for each choice, with its name under it. Press a picture to choose it; **Close**, the Escape key or a press beside the grid leaves things as they were. Motion, Filter, Overlay, Mirrors, FX and the landscape button open the same kind of chooser. A world, palette, motion, filter or overlay that came from a pack has no picture: a palette shows a stripe of its colours, the others say so.
 
-**Second row:** three buttons, then four that each open a group of controls under the row, then **How it works**, which opens [the lessons](#the-lessons). One group is open at a time; pressing its button again closes it, and it closes when the controls fade.
+After those come **Journey**, **Hold still**, **Compose** (on a computer) and **Controls**. **Controls** opens a panel with everything else under headings that fold: Look, Shapes, Light, Eye, Land and video, In the world, Save and share, With others and packs, Display and Help. Type in the box at its top to find a control by any word in its name. The panel stays until you press **Close**.
 
 | Button | What it does |
 |---|---|

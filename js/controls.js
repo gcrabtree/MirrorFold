@@ -12,14 +12,49 @@ export let orbsOn=true,drift=true; /* the Orbs and Drift switches */
 export let morph=2;       /* Morph: 0 off, 1 the worlds change shape slowly by themselves, 2 their shape follows the song (and by themselves while there is no sound to follow) */
 export const MORPHS=["off","drifts","follows song"];
 export function setMorph(i){morph=((i%3)+3)%3;press($("bMorph"),morph>0);$("bMorph").textContent="Morph "+MORPHS[morph];}
-export let menu="";      /* which group of controls is open: "", or one of MENUS */
-export const MENUS=["Look","Land","Share","More"];
 let de0;
-/* Open one group of controls and close the others; "" closes them all. The video's own row shows only with the Land group. */
-export function setMenu(name){
-  menu=MENUS.indexOf(name)>=0?name:"";
-  MENUS.forEach(function(m){$("menu"+m).hidden=m!==menu;$("m"+m).setAttribute("aria-expanded",m===menu?"true":"false")});
-  $("hud").setAttribute("data-menu",menu);
+export let panelOpen=false; /* the panel of controls is showing */
+/* The panel: every control that is not in the bar, under headings that fold. It stays until it is shut. */
+export function setPanel(on){
+  panelOpen=!!on;$("panel").hidden=!panelOpen;$("bPanel").setAttribute("aria-expanded",panelOpen?"true":"false");
+  document.body.classList.toggle("panelOpen",panelOpen);
+  if(!panelOpen&&$("panFind").value){$("panFind").value="";panFilter("");}
+}
+function secSet(sec,open){
+  if(open)sec.setAttribute("data-open","1");else sec.removeAttribute("data-open");
+  sec.querySelector(".secHead").setAttribute("aria-expanded",open?"true":"false");
+}
+function secSave(){
+  var open=[];
+  Array.prototype.forEach.call(document.querySelectorAll("#panel .sec"),function(s){if(s.hasAttribute("data-open"))open.push(s.getAttribute("data-name"));});
+  try{localStorage.setItem("mirrorfold-panel",JSON.stringify(open))}catch(_){}
+}
+/* Does a control's name hold every word asked for? Free of the page. */
+export function panMatch(text,q){
+  var t=String(text).toLowerCase(),w=String(q).toLowerCase().split(/\s+/).filter(function(x){return x;}),i;
+  for(i=0;i<w.length;i++)if(t.indexOf(w[i])<0)return false;
+  return true;
+}
+/* Show only the controls whose names hold the words typed, whatever heading they are under; with nothing typed, everything as it was. */
+function panFilter(q){
+  var any=false,on=!!q.trim();
+  $("panel").classList.toggle("finding",on);
+  Array.prototype.forEach.call(document.querySelectorAll("#panel .sec"),function(sec){
+    var some=false;
+    Array.prototype.forEach.call(sec.querySelector(".secBody").children,function(el){
+      var hit=!on||(el.tagName!=="SELECT"&&panMatch(el.textContent+" "+sec.getAttribute("data-name"),q));
+      el.classList.toggle("nf",!hit);if(hit&&el.tagName!=="SELECT"&&!el.hidden)some=true;
+    });
+    sec.classList.toggle("nf",on&&!some);if(some)any=true;
+  });
+  $("panNone").hidden=!on||any;
+}
+/* Bring a control into sight: the panel open, its heading unfolded. For when something elsewhere needs the user to press it. */
+export function showControl(id){
+  var el=$(id),sec=el&&el.closest?el.closest(".sec"):null;
+  setPanel(true);
+  if(sec)secSet(sec,true);
+  if(el&&el.scrollIntoView)el.scrollIntoView({block:"center"});
 }
 export function setFx(i){sel.fi=FX[i]?i:0;$("bFx").textContent="FX "+FX[sel.fi].name;}
 export function setSurface(i){
@@ -33,7 +68,18 @@ export function setSurface(i){
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-MENUS.forEach(function(m){$("m"+m).addEventListener("click",function(){setMenu(menu===m?"":m);wakeHud()})});
+$("bPanel").addEventListener("click",function(){setPanel(!panelOpen);wakeHud()});
+$("panClose").addEventListener("click",function(){setPanel(false)});
+$("panFind").addEventListener("input",function(){panFilter(this.value)});
+window.addEventListener("keydown",function(e){if(e.code==="Escape"&&panelOpen&&$("pick").hidden)setPanel(false)});
+(function(){
+  var open=null;
+  try{open=JSON.parse(localStorage.getItem("mirrorfold-panel")||"null")}catch(_){}
+  Array.prototype.forEach.call(document.querySelectorAll("#panel .sec"),function(sec){
+    if(Array.isArray(open))secSet(sec,open.indexOf(sec.getAttribute("data-name"))>=0);
+    sec.querySelector(".secHead").addEventListener("click",function(){secSet(sec,!sec.hasAttribute("data-open"));secSave();});
+  });
+})();
 try{orbsOn=localStorage.getItem("mirrorfold-orbs")!=="off"}catch(_){}
 $("bAdv").addEventListener("click",function(){openAdv(false)});
 $("bLib").addEventListener("click",function(){openAdv(true)});
@@ -74,4 +120,4 @@ $("bFull").addEventListener("click",function(){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={MORPHS, setMorph, setFx, setSurface, MENUS, setMenu, get menu(){return menu},set menu(v){menu=v}, get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};
+export const __dbg={MORPHS, setMorph, setFx, setSurface, setPanel, panMatch, panFilter, showControl, secSet, get panelOpen(){return panelOpen}, get orbsOn(){return orbsOn},set orbsOn(v){orbsOn=v}, get morph(){return morph},set morph(v){morph=v}, get drift(){return drift},set drift(v){drift=v}, get de0(){return de0},set de0(v){de0=v}};

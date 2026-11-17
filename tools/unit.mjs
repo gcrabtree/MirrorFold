@@ -1302,5 +1302,11 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("choosers: numbers count as numbers, and off comes first", by(["Mirrors off", "Mirrors 3", "Mirrors 12", "Mirrors 4"]) === "Mirrors off,Mirrors 3,Mirrors 4,Mirrors 12" && by(["Surface grain", "Surface plain", "Surface chrome"]) === "Surface plain,Surface chrome,Surface grain");
 }
 
+// ---- finding a control in the panel by words in its name (js/controls.js)
+{
+  const { panMatch } = (await import("../js/controls.js")).__dbg;
+  expect("panel: a control is found by any words of its name, whatever their case or order", panMatch("Light shafts off Light", "SHAFT") && panMatch("Record a loop Save and share", "loop record") && !panMatch("Eye off", "eye blink") && panMatch("anything", "  "));
+}
+
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

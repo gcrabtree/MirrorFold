@@ -2,6 +2,7 @@
 import { ac, analyser, bus, cap, ensureAudio, fbins, master, pPause, pPlay, player } from "./audio.js";
 import { selMusic } from "./choose.js";
 import { clock } from "./clock.js";
+import { showControl } from "./controls.js";
 import { songStep } from "./song.js";
 import { $, calm, errBox, gl, isTouch, toast } from "./dom.js";
 import { wakeHud } from "./input.js";
@@ -68,7 +69,7 @@ function listening(){return (musicMode==="tab"||musicMode==="mic")&&!!cap.node;}
 export function setMusic(mode){
   if((mode==="tab"&&!canTab)||(mode==="mic"&&!canMic))mode="off";
   if(mode==="friend"&&!friend.stream)mode="off";
-  if(mode==="video"&&!vidFile()){mode="off";$("rowVideo").hidden=false;toast("Choose a video file first.");}
+  if(mode==="video"&&!vidFile()){mode="off";$("rowVideo").hidden=false;showControl("rowVideo");toast("Choose a video file first.");}
   if(mode!=="off"&&mode!=="tap"&&!ensureAudio()){mode="off";errBox.textContent="This browser cannot play audio here.";}
   if(cap.stream||musicMode==="tab"||musicMode==="mic")stopListening();
   friendPlay(false);
