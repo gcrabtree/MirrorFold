@@ -422,7 +422,7 @@ const VR_GLSL=[
 
 export const FS_TRAIL=[
 "precision highp float;varying vec2 v;uniform sampler2D uA,uB,uWv;",
-"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;uniform vec4 uD0[5],uD1[5],uD2[5],uD3[5],uD4[5],uD5[5],uD6[5],uD7[5],uD8[5];uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
+"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;uniform vec4 uD0[12],uD1[12],uD2[12],uD3[12],uD4[12],uD5[12],uD6[12],uD7[12],uD8[12];uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
 VR_GLSL,
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* the motion: where in the last picture this place takes its trail from. c is measured from the middle, -0.5 to 0.5 */
@@ -501,11 +501,11 @@ VR_GLSL,
 "        if(uVr>0.5){el=min(uOvEta*(1.0+0.6*sin(uTime*(0.4+0.13*fi)+fi*2.1)),"+VR_EMAX+");dl=(ev-vec2(sg*el,0.0))*"+VR_KAP+";}", /* VR viewer: each light also swings nearer and farther */
 "        float q2=length(dl/m-pp),gl2=exp(-q2*q2/((0.0006+0.0025*uOvHi)*wd*wd*0.5));if(gl2>ln)oe=el;ln+=gl2;",
 "      }",
-"    }else{", /* the dancers: up to five stick figures, whose joints JavaScript works out (js/dance.js), as a body in space seen from in front. Each is a filled head, fourteen lines (back, neck, shoulders, hips, two to an arm, two to a leg, the feet) and a small filled hand at the end of each arm, with a dark edge (dk). A figure is looked at only near where it stands. rr, which the colour is taken from below, is set to a number of the figure's own, so each has its own colour of the palette */
+"    }else{", /* the dancers: up to twelve stick figures (DN_MAX in js/dance.js), whose joints JavaScript works out (js/dance.js), as a body in space seen from in front. Each is a filled head, fourteen lines (back, neck, shoulders, hips, two to an arm, two to a leg, the feet) and a small filled hand at the end of each arm, with a dark edge (dk). A figure is looked at only near where it stands. They come furthest first, and each is drawn over the ones before it: its line and its dark edge hide theirs. The last number of hd is the figure's own number and half its brightness. rr, which the colour is taken from below, is set to a number of the figure's own, so each has its own colour of the palette */
 "      vec2 q=d/m;",
-"      for(int i=0;i<5;i++){",
+"      for(int i=0;i<12;i++){",
 "        vec4 hd=uD8[i],b0=uD0[i];",
-"        if(hd.w>0.0&&abs(q.x-b0.z)<hd.z*11.0){",
+"        if(hd.w>0.0&&abs(q.x-b0.z)<hd.z*11.0&&abs(q.y-b0.w)<hd.z*13.0){",
 "          vec4 b1=uD1[i],b2=uD2[i],b3=uD3[i],b4=uD4[i],b5=uD5[i],b6=uD6[i],b7=uD7[i];",
 "          float wl=hd.z*0.34*min(wd,3.0);",
 "          float ds=min(min(limb(q,b0.xy,b0.zw),limb(q,b1.xy,b1.zw)),min(limb(q,b0.xy,hd.xy),length(q-hd.xy)-hd.z));",
@@ -513,9 +513,10 @@ VR_GLSL,
 "          ds=min(ds,min(length(q-b2.zw),length(q-b3.zw))-0.7*wl);", /* the hands */
 "          ds=min(ds,min(limb(q,b4.xy,b4.zw),min(min(limb(q,b4.xy,b5.xy),limb(q,b5.xy,b5.zw)),min(limb(q,b4.zw,b6.xy),limb(q,b6.xy,b6.zw)))));",
 "          ds=min(ds,min(limb(q,b5.zw,b7.xy),limb(q,b6.zw,b7.zw)));", /* the feet */
-"          float g=(1.0-smoothstep(0.35*wl,wl,ds))*hd.w;",
-"          if(g>ln){ln=g;rr=0.15+0.27*float(i);}",
-"          dk=max(dk,(1.0-smoothstep(wl,1.6*wl,ds))*hd.w);",
+"          float id=floor(hd.w),e=1.0-smoothstep(wl,1.6*wl,ds);",
+"          ln=ln*(1.0-e)+(1.0-smoothstep(0.35*wl,wl,ds))*fract(hd.w)*2.0;",
+"          if(e>0.5)rr=0.15+fract(id*0.382)*1.08;",
+"          dk=max(dk,e);",
 "        }",
 "      }",
 "    }",

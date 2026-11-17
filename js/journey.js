@@ -262,7 +262,7 @@ BUILTIN_T=[
   filter:{mode:"random",set:["none","Echo","Neon","Solar","Liquid","Prism","Thermal","Contour"]},overlay:{mode:"random"},surface:{mode:"random"}},
  /* a party: MilkDrop's motions and filters behind one of the three overlays of dancing figures */
  {name:"Dance party",mirrors:{mode:"off"},motion:{mode:"random",set:["none","Melt","Vortex","Tunnel","Ripple","Drift"]},
-  filter:{mode:"random",set:["none","Echo","Neon","Prism","Liquid","Thermal"]},overlay:{mode:"random",every:40,set:["Dancer","Chorus line","Dance floor"]},surface:{mode:"random"},dance:{mode:"random",every:60}},
+  filter:{mode:"random",set:["none","Neon","Prism","Liquid","Thermal"]},overlay:{mode:"random",every:40,set:["Dancer","Chorus line","Dance floor"]},surface:{mode:"random"},dance:{mode:"random",every:60}},
  {name:"Kaleidoscope",mirrors:{mode:"random",set:["3","4","6","8","12"]},motion:{mode:"off"},filter:{mode:"random",set:["none","Quad","Tiles","Twirl","Prism"]},overlay:{mode:"off"}},
  {name:"Calm",world:{every:90,set:["coral","julia","aurora","nebula","gates","halls","temple"]},palette:{every:40},mirrors:{mode:"off"},
   motion:{mode:"random",every:50,set:["none","Melt","Drift"]},filter:{mode:"random",every:60,set:["none","Liquid"]},overlay:{mode:"off"}},
