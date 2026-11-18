@@ -521,11 +521,11 @@ VR_GLSL,
 "          float hpx=hd.z*min(uRes.x,uRes.y);float df=smoothstep(2.5,6.0,hpx);", /* a head only a few dots across has none: they would only flicker */
 "          if(df>0.0&&dot(hl,hl)<11.0){",
 /* fc: the angle the head is turned by (0 facing the viewer), and its face as five numbers in three (see danceFill).
-   Which head a figure has is its number's remainder on dividing by 8 (DN_LOOKS). The hair and hats turn with the
+   Which head a figure has is its number's remainder on dividing by 16 (DN_LOOKS). The hair and hats turn with the
    head: each part is taken to sit on a ball, at some angle round it from the front, so it is drawn sn of the way
    across for a part at the front, cn for a part at the side. dh is the distance to what is seen whole; dq to what
    is behind the head, and so seen only outside its disc. */
-"            vec4 fc=uD9[i];float sty=mod(id,8.0);float aw=1.2/hpx;float tl=0.085*min(wd,3.0);float rh=length(hl);float ah=atan(hl.x,hl.y);float dh=1e5,dq=1e5;",
+"            vec4 fc=uD9[i];float sty=mod(id,16.0);float aw=1.2/hpx;float tl=0.085*min(wd,3.0);float rh=length(hl);float ah=atan(hl.x,hl.y);float dh=1e5,dq=1e5;",
 "            float sn=sin(fc.x),cn=cos(fc.x);",
 "            float cap=max(abs(rh-1.09),0.35-hl.y);", /* a line over the top of the head, which several share */
 "            if(sty<0.5){", /* headphones: a band from ear to ear, which narrows to a line as the head turns side on, and two cups, which come to the middle */
@@ -545,13 +545,44 @@ VR_GLSL,
 "            }else if(sty<3.5){", /* a top hat: its outline, its brim and its band, and a buckle on the band at the front */
 "              vec2 bx=abs(hl-vec2(0.0,1.42))-vec2(0.78,0.62);dh=min(abs(length(max(bx,0.0))+min(max(bx.x,bx.y),0.0)),min(max(abs(hl.y-0.8),abs(hl.x)-1.4),max(abs(hl.y-1.08),abs(hl.x)-0.78)));",
 "              if(cn>0.05)dh=min(dh,abs(max(abs(hl.x-0.66*sn)-0.02-0.1*cn,abs(hl.y-1.08)-0.11)));",
-"            }else if(sty<4.5){", /* a cap: its peak sticks out the way the head faces, so it is short and across the brow from in front, long from the side and hidden from behind */
-"              dh=min(cap,length(hl-vec2(0.0,1.16))-0.05);vec2 pt=vec2(1.9*sn,0.44);",
-"              float pk=min(limb(hl,vec2(sn-0.55*cn,0.52),pt),limb(hl,vec2(sn+0.55*cn,0.52),pt));",
+"            }else if(sty<4.5){", /* a cap: a filled crown over the top of the head with a button on it, and a peak joined to its lower edge that sticks out the way the head faces, so it is a band across the brow from in front, long from the side and hidden from behind */
+"              dh=min(max(rh-1.12,0.5-hl.y),length(hl-vec2(0.0,1.2))-0.06);",
+"              vec2 pv=vec2(hl.x-1.3*sn,hl.y-0.5);float pe=length(pv/vec2(0.5+0.22*abs(cn),0.1));float pk=(1.0-1.0/max(pe,0.05))*length(pv);", /* how far outside the peak's flat oval this is, measured along the line from its middle */
 "              if(cn>-0.15)dh=min(dh,pk);else dq=pk;",
 "            }else if(sty<5.5){float bn=abs(length(hl-vec2(-0.55*sn,1.3))-0.33);dh=cap;if(cn<0.2)dh=min(dh,bn);else dq=bn;}", /* hair in a bun at the back of the top */
 "            else if(sty<6.5){if(abs(ah)<2.1)dh=min(abs(rh-1.52-0.07*cos(11.0*ah+2.0*fc.x)),abs(rh-1.26-0.05*cos(9.0*ah+1.0-3.0*fc.x)));}", /* a round mass of curls, which go round */
-"            else{float af=mod(ah+0.14,0.28)-0.14;if(abs(ah)<0.16+1.0*abs(sn))dh=max(abs(af)*rh-0.12*(2.05-rh),max(1.0-rh,rh-2.05-0.25*cos(ah)+0.25));}", /* a crest from the brow to the nape: a few spikes close together from in front, a fan of them from the side */
+"            else if(sty<7.5){float af=mod(ah+0.14,0.28)-0.14;if(abs(ah)<0.16+1.0*abs(sn))dh=max(abs(af)*rh-0.12*(2.05-rh),max(1.0-rh,rh-2.05-0.25*cos(ah)+0.25));}", /* a crest from the brow to the nape: a few spikes close together from in front, a fan of them from the side */
+"            else if(sty<8.5){", /* a ponytail: tied at the back of the top, it hangs down behind */
+"              float tq=min(limb(hl,vec2(-0.75*sn,0.78),vec2(-1.5*sn,0.15)),limb(hl,vec2(-1.5*sn,0.15),vec2(-1.3*sn-0.1*cn,-1.05)))-0.05;",
+"              dh=cap;if(cn<0.2)dh=min(dh,tq);else dq=tq;",
+"            }else if(sty<9.5){", /* two bunches, one at each side, each a ball of hair and a tail */
+"              dh=cap;",
+"              for(int k=0;k<2;k++){",
+"                float a=(k==0?1.75:-1.75)+fc.x;float bx=1.18*sin(a);",
+"                float e=min(length(hl-vec2(bx,-0.05))-0.24,limb(hl,vec2(bx,-0.05),vec2(1.15*bx,-0.95))-0.04);",
+"                if(cos(a)>-0.3)dh=min(dh,e);else dq=min(dq,e);",
+"              }",
+"            }else if(sty<10.5){", /* a bob: hair over the top of the head down to a fringe in front, lower at the sides, and right down the back */
+"              dh=min(max(rh-1.14,0.28-0.85*smoothstep(0.3,-0.3,cn)-hl.y),max(abs(rh-1.07)-0.09,-0.62-hl.y));",
+"            }else if(sty<11.5){", /* a woolly hat: a filled crown, a turned-up band and a bobble on top */
+"              dh=min(max(rh-1.15,0.5-hl.y),min(abs(max(abs(hl.y-0.4)-0.11,abs(hl.x)-1.1)),length(hl-vec2(0.0,1.36))-0.2));",
+"            }else if(sty<12.5){", /* a wide hat: a brim turned up at the sides and a crown with a dent in it */
+"              vec2 bx=abs(hl-vec2(0.0,1.08))-vec2(0.72,0.42);float cr=max(length(max(bx,0.0))+min(max(bx.x,bx.y),0.0),0.16-length(hl-vec2(0.0,1.6)));",
+"              dh=min(abs(cr),max(abs(hl.y-0.56-0.13*hl.x*hl.x),abs(hl.x)-1.95));",
+"            }else if(sty<13.5){", /* a party hat: a cone worn to one side of the top, which goes round with the head, with a stripe and a bobble */
+"              float cx=0.38*sin(fc.x+0.6);vec2 tp=vec2(1.6*cx,2.05);",
+"              dh=min(min(limb(hl,vec2(cx-0.55,0.84),tp),limb(hl,vec2(cx+0.55,0.84),tp)),min(limb(hl,vec2(cx-0.55,0.84),vec2(cx+0.55,0.84)),limb(hl,vec2(1.3*cx-0.27,1.45),vec2(1.3*cx+0.27,1.45))));",
+"              dh=min(dh,length(hl-tp)-0.1);",
+"            }else if(sty<14.5){", /* a crown: a band with points, which go round as the head turns */
+"              float zz=1.02+0.42*abs(fract(hl.x*1.25+0.4774648*fc.x)*2.0-1.0);",
+"              dh=min(min(max(abs(hl.y-zz)*0.6,abs(hl.x)-0.86),max(abs(hl.y-0.74),abs(hl.x)-0.86)),max(abs(abs(hl.x)-0.86),max(0.74-hl.y,hl.y-1.3)));",
+"            }else{", /* two bobbles on springs, one from each side of the top: they cross as the head turns */
+"              dh=cap;",
+"              for(int k=0;k<2;k++){",
+"                float a=(k==0?1.5707963:-1.5707963)+fc.x;vec2 ft=vec2(0.42*sin(a),0.98);vec2 tp=vec2(0.8*sin(a),1.95);",
+"                dh=min(dh,min(limb(hl,ft,tp)+0.02,length(hl-tp)-0.13));",
+"              }",
+"            }",
 "            dh=min(dh,max(dq,1.03-rh));",
 "            float he=(1.0-smoothstep(tl,2.2*tl+aw,dh))*df,hb=(1.0-smoothstep(tl-aw,tl+aw,dh))*df;",
 "            ln=ln*(1.0-he)+hb*fract(hd.w)*2.0;dk=max(dk,he);",

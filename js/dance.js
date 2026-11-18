@@ -284,7 +284,7 @@ export function pickFace(manner,rnd){
   rnd*=t;for(i=0;i<DN_FACES.length;i++){rnd-=DN_FACES[i].p[m];if(rnd<0)return i;}
   return 0;
 }
-export const DN_LOOKS=8;     /* how many kinds of head there are (the shader draws them: headphones, spikes, long hair, a top hat, a cap, a bun, a round mass of curls, a crest) */
+export const DN_LOOKS=16;    /* how many kinds of head there are (the shader draws them: headphones, spikes, long hair, a top hat, a cap, a bun, a round mass of curls, a crest, a ponytail, two bunches, a bob, a woolly hat, a wide hat, a party hat, a crown, bobbles on springs) */
 
 /* which of the three kinds of move fits how full the music is (e, 0 to 1 and over) */
 export function moveTier(e){return e<0.55?"lo":e<0.85?"mid":"hi";}
