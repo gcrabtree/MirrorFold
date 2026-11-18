@@ -23,7 +23,7 @@ import { rbNone, rbU, rbW } from "./ribbons.js";
 import { flitA, flitU } from "./flits.js";
 import { peerU } from "./together.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
-import { inShell } from "./worlds.js";
+import { inShell, wMc } from "./worlds.js";
 import { doorTarget, landQ, tA, tB, tF, tT, target } from "./targets.js";
 import { vidAlone, videoScene, videoUniforms } from "./video.js";
 import { jit, lens, stillN } from "./still.js";
@@ -42,13 +42,14 @@ export const flip={cur:0,fcur:0};         /* which of each pair of pictures is b
    (turn) and from a lens sc times the size. While a loop is flown the things that live in the world are left out too,
    since they would not be where they were when the lap comes round. */
 function worldPass(w,T,pos,per,fr,fovNow,L,bt,mp,hp,landOver,door,clip,turn,sc){
-  var U=w.U,main=!clip,live=main&&!lapOn(),orbU=fr.orbU,sparkU=fr.sparkU,R,Up,F;
+  var U=w.U,main=!clip,live=main&&!lapOn(),orbU=fr.orbU,sparkU=fr.sparkU,R,Up,F,mc;
   gl.bindFramebuffer(gl.FRAMEBUFFER,T.f);gl.viewport(0,0,T.w,T.h);gl.useProgram(w.prog);
   gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],live?orbU[3]:0);gl.uniform4f(U.uSpark,sparkU[0],sparkU[1],sparkU[2],live?sparkU[3]:0);
   gl.uniform2f(U.uRes,T.w,T.h);
   gl.uniform1f(U.uTime,clock.time);
   gl.uniform1f(U.uSeg,mirrors[sel.mi]);
   gl.uniform1f(U.uM,fr.m);
+  mc=wMc();gl.uniform4f(U.uMc,mc[0],mc[1],mc[2],mc[3]); /* what the worlds have of the clocks besides the morph (js/worlds.js) */
   gl.uniform1f(U.uHue,clock.hueT+w.hue);
   gl.uniform1f(U.uSpin,clock.spin);
   gl.uniform1f(U.uFade,1);gl.uniform2f(U.uJit,jit[0],jit[1]);

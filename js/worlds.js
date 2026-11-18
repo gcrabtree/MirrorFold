@@ -7,6 +7,18 @@ import { packing, pkD, pkDeep, pkMix, pkP, pkPer } from "./packing.js";
    Each has a GLSL distance estimator (map), the same estimator in JS (de) for the
    distance-based flight speed, the repeat period used to wrap the camera, and a start point.
    m is the morph value, roughly -1..1. */
+/* What a world may take from the clocks besides the morph, the same four numbers to the chip (uMc) and to JavaScript:
+   how far Clockwork's gears have turned, from the turning clock, which only ever runs forward (W_RATE of a turn's
+   angle to its second, brought into one turn), and three slow waves of the morph's clock for Cortex. The waves'
+   paces are whole numbers of hundredths, so each comes round when the morph's clock does (every 200 pi). wTick is
+   called every frame, after the clocks are set. W_TURN is the least the turning clock can go on by and leave every
+   gear looking as it did (an eighth of a turn of the slower gears): a recorded loop goes on by a whole number of them. */
+const mc=[0,0,0,0];
+export const W_RATE=0.2,W_TURN=3.9269908;
+export function wTick(turnT,morphT){
+  mc[0]=md(W_RATE*turnT,6.2831853);mc[1]=Math.sin(.13*morphT);mc[2]=Math.sin(.17*morphT+1);mc[3]=Math.sin(.23*morphT+2);
+}
+export function wMc(){return mc;}
 export const WORLDS=[
 {id:"lattice",name:"Lattice",hue:0,fog:.18,maxd:16,speed:.55,start:[.8,.45,.1],
  period:function(){return [2,2,2]},
@@ -1082,9 +1094,9 @@ export const WORLDS=[
  }},
 /* Gears in mesh, turning: flat layers of them one unit apart, sixteen teeth each, every gear turning against its four
    neighbours, on axles that run through all the layers. Every other layer turns twice as fast the other way, is
-   thicker, and has four spokes where the first has six; between each four axles a shaft is left open through all the
-   layers. The morph is the angle they have turned through,
-   so they turn one way and back as it swings. Two gears mesh if one is half a tooth round from the other, which
+   thicker, and has four spokes where the first has eight; between each four axles a shaft is left open through all the
+   layers. They turn steadily, by a clock of their own that only runs forward (uMc.x: wTick above); the morph is
+   not used. Two gears mesh if one is half a tooth round from the other, which
    holds everywhere because a gear's place in its layer is odd or even (par) and sixteen is an even number. Only the
    gear whose square this is and the nearest of its neighbours are worked out; the next layer is held to how far its
    plane is. The teeth make the distance too large, so 0.42 of theirs is used. */
@@ -1106,7 +1118,7 @@ export const WORLDS=[
  "float map(vec3 p){",
  "  float qz=mod(p.z+0.5,1.0)-0.5;float lay=mod(floor(p.z+0.5),2.0);",
  "  vec2 c=floor(p.xy*0.5+0.5);vec2 q=p.xy-2.0*c;float par=mod(c.x+c.y,2.0);",
- "  float th=(lay<0.5?1.6:-3.2)*uM;float K=lay<0.5?6.0:4.0;float hz=lay<0.5?0.05:0.08;",
+ "  float th=(lay<0.5?1.0:-2.0)*uMc.x;float K=lay<0.5?8.0:4.0;float hz=lay<0.5?0.05:0.08;",
  "  float d=cwG(q,par,th,K,qz,hz);vec4 col=cwC;",
  "  vec2 n=abs(q.x)>abs(q.y)?vec2(q.x<0.0?-2.0:2.0,0.0):vec2(0.0,q.y<0.0?-2.0:2.0);",
  "  float e=cwG(q-n,1.0-par,th,K,qz,hz);if(e<d){d=e;col=cwC;}",
@@ -1114,7 +1126,7 @@ export const WORLDS=[
  "  d=min(d,0.8-abs(qz));", /* the next layer is at least this far */
  "  orb=col+vec4(0.0,0.0,0.0,0.08*lay);return d;",
  "}"],
- de:function(x,y,z,m){
+ de:function(x,y,z){
   function G(qx,qy,par,th,K,zz,hz){
     var r=Math.hypot(qx,qy),a=Math.atan2(qy,qx)-(1-2*par)*th;
     var tw=Math.max(-1,Math.min(1,1.5*Math.cos(16*a+3.1415927*par))),af=md(a+3.1415927/K,6.2831853/K)-3.1415927/K;
@@ -1124,7 +1136,7 @@ export const WORLDS=[
     return Math.min(d,Math.min(Math.max(wx,wy),0)+Math.hypot(Math.max(wx,0),Math.max(wy,0)));
   }
   var qz=md(z+.5,1)-.5,lay=md(Math.floor(z+.5),2),cx=Math.floor(x*.5+.5),cy=Math.floor(y*.5+.5);
-  var qx=x-2*cx,qy=y-2*cy,par=md(cx+cy,2),th=(lay<.5?1.6:-3.2)*m,K=lay<.5?6:4,hz=lay<.5?.05:.08,nx=0,ny=0;
+  var qx=x-2*cx,qy=y-2*cy,par=md(cx+cy,2),th=(lay<.5?1:-2)*mc[0],K=lay<.5?8:4,hz=lay<.5?.05:.08,nx=0,ny=0;
   if(Math.abs(qx)>Math.abs(qy))nx=qx<0?-2:2;else ny=qy<0?-2:2;
   var d=Math.min(G(qx,qy,par,th,K,qz,hz),G(qx-nx,qy-ny,1-par,th,K,qz,hz));
   d=Math.min(d,Math.hypot(qx,qy)-.08);
@@ -1416,6 +1428,86 @@ export const WORLDS=[
  "  return gxy(p*0.5,4.0)+0.6*gxy(p+3.3,8.0);",
  "}"],
  de:function(){return .25}},
+/* Nerve cells in columns, as in the brain's cortex, and never still. Each cell of 3 holds one neuron: a body below
+   the middle, four trees of dendrites spreading from it sideways and down, a trunk straight up through the cell
+   with six thin fibres wound round it, and at the top of the trunk a tuft of four more trees. A tree (cxT) is a
+   stem that bends, then splits in two, each half leaning out and turned a quarter round, five times over, with
+   beads along it. The cell is mirror-tiled and the trees reach past its walls, so each tree meets its own mirror
+   image there and the neurons are joined into a net; above and below, tuft meets tuft and trunk meets trunk, which
+   makes the columns. In the cell's corners are small star cells, and along its edges thin fibres, four together.
+   The trees' lean follows the morph; their bend, their quarter turn and the body's swelling follow three slow
+   waves of the morph's clock (uMc: wTick below), each at its own pace, so the net is always moving while Morph is
+   on. The colour runs out along each tree from the body, so the scene's moving bands pass along the dendrites like
+   signals. The bends and the fibres' winding make the distance a little too large, so three quarters of it is used. */
+{id:"cortex",name:"Cortex",hue:.58,fog:.13,maxd:22,speed:.9,start:[1.5,.2,0],
+ period:function(){return [6,6,6]},
+ glsl:[
+ "vec4 cxC;",
+ "float cxT(vec3 l,float s,float an,float bn,float cw,float w0){", /* one tree: l is measured from its root in stems, the first stem along y; s is how many stems to a unit */
+ "  float d=1e5;float ca=cos(an),sa=sin(an),cb=cos(bn),sb=sin(bn);",
+ "  for(int i=0;i<5;i++){",
+ "    float h=clamp(l.y,0.0,1.0);l.x+=cw*sin(3.1415927*h);",
+ "    float e=(length(l-vec3(0.0,h,0.0))-(0.085-0.02*h)*(1.0+0.22*sin(25.0*l.y)))/s;",
+ "    if(e<d){d=e;cxC=vec4(0.5+0.5*sin(25.0*l.y),0.0,0.0,w0+0.13*(float(i)+h));}",
+ "    l.y-=1.0;l.x=abs(l.x);",
+ "    l.xy=vec2(ca*l.x-sa*l.y,sa*l.x+ca*l.y);",
+ "    l.xz=vec2(cb*l.x-sb*l.z,sb*l.x+cb*l.z);",
+ "    l*=1.45;s*=1.45;",
+ "  }",
+ "  return d;",
+ "}",
+ "float map(vec3 p){",
+ "  p=abs(mod(p+1.5,6.0)-3.0)-1.5;",
+ "  float an=0.55+0.16*uM+0.1*uMc.y;float bn=1.5707963+0.45*uMc.z;float cw=0.1+0.09*uMc.w;",
+ "  vec3 q=p+vec3(0.0,0.45,0.0);",
+ "  float bm=sin(11.0*q.x)*sin(11.0*q.y)*sin(11.0*q.z);",
+ "  float d=(length(q*vec3(1.0,0.8,1.0))-0.27-0.025*uMc.y-0.02*bm)*0.8;vec4 c=vec4(0.5+0.5*bm,0.0,0.5,0.02);", /* the body */
+ "  float r=length(p.xz);float e=r-0.05-0.04*exp(-3.0*q.y*q.y);", /* the trunk */
+ "  if(e<d){d=e;c=vec4(0.0,0.0,0.0,0.3+0.2*p.y);}",
+ "  float af=mod(atan(p.z,p.x)+2.0943951*p.y+0.5235988,1.0471976)-0.5235988;", /* six fibres wound round it: the angle is folded onto one */
+ "  e=(length(vec2(r*cos(af)-0.24,r*sin(af)))-0.016)*0.8;",
+ "  if(e<d){d=e;c=vec4(0.0,0.0,0.3,0.75+0.1*p.y);}",
+ "  float t=(abs(q.x)+abs(q.z))*0.7071068;float zz=(abs(q.z)-abs(q.x))*0.7071068;", /* the four trees from the body, as one: outward and a little down */
+ "  e=cxT(vec3(0.342*t+0.94*q.y,0.94*t-0.342*q.y-0.2,zz)*1.6666667,1.6666667,an,bn,cw,0.08);",
+ "  if(e<d){d=e;c=cxC;}",
+ "  e=cxT(vec3(0.77*t-0.64*(p.y-0.85),0.64*t+0.77*(p.y-0.85),zz)*2.0,2.0,an,bn,cw,0.4);", /* the four of the tuft: outward and up */
+ "  if(e<d){d=e;c=cxC;}",
+ "  vec3 k=abs(p)-1.5;", /* the corner: a star cell, and a fibre along each of the three edges that meet there, each waving and kept a little inside, so the four cells round an edge give four fibres */
+ "  e=length(k)-0.17-0.03*sin(14.0*k.x)*sin(14.0*k.y)*sin(14.0*k.z);",
+ "  if(e<d){d=e;c=vec4(0.0,0.0,0.6,0.92);}",
+ "  e=length(k.xz+0.085+0.045*vec2(sin(4.1887902*p.y+2.0*uMc.z),cos(4.1887902*p.y+2.0*uMc.w)));",
+ "  e=min(e,length(k.xy+0.085+0.045*vec2(sin(4.1887902*p.z+2.0*uMc.w),cos(4.1887902*p.z+2.0*uMc.y))));",
+ "  e=(min(e,length(k.yz+0.085+0.045*vec2(sin(4.1887902*p.x+2.0*uMc.y),cos(4.1887902*p.x+2.0*uMc.z))))-0.017)*0.9;",
+ "  if(e<d){d=e;c=vec4(0.0,0.0,0.0,0.62+0.1*(p.x+p.y+p.z));}",
+ "  orb=c;return 0.75*d;",
+ "}"],
+ de:function(x,y,z,m){
+  function T(lx,ly,lz,s){
+    var d=1e5,ca=Math.cos(an),sa=Math.sin(an),cb=Math.cos(bn),sb=Math.sin(bn),i,h,t;
+    for(i=0;i<5;i++){
+      h=Math.max(0,Math.min(1,ly));lx+=cw*Math.sin(3.1415927*h);
+      d=Math.min(d,(Math.hypot(lx,ly-h,lz)-(.085-.02*h)*(1+.22*Math.sin(25*ly)))/s);
+      ly-=1;lx=Math.abs(lx);
+      t=ca*lx-sa*ly;ly=sa*lx+ca*ly;lx=t;
+      t=cb*lx-sb*lz;lz=sb*lx+cb*lz;lx=t;
+      lx*=1.45;ly*=1.45;lz*=1.45;s*=1.45;
+    }
+    return d;
+  }
+  x=tile(x,3);y=tile(y,3);z=tile(z,3);
+  var an=.55+.16*m+.1*mc[1],bn=1.5707963+.45*mc[2],cw=.1+.09*mc[3],qy=y+.45;
+  var bm=Math.sin(11*x)*Math.sin(11*qy)*Math.sin(11*z),d=(Math.hypot(x,.8*qy,z)-.27-.025*mc[1]-.02*bm)*.8;
+  var r=Math.hypot(x,z),af=md(Math.atan2(z,x)+2.0943951*y+.5235988,1.0471976)-.5235988;
+  d=Math.min(d,r-.05-.04*Math.exp(-3*qy*qy),(Math.hypot(r*Math.cos(af)-.24,r*Math.sin(af))-.016)*.8);
+  var t=(Math.abs(x)+Math.abs(z))*.7071068,zz=(Math.abs(z)-Math.abs(x))*.7071068,u=y-.85;
+  d=Math.min(d,T((.342*t+.94*qy)*1.6666667,(.94*t-.342*qy-.2)*1.6666667,zz*1.6666667,1.6666667),T((.77*t-.64*u)*2,(.64*t+.77*u)*2,zz*2,2));
+  var kx=Math.abs(x)-1.5,ky=Math.abs(y)-1.5,kz=Math.abs(z)-1.5,W=4.1887902;
+  d=Math.min(d,Math.hypot(kx,ky,kz)-.17-.03*Math.sin(14*kx)*Math.sin(14*ky)*Math.sin(14*kz));
+  var e=Math.min(Math.hypot(kx+.085+.045*Math.sin(W*y+2*mc[2]),kz+.085+.045*Math.cos(W*y+2*mc[3])),
+    Math.hypot(kx+.085+.045*Math.sin(W*z+2*mc[3]),ky+.085+.045*Math.cos(W*z+2*mc[1])),
+    Math.hypot(ky+.085+.045*Math.sin(W*x+2*mc[1]),kz+.085+.045*Math.cos(W*x+2*mc[2])));
+  return .75*Math.min(d,(e-.017)*.9);
+ }},
 {id:"mzoom",name:"Mandelbrot zoom",hue:.55,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,
  period:function(){return [4,4,4]},glsl:[],de:function(){return .2}},
 {id:"jzoom",name:"Julia zoom",hue:.1,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,julia:true,
@@ -1490,4 +1582,4 @@ WORLDS.forEach(function(w){
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={WORLDS, packKinds, packDe, packSrc, IN_STEP, IN_PART, inKept, setInOutNow, inShell, inDe, get inOut(){return inOut},set inOut(v){inOut=v}};
+export const __dbg={WORLDS, W_RATE, W_TURN, wTick, wMc, packKinds, packDe, packSrc, IN_STEP, IN_PART, inKept, setInOutNow, inShell, inDe, get inOut(){return inOut},set inOut(v){inOut=v}};

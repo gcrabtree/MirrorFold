@@ -5,7 +5,8 @@ export const clock={
   time:0,    /* seconds since the page opened, less any time it was hidden */
   morphT:0,  /* the morph's own clock: it runs only while Morph is on, faster with the music's mids, or is moved to where the song asks */
   hueT:0,    /* slow drift through the palette */
-  spin:0     /* turn of the mirror fold */
+  spin:0,    /* turn of the mirror fold */
+  turnT:0    /* a clock for things that turn (Clockwork's gears): it runs at the morph's own pace while Morph is on, faster with the mids, and only ever forward, even while the song moves the morph's clock about */
 };
 export function morphValue(){return Math.sin(clock.morphT*0.09)+0.15*Math.sin(clock.morphT*0.31)}
 
@@ -20,6 +21,7 @@ export function tickClock(fr,morphOn,aim){
     if(clock.morphT<0)clock.morphT+=200*Math.PI; /* both of the morph's waves come round in this time, so the morph is the same and the clock stays above nothing, as share spots need */
   }
   else if(morphOn)clock.morphT+=dt*(calm?0.4:1)*(1+1.6*fr.mv);
+  if(morphOn){clock.turnT+=dt*(calm?0.4:1)*(1+1.6*fr.mv);if(clock.turnT>200*Math.PI)clock.turnT-=200*Math.PI;} /* 200 pi is a whole number of turns for anything wTick makes of it (js/worlds.js) */
   if(!calm)clock.spin+=dt*0.045;
 }
 

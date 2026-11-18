@@ -19,6 +19,7 @@ import { landMode } from "./land.js";
 import { started } from "./loop.js";
 import { spawnOrb } from "./orbs.js";
 import { deMany } from "./pack-worlds.js";
+import { W_TURN, wTick } from "./worlds.js";
 import { DP_IN, packing, pkDeep, pkMix, pkMul, pkTick, pkWave } from "./packing.js";
 import { recType } from "./record.js";
 import { mirrors, sel } from "./state.js";
@@ -31,8 +32,8 @@ export const LAP_LEAD=4;     /* seconds flown before the recording starts, for t
 export const LAP_MIN=8,LAP_MAX=24; /* the shortest and longest lap, in seconds */
 export const LAP_SWING=4;    /* seconds the morph's clock swings either side of where it was */
 /* The loop being flown, or null: kind ("line", "ring" or "deep"), T (seconds a lap), ph (laps flown; below 0 during the
-   lead), the path (see lapPose), where the clocks stood at the start (t0, h0, s0, mt0), how far the morph's clock
-   swings (A), how far the mirrors turn in a lap (turn), pulses in a lap (beats), what was chosen at the start (key),
+   lead), the path (see lapPose), where the clocks stood at the start (t0, h0, s0, mt0, tt0), how far the morph's clock
+   swings (A), how far the mirrors turn in a lap (turn) and the turning clock runs (gear), pulses in a lap (beats), what was chosen at the start (key),
    and the recording (rec, push, done). */
 let lap=null;
 export function lapOn(){return !!lap;}
@@ -109,8 +110,8 @@ function deAt(w,T){
 /* Is a way clear at the middle and both ends of the morph's swing? chk(de) answers for one distance. */
 function swings(w,chk){
   var T=clock.morphT,ok=true,i,at=[T-LAP_SWING,T+LAP_SWING];
-  for(i=0;i<2&&ok;i++){pkTick(at[i]);if(!chk(deAt(w,at[i])))ok=false;}
-  pkTick(T);
+  for(i=0;i<2&&ok;i++){pkTick(at[i]);wTick(clock.turnT,at[i]);if(!chk(deAt(w,at[i])))ok=false;}
+  pkTick(T);wTick(clock.turnT,T);
   return ok;
 }
 /* a pack world has no distance to walk with: its ways through are judged from 24 places along each, asked of the chip together */
@@ -224,12 +225,13 @@ export function lapStart(){
   if(still)setStill(false);
   seg=mirrors[sel.mi]?6.2831853/mirrors[sel.mi]:0;
   plan.turn=calm?0:seg*Math.max(1,Math.round(0.045*plan.T/Math.max(seg,1e-6))); /* the mirrors turn through whole folds, and the picture is the same after each */
+  plan.gear=W_TURN*Math.round((calm?0.4:1)*plan.T/W_TURN); /* the turning clock goes through whole steps of what turns by it, at about its usual pace, so the gears are the same after each lap */
   plan.beats=calm?0:Math.max(1,Math.round(plan.T/1.2));
   plan.ph=-LAP_LEAD/plan.T;plan.rec=null;plan.push=null;plan.done=false;
   /* the move to the loop's start goes behind a transition, which is over before the recording begins */
   if(!warpThen(function(){
     if(lap||lapBar())return;
-    plan.t0=clock.time;plan.h0=clock.hueT;plan.s0=clock.spin;plan.mt0=clock.morphT;plan.key=lapKey();
+    plan.t0=clock.time;plan.h0=clock.hueT;plan.s0=clock.spin;plan.mt0=clock.morphT;plan.tt0=clock.turnT;plan.key=lapKey();
     lap=plan;label();
   })){toast("A transition is running. Try again in a moment.");return;}
   toast(plan.kind==="ring"?"No straight way through is clear here, so the loop goes once round a circle. It records after a few seconds and saves itself.":plan.kind==="deep"?"Flying in until everything is three times smaller. It records after a few seconds and saves itself.":"Flying one whole repeat of the world. It records after a few seconds and saves itself.");
@@ -256,6 +258,7 @@ export function lapClock(fr){
   clock.hueT=lap.h0+0.017*lap.T/6.2831853*s;
   clock.spin=lap.s0+lap.turn*u;
   clock.morphT=lap.mt0+lap.A*s;
+  clock.turnT=lap.tt0+lap.gear*u;
   fr.bt=lapBeat(u,lap.beats);fr.lv=fr.mp=fr.mv=fr.hp=fr.hv=0;
 }
 /* A step of the frame, after the camera has moved: put the camera on the loop. Any steering ends it. */

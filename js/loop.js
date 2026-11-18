@@ -4,6 +4,7 @@ import { keepAbove, move, steering, turn } from "./camera.js";
 import { scene } from "./choose.js";
 import { clock, morphValue, tickClock } from "./clock.js";
 import { pkTick } from "./packing.js";
+import { wTick } from "./worlds.js";
 import { morph } from "./controls.js";
 import { $, calm, canvas, errBox, toast } from "./dom.js";
 import { fbSet } from "./fabric.js";
@@ -110,6 +111,7 @@ export function frame(now){
   lapClock(notes); /* a loop being flown sets every clock from how far round the lap is, and stands in for the sound (js/lap.js) */
   stepWarp(dt);
   notes.m=morphValue();
+  wTick(clock.turnT,clock.morphT); /* what some worlds take from the clocks besides the morph: the gears' turn, Cortex's sways (js/worlds.js) */
   pkTick(clock.morphT); /* the packing's wave needs the morph's clock, to work out the morph some seconds ago (js/packing.js) */
 
   if(!still)fbSet(clock.time,notes.lv,notes.mv,notes.hv,notes.bt,calm); /* the Fabric's waves, from the clock and the sound; Hold still leaves them where they are (js/fabric.js) */
