@@ -13,7 +13,7 @@ export const LFREQ=0.35,LPERIOD=256/LFREQ;
    and any free-standing shapes. landSrc() puts one together. */
 export const LAND_T=[
 "precision highp float;",
-"uniform vec2 uRes;uniform float uTime,uHue,uTint,uFov,uSeg,uSpin,uSky;uniform vec3 uPos,uSun,uSunCol,uPa,uPb,uPc,uPd;uniform mat3 uCam;uniform sampler2D uSkyT;uniform vec4 uVr;",
+"uniform vec2 uRes;uniform float uTime,uHue,uTint,uFov,uSeg,uSpin,uSky;uniform vec3 uPos,uSun,uSunCol,uPa,uPb,uPc,uPd;uniform mat3 uCam;uniform sampler2D uSkyT;uniform vec4 uVr;uniform vec3 uLn;",
 "uniform vec2 uCi[13],uCf[13],uLi[6],uLf[6],uPreRes;uniform vec4 uDa,uDb;uniform sampler2D uN,uPre,uX;uniform float uK;", /* where the camera sits in each noise layer, worked out exactly in JavaScript */
 "@CONST",
 "vec3 gTop,gLow,gSun,gHaze,gAmb;", /* sky, sun and haze colours, set once in main: natural, or taken from the palette */
@@ -23,8 +23,8 @@ export const LAND_T=[
 "vec3 ray(vec2 fc){",
 "  vec2 uv=(2.0*fc-uRes)/sqrt(uRes.x*uRes.y);float fov=uFov;gEo=vec2(0.0);gPix=2.0/(sqrt(uRes.x*uRes.y)*uFov);",
 "  if(uVr.x>0.5){", /* VR viewer: one picture per eye, each ray bent the way the viewer's lens will bend it back (see the scene shader) */
-"    float sd=fc.x<0.5*uRes.x?-1.0:1.0;vec2 q=(fc-vec2(0.5*uRes.x+sd*uVr.y,0.5*uRes.y))*uVr.z;float q2=dot(q,q);",
-"    uv=q*(1.0+0.34*q2+0.55*q2*q2);gEo=vec2(sd*uVr.w,0.0);fov=1.0;gPix=uVr.z*(1.0+1.02*q2+2.75*q2*q2);",
+"    float sd=fc.x<0.5*uRes.x?-1.0:1.0;vec2 q=(fc-vec2(0.5*uRes.x+sd*uVr.y,0.5*uRes.y+uLn.z))*uVr.z;float q2=dot(q,q);",
+"    uv=q*(1.0+uLn.x*q2+uLn.y*q2*q2);gEo=vec2(sd*uVr.w,0.0);fov=1.0;gPix=uVr.z*(1.0+3.0*uLn.x*q2+5.0*uLn.y*q2*q2);",
 "  }",
 "  gR2=dot(uv,uv);",
 "  if(uSeg>0.5){",

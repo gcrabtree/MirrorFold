@@ -27,7 +27,7 @@ import { inShell } from "./worlds.js";
 import { doorTarget, landQ, tA, tB, tF, tT, target } from "./targets.js";
 import { vidAlone, videoScene, videoUniforms } from "./video.js";
 import { jit, lens, stillN } from "./still.js";
-import { stereo, vrEye, vrEyeStep } from "./vr.js";
+import { stereo, vrEye, vrEyeStep, vrLens } from "./vr.js";
 import { tr } from "./warp.js";
 import { zoomUniforms } from "./zoom.js";
 export const camArr=new Float32Array(9); /* the camera's three directions, as the shaders take them */
@@ -41,7 +41,7 @@ export const flip={cur:0,fcur:0};         /* which of each pair of pictures is b
    and with nothing nearer than the ring, which stands at clip in it; a strange doorway's far side is also seen turned
    (turn) and from a lens sc times the size. While a loop is flown the things that live in the world are left out too,
    since they would not be where they were when the lap comes round. */
-function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip,turn,sc){
+function worldPass(w,T,pos,per,fr,fovNow,L,bt,mp,hp,landOver,door,clip,turn,sc){
   var U=w.U,main=!clip,live=main&&!lapOn(),orbU=fr.orbU,sparkU=fr.sparkU,R,Up,F;
   gl.bindFramebuffer(gl.FRAMEBUFFER,T.f);gl.viewport(0,0,T.w,T.h);gl.useProgram(w.prog);
   gl.uniform4f(U.uOrb,orbU[0],orbU[1],orbU[2],live?orbU[3]:0);gl.uniform4f(U.uSpark,sparkU[0],sparkU[1],sparkU[2],live?sparkU[3]:0);
@@ -52,8 +52,8 @@ function worldPass(w,T,pos,per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,door,clip,
   gl.uniform1f(U.uHue,clock.hueT+w.hue);
   gl.uniform1f(U.uSpin,clock.spin);
   gl.uniform1f(U.uFade,1);gl.uniform2f(U.uJit,jit[0],jit[1]);
-  gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrTan,vrEye);
-  gl.uniform1f(U.uPix,stereo?vrTan:2/(Math.sqrt(T.w*T.h)*1.15));
+  gl.uniform4f(U.uVr,stereo?1:0,L.off,L.tan,vrEye);gl.uniform3f(U.uLn,L.k1,L.k2,L.cy);
+  gl.uniform1f(U.uPix,stereo?L.tan:2/(Math.sqrt(T.w*T.h)*1.15));
   gl.uniform1f(U.uFov,fovNow);gl.uniform1f(U.uExp,photoExp()); /* photo mode's Brightness; 1 outside it */
   gl.uniform1f(U.uLandOn,landOver&&!LK[landKind].mirror?1:0);bindTex(6,landOver?tL.t:null);gl.uniform1i(U.uLandT,6); /* always a unit of its own: left at unit 0 it can name the very picture being drawn into, and the chip then refuses to draw */
   gl.uniform1f(U.uBeat,bt);gl.uniform1f(U.uMid,mp);gl.uniform1f(U.uHi,hp);
@@ -90,8 +90,8 @@ export function drawScene(fr){
   /* VR viewer geometry, from the Cardboard viewer's published numbers: lenses 64 mm apart and 39 mm from the screen.
      The browser does not report the screen's physical size, so one CSS pixel is taken as 0.162 mm, which is close on current phones.
      Worked out before anything is drawn, since the effect passes need the numbers whatever the scene is. */
-  var vrPx=0.000162*canvas.clientWidth/tA.w,vrTan=vrPx/0.039;
-  fr.vrOff=0.032/vrPx;fr.vrTan=vrTan;
+  var L=vrLens(tA.w,tA.h); /* for a headset, its own numbers in place of these (js/vr.js) */
+  fr.vrOff=L.off;fr.vrTan=L.tan;fr.vrLn=[L.k1,L.k2,L.cy];
   /* 0. the land, if it is on. Alone, it is the whole scene. Over a world, it is drawn first into its own picture with a
      clear sky, so the world need only be drawn where the land leaves it showing. */
   var landOn=landMode>0&&!!pLand,landOver=landOn&&landMode===2,src=tA;
@@ -109,11 +109,11 @@ export function drawScene(fr){
   if(dv&&dv.w.prog){
     dT=doorTarget();
     if(dv.box!=="all"){gl.enable(gl.SCISSOR_TEST);gl.scissor(dv.box[0],dv.box[1],dv.box[2],dv.box[3]);}
-    worldPass(dv.w,dT,dv.pos,dv.per,fr,fovNow,vrPx,vrTan,bt,mp,hp,false,null,dv.at,dv.T,dv.s);
+    worldPass(dv.w,dT,dv.pos,dv.per,fr,fovNow,L,bt,mp,hp,false,null,dv.at,dv.T,dv.s);
     gl.disable(gl.SCISSOR_TEST);
   }
   vrEyeStep(dist,dt); /* VR viewer: eye spacing follows the distance to the nearest surface, so the world always feels a similar size */
-  worldPass(w,tA,cam.pos,fr.per,fr,fovNow,vrPx,vrTan,bt,mp,hp,landOver,dT,null,null,1);
+  worldPass(w,tA,cam.pos,fr.per,fr,fovNow,L,bt,mp,hp,landOver,dT,null,null,1);
   }
   /* which picture the effects work on: the land laid over the world, the world alone, or the land alone */
   /* VR viewer: the effects are always on everything, since they need one picture that carries the depth of all that is seen */
@@ -146,7 +146,7 @@ export function drawTrails(fr){
   var ax=[cam.R,cam.Up,cam.F],ii,jj;
   for(jj=0;jj<3;jj++)for(ii=0;ii<3;ii++)turnArr[3*jj+ii]=camWas[3*ii]*ax[jj][0]+camWas[3*ii+1]*ax[jj][1]+camWas[3*ii+2]*ax[jj][2];
   for(ii=0;ii<3;ii++){camWas[3*ii]=ax[ii][0];camWas[3*ii+1]=ax[ii][1];camWas[3*ii+2]=ax[ii][2];}
-  gl.uniform1f(TU.uVr,stereo?1:0);gl.uniform4f(TU.uVrG,fr.vrOff,fr.vrTan,0,0);gl.uniform2f(TU.uRes,tc.w,tc.h);
+  gl.uniform1f(TU.uVr,stereo?1:0);gl.uniform4f(TU.uVrG,fr.vrOff,fr.vrTan,0,0);gl.uniform3fv(TU.uLn,fr.vrLn);gl.uniform2f(TU.uRes,tc.w,tc.h);
   gl.uniformMatrix3fv(TU.uTurn,false,turnArr);
   gl.uniform1f(TU.uOvEta,Math.min(0.05,1.25*vrEye/Math.max(fr.dist,1e-6)*(1+0.2*bt)));
   /* each of the motion's numbers as it is this frame: a driver may move it with a slow wave or with the sound */
@@ -202,7 +202,7 @@ export function drawFinal(fr){
      does, and the pass works on the middle view and carries depth */
   var vr=!stereo?0:(tr.warp>0||ca>0||lk.echo||lk.mos||lk.liq||lk.hue||(lk.fx>0&&lk.fx<5)||lk.fx===15)?2:1;
   gl.uniform1f(FU.uWarp,tr.warp);gl.uniform1f(FU.uTr,tr.trType);gl.uniform1f(FU.uVr,vr);
-  gl.uniform4f(FU.uVrG,fr.vrOff,fr.vrTan,0,0);gl.uniform2f(FU.uRes,tc.w,tc.h);
+  gl.uniform4f(FU.uVrG,fr.vrOff,fr.vrTan,0,0);gl.uniform3fv(FU.uLn,fr.vrLn);gl.uniform2f(FU.uRes,tc.w,tc.h);
   gl.uniform1f(FU.uCA,ca);
   gl.uniform1f(FU.uBloom,bloom);
   gl.uniform1f(FU.uTime,clock.time);gl.uniform1f(FU.uAsp,vr===2?1:tc.w/tc.h);gl.uniform2f(FU.uPx,1/tc.w,1/tc.h);

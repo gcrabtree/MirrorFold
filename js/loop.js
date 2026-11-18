@@ -10,6 +10,7 @@ import { fbSet } from "./fabric.js";
 import { measure } from "./flight.js";
 import { flightClock, flightFrame } from "./flightplay.js";
 import { filming } from "./film.js";
+import { xrOn } from "./xr.js";
 import { stepFlits } from "./flits.js";
 import { scoreClock, scoreFrame, scoreMorph } from "./scoreplay.js";
 import { studioFrame } from "./studio.js";
@@ -53,7 +54,7 @@ function begin(withMusic){
 }
 /* The frame's notes: what each step of a frame works out and the later steps need. One object, reused every frame,
    and called fr inside the steps. Every field is listed here, so a step never adds one. */
-const notes={
+export const notes={
   dt:0,                        /* seconds since the last frame, at most 0.05 */
   raw:0,                       /* seconds since the last frame as they really were, at most 1: for what must keep time with the music however slow the frames (the dancers' count of beats) */
   bt:0,lv:0,                   /* the sound: the beat's pulse and the low end's level */
@@ -77,23 +78,24 @@ const notes={
   lk:null,ov:null,op:null,     /* the filter and overlay in use, and the overlay's own program if it has one */
   tint:[0,0,0],tc:null,        /* the palette's colour now, and the picture the trails were drawn into */
   landLit:1,bloom:0,           /* how much glow and fringing the land allows, and the glow's strength */
+  vrLn:[0.34,0.55,0],          /* the lens's two numbers, and how far above the middle the eye looks straight ahead, in pixels: the viewer's lens, or nothing for a headset */
   vrOff:0,vrTan:0              /* VR viewer: each lens centre's distance from the middle of the picture in pixels, and the tangent of the angle one pixel covers */
 };
 /* The browser's call for a picture. While a score is filmed the film asks for the pictures itself, one for each of its own moments, and this stands by. */
 function tick(now){
   requestAnimationFrame(tick);
-  if(filming()){last=now;return;}
+  if(filming()||xrOn()){last=now;return;} /* and a headset asks for its own, at its own rate (js/xr.js) */
   frame(now);
 }
 export function frame(now){
-  if(document.hidden&&!filming()){last=now;return;}
+  if(document.hidden&&!filming()&&!xrOn()){last=now;return;}
   if(learnOpen){learnFrame(now);last=now;return;} /* the lessons cover the page: draw the lesson, and leave the world as it is */
   var rawDt=(now-last)/1000,dt=notes.dt=Math.min(0.05,rawDt);last=now;notes.raw=Math.max(0,Math.min(1,rawDt));
   /* wait for the graphics chip (Stats' probe and a pack world's probe do the same job, so not twice) */
   /* Not before the start card is left, and not while a program is being made ahead of need: the chip answers no
      question until it has made it, so the wait would be for that (up to a fifth of a second for a heavy world, on a
      fast computer), with the page deaf to every press meanwhile. The pictures may hitch then; the buttons do not. */
-  if(started&&!preloadBusy()&&!(statsOn&&!scene.world.volume)&&!scene.world.pack)chipWait();
+  if(started&&!xrOn()&&!preloadBusy()&&!(statsOn&&!scene.world.volume)&&!scene.world.pack)chipWait();
   statsBegin();
   autoDetail(now,dt);
   preloadFrame(rawDt,started); /* make the next program ahead of need, a little each frame */

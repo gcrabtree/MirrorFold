@@ -269,6 +269,10 @@ Roku, Apple TV and other TV boxes cannot run Mirrorfold themselves, and there is
 
 ## VR viewer
 
+**A real headset.** In a headset's own browser (it was made for the Meta Quest 3) a **VR headset** button appears in the bar. Press it and the world is all round you: turn and lean your head to look, and Journey flies. Left stick flies, right stick turns, right trigger is a burst of speed, left trigger throws a light, A or X is the next world, B or Y the next palette, and either grip turns Journey on or off. Set up what you want (the world, Journey's template, the music) before going in, since the controls cannot be seen inside. The picture is drawn smaller than the headset's own and sized to keep the rate up. On leaving, the page says how large the pictures were and how fast they came. Take breaks, and stop if you feel unwell: this is flight with no cockpit.
+
+The rest of this section is the older viewer, for a phone in a cardboard holder.
+
 This mode is for a phone in a Cardboard-style viewer: a holder with two lenses that you look into. The plain picture has been used in a real viewer. The motions, filters, overlays and transitions in it are new and have only been checked by measuring the two pictures against each other, not by eye in a viewer.
 
 1. Open Mirrorfold on the phone. On iPhone, open it from the home-screen icon so Safari's bars are out of the way (see [Full screen](#full-screen)).

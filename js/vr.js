@@ -1,12 +1,26 @@
 /* The VR viewer: one picture for each eye, turned by the phone's own movement. */
 import { cam, cross, norm, rot } from "./camera.js";
-import { $, isTouch, toast } from "./dom.js";
+import { $, canvas, isTouch, toast } from "./dom.js";
 import { press, wakeHud } from "./input.js";
 import { journey } from "./journey.js";
 import { started } from "./loop.js";
 export let stereo=false;        /* the VR viewer is on */
 export let vrEye=0.004;         /* half the distance between the two eyes, in world units; follows the distance to the nearest surface */
 let gyroPrev=null,wakeLock=null;
+/* The lens the two pictures are drawn for, for a picture w by h pixels: {off, tan, cy, k1, k2}. off is how far each
+   eye's straight-ahead is from the middle of the picture, in pixels; tan the tangent of the angle one pixel covers; cy
+   how far above the middle straight-ahead is; k1 and k2 the lens's curve. For a phone in a viewer these come from the
+   Cardboard viewer's published numbers: lenses 64 mm apart and 39 mm from the screen, a CSS pixel taken as 0.162 mm,
+   and the curve 0.34 and 0.55. A headset gives its own (setHeadLens, from js/xr.js): its picture is not bent here at
+   all, since the headset does that itself, so k1 and k2 are nothing. */
+let head=null; /* a headset's lens: {off, tan, cy} as parts of the picture's width and height; null for the viewer */
+export function setHeadLens(o){head=o||null;}
+export function vrLens(w,h){
+  var px;
+  if(head)return {off:head.off*w,tan:head.tan/w,cy:head.cy*h,k1:0,k2:0};
+  px=0.000162*canvas.clientWidth/w;
+  return {off:0.032/px,tan:px/0.039,cy:0,k1:0.34,k2:0.55};
+}
 export function vrEyeStep(dist,dt){vrEye+=(Math.max(0.00002,dist*0.021)-vrEye)*(1-Math.exp(-dt*1.5));}
 let gyroBound=false;
 
@@ -22,7 +36,7 @@ function devMat(al,be,ga,o){
   return m;
 }
 /* the turn between two of those matrices, as a vector along its axis with the angle as its length, in screen axes (x right, y up, z toward you) */
-function gyroTurn(P,S){
+export function gyroTurn(P,S){
   var d=function(i,j){return P[i]*S[j]+P[3+i]*S[3+j]+P[6+i]*S[6+j]};
   var v=[(d(2,1)-d(1,2))/2,(d(0,2)-d(2,0))/2,(d(1,0)-d(0,1))/2];
   var l=Math.hypot(v[0],v[1],v[2]),th=Math.atan2(l,(d(0,0)+d(1,1)+d(2,2)-1)/2),f=l>1e-9?th/l:1;
@@ -33,11 +47,16 @@ function screenAngle(){
   return (screen.orientation&&screen.orientation.angle)||0;
 }
 function onGyro(e){
-  if(!stereo||e.alpha===null||e.beta===null||e.gamma===null){gyroPrev=null;return;}
+  if(!stereo||head||e.alpha===null||e.beta===null||e.gamma===null){gyroPrev=null;return;}
   var S=devMat(e.alpha,e.beta,e.gamma,screenAngle()),P=gyroPrev;gyroPrev=S;
   if(!P||!started)return;
-  var w=gyroTurn(P,S),an=Math.hypot(w[0],w[1],w[2]);
-  if(an<1e-6||an>0.6)return; /* a jump this large is the screen turning over, not a head */
+  headTurn(gyroTurn(P,S));
+}
+/* Turn the camera as the head has turned: w is the turn as a vector along its axis with the angle as its length, in the
+   head's own axes (x right, y up, z toward the wearer). A phone's movement and a headset's both come through here. */
+export function headTurn(w){
+  var an=Math.hypot(w[0],w[1],w[2]);
+  if(an<1e-6||an>0.6)return; /* a jump this large is the screen turning over, or the headset finding itself again: not a head */
   /* the camera's forward axis points into the screen, so turns about right and up change sign */
   var ax=[(-w[0]*cam.R[0]-w[1]*cam.Up[0]+w[2]*cam.F[0])/an,(-w[0]*cam.R[1]-w[1]*cam.Up[1]+w[2]*cam.F[1])/an,(-w[0]*cam.R[2]-w[1]*cam.Up[2]+w[2]*cam.F[2])/an];
   cam.F=rot(cam.F,ax,an);cam.Up=rot(cam.Up,ax,an);cam.userTurn+=an;
@@ -62,9 +81,10 @@ export function keepAwake(){
     else if(!on&&wakeLock){var l0=wakeLock;wakeLock=null;l0.release();}
   }catch(_){}
 }
-function setStereo(on){
-  stereo=!!on;gyroPrev=null;press($("bVr"),stereo);
+export function setStereo(on,quiet){
+  stereo=!!on;gyroPrev=null;press($("bVr"),stereo&&!quiet);
   keepAwake();
+  if(quiet)return; /* a headset turns the two pictures on for itself, and brings its own head movement */
   if(stereo){gyroStart();toast(window.innerWidth<window.innerHeight?"VR viewer on. Turn the phone sideways.":"VR viewer on");}
   else toast("VR viewer off");
 }
@@ -83,5 +103,5 @@ document.addEventListener("visibilitychange",function(){gyroPrev=null;if(!docume
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={vrEyeStep, devMat, gyroTurn, screenAngle, onGyro, gyroStart, keepAwake, setStereo, get stereo(){return stereo},set stereo(v){stereo=v}, get vrEye(){return vrEye},set vrEye(v){vrEye=v},
+export const __dbg={vrLens, setHeadLens, headTurn, vrEyeStep, devMat, gyroTurn, screenAngle, onGyro, gyroStart, keepAwake, setStereo, get stereo(){return stereo},set stereo(v){stereo=v}, get vrEye(){return vrEye},set vrEye(v){vrEye=v},
   get gyroPrev(){return gyroPrev},set gyroPrev(v){gyroPrev=v}, get wakeLock(){return wakeLock},set wakeLock(v){wakeLock=v}, get gyroBound(){return gyroBound},set gyroBound(v){gyroBound=v}};

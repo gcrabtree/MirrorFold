@@ -9,7 +9,7 @@ import { bindTex, link, linkEnd, linkEndStep, linkReady, linkStart, passTo } fro
 import { camArr } from "./render.js";
 import { mirrors, sel } from "./state.js";
 import { freeT, landQ, tA, target } from "./targets.js";
-import { stereo } from "./vr.js";
+import { stereo, vrLens } from "./vr.js";
 export let tL=null,tC=null,tLP=null; /* the land's own picture when it is over a world, that picture laid over the world, and the coarse first pass */
 export let landEye=0.002;             /* VR viewer: half the distance between the eyes, in the land's units. It follows the height above the ground, as the worlds' follows the distance to the nearest surface */
 export let landClear=0.11;           /* how high above the ground the camera flies */
@@ -29,7 +29,7 @@ let pLandPre=null, landTex=null;
    its depth in the upper half; the picture that leaves here carries the depth of whichever is seen, as the world's does. */
 const FS_MIX="precision highp float;varying vec2 v;uniform sampler2D uT,uL;uniform float uVr;void main(){vec4 L=texture2D(uL,v),T=texture2D(uT,v);"+
   "if(uVr>0.5){float k=smoothstep(0.2,0.3,L.a);gl_FragColor=vec4(mix(T.rgb,L.rgb,k),mix(T.a,max(L.a-0.5,0.0)*2.0,k));}else gl_FragColor=vec4(mix(T.rgb,L.rgb,L.a),1.0);}";
-const LAND_U=["uX","uRes","uTime","uPos","uCam","uFov","uSeg","uSpin","uSky","uSkyT","uSun","uSunCol","uCi","uCf","uLi","uLf","uDa","uDb","uPa","uPb","uPc","uPd","uHue","uTint","uN","uPre","uPreRes","uK","uVr"];
+const LAND_U=["uX","uRes","uTime","uPos","uCam","uFov","uSeg","uSpin","uSky","uSkyT","uSun","uSunCol","uCi","uCf","uLi","uLf","uDa","uDb","uPa","uPb","uPc","uPd","uHue","uTint","uN","uPre","uPreRes","uK","uVr","uLn"];
 /* the table of random numbers, made the same way every time */
 const LTAB=new Uint8Array(65536);
 export function landHash(ix,iy){return LTAB[(ix&255)+256*(iy&255)]/255;}
@@ -114,7 +114,7 @@ function landBuild(){ /* the landscape in use: made the first time the land is t
 /* draw the land into dst. "over" leaves the sky clear (alpha 0) and lets lakes mirror the world in tA. */
 const LP_CI=new Float32Array(26),LP_CF=new Float32Array(26),LP_LI=new Float32Array(12),LP_LF=new Float32Array(12);
 export function landPass(dst,over,fov,hue){
-  var pw=Math.ceil(dst.w/8),ph=Math.ceil(dst.h/8),vrPx=0.000162*canvas.clientWidth/dst.w,k,tt,wrap=function(v){return v-256*Math.floor(v/256)};
+  var pw=Math.ceil(dst.w/8),ph=Math.ceil(dst.h/8),L=vrLens(dst.w,dst.h),k,tt,wrap=function(v){return v-256*Math.floor(v/256)};
   if(!tLP||tLP.w!==pw||tLP.h!==ph){freeT(tLP);tLP=target(pw,ph);}
   /* the camera's place in each noise layer and each grid of things, split into a whole number and a remainder so the shader loses nothing */
   var ci=LP_CI,cf=LP_CF,li=LP_LI,lf=LP_LF,px=lpos[0]*LFREQ,pz=lpos[2]*LFREQ; /* kept between frames, so nothing is left for the browser to clear up */
@@ -131,7 +131,7 @@ export function landPass(dst,over,fov,hue){
     setPal(U);
     gl.uniform1f(U.uHue,hue);gl.uniform1f(U.uTint,landTint);
     gl.uniform3fv(U.uSun,LK[landKind].sun);gl.uniform3fv(U.uSunCol,LK[landKind].sunCol);
-    gl.uniform4f(U.uVr,stereo?1:0,0.032/vrPx,vrPx/0.039,landEye); /* VR viewer: the same lens numbers as the worlds get (see drawScene), for this picture's size, and half the eye spacing */
+    gl.uniform4f(U.uVr,stereo?1:0,L.off,L.tan,landEye);gl.uniform3f(U.uLn,L.k1,L.k2,L.cy); /* VR viewer: the same lens numbers as the worlds get (see drawScene), for this picture's size, and half the eye spacing */
     gl.uniform1i(U.uX,7);gl.uniform1i(U.uN,4);gl.uniform1i(U.uPre,5);gl.uniform1i(U.uSkyT,6);gl.uniform2f(U.uPreRes,pw,ph);gl.uniform1f(U.uK,8);
   };
   camArr[0]=cam.R[0];camArr[1]=cam.R[1];camArr[2]=cam.R[2];camArr[3]=cam.Up[0];camArr[4]=cam.Up[1];camArr[5]=cam.Up[2];camArr[6]=cam.F[0];camArr[7]=cam.F[1];camArr[8]=cam.F[2];

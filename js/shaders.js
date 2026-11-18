@@ -26,7 +26,7 @@ export function fragSource(w){
 (shafts&&!w.flat&&!w.volume?"#define SHAFTS":""),
 "#define SC "+(w.packs?"uPkZ":"1.0"), /* the descent stretches the reach and the fog as the camera goes in (js/packing.js) */
 "#define SP "+(w.packs?"(uPk>5.5?pkQ:p)":"p"), /* the place a surface's pattern is worked out from: in the descent, the place within the copy, so that the pattern is the same when the camera is moved out */
-"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi;uniform vec4 uOrb,uVr,uSpark;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;uniform vec2 uJit;",
+"uniform vec2 uRes;uniform float uTime,uSeg,uM,uHue,uSpin,uFade,uPix,uFov,uBeat,uMid,uHi;uniform vec4 uOrb,uVr,uSpark;uniform vec3 uLn;uniform vec3 uPa,uPb,uPc,uPd;uniform vec3 uPos;uniform mat3 uCam;uniform sampler2D uLandT;uniform float uLandOn;uniform vec2 uJit;",
 "uniform sampler2D uVid;uniform vec4 uVidK;uniform vec3 uVidS;", /* the video: uVidK = which way it is shown (0 for none), its strength, and the scale that fits it to the screen */
 "vec3 vidLin(vec2 q){vec3 c=texture2D(uVid,q).rgb;return c*c;}", /* the video is stored ready for a screen; the scene works in light, and is made ready for the screen at the end */
 "vec3 vidAt(vec2 q){return vidLin(abs(fract(q*0.5)*2.0-1.0));}", /* repeating, each copy the mirror of its neighbour */
@@ -183,9 +183,9 @@ export function fragSource(w){
 "  vec2 eo=vec2(0.0);float fov=uFov;",
 "  if(uVr.x>0.5){", /* VR viewer: one picture per eye, side by side. uVr = on, lens centre offset in pixels, tangent per pixel, half the eye spacing */
 "    float sd=gl_FragCoord.x<0.5*uRes.x?-1.0:1.0;",
-"    vec2 q=(fc-vec2(0.5*uRes.x+sd*uVr.y,0.5*uRes.y))*uVr.z;",
+"    vec2 q=(fc-vec2(0.5*uRes.x+sd*uVr.y,0.5*uRes.y+uLn.z))*uVr.z;", /* uLn: the lens's two numbers (0.34 and 0.55 for the viewer's lens; nothing for a headset, which bends the picture itself) and how far above the middle the eye looks straight ahead, in pixels */
 "    float q2=dot(q,q);",
-"    uv=q*(1.0+0.34*q2+0.55*q2*q2);", /* bend each ray the way the viewer's lens will, so straight lines look straight through it */
+"    uv=q*(1.0+uLn.x*q2+uLn.y*q2*q2);", /* bend each ray the way the viewer's lens will, so straight lines look straight through it */
 "    if(dot(uv,uv)>3.24){gl_FragColor=vec4(0.0);return;}", /* outside what the lens shows */
 "    eo=vec2(sd*uVr.w,0.0);fov=1.0;",
 "  }",
@@ -409,13 +409,13 @@ export function fragSource(w){
    VR_KAP scales tangents so that the edge of what the lens shows is about 0.5, the range the effects' numbers were made for. */
 export const VR_EMAX="0.064",VR_KAP="0.55";
 const VR_GLSL=[
-"uniform vec4 uVrG;uniform vec2 uRes;", /* uVrG: lens centre's distance from the middle in pixels, tangent per pixel */
+"uniform vec4 uVrG;uniform vec2 uRes;uniform vec3 uLn;", /* uVrG: lens centre's distance from the middle in pixels, tangent per pixel */
 "float sdE=-1.0;",
-"vec2 eyeOf(vec2 tc){vec2 q=(tc*uRes-vec2(0.5*uRes.x+sdE*uVrG.x,0.5*uRes.y))*uVrG.y;float q2=dot(q,q);return q*(1.0+0.34*q2+0.55*q2*q2);}",
+"vec2 eyeOf(vec2 tc){vec2 q=(tc*uRes-vec2(0.5*uRes.x+sdE*uVrG.x,0.5*uRes.y+uLn.z))*uVrG.y;float q2=dot(q,q);return q*(1.0+uLn.x*q2+uLn.y*q2*q2);}",
 "vec2 texOf(vec2 e){",
-"  float ru=length(e),rq=min(ru,1.0);",
-"  for(int i=0;i<4;i++){float r2=rq*rq;rq-=(rq*(1.0+0.34*r2+0.55*r2*r2)-ru)/(1.0+1.02*r2+2.75*r2*r2);}",
-"  vec2 px=e*(ru>1e-6?rq/ru:1.0)/uVrG.y+vec2(0.5*uRes.x+sdE*uVrG.x,0.5*uRes.y);",
+"  float ru=length(e),rq=uLn.x>0.0?min(ru,1.0):ru;",
+"  for(int i=0;i<4;i++){float r2=rq*rq;rq-=(rq*(1.0+uLn.x*r2+uLn.y*r2*r2)-ru)/(1.0+3.0*uLn.x*r2+5.0*uLn.y*r2*r2);}",
+"  vec2 px=e*(ru>1e-6?rq/ru:1.0)/uVrG.y+vec2(0.5*uRes.x+sdE*uVrG.x,0.5*uRes.y+uLn.z);",
 "  px.x=sdE<0.0?clamp(px.x,0.5,0.5*uRes.x-0.5):clamp(px.x,0.5*uRes.x+0.5,uRes.x-0.5);",
 "  return px/uRes;",
 "}"].join("\n");
@@ -668,7 +668,7 @@ export function trailSource(code){
    .replace("void main(){","float time,beat,mid,hi,aspect;\nfloat sound(float x){return texture2D(uWv,vec2(clamp(x,0.0,1.0)*0.98+0.01,0.5)).r;}\nvoid mark(vec2 p,inout float ln,inout float hue){\n"+code+"\n}\nvoid main(){")
    .replace("    vec3 oc=pal(uHue+0.3+rr*0.45);","    float hq=0.3+rr*0.45;\n    if(uOv>98.5){ln=0.0;time=uTime;beat=uOvBeat;mid=uOvMid;hi=uOvHi;aspect=uAsp;mark(d/m,ln,hq);ln=clamp(ln,0.0,1.0);}\n    vec3 oc=pal(uHue+hq);");
 }
-export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5","uD6","uD7","uD8"];
+export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uLn","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5","uD6","uD7","uD8"];
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={VS, fragSource, FS_TRAIL, FS_DOWN, FS_BLUR, FS_FINAL, finalSource, trailSource, TRAIL_U};

@@ -1402,5 +1402,32 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("together: the report names the relay and how to turn it off, on whichever side has it, before blaming the network", /^This side's two address servers.*Private Relay.*Turn it off on this device/.test(tgVerdict(relay, plain)) && /^The other side's.*Turn it off on that device/.test(tgVerdict(plain, relay)) && /symmetric NAT/.test(tgVerdict(sym, plain)) && tgSplit(sym));
 }
 
+// ---- a VR headset (js/xr.js): the numbers the shaders are given, from what a headset says each eye sees
+{
+  const { xrLensOf, xrSize, xrAxes, xrGovern, XR_SCALE_MIN } = (await import("../js/xr.js")).__dbg, { gyroTurn } = vr;
+  const proj = (tl, tr, tu, td) => { const m = new Float32Array(16); m[0] = 2 / (tl + tr); m[5] = 2 / (tu + td); m[8] = (tr - tl) / (tr + tl); m[9] = (tu - td) / (tu + td); m[10] = -1; m[11] = -1; return m; };
+  // each eye sees 50 degrees outward, 40 toward the nose, 42 up and 47 down
+  const L = xrLensOf(proj(1.19, 0.84, 0.90, 1.07), proj(0.84, 1.19, 0.90, 1.07)), W = 2000, H = 1000;
+  // in the left half (0 to W/2), straight ahead must lie where the tangent runs from -1.19 at the left edge to 0.84 at the right
+  const tanPx = L.tan / W, cxL = W / 2 - L.off * W;
+  expect("headset: the left eye's straight-ahead is where its own projection puts it, and a pixel covers the angle that fills the half", Math.abs(cxL * tanPx - 1.19) < 1e-4 && Math.abs((W / 2 - cxL) * tanPx - 0.84) < 1e-4, cxL + " " + tanPx);
+  expect("headset: the right eye mirrors it", Math.abs((W / 2 + L.off * W - W / 2) * tanPx - 0.84) < 1e-4 && Math.abs((W - (W / 2 + L.off * W)) * tanPx - 1.19) < 1e-4);
+  const sz = xrSize(1680, 0.4, L.aspect), cy = L.cy * sz[1], tp = L.tan / sz[0];
+  expect("headset: straight-ahead is above the middle when the eye sees further down, and up and down a pixel covers the same angle as across", cy > 0 && Math.abs((sz[1] / 2 - cy) * tp - 0.90) < 0.01 && Math.abs((sz[1] / 2 + cy) * tp - 1.07) < 0.01, sz + " " + cy);
+  expect("headset: the picture's sides are even numbers, and never tiny", sz[0] % 4 === 0 && sz[1] % 2 === 0 && xrSize(1680, 0.001, 1).join() === "128,64");
+  // the head turned a tenth of a radian to its left (about its up axis): the pose's sixteen numbers, column by column
+  const c = Math.cos(0.1), s = Math.sin(0.1), w = gyroTurn(xrAxes([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]), xrAxes([c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]));
+  expect("headset: a turn of the head comes out as a turn about the head's own up axis, of the same size", Math.abs(w[0]) < 1e-6 && Math.abs(w[1] - 0.1) < 1e-6 && Math.abs(w[2]) < 1e-6, w.join());
+  const g = { scale: 0.4, max: 0.8, good: 0, rose: false };
+  for (let i = 0; i < 40; i++) xrGovern(g, 30, 13.9);
+  expect("headset: pictures that keep coming late bring the size down to its least and no further", g.scale === XR_SCALE_MIN);
+  const g2 = { scale: 0.4, max: 0.8, good: 0, rose: false }; let grew = 0;
+  for (let i = 0; i < 200; i++) if (xrGovern(g2, 13.9, 13.9)) grew++;
+  expect("headset: pictures on time let it grow, a step every fourth telling, up to its most", g2.scale > 0.79 && g2.scale <= 0.8 && grew > 5 && grew < 20, g2.scale + " " + grew);
+  const g3 = { scale: 0.5, max: 0.8, good: 3, rose: false };
+  xrGovern(g3, 13.9, 13.9); const up = g3.scale; xrGovern(g3, 20, 13.9);
+  expect("headset: a size that proved too much is not tried again", g3.max < up && g3.scale < 0.5, up + " " + g3.max);
+}
+
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);

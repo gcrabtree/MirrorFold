@@ -54,6 +54,7 @@ import * as mSm from "./scoremake.js";
 import * as mSt from "./studio.js";
 import * as mWebm from "./webm.js";
 import * as mFilm from "./film.js";
+import * as mXr from "./xr.js";
 import * as mTg from "./together.js";
 import * as mDoor from "./doors.js";
 import * as mRib from "./ribbons.js";
@@ -78,7 +79,7 @@ import * as mFigM from "./figures-more.js";
 import * as mFigL from "./figures-look.js";
 import * as mLearn from "./learn.js";
 import * as m32 from "./loop.js";
-const mods=[m0,mZ,m1,mPk,mFb,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,mT,m19,m20,m21,mG,m22,m23,m24,m25,m26,mSong,m27,m28,m29,m30,m31,mS,mP,mR,mK,mFl,mFd,mFp,mSd,mSp,mSa,mSm,mSt,mWebm,mFilm,mTg,mDoor,mRib,mLap,mLw,mMv,mDn,mEye,mQr,mPh,mMed,mSend,mMidi,mPre,mPick,mLang,mLes,mFig,mFigS,mFigM,mFigL,mLearn,m32,mM,mV];
+const mods=[m0,mZ,m1,mPk,mFb,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,mT,m19,m20,m21,mG,m22,m23,m24,m25,m26,mSong,m27,m28,m29,m30,m31,mS,mP,mR,mK,mFl,mFd,mFp,mSd,mSp,mSa,mSm,mSt,mWebm,mFilm,mXr,mTg,mDoor,mRib,mLap,mLw,mMv,mDn,mEye,mQr,mPh,mMed,mSend,mMidi,mPre,mPick,mLang,mLes,mFig,mFigS,mFigM,mFigL,mLearn,m32,mM,mV];
 /* an init that cannot go on (no WebGL, or no shader compiles) has already put a message on the page, and stops start-up by throwing "stop" */
 /* how long each file's start-up work took, in milliseconds, slowest first: MF.boot, for finding what makes the page slow to answer */
 const boot=[];
