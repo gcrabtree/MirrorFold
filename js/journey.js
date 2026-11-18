@@ -1,5 +1,5 @@
 /* Journey: templates and sets, their storage, the clocks that say when to change something, and the autopilot. */
-import { danceStyle, setDanceStyle } from "./dance.js";
+import { danceFit, danceStyle, setDanceStyle } from "./dance.js";
 import { MV_STYLES } from "./moves.js";
 import { cam, norm } from "./camera.js";
 import { requestWorld, scene, selJT, setLook, setMirrors, setMotion, setOverlay, setInside, setMix, setPacking, setPulse } from "./choose.js";
@@ -123,7 +123,7 @@ export function jPick(k,cfg,cur,pool,not){
   if(!others.length)return pool[0];
   if(not){fresh=others.filter(function(x){return x!==not});if(fresh.length)others=fresh;} /* not is passed over if there is anything else: the world just left */
   return pickWeighted(others,liked,Math.random()); /* an even chance each, unless More like this or Less like this has said otherwise, or the option is one Journey reaches for less (J_SELDOM) */
-  function liked(x){return tasteOf(taste,k,x)*(J_SELDOM[k]&&J_SELDOM[k][x]||1)}
+  function liked(x){return tasteOf(taste,k,x)*(J_SELDOM[k]&&J_SELDOM[k][x]||1)*(k==="dance"?danceFit(x):1)} /* and a kind of dancing by how well it suits the music now (js/dance.js) */
 }
 /* More like this: everything Journey is choosing that is showing now becomes more likely to be chosen again. */
 export function jMore(){

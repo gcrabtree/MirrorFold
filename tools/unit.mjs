@@ -1437,5 +1437,27 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("headset: a size that proved too much is not tried again", g3.max < up && g3.scale < 0.5, up + " " + g3.max);
 }
 
+// ---- the dancers: kinds of dancing that suit the music, partners, and the head's own turn
+{
+  const { __dbg: dn } = await import("../js/dance.js"), { __dbg: mv } = await import("../js/moves.js"), { sel, OVERLAYS } = await import("../js/state.js");
+  const best = (per, lv) => Object.keys(mv.MV_STYLES).sort((a, b) => dn.styleFit(b, per, lv) - dn.styleFit(a, per, lv))[0];
+  expect("every kind of dancing has a speed and a fullness it suits; a fast full passage suits the rave best and a slow quiet one the groove", Object.keys(mv.MV_STYLES).every(k => dn.DN_FIT[k] && dn.styleFit(k, 0.5, 0.5) > 0.29 && dn.styleFit(k, 0.5, 0.5) < 3.31) && best(0.38, 0.95) === "rave" && best(0.62, 0.25) === "groove" && dn.styleFit("nothing", 0.5, 0.5) === 1, best(0.38, 0.95) + " " + best(0.62, 0.25));
+  const was = sel.ovi, rand = Math.random, dt = 1 / 60, hit = (t, per) => Math.exp(-5 * (t % per)); let sd = 99; Math.random = () => (sd = sd * 16807 % 2147483647) / 2147483647;
+  dn.danceTick = dn.makeBeatClock(); sel.ovi = 0; dn.stepDance({ dt, bt: 0, mp: 0 }); sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); dn.stepDance({ dt, bt: 0, mp: 0 });
+  let pairs = 0, faced = 0, mirrored = 0, turn = 0, one = true;
+  for (let n = 0; n < 60 * 150; n++) {
+    dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.8, false, false, false, n * dt);
+    dn.crowd.forEach((d, i) => {
+      turn = Math.max(turn, Math.abs(d.hy));
+      if (d.pw < 0) return;
+      const o = dn.crowd[d.pw]; if (!o || o.pw !== i) { one = false; return; }
+      if (i < d.pw) { pairs++; if (d.mv === o.mv && d.mir !== o.mir && d.u0 === o.u0) mirrored++; }
+    });
+  }
+  expect("in a crowd two figures now and then dance together, each the other's partner, and the second comes to do the first's move as in a mirror", pairs > 600 && one && mirrored > 0.3 * pairs, pairs + " " + mirrored);
+  expect("a head turns on its neck, and never further than a head can", turn > 0.3 && turn < 1.65, String(turn));
+  Math.random = rand; sel.ovi = was; dn.stepDance({ dt, bt: 0, mp: 0 });
+}
+
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);
