@@ -532,24 +532,24 @@ VR_GLSL,
    dh is the distance to what is seen whole; dq to what is behind the head, and so seen only outside its disc. */
 "            vec4 fc=uD9[i];float sty=mod(id,16.0);float aw=1.2/hpx;float tl=0.085*min(wd,3.0);float rh=length(hl);float ah=atan(hl.x,hl.y);float dh=1e5,dq=1e5;",
 "            float sn=sin(fc.x),cn=cos(fc.x);",
-"            vec2 hs=hl/1.12;float h2=dot(hs,hs);vec3 H=vec3(0.0);float off=1e5;",
-"            if(h2<1.0){float hz=sqrt(1.0-h2);H=vec3(hs.x*cn-hz*sn,hs.y,hs.x*sn+hz*cn);off=tl;}", /* off: what is added to a part of the shell, so that it is lit just where it is covered, and not at all off the shell */
-"            float scalp=0.55*H.z-0.05-H.y+off;", /* hair over the scalp: from the brow in front, down past the ears, to the nape behind */
+"            vec2 hp=hl/max(rh,1.0);float hz=sqrt(max(0.0,1.0-dot(hp,hp)));vec3 H=vec3(hp.x*cn-hz*sn,hp.y,hp.x*sn+hz*cn);", /* the place on the head that this place in the picture shows; beyond the head's edge, the place on its edge nearest */
+"            float off=rh<1.1?tl:1e5;", /* what is added to a part of the head that hair covers, so that it is lit just where it is covered: hair lies a tenth of the head thick, so it shows that far past the head's edge and no further */
+"            float scalp=0.15+0.5*H.z-H.y+off;", /* hair over the scalp: above a flat cut through the head that slopes from the brow, clear of the eyes, down behind the ears to the nape */
+"            float win=max(abs(H.x)-0.72,-H.z);", /* the opening that hair leaves for the face: below nothing within it, however the head is turned */
 "            float band=max(abs(H.z)-0.09,0.05-H.y)+off;", /* a band over the top from ear to ear */
 "            if(sty<0.5){", /* headphones: the band, and a cup over each ear, round from the side and narrow from in front */
 "              dh=band;",
 "              for(int k=0;k<2;k++){",
 "                float sd=k==0?1.0:-1.0;vec2 pv=hl-vec2(sd*1.13*cn,-0.1);float pe=length(pv/vec2(0.11+0.2*abs(sn),0.3));float e=(1.0-1.0/max(pe,0.05))*length(pv);",
-"                if(sd*sn<0.25)dh=min(dh,e);else dq=min(dq,e);",
+"                if(sd*sn<0.2)dh=min(dh,e);", /* the cup on the far side of the head is behind it, and is left out */
 "              }",
 "            }else if(sty<1.5){float af=mod(ah+0.2+0.2546479*fc.x,0.4)-0.2;dh=scalp;if(abs(ah)<1.4)dh=min(dh,max(abs(af)*rh-0.15*(1.65-rh),max(1.0-rh,rh-1.65)));}", /* spikes all over: they go round with the head, four places to a whole turn */
-"            else if(sty<2.5){", /* long hair: over all the head but the face, and six waving strands hanging from the sides round to the back */
-"              dh=min(H.z-0.25,0.5-H.y)+off;",
-"              for(int k=0;k<6;k++){",
-"                float fk=float(k);float a=(1.6+0.6*floor(fk*0.5))*(mod(fk,2.0)<0.5?1.0:-1.0)+fc.x;",
-"                float e=max(abs(hl.x-1.17*sin(a)-0.07*sin(2.4*hl.y+fk)),max(hl.y-0.1,-2.1+0.15*mod(fk,3.0)-hl.y));",
-"                if(cos(a)>0.0)dh=min(dh,e);else dq=min(dq,e);",
-"              }",
+"            else if(sty<2.5){", /* long hair: over all the head but the face, and a curtain of it hanging from the back half of the head to the shoulders. The curtain is as wide as the back of the head is seen to be, so it is behind the face, to one side from the side, and right across from behind; from in front it is behind the body, and from behind it covers it */
+"              dh=-max(win,H.y-0.45)+off;",
+"              float x0=(sn>=0.0?-1.0:-abs(cn))*1.3,x1=(sn<=0.0?1.0:abs(cn))*1.3;",
+"              float cu=max(max(x0-hl.x,hl.x-x1),max(hl.y-0.15,-1.55-0.07*sin(9.0*hl.x)-hl.y));",
+"              if(cn>=0.0&&!(sn>-0.1&&hl.x<x0+0.32)&&!(sn<0.1&&hl.x>x1-0.32))cu=max(cu,(1.1*wl-ds)/hd.z*8.0);", /* from in front it is behind the body, and cut off sharply there, so that no dark border is left round the body; but the lock at each end that is on the near side of the head falls in front of the shoulder */
+"              if(rh>=1.0)dh=min(dh,cu+tl);",
 "            }else if(sty<3.5){", /* a top hat: its outline, its brim and its band, and a buckle on the band at the front */
 "              vec2 bx=abs(hl-vec2(0.0,1.42))-vec2(0.78,0.62);dh=min(abs(length(max(bx,0.0))+min(max(bx.x,bx.y),0.0)),min(max(abs(hl.y-0.8),abs(hl.x)-1.4),max(abs(hl.y-1.08),abs(hl.x)-0.78)));",
 "              if(cn>0.05)dh=min(dh,abs(max(abs(hl.x-0.66*sn)-0.02-0.1*cn,abs(hl.y-1.08)-0.11)));",
@@ -558,12 +558,12 @@ VR_GLSL,
 "              vec2 pv=vec2(hl.x-1.3*sn,hl.y-0.5);float pe=length(pv/vec2(0.5+0.22*abs(cn),0.1));float pk=(1.0-1.0/max(pe,0.05))*length(pv);", /* how far outside the peak's flat oval this is, measured along the line from its middle */
 "              if(cn>-0.15)dh=min(dh,pk);else dq=pk;",
 "            }else if(sty<5.5){float bn=abs(length(hl-vec2(-0.55*sn,1.3))-0.33);dh=scalp;if(cn<0.2)dh=min(dh,bn);else dq=bn;}", /* hair in a bun at the back of the top */
-"            else if(sty<6.5){dh=scalp;if(abs(ah)<2.1)dh=min(dh,min(abs(rh-1.52-0.07*cos(11.0*ah+2.0*fc.x)),abs(rh-1.26-0.05*cos(9.0*ah+1.0-3.0*fc.x))));}", /* a round mass of curls, which go round */
+"            else if(sty<6.5){dh=max(length(hl-vec2(-0.2*sn,0.3))-1.42-0.06*cos(11.0*ah+2.0*fc.x),-max(win,H.y-0.5))+tl;}", /* a round mass of curls about the head, further out at the back, open only at the face */
 "            else if(sty<7.5){", /* a crest from the brow to the nape: a strip of hair down the middle of the head, and spikes standing from it, a few close together from in front and a fan from the side */
 "              float af=mod(ah+0.14,0.28)-0.14;dh=max(abs(H.x)-0.13,max(min(0.3-H.y,H.z),-0.5-H.y))+off;",
 "              if(abs(ah)<0.16+1.0*abs(sn))dh=min(dh,max(abs(af)*rh-0.12*(2.05-rh),max(1.0-rh,rh-2.05-0.25*cos(ah)+0.25)));",
 "            }else if(sty<8.5){", /* a ponytail: tied at the back of the top, it hangs down behind */
-"              float tq=min(limb(hl,vec2(-0.75*sn,0.78),vec2(-1.5*sn,0.15)),limb(hl,vec2(-1.5*sn,0.15),vec2(-1.3*sn-0.1*cn,-1.05)))-0.05;",
+"              float tq=min(limb(hl,vec2(-0.85*sn,0.55),vec2(-1.35*sn,0.2)),limb(hl,vec2(-1.35*sn,0.2),vec2(-1.25*sn,-0.85)))-0.05;",
 "              dh=scalp;if(cn<0.2)dh=min(dh,tq);else dq=tq;",
 "            }else if(sty<9.5){", /* two bunches, one behind each ear, each a ball of hair and a tail */
 "              dh=scalp;",
@@ -572,7 +572,7 @@ VR_GLSL,
 "                float e=min(length(hl-vec2(bx,-0.05))-0.24,limb(hl,vec2(bx,-0.05),vec2(1.15*bx,-0.95))-0.04);",
 "                if(cos(a)>-0.3)dh=min(dh,e);else dq=min(dq,e);",
 "              }",
-"            }else if(sty<10.5){dh=max(min(H.z-0.3,0.3-H.y),-0.55-H.y)+off;}", /* a bob: over all the head but the face, down to the jaw, with a fringe */
+"            }else if(sty<10.5){dh=max(-max(win,H.y-0.32),-0.6-H.y)+off;}", /* a bob: over all the head but the face, down to the jaw, with a fringe */
 "            else if(sty<11.5){", /* a woolly hat: a filled crown, a turned-up band and a bobble on top */
 "              dh=min(max(rh-1.15,0.5-hl.y),min(abs(max(abs(hl.y-0.4)-0.11,abs(hl.x)-1.1)),length(hl-vec2(0.0,1.36))-0.2));",
 "            }else if(sty<12.5){", /* a wide hat: a brim turned up at the sides and a crown with a dent in it */
@@ -592,7 +592,7 @@ VR_GLSL,
 "                dh=min(dh,min(limb(hl,ft,tp)+0.02,length(hl-tp)-0.13));",
 "              }",
 "            }",
-"            dh=min(dh,max(dq,1.03-rh));",
+"            if(rh>1.0)dh=min(dh,dq);", /* what is behind the head is seen only past its edge: not near the edge inside it, where its dark border would show through the head */
 "            float he=(1.0-smoothstep(tl,2.2*tl+aw,dh))*df,hb=(1.0-smoothstep(tl-aw,tl+aw,dh))*df;",
 "            ln=ln*(1.0-he)+hb*fract(hd.w)*2.0;dk=max(dk,he);",
 "            if(hb>0.5)rr=0.15+fract(id*0.382+0.31)*1.08;", /* in another of the palette's colours than the body */
