@@ -422,7 +422,7 @@ const VR_GLSL=[
 
 export const FS_TRAIL=[
 "precision highp float;varying vec2 v;uniform sampler2D uA,uB,uWv;",
-"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;uniform vec4 uD0[12],uD1[12],uD2[12],uD3[12],uD4[12],uD5[12],uD6[12],uD7[12],uD8[12];uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
+"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;uniform vec4 uD0[12],uD1[12],uD2[12],uD3[12],uD4[12],uD5[12],uD6[12],uD7[12],uD8[12],uD9[12];uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
 VR_GLSL,
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* the motion: where in the last picture this place takes its trail from. c is measured from the middle, -0.5 to 0.5 */
@@ -501,7 +501,7 @@ VR_GLSL,
 "        if(uVr>0.5){el=min(uOvEta*(1.0+0.6*sin(uTime*(0.4+0.13*fi)+fi*2.1)),"+VR_EMAX+");dl=(ev-vec2(sg*el,0.0))*"+VR_KAP+";}", /* VR viewer: each light also swings nearer and farther */
 "        float q2=length(dl/m-pp),gl2=exp(-q2*q2/((0.0006+0.0025*uOvHi)*wd*wd*0.5));if(gl2>ln)oe=el;ln+=gl2;",
 "      }",
-"    }else{", /* the dancers: up to twelve stick figures (DN_MAX in js/dance.js), whose joints JavaScript works out (js/dance.js), as a body in space seen from in front. Each is a filled head, fourteen lines (back, neck, shoulders, hips, two to an arm, two to a leg, the feet) and a small filled hand at the end of each arm, with a dark edge (dk). A figure is looked at only near where it stands. They come furthest first, and each is drawn over the ones before it: its line and its dark edge hide theirs. The last number of hd is the figure's own number and half its brightness. rr, which the colour is taken from below, is set to a number of the figure's own, so each has its own colour of the palette */
+"    }else{", /* the dancers: up to twelve stick figures (DN_MAX in js/dance.js), whose joints JavaScript works out (js/dance.js), as a body in space seen from in front. Each is a filled head with a face and hair or a hat of its own, fourteen lines (back, neck, shoulders, hips, two to an arm, two to a leg, the feet) and a small filled hand at the end of each arm, with a dark edge (dk). A figure is looked at only near where it stands. They come furthest first, and each is drawn over the ones before it: its line and its dark edge hide theirs. The last number of hd is the figure's own number and half its brightness. rr, which the colour is taken from below, is set to a number of the figure's own, so each has its own colour of the palette */
 "      vec2 q=d/m;",
 "      for(int i=0;i<12;i++){",
 "        vec4 hd=uD8[i],b0=uD0[i];",
@@ -517,6 +517,29 @@ VR_GLSL,
 "          ln=ln*(1.0-e)+(1.0-smoothstep(0.35*wl,wl,ds))*fract(hd.w)*2.0;",
 "          if(e>0.5)rr=0.15+fract(id*0.382)*1.08;",
 "          dk=max(dk,e);",
+"          vec2 hu=hd.xy-b0.xy;hu/=max(length(hu),1e-5);vec2 hl=vec2(dot(q-hd.xy,vec2(hu.y,-hu.x)),dot(q-hd.xy,hu))/hd.z;", /* the head's own details, in lines a quarter as wide as the body's. hl is the place in the head's frame, in head radii: across, and up along the line from the neck */
+"          float hpx=hd.z*min(uRes.x,uRes.y);float df=smoothstep(2.5,6.0,hpx);", /* a head only a few dots across has none: they would only flicker */
+"          if(df>0.0&&dot(hl,hl)<11.0){",
+"            vec4 fc=uD9[i];float sty=mod(id,8.0);float aw=1.2/hpx;float tl=0.085*min(wd,3.0);float rh=length(hl);float ah=atan(hl.x,hl.y);float dh=1e5;", /* fc: which way the head is turned (across, toward the viewer), the mouth, the eyes' lids. Which head a figure has is its number's remainder on dividing by 8 (DN_LOOKS) */
+"            float cap=max(abs(rh-1.09),0.35-hl.y);", /* a line over the top of the head, which several share */
+"            if(sty<0.5){vec2 cu=abs(vec2(abs(hl.x)-1.16,hl.y+0.1))-vec2(0.13,0.3);dh=min(max(abs(rh-1.14),0.1-hl.y),max(cu.x,cu.y));}", /* headphones: a band and two cups */
+"            else if(sty<1.5){float af=mod(ah+0.2,0.4)-0.2;if(abs(ah)<1.4)dh=max(abs(af)*rh-0.15*(1.65-rh),max(1.0-rh,rh-1.65));}", /* spikes */
+"            else if(sty<2.5){dh=min(abs(abs(hl.x)-1.07-0.07*sin(2.4*hl.y)),abs(abs(hl.x)-1.27-0.09*sin(2.0*hl.y+1.0)));dh=min(max(dh,max(hl.y-0.3,-2.1-hl.y)),max(abs(rh-1.18),0.3-hl.y));}", /* long hair: two waving strands down each side */
+"            else if(sty<3.5){vec2 bx=abs(hl-vec2(0.0,1.42))-vec2(0.78,0.62);dh=min(abs(length(max(bx,0.0))+min(max(bx.x,bx.y),0.0)),min(max(abs(hl.y-0.8),abs(hl.x)-1.4),max(abs(hl.y-1.08),abs(hl.x)-0.78)));}", /* a top hat: its outline, its brim and its band */
+"            else if(sty<4.5){float sx=fc.x<0.0?-1.0:1.0;dh=min(min(cap,length(hl-vec2(0.0,1.16))-0.05),limb(hl,vec2(sx*0.98,0.45),vec2(sx*1.95,0.32)));}", /* a cap, its peak to the side the head is turned */
+"            else if(sty<5.5){dh=min(cap,abs(length(hl-vec2(0.0,1.42))-0.33));}", /* hair in a bun */
+"            else if(sty<6.5){if(abs(ah)<2.1)dh=min(abs(rh-1.52-0.07*cos(11.0*ah)),abs(rh-1.26-0.05*cos(9.0*ah+1.0)));}", /* a round mass of curls */
+"            else{float af=mod(ah+0.14,0.28)-0.14;if(abs(ah)<0.42)dh=max(abs(af)*rh-0.12*(2.05-rh),max(1.0-rh,rh-2.05));}", /* a crest */
+"            float he=(1.0-smoothstep(tl,2.2*tl+aw,dh))*df,hb=(1.0-smoothstep(tl-aw,tl+aw,dh))*df;",
+"            ln=ln*(1.0-he)+hb*fract(hd.w)*2.0;dk=max(dk,he);",
+"            if(hb>0.5)rr=0.15+fract(id*0.382+0.31)*1.08;", /* in another of the palette's colours than the body */
+"            if(rh<0.93&&fc.y>0.02){", /* the face, on a head turned toward the viewer: two eyes and a mouth, dark in the lit head, moved across and narrowed as the head turns */
+"              float sq=max(fc.y,0.35);vec2 fl=vec2((hl.x-0.7*fc.x)/sq,hl.y);",
+"              float de=length(vec2(abs(fl.x)-0.36,(fl.y-0.18)/(1.0-0.8*fc.w)))-0.1;",
+"              float mh=0.045+0.17*fc.z;float dm=(length(vec2(fl.x*mh/0.34,fl.y+0.36-0.5*fl.x*fl.x))-mh);", /* a thin smile, which opens on the beat */
+"              ln*=1.0-0.9*max(1.0-smoothstep(-aw,aw,de),1.0-smoothstep(-aw,aw,dm))*smoothstep(0.02,0.3,fc.y)*df*(1.0-smoothstep(0.86,0.93,rh));",
+"            }",
+"          }",
 "        }",
 "      }",
 "    }",
@@ -668,7 +691,7 @@ export function trailSource(code){
    .replace("void main(){","float time,beat,mid,hi,aspect;\nfloat sound(float x){return texture2D(uWv,vec2(clamp(x,0.0,1.0)*0.98+0.01,0.5)).r;}\nvoid mark(vec2 p,inout float ln,inout float hue){\n"+code+"\n}\nvoid main(){")
    .replace("    vec3 oc=pal(uHue+0.3+rr*0.45);","    float hq=0.3+rr*0.45;\n    if(uOv>98.5){ln=0.0;time=uTime;beat=uOvBeat;mid=uOvMid;hi=uOvHi;aspect=uAsp;mark(d/m,ln,hq);ln=clamp(ln,0.0,1.0);}\n    vec3 oc=pal(uHue+hq);");
 }
-export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uLn","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5","uD6","uD7","uD8"];
+export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uLn","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5","uD6","uD7","uD8","uD9"];
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={VS, fragSource, FS_TRAIL, FS_DOWN, FS_BLUR, FS_FINAL, finalSource, trailSource, TRAIL_U};

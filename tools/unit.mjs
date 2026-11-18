@@ -82,7 +82,9 @@ expect("single option stays put", jPick("motion", {}, "a", ["a"]) === "a");
 expect("empty option list changes nothing", jPick("motion", {}, "a", []) === "a");
 { let back = false; for (let i = 0; i < 500; i++) if (jPick("world", {}, "a", ["a", "b", "c"], "b") !== "c") back = true;
   expect("Journey does not pick the world it just left", !back);
-  expect("unless it is the only other one", jPick("world", {}, "a", ["a", "b"], "b") === "b"); }
+  expect("unless it is the only other one", jPick("world", {}, "a", ["a", "b"], "b") === "b");
+  let ch = 0; for (let i = 0; i < 2000; i++) if (jPick("overlay", {}, "Dancer", ["Dancer", "Chorus line", "Dance floor"]) === "Chorus line") ch++;
+  expect("Journey reaches for the chorus line far less often than for the other dancers, but does reach for it", ch > 100 && ch < 420, String(ch)); }
 
 // ---- VR viewer head turn: angles are (alpha, beta, gamma, screen rotation) in degrees; the result is in
 // screen axes (x right, y up, z toward the viewer), in degrees here for reading
@@ -1005,6 +1007,7 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const run = (secs, f) => { for (let n = 0; n < secs * 60; n++) { f(n / 60); for (i = 0; i < dn.crowd.length; i++) { J.splice(0, 51, ...dn.crowd[i].b); if (prev && prev[i]) for (k = 0; k < 51; k++) fast = Math.max(fast, Math.abs(J[k] - prev[i][k]) * 60); (prev = prev || [])[i] = J.slice(); } } };
   sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); Math.random = rnd;
   dn.stepDance({ dt, bt: 0, mp: 0 }); // sets the five up
+  expect("a crowd has all three manners and several kinds of head, and a figure's number tells its head", dn.DN_MANNERS.every(mn => dn.crowd.some(d => d.ch === mn)) && new Set(dn.crowd.map(d => d.id % dn.DN_LOOKS)).size >= 6 && new Set(dn.crowd.map(d => d.id)).size === dn.crowd.length && (await import("../js/shaders.js")).FS_TRAIL.includes("uD9[" + dn.DN_MAX + "]") && (await import("../js/shaders.js")).FS_TRAIL.includes("mod(id," + dn.DN_LOOKS + ".0)"));
   expect("the dance floor has a crowd of eight to twelve figures, the chorus line four and the dancer one, all inside the picture, and the shader has room for twelve", dn.crowd.length >= 8 && dn.crowd.length <= 12 && dn.DN_MAX === 12 && (await import("../js/shaders.js")).FS_TRAIL.includes("uD8[" + dn.DN_MAX + "]") && [1, 2, 3].every(kd => [0.46, 1, 1.78, 2.4].every(asp => { const sp = dn.danceSpots(kd, asp); return sp.length === [0, 1, 4, 12][kd] && sp.every(q => Math.abs(q[0]) + 0.3 * q[2] <= 0.5 * Math.max(1, asp) + 1e-9 && q[1] + q[2] < 0.5); })));
   const hand = () => { dn.danceBody(dn.crowd[0].p, J); return [J[15], J[16], J[17]]; };
   run(4, tt => dn.danceStep(dt, 0, 0, 0, false, false, false, tt)); const quiet = hand(); still0 = Math.abs(quiet[1] - (dn.DN_HIP + dn.DN_SPINE - 0.31)) + Math.abs(J[4] - dn.DN_HIP);

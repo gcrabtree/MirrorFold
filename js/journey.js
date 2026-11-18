@@ -107,6 +107,9 @@ export function jPool(k,cfg){
   });
   return out.length?out:flat;
 }
+/* What Journey chooses less often than the rest, by its own taste: the chance is multiplied by this. The chorus line
+   is one figure four times over, and the other two overlays of dancers have more to watch. */
+export const J_SELDOM={overlay:{"Chorus line":0.15}};
 export function jPick(k,cfg,cur,pool,not){
   if(!pool.length)return cur;
   if(k==="mirrors"&&cfg.none!=="even"&&pool.indexOf("0")>=0){ /* weighted toward no mirrors */
@@ -117,8 +120,8 @@ export function jPick(k,cfg,cur,pool,not){
   var others=pool.filter(function(x){return x!==cur}),fresh;
   if(!others.length)return pool[0];
   if(not){fresh=others.filter(function(x){return x!==not});if(fresh.length)others=fresh;} /* not is passed over if there is anything else: the world just left */
-  return pickWeighted(others,liked,Math.random()); /* an even chance each, unless More like this or Less like this has said otherwise */
-  function liked(x){return tasteOf(taste,k,x)}
+  return pickWeighted(others,liked,Math.random()); /* an even chance each, unless More like this or Less like this has said otherwise, or the option is one Journey reaches for less (J_SELDOM) */
+  function liked(x){return tasteOf(taste,k,x)*(J_SELDOM[k]&&J_SELDOM[k][x]||1)}
 }
 /* More like this: everything Journey is choosing that is showing now becomes more likely to be chosen again. */
 export function jMore(){
@@ -316,7 +319,7 @@ $("advForget").addEventListener("click",function(){var n=tasteCount();tasteClear
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={jUse, jMade, jOverNow, get HOLD_T(){return HOLD_T}, get jOver(){return jOver},set jOver(v){jOver=v}, jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, get jWas(){return jWas},set jWas(v){jWas=v}, get jFrom(){return jFrom},set jFrom(v){jFrom=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
+export const __dbg={J_SELDOM, jUse, jMade, jOverNow, get HOLD_T(){return HOLD_T}, get jOver(){return jOver},set jOver(v){jOver=v}, jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, get jWas(){return jWas},set jWas(v){jWas=v}, get jFrom(){return jFrom},set jFrom(v){jFrom=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
   findT, findS, jCur, jNone, jIndex, jApply, jPool, jPick, applyTemplate, advanceSet,
   selectJourney, fillJT, setJMove, setJourney, autopilot, stepJourney, J, jReset, jResetAll, get jt(){return jt},set jt(v){jt=v},
   get journey(){return journey},set journey(v){journey=v}, get jMove(){return jMove},set jMove(v){jMove=v}, get CATS(){return CATS},set CATS(v){CATS=v}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v}, get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get jset(){return jset},set jset(v){jset=v}};
