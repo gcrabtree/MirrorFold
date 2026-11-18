@@ -531,8 +531,8 @@ VR_GLSL,
    their angle round the head brings them, sn of the way across for one at the front and cn for one at the side.
    dh is the distance to what is seen whole; dq to what is behind the head, and so seen only outside its disc. */
 "            vec4 fc=uD9[i];float sty=mod(id,16.0);float aw=1.2/hpx;float tl=0.085*min(wd,3.0);float rh=length(hl);float ah=atan(hl.x,hl.y);float dh=1e5,dq=1e5;",
-"            float sn=sin(fc.x),cn=cos(fc.x);",
-"            vec2 hp=hl/max(rh,1.0);float hz=sqrt(max(0.0,1.0-dot(hp,hp)));vec3 H=vec3(hp.x*cn-hz*sn,hp.y,hp.x*sn+hz*cn);", /* the place on the head that this place in the picture shows; beyond the head's edge, the place on its edge nearest */
+"            float sn=sin(fc.x),cn=cos(fc.x);float pit=(floor(fc.w)/255.0-0.5)*1.8;float sp=sin(pit),cp=cos(pit);", /* pit: how far the head is nodded forward (below nothing, looking up) */
+"            vec2 hp=hl/max(rh,1.0);float hz=sqrt(max(0.0,1.0-dot(hp,hp)));vec3 H=vec3(hp.x*cn-hz*sn,hp.y,hp.x*sn+hz*cn);H=vec3(H.x,H.y*cp+H.z*sp,H.z*cp-H.y*sp);", /* the place on the head that this place in the picture shows, the head's turn and then its nod taken back out; beyond the head's edge, the place on its edge nearest */
 "            float off=rh<1.1?tl:1e5;", /* what is added to a part of the head that hair covers, so that it is lit just where it is covered: hair lies a tenth of the head thick, so it shows that far past the head's edge and no further */
 "            float scalp=0.15+0.5*H.z-H.y+off;", /* hair over the scalp: above a flat cut through the head that slopes from the brow, clear of the eyes, down behind the ears to the nape */
 "            float win=max(abs(H.x)-0.72,-H.z);", /* the opening that hair leaves for the face: below nothing within it, however the head is turned */
@@ -597,11 +597,11 @@ VR_GLSL,
 "            ln=ln*(1.0-he)+hb*fract(hd.w)*2.0;dk=max(dk,he);",
 "            if(hb>0.5)rr=0.15+fract(id*0.382+0.31)*1.08;", /* in another of the palette's colours than the body */
 "            if(rh<0.97&&hb<0.5){", /* the face: two eyes and a mouth, dark in the lit head, at their own places on the ball, so they go across and narrow as the head turns, and are gone when it is turned away */
-"              float fz=sqrt(1.0-rh*rh);vec3 F=vec3(hl.x*cn-fz*sn,hl.y,hl.x*sn+fz*cn);",
+"              float fz=sqrt(1.0-rh*rh);vec3 F=vec3(hl.x*cn-fz*sn,hl.y,hl.x*sn+fz*cn);F=vec3(F.x,F.y*cp+F.z*sp,F.z*cp-F.y*sp);",
 "              if(F.z>0.1){",
 "                vec2 fl=F.xy;float mo=floor(fc.y)/255.0,lid=fract(fc.y),mw=max(0.05,floor(fc.z)/510.0),cv=fract(fc.z);",
 "                vec2 ey=vec2(abs(fl.x)-0.36,fl.y-0.18);",
-"                float de=mix(length(vec2(ey.x,ey.y/(1.0-0.8*lid)))-0.1,max(abs(length(ey+vec2(0.0,0.05))-0.14)-0.035,-0.03-ey.y),fc.w);", /* an eye is a dot, which its lid flattens; or, shut and smiling, an arch */
+"                float de=mix(length(vec2(ey.x,ey.y/(1.0-0.8*lid)))-0.1,max(abs(length(ey+vec2(0.0,0.05))-0.14)-0.035,-0.03-ey.y),fract(fc.w));", /* an eye is a dot, which its lid flattens; or, shut and smiling, an arch */
 "                float mh=0.045+0.17*mo;float dm=length(vec2(fl.x*mh/mw,fl.y+0.36-cv*fl.x*fl.x))-mh;", /* the mouth: so wide, so far open, its corners so far turned up */
 "                ln*=1.0-0.9*max(1.0-smoothstep(-aw,aw,de),1.0-smoothstep(-aw,aw,dm))*smoothstep(0.1,0.35,F.z)*df;",
 "              }",

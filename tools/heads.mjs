@@ -2,7 +2,8 @@
 // the lines that draw a head are cut out of FS_TRAIL (js/shaders.js) and run for a grid of heads.
 //   node tools/heads.mjs out.html [tilt]      then open it, or use tools/heads.py to make pictures of it
 // Rows are the heads (DN_LOOKS of them), columns the turns 0, 45, ... 315 degrees (0 faces the viewer; at 90 the
-// face is to the picture's right). tilt leans every head on its neck by that many radians.
+// face is to the picture's right). tilt leans every head on its neck by that many radians (an argument after the page);
+// a nod forward, in radians, is the fifth argument (below nothing looks up).
 import fs from "node:fs";
 const { FS_TRAIL } = await import("../js/shaders.js"), { DN_LOOKS } = await import("../js/dance.js");
 const a = FS_TRAIL.indexOf("vec2 hu=hd.xy-b0.xy"), b = FS_TRAIL.indexOf("if(uVr>0.5)ln*=1.0-smoothstep(1.7,1.8,length(ev));");
@@ -11,7 +12,7 @@ let head = FS_TRAIL.slice(a, b).trimEnd();
 for (let k = 0; k < 3; k++) head = head.slice(0, head.lastIndexOf("}")).trimEnd(); // the figure's own braces
 head = head.replace(/uD9\[i\]/g, "FC");
 const limb = FS_TRAIL.match(/float limb\(vec2 p,vec2 a,vec2 b\)\{[^\n]*\}/)[0];
-const tilt = Number(process.argv[3] || 0), from = Number(process.argv[4] || 0), rows = Number(process.argv[5] || DN_LOOKS), C = 150;
+const pitch = Number(process.argv[6] || 0), tilt = Number(process.argv[3] || 0), from = Number(process.argv[4] || 0), rows = Number(process.argv[5] || DN_LOOKS), C = 150;
 const fs0 = `precision highp float;
 uniform vec2 uRes;
 ${limb}
@@ -22,7 +23,7 @@ void main(){
   float R=30.0/mn;vec4 hd=vec4(mid,R,ci.y+${from}.0+0.5);float id=floor(hd.w);float wd=1.0;
   vec2 up=vec2(sin(${tilt.toFixed(3)}),cos(${tilt.toFixed(3)}));
   vec4 b0=vec4(mid-up*R*1.4,mid-up*R*4.0);
-  vec4 FC=vec4(ci.x*0.7853982,0.0,173.5,0.0);
+  vec4 FC=vec4(ci.x*0.7853982,0.0,173.5,floor(255.0*(${pitch.toFixed(3)}/1.8+0.5)));
   float ln=0.0,dk=0.0,rr=0.0;float wl=R*0.34;
   float ds=min(length(q-hd.xy)-hd.z,min(limb(q,b0.xy,b0.zw),limb(q,b0.xy+vec2(-1.33*R,0.0),b0.xy+vec2(1.33*R,0.0))));
   float e=1.0-smoothstep(wl,1.6*wl,ds);

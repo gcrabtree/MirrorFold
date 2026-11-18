@@ -47,7 +47,7 @@ export const DN_TOP=5;       /* the fastest an elbow or a hand is shown going fr
 export const DN_FAINT=0.06;  /* a pulse under this is taken as that much weaker than one that counts: there is nearly no sound */
 export const DN_DRIFT=0.3;   /* how fast a dancing figure moves over the floor toward the place it has chosen, in figure heights a second */
 export const dnU=[new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48),new Float32Array(48)]; /* for the shader, four numbers a figure in each (the tenth is its head: the angle it is turned by, and its face, which danceFill packs into the other three): neck and hips; the shoulders; left elbow and hand; right elbow and hand; the hip joints; left knee and ankle; right knee and ankle; the toes; the head's middle, its radius and how brightly the figure shows (0 for none) */
-const A=new Array(MV_N),B=new Array(MV_N),J=new Array(MV_N),flat=new Array(35),SP=[0,0],RM=[0,0,0,0],order=[];
+const A=new Array(MV_N),B=new Array(MV_N),J=new Array(MV_N),flat=new Array(35),SP=[0,0],SP3=[0,0,0],RM=[0,0,0,0],order=[];
 const crowd=[];              /* the figures: {rt, ri, mv, mir, u0, pmv, pmir, pu0, bl, next, tx, tz, p, b, mem, fa, sp, pfa, a, im, ic, idir, iface, itf, iph, iw}: the routine and how far through it; the move, whether it is faced the other way and the beat it began on; the same for the move before, and how far the figure has gone over from it; the beat to change on; how far the figure has travelled from its place; the pose; the body; where the elbows were; which way it is turned for this move and was for the last; how much it is dancing; and for when it is not, whether it walks, the seconds until it chooses again, which way it walks, the way it faces now and wants to, how far through its steps it is and how much it is walking */
 const st={pairC:8,lvl:0.6,lead:-1,per:0.5,pk:0.06,pm:0.06,amp:0,asp:1.78,u:0,du:0,pa:0,sure:0,kick:0,snap:0,en:0,hype:0,jump:-1,kind:0,phrase:0}; /* the strongest pulse of the bass and of the mids in the last few seconds; how much the figures are dancing, 0 to 1 (figures newly set up begin with it, so that changing from one overlay of figures to another does not stop the dance); how wide the picture is for 1 tall (danceFill says); the count of beats and this frame's step of it; how much pulse there has been lately; how sure the beat is; the kick as the figures feel it; how much they dance; how long since a drop; how far through a jump (in beats, -1 for none); which overlay they were set up for; how many times the chorus line has changed its dance */
 let tick=null,bank=null;
@@ -284,6 +284,28 @@ export function pickFace(manner,rnd){
   rnd*=t;for(i=0;i<DN_FACES.length;i++){rnd-=DN_FACES[i].p[m];if(rnd<0)return i;}
   return 0;
 }
+/* What a figure's head does in time with the music, besides looking about: each is a rule from the count of beats u
+   to how far the head is turned (o[0]), nodded forward (o[1], below nothing is looking up) and tipped to its left
+   (o[2]), in radians. Some go with every beat, some with every second or fourth, one twice a beat, so that a head
+   can keep a different time from the feet. A figure keeps one for eight or sixteen beats and goes over to the next
+   gradually; p is its chance for each manner, in DN_MANNERS' order. The nods are down on the beat. */
+export const DN_HEADS=[
+ {name:"still",p:[2,0.5,2],f:function(u,o){o[0]=o[1]=o[2]=0;}},
+ {name:"nod",p:[3,3,1],f:function(u,o){o[0]=0;o[1]=0.2*Math.cos(6.2831853*u);o[2]=0;}},
+ {name:"slow nod",p:[2,1,3],f:function(u,o){o[0]=0;o[1]=0.24*Math.cos(3.1415927*u);o[2]=0;}},
+ {name:"sway",p:[2,1.5,3],f:function(u,o){o[0]=0;o[1]=0.04;o[2]=0.24*Math.sin(3.1415927*u);}}, /* tipped to one side and the other, a beat each */
+ {name:"side to side",p:[1.5,2,2],f:function(u,o){o[0]=0.55*Math.sin(1.5707963*u);o[1]=0.08*Math.cos(6.2831853*u);o[2]=0;}}, /* looking one way for two beats and the other for two, nodding a little */
+ {name:"roll",p:[1,1,3],f:function(u,o){o[0]=0.4*Math.sin(1.5707963*u);o[1]=0.24*Math.cos(1.5707963*u);o[2]=0.14*Math.sin(1.5707963*u);}}, /* round in a circle over four beats: down, to one side, back, to the other */
+ {name:"look up",p:[0.7,1.5,2],f:function(u,o){o[0]=0;o[1]=-0.34+0.08*Math.cos(6.2831853*u);o[2]=0.06*Math.sin(3.1415927*u);}}, /* the head thrown back, still keeping the beat */
+ {name:"shake",p:[0.5,2.5,0.2],f:function(u,o){o[0]=0.2*Math.sin(6.2831853*u);o[1]=0;o[2]=0.1*Math.sin(12.5663706*u);}}, /* twice a beat */
+ {name:"bang",p:[0.3,2,0],f:function(u,o){o[0]=0;o[1]=0.2+0.3*Math.cos(6.2831853*u);o[2]=0;}}, /* hard down on every beat */
+ {name:"up and down",p:[1,1.5,1.5],f:function(u,o){o[0]=0.25*Math.sin(0.7853982*u);o[1]=0.3*Math.sin(1.5707963*u);o[2]=0;}}]; /* up for two beats and down for two, turning slowly */
+export function pickHead(manner,rnd){
+  var i,t=0,m=Math.max(0,DN_MANNERS.indexOf(manner));
+  for(i=0;i<DN_HEADS.length;i++)t+=DN_HEADS[i].p[m];
+  rnd*=t;for(i=0;i<DN_HEADS.length;i++){rnd-=DN_HEADS[i].p[m];if(rnd<0)return i;}
+  return 0;
+}
 export const DN_LOOKS=16;    /* how many kinds of head there are (the shader draws them: headphones, spikes, long hair, a top hat, a cap, a bun, a round mass of curls, a crest, a ponytail, two bunches, a bob, a woolly hat, a wide hat, a party hat, a crown, bobbles on springs) */
 
 /* which of the three kinds of move fits how full the music is (e, 0 to 1 and over) */
@@ -477,7 +499,7 @@ function setUp(kind){
   for(i=0;i<n;i++){
     ch=DN_MANNERS[kind===2?0:(i+c0)%3]; /* a third of a crowd each way, and the dancer alone any of the three */
     r=kind===2&&i?crowd[0].rt:makeRoutine(st.en*ch.en,Math.random,routineStyle());
-    d={ch:ch,pw:-1,pu:0,hy:0,hk:0,hyR:0,hyc:2*Math.random(),pch:0,wv:0,sd:Math.random()<0.5?-1:1,mo:0,bk:0,ex:pickFace(ch,Math.random()),et:3+7*Math.random(),fw:0.34,fc:0.5,fl:0,fh:0,fo:0,rel:[0,0,0,0,0,0,0,0,0,0,0,0],dw:0,go:false,a:st.amp,g:1,ph:0,gp:0,as:1,wx:0,wz:0,vx:0,vz:0,fa:kind===2?0:(Math.random()-0.5)*1.6,sp:0,pfa:0,im:0,ic:3*Math.random(),ix:0,iz:0,iface:0,itf:(Math.random()-0.5)*3,iph:0,iw:0,
+    d={ch:ch,hg:pickHead(ch,Math.random()),hgn:now+4+4*Math.floor(3*Math.random()),hv:[0,0,0],pw:-1,pu:0,hy:0,hk:0,hyR:0,hyc:2*Math.random(),pch:0,wv:0,sd:Math.random()<0.5?-1:1,mo:0,bk:0,ex:pickFace(ch,Math.random()),et:3+7*Math.random(),fw:0.34,fc:0.5,fl:0,fh:0,fo:0,rel:[0,0,0,0,0,0,0,0,0,0,0,0],dw:0,go:false,a:st.amp,g:1,ph:0,gp:0,as:1,wx:0,wz:0,vx:0,vz:0,fa:kind===2?0:(Math.random()-0.5)*1.6,sp:0,pfa:0,im:0,ic:3*Math.random(),ix:0,iz:0,iface:0,itf:(Math.random()-0.5)*3,iph:0,iw:0,
       hf:h[i][0],hz:h[i][1],hc:h[i][2],id:(3*i+l0)%DN_LOOKS+DN_LOOKS*i, /* its number says which head it has (what is left over on dividing by DN_LOOKS: neighbours differ) and gives it a colour of its own */
       rt:r,ri:0,mv:r.mv[0],mir:kind!==2&&r.mir[0],u0:now,pmv:0,pmir:false,pu0:now,bl:1,next:now+4+(kind===3?i%5:0),tx:0,tz:0,p:MV_REST.slice(),b:danceBody(MV_REST,[]),mem:[0,0,0,0,0,0]};
     if(kind===3){d.hf+=(Math.random()-0.5)*0.25;d.hz+=(Math.random()-0.5)*0.5;} /* a crowd does not stand in ranks */
@@ -576,6 +598,12 @@ export function danceStep(dt,bt,mp,level,drop,changed,slow,time,real,on){
     else if(d.go)d.fa-=Math.max(-1.2*du,Math.min(1.2*du,d.fa));else d.fa+=d.sp*du*d.a;
     A[4]+=d.fa;
     groove(A,st.u,d,st.kick,st.snap);
+    /* the head keeps time too (DN_HEADS): a new way of doing so every eight or sixteen beats, gone over to gradually.
+       The nod and the tip go into the pose, so the head itself moves on the neck; the turn is kept for the shader. */
+    if(now>=d.hgn){d.hg=pickHead(d.ch,Math.random());d.hgn=now+(Math.random()<0.5?8:16);}
+    DN_HEADS[d.hg].f(st.u,SP3);w=Math.min(1,dt*4);v=0.6+0.4*Math.min(1.3,d.ch.bob);
+    for(j=0;j<3;j++)d.hv[j]+=(SP3[j]*v-d.hv[j])*w;
+    A[11]+=Math.tan(d.hv[1]);A[10]+=Math.tan(d.hv[2]);
     if(d.bl<1){
       movePose(MOVES[d.pmv],st.u-d.pu0,B);B[2]+=moveBob(MOVES[d.pmv])*beat*d.ch.bob;if(d.pmir)flipPose(B);B[4]+=d.pfa;
       k=ease(d.bl);w=turnTo(B[4],A[4]);for(j=0;j<MV_N;j++)A[j]=B[j]+(A[j]-B[j])*k;A[4]=B[4]+w*k;
@@ -691,10 +719,11 @@ export function danceFill(kind,asp){
     for(j=0;j<16;j++){dnU[j>>1][4*i+2*(j&1)]=k+q[2]*flat[2*j];dnU[j>>1][4*i+2*(j&1)+1]=q[1]+q[2]*flat[2*j+1];}
     /* the head: the angle the chest faces by and the head's own turn on it, which the head is drawn turned by; then the face, two numbers to one
        (the first in 255 steps as the whole part, the second as what is over): how far the mouth is open and the
-       lids are down; the mouth's half width (twice it) and how far its corners turn up; and how far the eyes are arches */
-    j=d.p[4]+d.p[5]+d.p[7]+d.hy;dnU[9][4*i]=j-6.2831853*Math.round(j/6.2831853);
+       lids are down; the mouth's half width (twice it) and how far its corners turn up; and, with how far the head is nodded, how far the eyes are arches */
+    j=d.p[4]+d.p[5]+d.p[7]+d.hy+d.hv[0]*d.a;dnU[9][4*i]=j-6.2831853*Math.round(j/6.2831853);
     dnU[9][4*i+1]=Math.floor(255*Math.max(0,Math.min(1,d.fo)))+Math.min(0.99,Math.max(d.fl,d.bk)*(1-d.fh));
-    dnU[9][4*i+2]=Math.floor(255*Math.max(0,Math.min(1,2*d.fw)))+Math.max(0,Math.min(0.99,d.fc));dnU[9][4*i+3]=d.fh;
+    dnU[9][4*i+2]=Math.floor(255*Math.max(0,Math.min(1,2*d.fw)))+Math.max(0,Math.min(0.99,d.fc));
+    dnU[9][4*i+3]=Math.floor(255*Math.max(0,Math.min(1,Math.atan(d.p[11])/1.8+0.5)))+Math.max(0,Math.min(0.99,d.fh)); /* how far the head is nodded, from the pose, so the face goes down the head as it nods and up as it looks up; and how far the eyes are arches */
     dnU[8][4*i]=k+q[2]*flat[32];dnU[8][4*i+1]=q[1]+q[2]*flat[33];dnU[8][4*i+2]=q[2]*DN_HEAD*flat[34];dnU[8][4*i+3]=d.id+0.5*q[3];
   }
   return n;
@@ -706,5 +735,5 @@ tick=makeBeatClock();bank=makeBeatBank();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={DN_FIT, styleFit, danceFit, DN_MAX, DN_MANNERS, DN_LOOKS, DN_FACES, pickFace, DN_HIP, DN_SPINE, DN_HEAD, DN_NECK, DN_SHO, DN_HIPW, DN_ARM, DN_FORE, DN_CLEAR, DN_BACK, DN_LEG, DN_FOOT, DN_STANCE, DN_NEAR, DN_EYE, DN_FAST, DN_SLOW, DN_SIZE, DN_DEEP, DN_UP, DN_FLOOR, DN_DRIFT, DN_FAINT, DN_RATE, DN_SURE0, DN_SURE1, DN_FAINT2, makeBeatBank, get danceBank(){return bank},set danceBank(v){bank=v}, danceSays, DN_QUICK, DN_TOP, DN_JUMP, DN_STEP, DN_WALK, DN_TURN, dnU, danceBody, danceFlat, makeBeatClock, pickMove, moveTier, makeRoutine, setDanceStyle, get danceStyle(){return danceStyle},
+export const __dbg={DN_HEADS, pickHead, DN_FIT, styleFit, danceFit, DN_MAX, DN_MANNERS, DN_LOOKS, DN_FACES, pickFace, DN_HIP, DN_SPINE, DN_HEAD, DN_NECK, DN_SHO, DN_HIPW, DN_ARM, DN_FORE, DN_CLEAR, DN_BACK, DN_LEG, DN_FOOT, DN_STANCE, DN_NEAR, DN_EYE, DN_FAST, DN_SLOW, DN_SIZE, DN_DEEP, DN_UP, DN_FLOOR, DN_DRIFT, DN_FAINT, DN_RATE, DN_SURE0, DN_SURE1, DN_FAINT2, makeBeatBank, get danceBank(){return bank},set danceBank(v){bank=v}, danceSays, DN_QUICK, DN_TOP, DN_JUMP, DN_STEP, DN_WALK, DN_TURN, dnU, danceBody, danceFlat, makeBeatClock, pickMove, moveTier, makeRoutine, setDanceStyle, get danceStyle(){return danceStyle},
   danceKind, danceStep, stepDance, danceSpots, danceFill, crowd, danceSt:st, get danceTick(){return tick},set danceTick(v){tick=v}};

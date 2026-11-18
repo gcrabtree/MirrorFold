@@ -1444,11 +1444,16 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("every kind of dancing has a speed and a fullness it suits; a fast full passage suits the rave best and a slow quiet one the groove", Object.keys(mv.MV_STYLES).every(k => dn.DN_FIT[k] && dn.styleFit(k, 0.5, 0.5) > 0.29 && dn.styleFit(k, 0.5, 0.5) < 3.31) && best(0.38, 0.95) === "rave" && best(0.62, 0.25) === "groove" && dn.styleFit("nothing", 0.5, 0.5) === 1, best(0.38, 0.95) + " " + best(0.62, 0.25));
   const was = sel.ovi, rand = Math.random, dt = 1 / 60, hit = (t, per) => Math.exp(-5 * (t % per)); let sd = 99; Math.random = () => (sd = sd * 16807 % 2147483647) / 2147483647;
   dn.danceTick = dn.makeBeatClock(); sel.ovi = 0; dn.stepDance({ dt, bt: 0, mp: 0 }); sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); dn.stepDance({ dt, bt: 0, mp: 0 });
-  let pairs = 0, faced = 0, mirrored = 0, turn = 0, one = true;
+  { const o = [0, 0, 0], seen = [new Set(), new Set(), new Set()], top = [0, 0, 0]; let round = true, calm2 = true;
+    for (const h of dn.DN_HEADS) { const a = [], b = []; for (let u = 0; u < 16; u += 1 / 16) { h.f(u, o); o.forEach((v, j) => top[j] = Math.max(top[j], Math.abs(v))); } h.f(0.3, o); a.push(...o); h.f(16.3, o); b.push(...o); if (a.some((v, j) => Math.abs(v - b[j]) > 1e-6)) round = false;
+      let was = null; for (let u = 0; u < 16; u += 1 / 150) { h.f(u, o); if (was && o.some((v, j) => Math.abs(v - was[j]) * 150 * 2.75 > 6)) calm2 = false; was = o.slice(); } }
+    for (let n = 0; n < 400; n++) dn.DN_MANNERS.forEach((mn, q) => seen[q].add(dn.pickHead(mn, (n + 0.5) / 400)));
+    expect("a head keeps time by turning, nodding (down and up) and tipping, each way coming round in sixteen beats and none faster than a head can go", top[0] > 0.4 && top[1] > 0.3 && top[2] > 0.2 && top.every(v => v < 0.6) && round && calm2 && seen[0].size === dn.DN_HEADS.length && seen[1].size === dn.DN_HEADS.length && seen[2].size >= dn.DN_HEADS.length - 1, top.join(" ")); }
+  let pairs = 0, faced = 0, mirrored = 0, turn = 0, one = true, nods = [9, -9], tips = 0;
   for (let n = 0; n < 60 * 150; n++) {
     dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.8, false, false, false, n * dt);
     dn.crowd.forEach((d, i) => {
-      turn = Math.max(turn, Math.abs(d.hy));
+      turn = Math.max(turn, Math.abs(d.hy)); nods = [Math.min(nods[0], d.hv[1]), Math.max(nods[1], d.hv[1])]; tips = Math.max(tips, Math.abs(d.hv[2]));
       if (d.pw < 0) return;
       const o = dn.crowd[d.pw]; if (!o || o.pw !== i) { one = false; return; }
       if (i < d.pw) { pairs++; if (d.mv === o.mv && d.mir !== o.mir && d.u0 === o.u0) mirrored++; }
@@ -1456,6 +1461,7 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   }
   expect("in a crowd two figures now and then dance together, each the other's partner, and the second comes to do the first's move as in a mirror", pairs > 600 && one && mirrored > 0.3 * pairs, pairs + " " + mirrored);
   expect("a head turns on its neck, and never further than a head can", turn > 0.3 && turn < 1.65, String(turn));
+  expect("in a crowd some head looks up, some nods down and some tips to the side, and what the shader is told of the nod is a whole number of steps and a part", nods[0] < -0.15 && nods[1] > 0.15 && tips > 0.1 && dn.dnU[9][3] >= 0 && dn.dnU[9][3] < 256, nods.join(" ") + " " + tips);
   Math.random = rand; sel.ovi = was; dn.stepDance({ dt, bt: 0, mp: 0 });
 }
 
