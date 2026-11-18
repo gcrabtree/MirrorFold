@@ -130,6 +130,8 @@ export function tgMasked(list){
   }
   return nh===1&&na>1;
 }
+/* said as soon as this device's own ways show the sign, so that nobody waits for a joining that cannot work */
+export const TG_MASKED="A privacy relay is carrying this device's traffic (iCloud Private Relay, Limit IP Address Tracking, or a VPN). Friends cannot reach it through that: turn it off for now, then invite again.";
 /* What a failed joining most likely came to, from each side's ways of being reached. */
 export function tgVerdict(mine,theirs){
   var a=tgCount(mine),b=tgCount(theirs);
@@ -147,7 +149,7 @@ function tgDebug(c,who){
   tgLog(who,"connection made; address servers "+TG_ICE.map(function(s){return s.urls}).join(", ")+"; online "+navigator.onLine+(navigator.connection?"; network "+(navigator.connection.type||"?")+"/"+(navigator.connection.effectiveType||"?"):""));
   pc.addEventListener("icecandidate",function(e){
     var k=e.candidate&&tgCand(e.candidate.candidate);
-    if(!e.candidate){tgLog(who,"finished looking for ways to be reached: "+tgCount(c.mine)+(tgMasked(c.mine)?"; the two servers saw DIFFERENT outside ADDRESSES (a privacy relay or VPN)":tgSplit(c.mine)?"; the two servers saw DIFFERENT outside ports":""));return;}
+    if(!e.candidate){if(tgMasked(c.mine))toast(TG_MASKED);tgLog(who,"finished looking for ways to be reached: "+tgCount(c.mine)+(tgMasked(c.mine)?"; the two servers saw DIFFERENT outside ADDRESSES (a privacy relay or VPN)":tgSplit(c.mine)?"; the two servers saw DIFFERENT outside ports":""));return;}
     if(!k)return;
     c.mine.push(k);
     tgLog(who,"way found: "+k.typ+" "+k.proto+" "+tgAddr(k.addr)+" port "+k.port+(k.from?" (the device's port "+k.from+")":"")+(e.candidate.url?" from "+e.candidate.url:""));
@@ -646,6 +648,6 @@ window.addEventListener("hashchange",tgFromAddress);
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={tgMasked, TG_WAIT_HOST, tgWhyNot, tgLog, tgLines, tgAddr, tgCand, tgCands, tgCount, tgSplit, tgVerdict, tgDebug, tgTheirs, tgPaths, tgReport, tgCopyReport, tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, hostHas, TG_ASK, TG_KINDS, TG_ASKS, tgUnitPart, tgWho, tgSpot, tgPut, tgTell, tgGoTo, tgAsked, tgCall, tgAskGo, tgAnswer, tgForget, get tgAskNow(){return ask}, get tgWant(){return want}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
+export const __dbg={TG_MASKED, tgMasked, TG_WAIT_HOST, tgWhyNot, tgLog, tgLines, tgAddr, tgCand, tgCands, tgCount, tgSplit, tgVerdict, tgDebug, tgTheirs, tgPaths, tgReport, tgCopyReport, tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, hostHas, TG_ASK, TG_KINDS, TG_ASKS, tgUnitPart, tgWho, tgSpot, tgPut, tgTell, tgGoTo, tgAsked, tgCall, tgAskGo, tgAnswer, tgForget, get tgAskNow(){return ask}, get tgWant(){return want}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
   get peerU(){return peerU},set peerU(v){peerU=v}, get tgRole(){return tgRole},set tgRole(v){tgRole=v}, get hostW(){return hostW},set hostW(v){hostW=v}, get hostT(){return hostT},set hostT(v){hostT=v},
   get tgRoomsAt(){return roomsAt},set tgRoomsAt(v){roomsAt=v}, get tgRoomNow(){return room}, get tgSockUp(){return sockUp}};
