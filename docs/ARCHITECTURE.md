@@ -573,6 +573,8 @@ Drawn into the feedback buffer after the composite, so the motion smears them. S
 
 ### Filters (`FS_FINAL`)
 
+**The painters** (`fx` 17 and 18, the last two in `LOOKS`). Both lay their pattern out in the picture's own measure (`cw` times the picture's shape), not in dots, so strokes and dabs are the same size at any resolution. *Van Gogh*: each place has a way its stroke runs, along the edge where the brightness changes (the gradient of four readings, turned a quarter), otherwise along whorls made of two sines of the place that drift very slowly; the colour is the mean of nine readings 0.0046 of the picture's height apart along that line, and smooth noise read along the same line, stretched long along it and fine across, gives the ridges of the paint. Colour is made half as strong again, the darks pushed toward blue and the lights toward yellow, and edges darkened. *Monet*: the picture is laid out in 88 squares to its height, each with one dab somewhere in it, wider than tall; a place takes the nine dabs round it by how near they are (sharply, so dabs keep their shape), each dab the picture's colour at its own middle, warmer or cooler and lighter or darker by chance; then the darks are lifted toward lilac and the whole made a little paler. Each costs about as much as Streaks (nine to thirteen readings). They read the picture a little way off the place itself, as Streaks and Comic do.
+
 Applied in this order. `LOOKS` entries set one or more of these uniforms.
 
 1. Transition coordinate warp (below).
@@ -786,7 +788,7 @@ Engine functions: `jCur(k)` (current option key), `jPool(k, cfg)` (allowed optio
 
 A world with `trigger: "sound"` changes when the detector fires and at least `max(10, every/4)` seconds have passed, or after `2.5 * every` seconds regardless. Without live audio it falls back to the clock.
 
-Built-in templates: Classic, Everything, Clean flight, MilkDrop, Dance party, Kaleidoscope, Calm, Biomech, Visions, Curiosities, Landscapes, Follow the music. Dance party is MilkDrop's motions and some of its filters (not Echo, which lays a second, larger, upside-down picture of the figures over them) with the overlay held to the three with dancing figures (Dancer, Chorus line, Dance floor), changed every 40 seconds, and the kind of dancing changed every 60. Everything, MilkDrop and Follow the music change the surface at random; Clean flight holds it plain; the rest leave it as it is.
+Built-in templates: Classic, Everything, Clean flight, MilkDrop, Dance party, Kaleidoscope, Calm, Biomech, Visions, Curiosities, Painted, Landscapes, Follow the music. Dance party is MilkDrop's motions and some of its filters (not Echo, which lays a second, larger, upside-down picture of the figures over them) with the overlay held to the three with dancing figures (Dancer, Chorus line, Dance floor), changed every 40 seconds, and the kind of dancing changed every 60. Everything, MilkDrop and Follow the music change the surface at random; Clean flight holds it plain; the rest leave it as it is.
 
 ### Likes
 

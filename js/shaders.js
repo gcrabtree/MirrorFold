@@ -645,6 +645,9 @@ VR_GLSL,
 "vec2 at(vec2 cw){return uVr<1.5?0.5+cw:texOf(cw/"+VR_KAP+"+vec2(sgE*etaS,0.0));}", /* where in the picture to read, for a place in the bent middle view: in the VR viewer, in this eye's half and shifted by the depth of what is read */ /* the last finished picture and how much of it to keep: the flash limiter for unreviewed pack code */
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 "const vec3 LW=vec3(0.299,0.587,0.114);",
+/* for the two painters' filters: a chance number for a square, and smooth noise made from it */
+"float pH(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}",
+"float pN(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(pH(i),pH(i+vec2(1.0,0.0)),f.x),mix(pH(i+vec2(0.0,1.0)),pH(i+vec2(1.0,1.0)),f.x),f.y);}",
 "void main(){",
 "  vec2 c=v-0.5;float r,w2=uWarp*uWarp;vec2 ev=vec2(0.0);",
 "  if(uVr>1.5){sdE=v.x<0.5?-1.0:1.0;sgE=-sdE;ev=eyeOf(v);etaS=texture2D(uT,v).a*"+VR_EMAX+";c=(ev+vec2(sdE*etaS,0.0))*"+VR_KAP+";}", /* VR viewer: work on the middle view, starting from the depth of what is here now */
@@ -732,7 +735,48 @@ VR_GLSL,
 "      col=clamp(t*0.94+0.03+0.03*(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233))+floor(uTime*10.0))*43758.5453)-0.5),0.0,1.0);",
 "    }else if(uFx<13.5){", /* streaks: the bright parts run down the picture */
 "      for(int i=1;i<9;i++){vec3 s=texture2D(uT,tw+vec2(0.0,float(i)*uPx.y*7.0)).rgb;col=max(col,s*smoothstep(0.45,0.8,dot(s,LW))*(1.0-float(i)/9.0));}",
-"    }else if(uFx>15.5){", /* airbrush: the brightness with more contrast, tinted cool where dark and warm where light, and only a little of the colour kept */
+"    }else if(uFx>16.5&&uFx<17.5){",
+/* Van Gogh: short thick strokes of paint that follow the edges of things, and where there are no edges go round in
+   slow whorls, as his skies do. Each place takes the way its stroke runs (along the edge if the brightness changes
+   here, else along the whorls, which drift very slowly), and the colour is the picture's taken along that line, so it
+   is drawn out into a stroke. Fine noise taken along the same line gives the stroke its ridges of thick paint. The
+   colours are made stronger, the darks pushed toward blue and the lights toward yellow, and edges get a dark line. */
+"      vec2 pp=cw*vec2(uAsp,1.0);vec2 px=uPx*2.0;",
+"      float l0=dot(texture2D(uT,tw-vec2(px.x,0.0)).rgb,LW),l1=dot(texture2D(uT,tw+vec2(px.x,0.0)).rgb,LW);",
+"      float l2=dot(texture2D(uT,tw-vec2(0.0,px.y)).rgb,LW),l3=dot(texture2D(uT,tw+vec2(0.0,px.y)).rgb,LW);",
+"      vec2 g=vec2(l1-l0,l3-l2);float gm=length(g);",
+"      float th=2.2*sin(pp.x*5.0+0.7*sin(pp.y*3.0+uTime*0.07))+2.0*cos(pp.y*4.3-1.3*sin(pp.x*2.6-uTime*0.05));",
+"      vec2 dr=vec2(cos(th),sin(th));",
+"      if(gm>0.02){vec2 tg=vec2(-g.y,g.x)/gm;if(dot(tg,dr)<0.0)tg=-tg;dr=normalize(mix(dr,tg,smoothstep(0.02,0.15,gm)));}",
+"      vec3 acc=vec3(0.0);float nz=0.0;vec2 nr=vec2(-dr.y,dr.x);",
+"      for(int i=0;i<9;i++){",
+"        float fi=float(i)-4.0;vec2 q=pp+dr*fi*0.0046;",
+"        acc+=texture2D(uT,tw+dr*fi*0.0046*vec2(1.0/uAsp,1.0)).rgb;",
+"        nz+=pN(vec2(dot(q,dr)*18.0,dot(q,nr)*120.0)+floor(th*1.2));", /* long along the stroke and fine across it */
+"      }",
+"      col=acc/9.0;lum=dot(col,LW);",
+"      col=clamp(mix(vec3(lum),col,1.55),0.0,1.0);",
+"      col=mix(col,col*vec3(0.72,0.86,1.4),(1.0-smoothstep(0.0,0.5,lum))*0.55);col=mix(col,col*vec3(1.22,1.1,0.62),smoothstep(0.45,0.9,lum)*0.5);",
+"      col*=0.55+0.9*nz/9.0;col*=1.0-0.5*smoothstep(0.1,0.32,gm);",
+"      col=clamp(col,0.0,1.0);",
+"    }else if(uFx>17.5&&uFx<18.5){",
+/* Monet: the picture in soft dabs of paint. The picture is laid out in squares, each with a dab somewhere in it, wider
+   than it is tall as his strokes on water are; a dab is one colour, the picture's at its middle, a little warmer or
+   cooler than it should be by chance, so that neighbours differ as broken colour does. A place takes the dabs round
+   it by how near they are. Then the darks are lifted and tinted lilac and the whole is made paler, as in haze. */
+"      vec2 pp=cw*vec2(uAsp,1.0)*88.0;vec2 ci=floor(pp);vec3 acc=vec3(0.0);float wt=0.0;",
+"      for(int j=0;j<3;j++)for(int i=0;i<3;i++){",
+"        vec2 cc=ci+vec2(float(i)-1.0,float(j)-1.0);float h=pH(cc);",
+"        vec2 ct=cc+vec2(0.2+0.6*h,0.2+0.6*fract(h*57.31));vec2 dv=(pp-ct)*vec2(0.7,1.2);",
+"        float w=exp(-dot(dv,dv)*3.4);w=w*w*w*w*(0.5+1.0*fract(h*913.7));",
+"        vec3 s=texture2D(uT,tw+(ct-pp)/88.0*vec2(1.0/uAsp,1.0)).rgb;",
+"        s*=mix(vec3(1.16,1.0,0.8),vec3(0.8,0.98,1.2),fract(h*311.1))*(0.86+0.28*fract(h*71.3));",
+"        acc+=s*w;wt+=w;",
+"      }",
+"      col=acc/max(wt,1e-4);lum=dot(col,LW);",
+"      col=mix(col,vec3(0.56,0.5,0.78)*(0.35+lum),(1.0-smoothstep(0.0,0.45,lum))*0.45);",
+"      col=clamp(pow(clamp(col,0.0,1.0),vec3(0.85))*0.9+0.07,0.0,1.0);col=mix(vec3(dot(col,LW)),col,0.92);",
+"    }else if(uFx>15.5&&uFx<16.5){", /* airbrush: the brightness with more contrast, tinted cool where dark and warm where light, and only a little of the colour kept */
 "      float ab=smoothstep(0.0,0.62,lum);ab=mix(ab,ab*ab*(3.0-2.0*ab),0.5);",
 "      col=mix(mix(vec3(0.50,0.60,0.58),vec3(1.0,0.96,0.88),ab)*ab,col,0.10);",
 "    }",

@@ -40,7 +40,9 @@ export const LOOKS=[
  {name:"Streaks",fx:13},
  {name:"Emboss",fx:14},
  {name:"Glass",fx:15},
- {name:"Airbrush",fx:16} /* nearly all the colour taken out, cool in the shadows and warm in the lights, as if sprayed in greys */
+ {name:"Airbrush",fx:16}, /* nearly all the colour taken out, cool in the shadows and warm in the lights, as if sprayed in greys */
+ {name:"Van Gogh",fx:17}, /* thick strokes of paint that follow the edges of things and go round in whorls elsewhere */
+ {name:"Monet",fx:18}     /* soft dabs of broken colour, pale and hazy */
 ];
 /* what the worlds' surfaces are made of: plain is one colour of the palette to a part of a shape; grain is the rings
    of a tree, worked out in the scene shader from the place a ray lands (js/shaders.js), so a shape looks cut from a

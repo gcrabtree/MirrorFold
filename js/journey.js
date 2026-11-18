@@ -297,6 +297,8 @@ BUILTIN_T=[
  /* the worlds that are things and places, not fractals: gears, a library, stairs, columns, cages, spikes, crystals, galaxies */
  {name:"Curiosities",world:{every:70,set:["clockwork","library","stairs","causeway","dyson","ferro","bismuth","galaxies"]},mirrors:{mode:"off"},
   motion:{mode:"off"},filter:{mode:"off"},overlay:{mode:"off"}},
+ /* the two painters' filters, changing slowly, with nothing else over the picture */
+ {name:"Painted",mirrors:{mode:"off"},motion:{mode:"off"},filter:{mode:"random",every:70,set:["Van Gogh","Monet"]},overlay:{mode:"off"},surface:{mode:"off"}},
  {name:"Landscapes",world:{every:70},mirrors:{mode:"off"},land:{mode:"random",every:80}},
  {name:"Follow the music",world:{trigger:"sound",every:45},mirrors:{mode:"random",none:"75"},motion:{mode:"random"},overlay:{mode:"random",set:["Ring","Scope","Spectrum","Spokes"]},surface:{mode:"random"}}
 ].map(function(t){return normT(t,true)});
