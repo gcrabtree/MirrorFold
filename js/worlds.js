@@ -1145,11 +1145,12 @@ export const WORLDS=[
 /* Bismuth: hopper crystals. A crystal that grows faster along its edges than in the middle of its faces is left as a
    frame, each face sunk in square steps down to a small cube at the heart. Here each face goes down eight steps
    (biS: the distance to a flight of steps), and a smaller crystal stands on each of the eight corners, turned a
-   little, and smaller ones on theirs, four sizes in all. The morph turns them. */
+   little, and smaller ones on theirs, three sizes in all, each a little over half the size before, so that
+   the largest are plainly crystals and the smallest are not lost as rubble. The morph turns them. */
 {id:"bismuth",name:"Bismuth",hue:.78,fog:.12,maxd:24,speed:.9,start:null,
- period:function(){return [9.2,9.2,9.2]},
+ period:function(){return [8.4,8.4,8.4]},
  glsl:[
- "#define P 4.6",
+ "#define P 4.2",
  "float biK;",
  "float biS(float t,float v){", /* steps of an eighth that rise with v: the distance to everything under them */
  "  if(t-v>0.25)return (t-v)*0.7071068;",
@@ -1160,17 +1161,17 @@ export const WORLDS=[
  "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
  "  float a1=0.3+0.25*uM;float c1=cos(a1),s1=sin(a1);",
  "  float s=1.0;float d=1e5;orb=vec4(1000.0);biK=0.0;",
- "  for(int i=0;i<4;i++){",
+ "  for(int i=0;i<3;i++){",
  "    vec3 a=abs(p);",
  "    if(a.x<a.y)a.xy=a.yx;",
  "    if(a.x<a.z)a.xz=a.zx;",
  "    if(a.y<a.z)a.yz=a.zy;",
  "    float e=max(biS(a.x-0.25,a.y),a.x-1.0)/s;",
- "    if(e<d){d=e;orb=vec4(fract(a.y*8.0),0.3*biK,0.0,0.75*biK+0.13*float(i));}",
- "    p=abs(p)-0.9;",
+ "    if(e<d){d=e;orb=vec4(fract(a.y*8.0),0.3*biK,0.0,0.75*biK+0.17*float(i));}",
+ "    p=abs(p)-0.95;",
  "    p.xy=vec2(c1*p.x-s1*p.y,s1*p.x+c1*p.y);",
  "    p.yz=vec2(c1*p.y-s1*p.z,s1*p.y+c1*p.z);",
- "    p*=2.1;s*=2.1;",
+ "    p*=1.9;s*=1.9;",
  "  }",
  "  return 0.9*d;",
  "}"],
@@ -1181,18 +1182,18 @@ export const WORLDS=[
     gx=t-k-.125;gy=k+.125-v;
     return Math.min(d,Math.hypot(Math.max(gx,0),Math.max(gy,0))+Math.min(Math.max(gx,gy),0));
   }
-  var P=4.6;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var P=4.2;x=tile(x,P);y=tile(y,P);z=tile(z,P);
   var a1=.3+.25*m,c1=Math.cos(a1),s1=Math.sin(a1),s=1,d=1e5,t,ax,ay,az;
-  for(var i=0;i<4;i++){
+  for(var i=0;i<3;i++){
     ax=Math.abs(x);ay=Math.abs(y);az=Math.abs(z);
     if(ax<ay){t=ax;ax=ay;ay=t}
     if(ax<az){t=ax;ax=az;az=t}
     if(ay<az){t=ay;ay=az;az=t}
     d=Math.min(d,Math.max(S(ax-.25,ay),ax-1)/s);
-    x=Math.abs(x)-.9;y=Math.abs(y)-.9;z=Math.abs(z)-.9;
+    x=Math.abs(x)-.95;y=Math.abs(y)-.95;z=Math.abs(z)-.95;
     t=c1*x-s1*y;y=s1*x+c1*y;x=t;
     t=c1*y-s1*z;z=s1*y+c1*z;y=t;
-    x*=2.1;y*=2.1;z*=2.1;s*=2.1;
+    x*=1.9;y*=1.9;z*=1.9;s*=1.9;
   }
   return .9*d;
  }},
@@ -1201,7 +1202,8 @@ export const WORLDS=[
    floor, and on the shelves stand books, each of its own height, depth and colour. A book's are chosen from a number
    worked out from its place on the shelf, its shelf, its wall, its room and its floor with whole numbers only, as in
    Tangle, so the chip and JavaScript agree; the rooms repeat every four and the floors every four. The room is
-   folded onto half of one wall; a book is worked out with the one on each side of it. The morph is not used. */
+   folded onto half of one wall; a book is worked out with the one on each side of it. The morph widens and heightens the doorways and the shafts, and slides every book out from the
+   wall and back by its own amount. */
 {id:"library",name:"Library",hue:.05,fog:.09,maxd:26,speed:.8,start:[0,0,0],
  period:function(){return [16,8,16]},
  glsl:[
@@ -1210,7 +1212,7 @@ export const WORLDS=[
  "void lbB(float k,float u,float yy,float xd,float id){", /* the book that is k along its shelf */
  "  if(k<6.5||k>23.5)return;",
  "  float a=mo(k*37.0+id,251.0);float b=mo(a*(a+3.0),61.0);",
- "  float hb=0.19+0.014*mo(b,8.0);float db=0.15+0.015*mo(floor((b+0.5)*0.125),4.0);",
+ "  float hb=0.19+0.014*mo(b,8.0);float db=0.15+0.015*mo(floor((b+0.5)*0.125),4.0)+0.03*(1.0+sin(1.7*b+2.6*uM));",
  "  vec3 g=vec3(abs(u-(k+0.5)*0.0625)-0.029,abs(yy-0.012-0.5*hb)-0.5*hb,abs(xd-0.5*db)-0.5*db);",
  "  float d=length(max(g,0.0))+min(max(g.x,max(g.y,g.z)),0.0);",
  "  if(d<lbD){lbD=d;float band=abs(yy-0.012-0.5*hb);lbC=vec4(band>0.3*hb&&band<0.38*hb?1.0:0.0,0.0,0.0,b/61.0);}",
@@ -1222,11 +1224,11 @@ export const WORLDS=[
  "  float y=l.y;float js=floor((y+1.0)*3.0);float yy=y+1.0-js*0.3333333;",
  "  float id=59.0*wid+17.0*mo(r.x,4.0)+71.0*mo(r.z,4.0)+29.0*mo(r.y,4.0)+101.0*js;",
  "  float xd=1.88-q.x;float u=q.y;float rho=length(l.xz);",
- "  float d=max(xd,min(0.4-u,0.5-y));vec4 c=vec4(0.0,0.0,0.0,0.12);", /* the wall, less its doorway */
+ "  float d=max(xd,min(0.36+0.06*uM-u,0.5+0.2*uM-y));vec4 c=vec4(0.0,0.0,0.0,0.12);", /* the wall, less its doorway */
  "  d=min(d,1.5-u);", /* the pillar in the corner */
- "  float e=max(0.988-abs(y),0.7-rho);", /* the floor, less the shaft */
+ "  float e=max(0.988-abs(y),0.7+0.12*uM-rho);", /* the floor, less the shaft */
  "  if(e<d){d=e;c=vec4(mod(floor(l.x*2.0)+floor(l.z*2.0),2.0),0.0,0.0,0.5);}",
- "  e=length(vec2(rho-0.74,y+0.68))-0.018;if(e<d){d=e;c=vec4(0.0,0.0,0.0,0.8);}", /* the rail round the shaft */
+ "  e=length(vec2(rho-0.74-0.12*uM,y+0.68))-0.018;if(e<d){d=e;c=vec4(0.0,0.0,0.0,0.8);}", /* the rail round the shaft */
  "  e=max(max(abs(mod(y+1.1666667,0.3333333)-0.1666667)-0.012,xd-0.22),0.42-u);", /* the shelves */
  "  e=min(e,max(abs(u-0.43)-0.012,xd-0.22));", /* and the board that ends them at the doorway */
  "  if(e<d){d=e;c=vec4(0.0,0.0,0.0,0.18);}",
@@ -1234,19 +1236,19 @@ export const WORLDS=[
  "  if(lbD<d){d=lbD;c=lbC;}",
  "  orb=c;return 0.9*d;",
  "}"],
- de:function(x,y,z){
+ de:function(x,y,z,m){
   function mo(v,k){return Math.floor(md(v+.5,k))}
   var rx=Math.floor(x/4+.5),ry=Math.floor(y/2+.5),rz=Math.floor(z/4+.5),lx=x-4*rx,ly=y-2*ry,lz=z-4*rz;
   var qx=Math.abs(lx),qy=Math.abs(lz),wid=(lx<0?1:0)+(lz<0?2:0),t,j;
   if(qx<qy){t=qx;qx=qy;qy=t;wid+=4}
   var js=Math.floor((ly+1)*3),yy=ly+1-js*.3333333,id=59*wid+17*mo(rx,4)+71*mo(rz,4)+29*mo(ry,4)+101*js;
-  var xd=1.88-qx,u=qy,rho=Math.hypot(lx,lz),d=Math.max(xd,Math.min(.4-u,.5-ly));
-  d=Math.min(d,1.5-u,Math.max(.988-Math.abs(ly),.7-rho),Math.hypot(rho-.74,ly+.68)-.018);
+  var xd=1.88-qx,u=qy,rho=Math.hypot(lx,lz),d=Math.max(xd,Math.min(.36+.06*m-u,.5+.2*m-ly));
+  d=Math.min(d,1.5-u,Math.max(.988-Math.abs(ly),.7+.12*m-rho),Math.hypot(rho-.74-.12*m,ly+.68)-.018);
   d=Math.min(d,Math.max(Math.abs(md(ly+1.1666667,.3333333)-.1666667)-.012,xd-.22,.42-u),Math.max(Math.abs(u-.43)-.012,xd-.22));
   var k0=Math.floor(u*16);
   for(j=-1;j<2;j++){
     var k=k0+j;if(k<6.5||k>23.5)continue;
-    var a=mo(k*37+id,251),b=mo(a*(a+3),61),hb=.19+.014*mo(b,8),db=.15+.015*mo(Math.floor((b+.5)*.125),4);
+    var a=mo(k*37+id,251),b=mo(a*(a+3),61),hb=.19+.014*mo(b,8),db=.15+.015*mo(Math.floor((b+.5)*.125),4)+.03*(1+Math.sin(1.7*b+2.6*m));
     var gx=Math.abs(u-(k+.5)*.0625)-.029,gy=Math.abs(yy-.012-.5*hb)-.5*hb,gz=Math.abs(xd-.5*db)-.5*db;
     d=Math.min(d,Math.hypot(Math.max(gx,0),Math.max(gy,0),Math.max(gz,0))+Math.min(Math.max(gx,gy,gz),0));
   }
@@ -1404,14 +1406,14 @@ export const WORLDS=[
   return .8*Math.min(C(x,y,z,.8,2,.95+.4*m,.15),C(Math.abs(x)-2,Math.abs(y)-2,Math.abs(z)-2,.45,1,.75-.3*m,.19));
  }},
 /* Galaxies in the dark: one to a cell at two sizes, each a flat disc lying its own way with a bright middle and two
-   arms that wind outward, turning slowly, some one way and some the other. The morph winds the arms tighter. A cloud
-   world, so JavaScript has no copy of it. */
+   arms that wind outward, turning slowly, some one way and some the other. The morph winds the arms tighter. The larger ones are drawn tighter about their middles, so that the camera is seldom inside one,
+   where all there is to see is its glow. A cloud world, so JavaScript has no copy of it. */
 {id:"galaxies",name:"Galaxies",hue:.66,fog:0,maxd:1,speed:.6,start:[.3,.2,.1],volume:true,
  period:function(){return [8,8,8]},
  glsl:[
- "#define VMAP(a) ((a)*(0.07+(a))*2.6)",
+ "#define VMAP(a) ((a)*(a)*4.5)",
  "#define VSTEP 0.1",
- "float gxy(vec3 p,float per){",
+ "float gxy(vec3 p,float per,float kr){",
  "  vec3 c=floor(p);vec3 f=p-c-0.5;c=floor(mod(c+0.5,per));",
  "  float h=fract(sin(dot(c,vec3(12.9898,78.233,37.719)))*43758.5453);",
  "  vec3 w3=smoothstep(0.5,0.34,abs(f));",
@@ -1421,11 +1423,11 @@ export const WORLDS=[
  "  f.yz=vec2(cos(a2)*f.y-sin(a2)*f.z,sin(a2)*f.y+cos(a2)*f.z);",
  "  float r=length(f.xy);float sp=h<0.5?-1.0:1.0;",
  "  float arm=0.5+0.5*cos(2.0*atan(f.y,f.x)*sp-(7.0+2.0*uM)*log(r+0.02)+0.2*uTime);",
- "  float disc=exp(-r*r*22.0)*exp(-f.z*f.z*300.0)*(0.18+arm*arm*arm);",
- "  return (0.45+0.55*fract(h*311.1))*w3.x*w3.y*w3.z*(disc+0.8*exp(-dot(f,f)*330.0));",
+ "  float disc=exp(-r*r*kr)*exp(-f.z*f.z*130.0)*(0.18+arm*arm*arm);",
+ "  return (0.45+0.55*fract(h*311.1))*w3.x*w3.y*w3.z*(disc+0.6*exp(-dot(f,f)*9.0*kr));",
  "}",
  "float dens(vec3 p){",
- "  return gxy(p*0.5,4.0)+0.6*gxy(p+3.3,8.0);",
+ "  return gxy(p*0.5,4.0,36.0)+0.6*gxy(p+3.3,8.0,20.0);",
  "}"],
  de:function(){return .25}},
 /* Nerve cells in columns, as in the brain's cortex, and never still. Each cell of 3 holds one neuron: a body below
