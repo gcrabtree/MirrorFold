@@ -1061,6 +1061,8 @@ It is the viewer's two pictures (above) with three things changed.
 
 ## 14. Testing
 
+**The dancers' moves** are looked at in `tools/moves.html` (serve the folder and open it): every move in `MOVES` dancing in a loop by the app's own `movePose` and `danceBody`, chosen by kind, at 80 to 170 beats a minute, from in front or from the side, turned the other way or not, with each move's length, the fullness of music it is for, and its fastest joint at that speed (marked over six heights a second). It shows the move alone: not the sway, the give to the kick or the manner a figure adds.
+
 **The dancers' heads** are looked at with `python3 tools/heads.py out` (and `out 0.4` for heads leant on their necks). `tools/heads.mjs` cuts the lines that draw a head out of `FS_TRAIL` and runs them for a grid: a row to each of the `DN_LOOKS` heads, a column to each of eight turns round, each head some sixty dots across. It is the shader's own text, so what it shows is what the app draws. Look for the face and the hair's edge keeping their places against each other, nothing on the far side showing through the head, nothing over the eyes, and hair on the back of a head turned away. (The first check of the heads was made from renders of the app with heads thirty dots across, and passed faults that were plain at this size.)
 
 
