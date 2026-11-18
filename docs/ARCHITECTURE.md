@@ -2,7 +2,7 @@
 
 This document is written for an engineer (or a Claude Code session) picking the project up cold. It describes what the app does, how the code is laid out, the math behind each part, how to test it, and what is known to be weak.
 
-The app is `index.html` (markup), `css/app.css` and about 35 JavaScript modules in `js/` (about 4,500 lines in all, GLSL included). There is no build step and there are no dependencies apart from two Google Fonts. It began as one file; section 17 describes the split.
+The app is `index.html` (markup), `css/app.css` and about 80 JavaScript modules in `js/` (about 16,600 lines in all, GLSL included). There is no build step and there are no dependencies apart from two Google Fonts. It began as one file; section 17 describes the split.
 
 ## 1. What it is
 
