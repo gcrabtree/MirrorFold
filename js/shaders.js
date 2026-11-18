@@ -520,24 +520,49 @@ VR_GLSL,
 "          vec2 hu=hd.xy-b0.xy;hu/=max(length(hu),1e-5);vec2 hl=vec2(dot(q-hd.xy,vec2(hu.y,-hu.x)),dot(q-hd.xy,hu))/hd.z;", /* the head's own details, in lines a quarter as wide as the body's. hl is the place in the head's frame, in head radii: across, and up along the line from the neck */
 "          float hpx=hd.z*min(uRes.x,uRes.y);float df=smoothstep(2.5,6.0,hpx);", /* a head only a few dots across has none: they would only flicker */
 "          if(df>0.0&&dot(hl,hl)<11.0){",
-"            vec4 fc=uD9[i];float sty=mod(id,8.0);float aw=1.2/hpx;float tl=0.085*min(wd,3.0);float rh=length(hl);float ah=atan(hl.x,hl.y);float dh=1e5;", /* fc: which way the head is turned (across, toward the viewer), the mouth, the eyes' lids. Which head a figure has is its number's remainder on dividing by 8 (DN_LOOKS) */
+/* fc: the angle the head is turned by (0 facing the viewer), and its face as five numbers in three (see danceFill).
+   Which head a figure has is its number's remainder on dividing by 8 (DN_LOOKS). The hair and hats turn with the
+   head: each part is taken to sit on a ball, at some angle round it from the front, so it is drawn sn of the way
+   across for a part at the front, cn for a part at the side. dh is the distance to what is seen whole; dq to what
+   is behind the head, and so seen only outside its disc. */
+"            vec4 fc=uD9[i];float sty=mod(id,8.0);float aw=1.2/hpx;float tl=0.085*min(wd,3.0);float rh=length(hl);float ah=atan(hl.x,hl.y);float dh=1e5,dq=1e5;",
+"            float sn=sin(fc.x),cn=cos(fc.x);",
 "            float cap=max(abs(rh-1.09),0.35-hl.y);", /* a line over the top of the head, which several share */
-"            if(sty<0.5){vec2 cu=abs(vec2(abs(hl.x)-1.16,hl.y+0.1))-vec2(0.13,0.3);dh=min(max(abs(rh-1.14),0.1-hl.y),max(cu.x,cu.y));}", /* headphones: a band and two cups */
-"            else if(sty<1.5){float af=mod(ah+0.2,0.4)-0.2;if(abs(ah)<1.4)dh=max(abs(af)*rh-0.15*(1.65-rh),max(1.0-rh,rh-1.65));}", /* spikes */
-"            else if(sty<2.5){dh=min(abs(abs(hl.x)-1.07-0.07*sin(2.4*hl.y)),abs(abs(hl.x)-1.27-0.09*sin(2.0*hl.y+1.0)));dh=min(max(dh,max(hl.y-0.3,-2.1-hl.y)),max(abs(rh-1.18),0.3-hl.y));}", /* long hair: two waving strands down each side */
-"            else if(sty<3.5){vec2 bx=abs(hl-vec2(0.0,1.42))-vec2(0.78,0.62);dh=min(abs(length(max(bx,0.0))+min(max(bx.x,bx.y),0.0)),min(max(abs(hl.y-0.8),abs(hl.x)-1.4),max(abs(hl.y-1.08),abs(hl.x)-0.78)));}", /* a top hat: its outline, its brim and its band */
-"            else if(sty<4.5){float sx=fc.x<0.0?-1.0:1.0;dh=min(min(cap,length(hl-vec2(0.0,1.16))-0.05),limb(hl,vec2(sx*0.98,0.45),vec2(sx*1.95,0.32)));}", /* a cap, its peak to the side the head is turned */
-"            else if(sty<5.5){dh=min(cap,abs(length(hl-vec2(0.0,1.42))-0.33));}", /* hair in a bun */
-"            else if(sty<6.5){if(abs(ah)<2.1)dh=min(abs(rh-1.52-0.07*cos(11.0*ah)),abs(rh-1.26-0.05*cos(9.0*ah+1.0)));}", /* a round mass of curls */
-"            else{float af=mod(ah+0.14,0.28)-0.14;if(abs(ah)<0.42)dh=max(abs(af)*rh-0.12*(2.05-rh),max(1.0-rh,rh-2.05));}", /* a crest */
+"            if(sty<0.5){", /* headphones: a band from ear to ear, which narrows to a line as the head turns side on, and two cups, which come to the middle */
+"              float sc=max(abs(cn),0.12);vec2 cw=vec2(0.13+0.13*abs(sn),0.3);",
+"              vec2 cu=abs(vec2(hl.x-1.16*cn,hl.y+0.1))-cw;vec2 cv2=abs(vec2(hl.x+1.16*cn,hl.y+0.1))-cw;", /* the cup on the figure's left, and the one on its right: the one on the far side of the head is behind it */
+"              dh=max(abs(length(vec2(hl.x/sc,hl.y))-1.14)*mix(1.0,sc,min(1.0,abs(hl.x)/(1.14*sc))),0.1-hl.y);",
+"              if(sn<0.15)dh=min(dh,max(cu.x,cu.y));else dq=max(cu.x,cu.y);",
+"              if(sn>-0.15)dh=min(dh,max(cv2.x,cv2.y));else dq=min(dq,max(cv2.x,cv2.y));",
+"            }else if(sty<1.5){float af=mod(ah+0.2+0.2546479*fc.x,0.4)-0.2;if(abs(ah)<1.4)dh=max(abs(af)*rh-0.15*(1.65-rh),max(1.0-rh,rh-1.65));}", /* spikes all over: they go round with the head, four places to a whole turn */
+"            else if(sty<2.5){", /* long hair: six waving strands, from the sides round to the back */
+"              dh=max(abs(rh-1.18),0.3-hl.y);",
+"              for(int k=0;k<6;k++){",
+"                float fk=float(k);float a=(1.6+0.6*floor(fk*0.5))*(mod(fk,2.0)<0.5?1.0:-1.0)+fc.x;",
+"                float e=max(abs(hl.x-1.17*sin(a)-0.07*sin(2.4*hl.y+fk)),max(hl.y-0.3,-2.1+0.15*mod(fk,3.0)-hl.y));",
+"                if(cos(a)>0.0)dh=min(dh,e);else dq=min(dq,e);",
+"              }",
+"            }else if(sty<3.5){", /* a top hat: its outline, its brim and its band, and a buckle on the band at the front */
+"              vec2 bx=abs(hl-vec2(0.0,1.42))-vec2(0.78,0.62);dh=min(abs(length(max(bx,0.0))+min(max(bx.x,bx.y),0.0)),min(max(abs(hl.y-0.8),abs(hl.x)-1.4),max(abs(hl.y-1.08),abs(hl.x)-0.78)));",
+"              if(cn>0.05)dh=min(dh,abs(max(abs(hl.x-0.66*sn)-0.02-0.1*cn,abs(hl.y-1.08)-0.11)));",
+"            }else if(sty<4.5){", /* a cap: its peak sticks out the way the head faces, so it is short and across the brow from in front, long from the side and hidden from behind */
+"              dh=min(cap,length(hl-vec2(0.0,1.16))-0.05);vec2 pt=vec2(1.9*sn,0.44);",
+"              float pk=min(limb(hl,vec2(sn-0.55*cn,0.52),pt),limb(hl,vec2(sn+0.55*cn,0.52),pt));",
+"              if(cn>-0.15)dh=min(dh,pk);else dq=pk;",
+"            }else if(sty<5.5){float bn=abs(length(hl-vec2(-0.55*sn,1.3))-0.33);dh=cap;if(cn<0.2)dh=min(dh,bn);else dq=bn;}", /* hair in a bun at the back of the top */
+"            else if(sty<6.5){if(abs(ah)<2.1)dh=min(abs(rh-1.52-0.07*cos(11.0*ah+2.0*fc.x)),abs(rh-1.26-0.05*cos(9.0*ah+1.0-3.0*fc.x)));}", /* a round mass of curls, which go round */
+"            else{float af=mod(ah+0.14,0.28)-0.14;if(abs(ah)<0.16+1.0*abs(sn))dh=max(abs(af)*rh-0.12*(2.05-rh),max(1.0-rh,rh-2.05-0.25*cos(ah)+0.25));}", /* a crest from the brow to the nape: a few spikes close together from in front, a fan of them from the side */
+"            dh=min(dh,max(dq,1.03-rh));",
 "            float he=(1.0-smoothstep(tl,2.2*tl+aw,dh))*df,hb=(1.0-smoothstep(tl-aw,tl+aw,dh))*df;",
 "            ln=ln*(1.0-he)+hb*fract(hd.w)*2.0;dk=max(dk,he);",
 "            if(hb>0.5)rr=0.15+fract(id*0.382+0.31)*1.08;", /* in another of the palette's colours than the body */
-"            if(rh<0.93&&fc.y>0.02){", /* the face, on a head turned toward the viewer: two eyes and a mouth, dark in the lit head, moved across and narrowed as the head turns */
-"              float sq=max(fc.y,0.35);vec2 fl=vec2((hl.x-0.7*fc.x)/sq,hl.y);",
-"              float de=length(vec2(abs(fl.x)-0.36,(fl.y-0.18)/(1.0-0.8*fc.w)))-0.1;",
-"              float mh=0.045+0.17*fc.z;float dm=(length(vec2(fl.x*mh/0.34,fl.y+0.36-0.5*fl.x*fl.x))-mh);", /* a thin smile, which opens on the beat */
-"              ln*=1.0-0.9*max(1.0-smoothstep(-aw,aw,de),1.0-smoothstep(-aw,aw,dm))*smoothstep(0.02,0.3,fc.y)*df*(1.0-smoothstep(0.86,0.93,rh));",
+"            if(rh<0.93&&cn>0.02&&hb<0.5){", /* the face, on a head turned toward the viewer: two eyes and a mouth, dark in the lit head, moved across and narrowed as the head turns */
+"              float sq=max(cn,0.35);vec2 fl=vec2((hl.x-0.7*sn)/sq,hl.y);",
+"              float mo=floor(fc.y)/255.0,lid=fract(fc.y),mw=max(0.05,floor(fc.z)/510.0),cv=fract(fc.z);",
+"              vec2 ey=vec2(abs(fl.x)-0.36,fl.y-0.18);",
+"              float de=mix(length(vec2(ey.x,ey.y/(1.0-0.8*lid)))-0.1,max(abs(length(ey+vec2(0.0,0.05))-0.14)-0.035,-0.03-ey.y),fc.w);", /* an eye is a dot, which its lid flattens; or, shut and smiling, an arch */
+"              float mh=0.045+0.17*mo;float dm=length(vec2(fl.x*mh/mw,fl.y+0.36-cv*fl.x*fl.x))-mh;", /* the mouth: so wide, so far open, its corners so far turned up */
+"              ln*=1.0-0.9*max(1.0-smoothstep(-aw,aw,de),1.0-smoothstep(-aw,aw,dm))*smoothstep(0.02,0.3,cn)*df*(1.0-smoothstep(0.86,0.93,rh));",
 "            }",
 "          }",
 "        }",
