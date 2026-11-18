@@ -35,6 +35,8 @@ Relax, unwind, and enjoy!
 
 The app is one page, one stylesheet and a folder of JavaScript modules. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
 
+It is a small download: about 435 KB to start (the page, the stylesheet and the scripts as the site sends them, compressed; about 1.2 MB unpacked), and two fonts from Google Fonts. Everything else is fetched only when it is used: the choosers' small pictures as a chooser shows them (1.9 MB for all 135), the lessons' words when the lessons are opened (about 21 KB), and the lessons' voice one step at a time, only with **Voice on** (about 250 KB a step).
+
 ## Contents
 
 - [What it does](#what-it-does)
