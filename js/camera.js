@@ -87,7 +87,7 @@ export function move(fr){
   for(var i=0;i<3;i++){
     cam.vel[i]+=(tv[i]-cam.vel[i])*vf;
     cam.pos[i]+=cam.vel[i]*dt;
-    var dl=per[i]*Math.floor(cam.pos[i]/per[i]+.5); /* every world repeats, so wrapping by one period is invisible */
+    var dl=w.sheet&&i===1?0:per[i]*Math.floor(cam.pos[i]/per[i]+.5); /* every world repeats, so wrapping by one period is invisible. The Fabric does not repeat upward: how deep the camera may go under it is kept by keepAbove */
     cam.pos[i]-=dl;
   }
   /* the descent: the world is the same three times larger, so a camera that has come in near the centre is moved three times as far out, and its speed with it; nothing shows */
@@ -97,9 +97,10 @@ export function move(fr){
   fr.mx=mx;fr.my=my;fr.mz=mz;fr.vf=vf;fr.per=per;
   fr.spN=Math.min(1,cam.curSpeed/(wSpeed*cam.baseSpeed+1e-6)); /* speed as a part of the most this world allows */
 }
-/* A step of the frame, after everything that moves the camera. A world that is one sheet with sky above it (sheet:
-   the Fabric) is not flown through: the camera is put back above the cloth and under its ceiling. */
-export function keepAbove(fr){if(fr.w&&fr.w.sheet&&!fr.w.pack)fbHold(cam.pos,cam.vel);}
+/* A step of the frame, after everything that moves the camera. A world that is a sheet with sky above it (sheet: the
+   Fabric) moves under the camera: the camera is kept under its ceiling, clear of its threads as they rise and fall,
+   and no more than so many cloths down (fbHold in js/fabric.js). It may be flown down through. */
+export function keepAbove(fr){if(fr.w&&fr.w.sheet&&!fr.w.pack)fbHold(cam.pos,cam.vel,fr.w.de0||fr.w.de);}
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={keepAbove, cam, camSquare, userLook, userActive, rot, norm, cross, steering, turn, move};

@@ -8,13 +8,14 @@ import { clock } from "./clock.js";
 import { setSurface } from "./controls.js";
 import { $, toast } from "./dom.js";
 import { deAt } from "./flight.js";
-import { FB_ALT, fbH } from "./fabric.js";
+import { FB_ALT, FB_GAP, fbH } from "./fabric.js";
 import { press, wakeHud } from "./input.js";
 import { landH, landKind, landMode, lhead, lpos, setLand, setLandKind } from "./land.js";
 import { LK } from "./landscapes.js";
 import { liveAudio, soundChanged } from "./listen.js";
 import { heard } from "./song.js";
 import { tgGuest } from "./together.js";
+import { lapOn } from "./lap.js";
 import { doorOpen, doorOwed, doorsOn } from "./doors.js";
 import { packD } from "./pack-worlds.js";
 import { PALETTES, palOpen, setPalette } from "./palettes.js";
@@ -163,6 +164,16 @@ export function advanceSet(){
   jset.idx=i;jset.t=0;jset.len=items[i].min*60;
   applyTemplate(findT(items[i].tpl),true);
 }
+/* Why Journey is changing nothing just now, in words for the user, or "" if nothing is holding it. Journey can be on
+   and still make no change: a score that is playing chooses in its place, a guest's changes come from the host, and
+   a loop being flown must stay as it is. Said when Journey is turned on or a template chosen, so that it is not
+   taken for broken. */
+export function jHeld(){
+  if(jOver!==undefined)return "A score is playing, and it makes Journey's changes. Your choice is kept for when it ends. To stop the score, open Compose.";
+  if(tgGuest())return "You are flying as a guest: the host's Journey makes the changes.";
+  if(lapOn())return "Journey waits while a loop is flown.";
+  return "";
+}
 export function selectJourney(sel){
   var kind=sel.charAt(0),name=sel.slice(2),S=kind==="s"?findS(name):null,T=kind==="t"?findT(name):null;
   if(S){store.sel=sel;jset={s:S,idx:-1,t:0,len:0};advanceSet();}
@@ -185,7 +196,7 @@ function setJMove(mv){
 }
 export function setJourney(on){
   journey=on;press($("bJourney"),on);$("rowJourney").hidden=!on;
-  if(on){selectJourney(store.sel);setStill(false);} /* Journey cannot fly while held still, so turning it on lets go */
+  if(on){selectJourney(store.sel);setStill(false);if(jHeld())toast(jHeld());} /* Journey cannot fly while held still, so turning it on lets go */
   keepAwake();
 }
 
@@ -202,7 +213,7 @@ export function autopilot(fr){
     var alt=cam.pos[1]-fbH(cam.pos[0],cam.pos[2]);
     cam.lookX+=(0.25*Math.sin(clock.time*0.13)+0.12*Math.sin(clock.time*0.37+1.3))*dt*hands;
     cam.lookY+=(cam.F[1]+0.3)*0.9*(cam.Up[1]<0?-1:1)*dt*hands; /* the other way while the camera is still upside down, before the horizon has been eased level */
-    cam.pos[1]+=(FB_ALT-alt)*(1-Math.exp(-dt*1.5))*hands;
+    cam.pos[1]+=((alt>=0?FB_ALT:FB_GAP*Math.round((alt-0.5*FB_GAP)/FB_GAP)+0.5*FB_GAP)-alt)*(1-Math.exp(-dt*1.5))*hands; /* above the cloth, a set height over it; flown down under it, half way between the two cloths it is between, where nothing is in the way */
   }else{
     var pr=Math.min(1,Math.max(0.06,dist*5)),shell=inShell(fr.w);
     if(shell>0)pr=Math.max(0.3*shell,dist*2); /* inside out, the open space is a layer about as thick as the shell, and the autopilot must feel its way within that */
@@ -310,7 +321,7 @@ try{
 }catch(_){}
 jt=BUILTIN_T[0],jset=null;
 fillJT();
-selJT.addEventListener("change",function(){selectJourney(this.value);wakeHud()});
+selJT.addEventListener("change",function(){selectJourney(this.value);wakeHud();if(journey&&jHeld())toast(jHeld())});
 try{if(localStorage.getItem("mirrorfold-move")==="drift")jMove="drift"}catch(_){}
 $("bJMove").textContent="Movement "+jMove;
 $("bJMove").addEventListener("click",function(){
@@ -323,7 +334,7 @@ $("advForget").addEventListener("click",function(){var n=tasteCount();tasteClear
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={J_SELDOM, jUse, jMade, jOverNow, get HOLD_T(){return HOLD_T}, get jOver(){return jOver},set jOver(v){jOver=v}, jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, get jWas(){return jWas},set jWas(v){jWas=v}, get jFrom(){return jFrom},set jFrom(v){jFrom=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
+export const __dbg={J_SELDOM, jHeld, jUse, jMade, jOverNow, get HOLD_T(){return HOLD_T}, get jOver(){return jOver},set jOver(v){jOver=v}, jMore, jLess, JNAME, get jLast(){return jLast},set jLast(v){jLast=v}, get jWas(){return jWas},set jWas(v){jWas=v}, get jFrom(){return jFrom},set jFrom(v){jFrom=v}, jtReset, MODE_LABEL, catOf, normT, normS, store, adopt, saveStore, allT, allS,
   findT, findS, jCur, jNone, jIndex, jApply, jPool, jPick, applyTemplate, advanceSet,
   selectJourney, fillJT, setJMove, setJourney, autopilot, stepJourney, J, jReset, jResetAll, get jt(){return jt},set jt(v){jt=v},
   get journey(){return journey},set journey(v){journey=v}, get jMove(){return jMove},set jMove(v){jMove=v}, get CATS(){return CATS},set CATS(v){CATS=v}, get BUILTIN_T(){return BUILTIN_T},set BUILTIN_T(v){BUILTIN_T=v}, get BUILTIN_S(){return BUILTIN_S},set BUILTIN_S(v){BUILTIN_S=v}, get jset(){return jset},set jset(v){jset=v}};

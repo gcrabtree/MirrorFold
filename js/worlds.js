@@ -1038,7 +1038,8 @@ export const WORLDS=[
    the same sum out from the same twelve numbers, which the frame sets from the clock and the sound), as cloth moves
    in a wind. Only the nearest thread of each set is worked out, and the distance is held to what the next thread and
    the next cloth could be. The world does not repeat upward: its period there is only a number the camera never
-   reaches, because camera.js keeps it above the cloth and under a ceiling (sheet: true). The threads' rise and the
+   reaches upward, because camera.js keeps it under a ceiling; downward the camera may fly through the weave to the
+   cloths below, and is moved up one cloth when it is nine down (sheet: true; fbHold in js/fabric.js). The threads' rise and the
    waves' slopes make the distance too large by up to a half, so 0.65 of it is used. The morph is not used. */
 {id:"fabric",name:"Fabric",hue:.08,fog:.07,maxd:30,speed:1.2,start:[0,1.5,0],sheet:true,band:[1.7,3],
  period:function(){return [12,16,12]},

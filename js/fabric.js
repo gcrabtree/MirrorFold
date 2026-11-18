@@ -37,14 +37,35 @@ export function fbH(x,z){
   h+=fb[4]*Math.exp(6*(Math.cos(k*x-fb[11]+Math.sin(k*z))-1));
   return h;
 }
-/* Keep a place above the cloth and under the ceiling: pos and vel are changed in place. The cloth rises under the
-   camera as a wave passes, so this is done every frame, whoever moved the camera. True if it was moved. */
-export function fbHold(pos,vel){
-  var h=fbH(pos[0],pos[2]),lo=h+FB_TOP+FB_CLEAR,hi=h+FB_CEIL;
-  if(pos[1]<lo){pos[1]=lo;if(vel[1]<0)vel[1]=0;return true;}
-  if(pos[1]>hi){pos[1]=hi;if(vel[1]>0)vel[1]=0;return true;}
-  return false;
+export const FB_GAP=3;       /* how far apart the cloths are, one under another */
+export const FB_DEEP=9;      /* how many cloths down the camera may be: one further and it is moved up a cloth, which shows nothing, since every cloth under the first is the same and the first is by then lost in the haze */
+let lastH=0,lastOk=false;    /* how high the cloth was under the camera at the last frame */
+/* Keep the camera where it may be, every frame, whoever moved it: pos and vel are changed in place. It may fly above
+   the cloth, up to a ceiling, and down through the gaps of the weave to the cloths below. The cloth moves, so:
+   - in the cloth or under it, the camera is carried up and down with the cloth under it (as much as the cloth's
+     height here has changed since the last frame), so that a wave does not drive a thread through it;
+   - wherever it is, if a thread has come nearer than half FB_CLEAR (de, the world's distance), it is moved straight
+     up or down, away from the middle of that cloth, until it is clear; and one caught right inside a thread is
+     put at once just clear of the cloth;
+   - FB_DEEP cloths down it is moved up one.
+   True if it was moved. Without de only the ceiling and the depth are kept. */
+export function fbHold(pos,vel,de){
+  var h=fbH(pos[0],pos[2]),moved=false,dh=h-lastH,d,c,dir;
+  if(pos[1]>h+FB_CEIL){pos[1]=h+FB_CEIL;if(vel[1]>0)vel[1]=0;moved=true;}
+  if(lastOk&&pos[1]-h<FB_TOP+FB_CLEAR&&Math.abs(dh)<0.25)pos[1]+=dh;
+  if(de){
+    d=de(pos[0],pos[1],pos[2],0);
+    if(d<0.5*FB_CLEAR){
+      c=h+FB_GAP*Math.min(Math.round((pos[1]-h)/FB_GAP),0);dir=pos[1]>=c?1:-1;
+      if(d<=0.005)pos[1]=c+dir*(FB_TOP+FB_CLEAR);else pos[1]+=dir*(0.5*FB_CLEAR-d);
+      if(vel[1]*dir<0)vel[1]=0;
+      moved=true;
+    }
+  }
+  if(pos[1]-h<-(FB_GAP*FB_DEEP+0.5*FB_GAP)){pos[1]+=FB_GAP;moved=true;}
+  lastH=h;lastOk=true;
+  return moved;
 }
 
 /* for the test tools and the browser console: every name in this file */
-export const __dbg={fb, FB_K, FB_BASE, FB_SND, FB_RATE, FB_TOP, FB_CLEAR, FB_CEIL, FB_ALT, fbSet, fbH, fbHold};
+export const __dbg={FB_GAP, FB_DEEP, fb, FB_K, FB_BASE, FB_SND, FB_RATE, FB_TOP, FB_CLEAR, FB_CEIL, FB_ALT, fbSet, fbH, fbHold};

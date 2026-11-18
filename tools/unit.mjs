@@ -1166,17 +1166,26 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     F.fbSet(n * 0.37, rnd(), rnd(), rnd(), rnd(), false);
     const x = (rnd() - 0.5) * 40, z = (rnd() - 0.5) * 40, y = (rnd() - 0.5) * 14;
     if (Math.abs(F.fbH(x, z) - F.fbH(x + 12, z - 24)) > 1e-5 || Math.abs(w.de(x, y, z, 0) - w.de(x + 12, y, z - 24, 0)) > 1e-5) per = false; // the shader's pi has eight figures, so not to the last place
-    const p = [x, y, z], v = [0, y < 0 ? -1 : 1, 0]; F.fbHold(p, v);
+    const p = [x, y, z], v = [0, y < 0 ? -1 : 1, 0]; for (let k = 0; k < 4; k++) F.fbHold(p, v, w.de); // the cloth has not moved between these, so it is only brought clear
     const d = w.de(p[0], p[1], p[2], 0); least = Math.min(least, d);
     if (!(d > 0.03)) clear = false;
-    if (p[1] - F.fbH(x, z) > F.FB_CEIL + 1e-9 || p[1] - F.fbH(x, z) < F.FB_TOP + F.FB_CLEAR - 1e-9) held = false;
+    if (p[1] - F.fbH(x, z) > F.FB_CEIL + 1e-9 || Math.abs(p[1] - y) > F.FB_TOP + F.FB_CLEAR + 0.27 && y - F.fbH(x, z) < F.FB_CEIL) held = false; // moved no further than out of a thread
+    { const deep = [x, F.fbH(x, z) - F.FB_GAP * (F.FB_DEEP + 1) - 1.5, z]; F.fbHold(deep, [0, 0, 0], w.de); if (deep[1] - F.fbH(x, z) < -(F.FB_GAP * F.FB_DEEP + 1.5) - 0.2 || deep[1] - F.fbH(x, z) > -(F.FB_GAP * F.FB_DEEP - 1.5) + 0.2) held = false; }
     // a ray from above the cloth, stepped by the world's own distance, never ends inside a thread
     const q = [x, F.fbH(x, z) + 0.6 + 2 * rnd(), z], dir = [rnd() - 0.5, -0.3 - rnd(), rnd() - 0.5], dl = Math.hypot(dir[0], dir[1], dir[2]);
     for (let i = 0, t = 0; i < 60; i++) { const e = w.de(q[0] + dir[0] / dl * t, q[1] + dir[1] / dl * t, q[2] + dir[2] / dl * t, 0); if (e < -0.004) safe = false; if (e < 0.002) break; t += e; }
   }
   expect("the Fabric and its waves repeat every 12 across the cloth", per);
-  expect("a place put back by fbHold is clear of the threads at every moment of the waves, and under the ceiling", clear && held, "least " + least.toFixed(3));
+  expect("a place anywhere above or below the cloth is brought clear of the threads by fbHold, moved no further than that needs, kept under the ceiling, and moved up a cloth when it is too deep", clear && held, "least " + least.toFixed(3));
   expect("a step as long as the Fabric's distance never ends inside a thread", safe);
+  { // a camera left in the weave, then one flying across just under the cloth, each through a minute of loud waves: never in a thread
+    let low = 9, kept = true;
+    for (const fly of [0, 1]) { // one after the other: fbHold remembers one camera's cloth
+      const b = fly ? [0.5, -1.2, 0.5] : [0.5, 0, 0.5], vb = [0, 0, 0]; F.fbSet(0, 1, 1, 1, 1, false); if (!fly) b[1] = F.fbH(0.5, 0.5);
+      for (let k = 0; k < 4; k++) F.fbHold(b, vb, w.de); const rel = b[1] - F.fbH(b[0], b[2]);
+      for (let n = 1; n < 3600; n++) { F.fbSet(n / 60, 1, 1, 1, 0.5 + 0.5 * Math.sin(n / 7), false); if (fly) { b[0] += 0.9 / 60; b[2] += 0.4 / 60; } F.fbHold(b, vb, w.de);
+        low = Math.min(low, w.de(b[0], b[1], b[2], 0)); if (fly && Math.abs(b[1] - F.fbH(b[0], b[2]) - rel) > 0.3) kept = false; } }
+    expect("in and under the Fabric the camera rides the cloth as it waves: it is never in a thread, and one flying under keeps its depth", low > 0.02 && kept, String(low)); }
   worldsM.setInOutNow(true); const shell = worldsM.inShell(w); worldsM.setInOutNow(false);
   expect("the Fabric has no inside out, and no doorways", shell === 0 && w.sheet === true);
   F.fbSet(0, 0, 0, 0, 0, false);
