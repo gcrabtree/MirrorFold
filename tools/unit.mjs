@@ -83,6 +83,8 @@ expect("empty option list changes nothing", jPick("motion", {}, "a", []) === "a"
 { let back = false; for (let i = 0; i < 500; i++) if (jPick("world", {}, "a", ["a", "b", "c"], "b") !== "c") back = true;
   expect("Journey does not pick the world it just left", !back);
   expect("unless it is the only other one", jPick("world", {}, "a", ["a", "b"], "b") === "b");
+  { const jn = (await import("../js/journey.js")).__dbg, src = (await import("node:fs")).readFileSync(new URL("../js/journey.js", import.meta.url), "utf8"), heavy = worldsM.WORLDS.filter(w => w.heavy).map(w => w.id);
+    expect("a heavy world is in no built-in template, and Journey leaves it out of a template that takes every world", heavy.length >= 1 && heavy.every(id => !src.includes('"' + id + '"')) && /cfg\.set&&WORLDS\[i\]&&WORLDS\[i\]\.heavy\)return/.test(src) && typeof jn.jPool === "function", heavy.join()); }
   let ch = 0; for (let i = 0; i < 2000; i++) if (jPick("overlay", {}, "Dancer", ["Dancer", "Chorus line", "Dance floor"]) === "Chorus line") ch++;
   expect("Journey reaches for the chorus line far less often than for the other dancers, but does reach for it", ch > 100 && ch < 420, String(ch)); }
 

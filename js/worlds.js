@@ -1439,7 +1439,7 @@ export const WORLDS=[
    waves of the morph's clock (uMc: wTick below), each at its own pace, so the net is always moving while Morph is
    on. The colour runs out along each tree from the body, so the scene's moving bands pass along the dendrites like
    signals. The bends and the fibres' winding make the distance a little too large, so three quarters of it is used. */
-{id:"cortex",name:"Cortex",hue:.58,fog:.13,maxd:22,speed:.9,start:[1.5,.2,0],
+{id:"cortex",name:"Cortex",hue:.58,fog:.13,maxd:22,speed:.9,start:[1.5,.2,0],heavy:true, /* heavy: its two trees of five stems, worked out at every step of every ray, cost the chip several times what another world does, so Journey passes it over unless a template names it (jPool) */
  period:function(){return [6,6,6]},
  glsl:[
  "vec4 cxC;",

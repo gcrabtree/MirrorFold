@@ -103,6 +103,8 @@ export function jPool(k,cfg){
     if(k==="palette"&&!palOpen(i))return;
     /* VR viewer: a cloud world has no surfaces for two eyes to place, so it looks flat. Journey passes over them, unless they are all the template allows. */
     if(k==="world"&&stereo&&WORLDS[i]&&WORLDS[i].volume){flat.push(o[0]);return;}
+    /* a world that is heavy work for the chip (Cortex) is chosen only by a template that names it: never by one that takes every world */
+    if(k==="world"&&!cfg.set&&WORLDS[i]&&WORLDS[i].heavy)return;
     out.push(o[0]);
   });
   return out.length?out:flat;
@@ -287,13 +289,13 @@ BUILTIN_T=[
  {name:"Calm",world:{every:90,set:["coral","julia","aurora","nebula","gates","halls","temple"]},palette:{every:40},mirrors:{mode:"off"},
   motion:{mode:"random",every:50,set:["none","Melt","Drift"]},filter:{mode:"random",every:60,set:["none","Liquid"]},overlay:{mode:"off"}},
  /* the Biomech world and what goes with it: near-grey palettes, the ribbed and chrome surfaces, the Airbrush filter */
- {name:"Biomech",world:{every:80,set:["biomech","web","thicket","tangle","cortex"]},palette:{every:35,set:["Gunmetal","Tallow","Verdigris","Bone"]},mirrors:{mode:"off"},
+ {name:"Biomech",world:{every:80,set:["biomech","web","thicket","tangle"]},palette:{every:35,set:["Gunmetal","Tallow","Verdigris","Bone"]},mirrors:{mode:"off"},
   motion:{mode:"off"},filter:{mode:"random",every:60,set:["Airbrush","none","Noir"]},overlay:{mode:"off"},surface:{mode:"random",every:50,set:["ribbed","plain","chrome","pearl"]}},
  /* the Seer and Net worlds and others of rings, wires and halls, in their two palettes and bright ones, often through mirrors */
  {name:"Visions",world:{every:80,set:["seer","net","lattice","web","gates","temple","tangle"]},palette:{every:35,set:["Vision","Cobalt","Spectrum","Sunset","Orchid"]},
   mirrors:{mode:"random",every:60,none:"50",set:["6","8","12"]},motion:{mode:"off"},filter:{mode:"off"},overlay:{mode:"off"},surface:{mode:"off"}},
- /* the worlds that are things and places, not fractals: gears, a library, stairs, columns, cages, spikes, crystals, galaxies, nerve cells */
- {name:"Curiosities",world:{every:70,set:["clockwork","library","stairs","causeway","dyson","ferro","bismuth","galaxies","cortex"]},mirrors:{mode:"off"},
+ /* the worlds that are things and places, not fractals: gears, a library, stairs, columns, cages, spikes, crystals, galaxies */
+ {name:"Curiosities",world:{every:70,set:["clockwork","library","stairs","causeway","dyson","ferro","bismuth","galaxies"]},mirrors:{mode:"off"},
   motion:{mode:"off"},filter:{mode:"off"},overlay:{mode:"off"}},
  {name:"Landscapes",world:{every:70},mirrors:{mode:"off"},land:{mode:"random",every:80}},
  {name:"Follow the music",world:{trigger:"sound",every:45},mirrors:{mode:"random",none:"75"},motion:{mode:"random"},overlay:{mode:"random",set:["Ring","Scope","Spectrum","Spokes"]},surface:{mode:"random"}}
