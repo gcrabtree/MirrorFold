@@ -114,12 +114,29 @@ export function tgSplit(list){
   }
   return nh>0&&no>nh;
 }
+/* Does a side's list look like a privacy relay is carrying its traffic (on an iPhone, iCloud Private Relay or Limit IP
+   Address Tracking; elsewhere a VPN)? The sign is one port on the device seen by the two servers at two different
+   outside addresses, not only two ports: each server was reached through a different way out. Nothing sent to such an
+   address comes back in, so two browsers cannot meet through it; but unlike a network that splits its ports, the user
+   can turn it off. A device on two networks at once has a port on each, which is not that sign. */
+export function tgMasked(list){
+  var hosts={},nh=0,addrs={},na=0,from={},i,c;
+  for(i=0;i<list.length;i++){
+    c=list[i];if(c.proto!=="udp"||c.addr.indexOf(":")>=0)continue;
+    if(c.typ==="host"){if(!hosts[c.port]){hosts[c.port]=1;nh++;}continue;}
+    if(c.typ!=="srflx")continue;
+    if(c.from){if(from[c.from]!==undefined&&from[c.from]!==c.addr)return true;from[c.from]=c.addr;}
+    if(!addrs[c.addr]){addrs[c.addr]=1;na++;}
+  }
+  return nh===1&&na>1;
+}
 /* What a failed joining most likely came to, from each side's ways of being reached. */
 export function tgVerdict(mine,theirs){
   var a=tgCount(mine),b=tgCount(theirs);
   if(!mine.some(function(c){return c.typ==="srflx"}))return "This side never learned its outside address ("+a+"): the address servers did not answer, so UDP is probably blocked on this network.";
   if(!theirs.length)return "The other side's description never arrived.";
   if(!theirs.some(function(c){return c.typ==="srflx"}))return "The other side never learned its outside address ("+b+"): UDP is probably blocked on its network.";
+  if(tgMasked(mine)||tgMasked(theirs))return (tgMasked(mine)?"This":"The other")+" side's two address servers each saw it at a different outside address, not only a different port. That is the mark of a privacy relay carrying its traffic: on an iPhone or a Mac, iCloud Private Relay (Settings, your name, iCloud, Private Relay) or Limit IP Address Tracking (in the Wi-Fi network's or the mobile data's settings); elsewhere a VPN. Two browsers cannot meet through one. Turn it off on "+(tgMasked(mine)?"this":"that")+" device for now and try again.";
   if(tgSplit(mine)||tgSplit(theirs))return "Both sides learned an outside address, but "+(tgSplit(mine)?"this":"the other")+" network gives a different outside port to each place it talks to (a symmetric NAT, usual on mobile data and some offices). Two browsers cannot meet through that without a relay.";
   return "Both sides learned an outside address and neither network showed the usual sign of trouble, yet no path worked. A firewall may be dropping the packets, or one network changes ports in a way the two address servers did not show.";
 }
@@ -130,7 +147,7 @@ function tgDebug(c,who){
   tgLog(who,"connection made; address servers "+TG_ICE.map(function(s){return s.urls}).join(", ")+"; online "+navigator.onLine+(navigator.connection?"; network "+(navigator.connection.type||"?")+"/"+(navigator.connection.effectiveType||"?"):""));
   pc.addEventListener("icecandidate",function(e){
     var k=e.candidate&&tgCand(e.candidate.candidate);
-    if(!e.candidate){tgLog(who,"finished looking for ways to be reached: "+tgCount(c.mine)+(tgSplit(c.mine)?"; the two servers saw DIFFERENT outside ports":""));return;}
+    if(!e.candidate){tgLog(who,"finished looking for ways to be reached: "+tgCount(c.mine)+(tgMasked(c.mine)?"; the two servers saw DIFFERENT outside ADDRESSES (a privacy relay or VPN)":tgSplit(c.mine)?"; the two servers saw DIFFERENT outside ports":""));return;}
     if(!k)return;
     c.mine.push(k);
     tgLog(who,"way found: "+k.typ+" "+k.proto+" "+tgAddr(k.addr)+" port "+k.port+(k.from?" (the device's port "+k.from+")":"")+(e.candidate.url?" from "+e.candidate.url:""));
@@ -142,7 +159,7 @@ function tgDebug(c,who){
   pc.addEventListener("signalingstatechange",function(){tgLog(who,"descriptions: "+pc.signalingState);});
 }
 /* the other side's description has come: note what ways it offers */
-function tgTheirs(c,who,sdp){c.theirs=tgCands(sdp);tgLog(who,"other side's description arrived, offering "+tgCount(c.theirs)+(tgSplit(c.theirs)?"; its two servers saw DIFFERENT outside ports":""));}
+function tgTheirs(c,who,sdp){c.theirs=tgCands(sdp);tgLog(who,"other side's description arrived, offering "+tgCount(c.theirs)+(tgMasked(c.theirs)?"; its two servers saw DIFFERENT outside ADDRESSES (a privacy relay or VPN)":tgSplit(c.theirs)?"; its two servers saw DIFFERENT outside ports":""));}
 /* which pairs of ways were tried, and which one is in use */
 function tgPaths(c,who){
   var pc=c.pc;
@@ -629,6 +646,6 @@ window.addEventListener("hashchange",tgFromAddress);
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={TG_WAIT_HOST, tgWhyNot, tgLog, tgLines, tgAddr, tgCand, tgCands, tgCount, tgSplit, tgVerdict, tgDebug, tgTheirs, tgPaths, tgReport, tgCopyReport, tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, hostHas, TG_ASK, TG_KINDS, TG_ASKS, tgUnitPart, tgWho, tgSpot, tgPut, tgTell, tgGoTo, tgAsked, tgCall, tgAskGo, tgAnswer, tgForget, get tgAskNow(){return ask}, get tgWant(){return want}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
+export const __dbg={tgMasked, TG_WAIT_HOST, tgWhyNot, tgLog, tgLines, tgAddr, tgCand, tgCands, tgCount, tgSplit, tgVerdict, tgDebug, tgTheirs, tgPaths, tgReport, tgCopyReport, tgTap, tgMusicSdp, tgSetLocal, get tgTapOut(){return tap}, hostHas, TG_ASK, TG_KINDS, TG_ASKS, tgUnitPart, tgWho, tgSpot, tgPut, tgTell, tgGoTo, tgAsked, tgCall, tgAskGo, tgAnswer, tgForget, get tgAskNow(){return ask}, get tgWant(){return want}, tgHeard, tgLink, tgDrop, tgFail, tgWatch, tgSay, tgShow, tgLinkText, tgCopyLink, tgPart, tgName, tgSdp, tgWord, tgRoomUrl, tgRoomOpen, tgPing, tgAdmit, tgGathered, tgFromAddress, TG_MAX, TG_EVERY, TG_GONE, TG_TURN, TG_WAIT, TG_ROOMS, TG_ICE, conns, others, tgRoom, tgSignal, tgClean, tgPlace, tgInvite, tgJoin, tgLeave, tgGuest, togetherClock, stepTogether,
   get peerU(){return peerU},set peerU(v){peerU=v}, get tgRole(){return tgRole},set tgRole(v){tgRole=v}, get hostW(){return hostW},set hostW(v){hostW=v}, get hostT(){return hostT},set hostT(v){hostT=v},
   get tgRoomsAt(){return roomsAt},set tgRoomsAt(v){roomsAt=v}, get tgRoomNow(){return room}, get tgSockUp(){return sockUp}};

@@ -1391,5 +1391,16 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   expect("film: held in memory, a file's bytes can be written over once their true values are known", m.size() === 9 && m.waiting() === 0 && m.failed() === null);
 }
 
+// ---- fly together: a privacy relay is told from a network that splits its ports (the report of 17 November 2026: an iPhone whose two servers saw 146.75.x.x and 104.28.x.x)
+{
+  const { tgMasked, tgSplit, tgVerdict } = togetherM, c = (typ, addr, port) => ({ typ, proto: "udp", addr, port, from: 0 });
+  const relay = [c("host", "x.local", 63346), c("srflx", "146.75.1.2", 26785), c("srflx", "104.28.3.4", 34104)];
+  const plain = [c("host", "a.local", 49846), c("host", "b.local", 62633), c("srflx", "73.83.1.2", 49846), c("srflx", "73.83.1.2", 62633)];
+  const sym = [c("host", "x.local", 5000), c("srflx", "9.9.9.9", 100), c("srflx", "9.9.9.9", 200)];
+  const two = [c("host", "w.local", 1), c("host", "m.local", 2), c("srflx", "1.1.1.1", 1), c("srflx", "2.2.2.2", 2)];
+  expect("together: one port seen at two outside addresses is a privacy relay; two ports at one address is not, nor a device on two networks", tgMasked(relay) && !tgMasked(plain) && !tgMasked(sym) && !tgMasked(two));
+  expect("together: the report names the relay and how to turn it off, on whichever side has it, before blaming the network", /^This side's two address servers.*Private Relay.*Turn it off on this device/.test(tgVerdict(relay, plain)) && /^The other side's.*Turn it off on that device/.test(tgVerdict(plain, relay)) && /symmetric NAT/.test(tgVerdict(sym, plain)) && tgSplit(sym));
+}
+
 console.log(failed ? failed + " failed" : "all passed");
 process.exit(failed ? 1 : 0);
