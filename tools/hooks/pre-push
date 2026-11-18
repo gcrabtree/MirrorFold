@@ -1,0 +1,15 @@
+#!/bin/sh
+# Before a push: the checks that need no browser, and the shader check if a Chrome can be found. A failure stops
+# the push. Turn it on once in a copy of the repository with:  git config core.hooksPath tools/hooks
+cd "$(git rev-parse --show-toplevel)" || exit 1
+echo "pre-push: unit tests"
+node tools/unit.mjs > /tmp/mirrorfold-unit.log 2>&1 || { grep -v "^ok" /tmp/mirrorfold-unit.log | tail -20; echo "pre-push: unit tests failed; not pushed"; exit 1; }
+echo "pre-push: packs"
+node tools/pack.mjs > /tmp/mirrorfold-pack.log 2>&1 || { tail -20 /tmp/mirrorfold-pack.log; echo "pre-push: a pack failed; not pushed"; exit 1; }
+echo "pre-push: shaders"
+out=$(python3 tools/check.py 2>&1); code=$?
+case "$out" in
+  *"No Chrome or Chromium"*) echo "pre-push: no Chrome found, so the shaders were not checked";;
+  *) [ $code -eq 0 ] || { echo "$out" | tail -20; echo "pre-push: the shader check failed; not pushed"; exit 1; };;
+esac
+exit 0

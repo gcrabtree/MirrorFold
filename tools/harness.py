@@ -21,6 +21,11 @@ def chrome():
         path = shutil.which(name)
         if path:
             return path
+    # a Chromium that Playwright put in its own folder will do, the newest of them
+    import glob
+    found = sorted(glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome")))
+    if found:
+        return found[-1]
     raise SystemExit("No Chrome or Chromium found on PATH.")
 
 

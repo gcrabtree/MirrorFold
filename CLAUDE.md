@@ -23,7 +23,9 @@ python3 tools/heads.py out             # every dancer's head at eight turns roun
 python3 tools/stereo.py clean.png effect.png   # how well the two eyes' halves of VR viewer pictures agree (needs numpy)
 ```
 
-The Python tools need `google-chrome` or `chromium` on PATH (they run it headless with software WebGL). `--all` also needs Pillow. To view the app, serve the folder with `python3 -m http.server` (modules do not load from `file://`).
+`git config core.hooksPath tools/hooks` turns on the pre-push hook, which runs the unit tests, the pack check and the shader check and stops the push if one fails. Do not push past a failing check.
+
+The Python tools need `google-chrome` or `chromium` on PATH, or a Chromium that Playwright has put in `~/.cache/ms-playwright` (they run it headless with software WebGL). `--all` also needs Pillow. To view the app, serve the folder with `python3 -m http.server` (modules do not load from `file://`).
 
 ## Rules that are easy to break
 

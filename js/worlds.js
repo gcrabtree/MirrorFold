@@ -1431,28 +1431,31 @@ export const WORLDS=[
 /* Nerve cells in columns, as in the brain's cortex, and never still. Each cell of 3 holds one neuron: a body below
    the middle, four trees of dendrites spreading from it sideways and down, a trunk straight up through the cell
    with six thin fibres wound round it, and at the top of the trunk a tuft of four more trees. A tree (cxT) is a
-   stem that bends, then splits in two, each half leaning out and turned a quarter round, five times over, with
+   stem that bends, then splits in two, each half leaning out and turned a quarter round, five times over (four in the tuft), with
    beads along it. The cell is mirror-tiled and the trees reach past its walls, so each tree meets its own mirror
    image there and the neurons are joined into a net; above and below, tuft meets tuft and trunk meets trunk, which
-   makes the columns. In the cell's corners are small star cells, and along its edges thin fibres, four together.
+   makes the columns. In the cell's corners are small star cells, and along its edges thin fibres, four together. The trees are worked
+   out last, and a tree stops as soon as all that is left of it is further off than something already found, which
+   is often: that, and working out the bumps and the wound fibres only near them, saves about a third of the work.
    The trees' lean follows the morph; their bend, their quarter turn and the body's swelling follow three slow
    waves of the morph's clock (uMc: wTick below), each at its own pace, so the net is always moving while Morph is
    on. The colour runs out along each tree from the body, so the scene's moving bands pass along the dendrites like
-   signals. The bends and the fibres' winding make the distance a little too large, so three quarters of it is used. */
+   signals. The bends and the fibres' winding make the distance a little too large, so four fifths of it is used. */
 {id:"cortex",name:"Cortex",hue:.58,fog:.13,maxd:22,speed:.9,start:[1.5,.2,0],heavy:true, /* heavy: its two trees of five stems, worked out at every step of every ray, cost the chip several times what another world does, so Journey passes it over unless a template names it (jPool) */
  period:function(){return [6,6,6]},
  glsl:[
  "vec4 cxC;",
- "float cxT(vec3 l,float s,float an,float bn,float cw,float w0){", /* one tree: l is measured from its root in stems, the first stem along y; s is how many stems to a unit */
- "  float d=1e5;float ca=cos(an),sa=sin(an),cb=cos(bn),sb=sin(bn);",
+ "float cxT(vec3 l,float s,float an,float bn,float cw,float w0,float d,float lv){", /* one tree: l is measured from its root in stems, the first stem along y; s is how many stems to a unit */
+ "  float ca=cos(an),sa=sin(an),cb=cos(bn),sb=sin(bn);float rem=lv>4.5?2.72:2.49;", /* d: the nearest thing found before this tree. lv: how many times it splits (5, or 4 for the tuft). rem: how long the stems still to come are, end to end */
  "  for(int i=0;i<5;i++){",
+ "    if(float(i)>=lv||(length(l)-rem-0.3)/s>d)break;", /* everything still to come lies within rem + 0.3 of here (a stem's bend is back to nothing at its end, so the bends do not add up): if that is further than what has been found, none of it can be nearer, and it is not worked out */
  "    float h=clamp(l.y,0.0,1.0);l.x+=cw*sin(3.1415927*h);",
  "    float e=(length(l-vec3(0.0,h,0.0))-(0.085-0.02*h)*(1.0+0.22*sin(25.0*l.y)))/s;",
  "    if(e<d){d=e;cxC=vec4(0.5+0.5*sin(25.0*l.y),0.0,0.0,w0+0.13*(float(i)+h));}",
  "    l.y-=1.0;l.x=abs(l.x);",
  "    l.xy=vec2(ca*l.x-sa*l.y,sa*l.x+ca*l.y);",
  "    l.xz=vec2(cb*l.x-sb*l.z,sb*l.x+cb*l.z);",
- "    l*=1.45;s*=1.45;",
+ "    l*=1.45;s*=1.45;rem=(rem-1.0)*1.45;",
  "  }",
  "  return d;",
  "}",
@@ -1460,53 +1463,59 @@ export const WORLDS=[
  "  p=abs(mod(p+1.5,6.0)-3.0)-1.5;",
  "  float an=0.55+0.16*uM+0.1*uMc.y;float bn=1.5707963+0.45*uMc.z;float cw=0.1+0.09*uMc.w;",
  "  vec3 q=p+vec3(0.0,0.45,0.0);",
- "  float bm=sin(11.0*q.x)*sin(11.0*q.y)*sin(11.0*q.z);",
- "  float d=(length(q*vec3(1.0,0.8,1.0))-0.27-0.025*uMc.y-0.02*bm)*0.8;vec4 c=vec4(0.5+0.5*bm,0.0,0.5,0.02);", /* the body */
+ "  float d=length(q*vec3(1.0,0.8,1.0))-0.27-0.025*uMc.y;float bm=0.0;", /* the body; its bumps are worked out only near it */
+ "  if(d<0.1){bm=sin(11.0*q.x)*sin(11.0*q.y)*sin(11.0*q.z);d-=0.02*bm;}",
+ "  d*=0.8;vec4 c=vec4(0.5+0.5*bm,0.0,0.5,0.02);",
  "  float r=length(p.xz);float e=r-0.05-0.04*exp(-3.0*q.y*q.y);", /* the trunk */
  "  if(e<d){d=e;c=vec4(0.0,0.0,0.0,0.3+0.2*p.y);}",
- "  float af=mod(atan(p.z,p.x)+2.0943951*p.y+0.5235988,1.0471976)-0.5235988;", /* six fibres wound round it: the angle is folded onto one */
- "  e=(length(vec2(r*cos(af)-0.24,r*sin(af)))-0.016)*0.8;",
+ "  e=(r-0.26)*0.8;", /* six fibres wound round it, all within 0.26 of the trunk; nearer than 0.45 the angle is folded onto one and that one worked out */
+ "  if(r<0.45){float af=mod(atan(p.z,p.x)+2.0943951*p.y+0.5235988,1.0471976)-0.5235988;e=(length(vec2(r*cos(af)-0.24,r*sin(af)))-0.016)*0.8;}",
  "  if(e<d){d=e;c=vec4(0.0,0.0,0.3,0.75+0.1*p.y);}",
- "  float t=(abs(q.x)+abs(q.z))*0.7071068;float zz=(abs(q.z)-abs(q.x))*0.7071068;", /* the four trees from the body, as one: outward and a little down */
- "  e=cxT(vec3(0.342*t+0.94*q.y,0.94*t-0.342*q.y-0.2,zz)*1.6666667,1.6666667,an,bn,cw,0.08);",
- "  if(e<d){d=e;c=cxC;}",
- "  e=cxT(vec3(0.77*t-0.64*(p.y-0.85),0.64*t+0.77*(p.y-0.85),zz)*2.0,2.0,an,bn,cw,0.4);", /* the four of the tuft: outward and up */
- "  if(e<d){d=e;c=cxC;}",
  "  vec3 k=abs(p)-1.5;", /* the corner: a star cell, and a fibre along each of the three edges that meet there, each waving and kept a little inside, so the four cells round an edge give four fibres */
- "  e=length(k)-0.17-0.03*sin(14.0*k.x)*sin(14.0*k.y)*sin(14.0*k.z);",
+ "  e=length(k)-0.17;if(e<0.12)e-=0.03*sin(14.0*k.x)*sin(14.0*k.y)*sin(14.0*k.z);",
  "  if(e<d){d=e;c=vec4(0.0,0.0,0.6,0.92);}",
  "  e=length(k.xz+0.085+0.045*vec2(sin(4.1887902*p.y+2.0*uMc.z),cos(4.1887902*p.y+2.0*uMc.w)));",
  "  e=min(e,length(k.xy+0.085+0.045*vec2(sin(4.1887902*p.z+2.0*uMc.w),cos(4.1887902*p.z+2.0*uMc.y))));",
  "  e=(min(e,length(k.yz+0.085+0.045*vec2(sin(4.1887902*p.x+2.0*uMc.y),cos(4.1887902*p.x+2.0*uMc.z))))-0.017)*0.9;",
  "  if(e<d){d=e;c=vec4(0.0,0.0,0.0,0.62+0.1*(p.x+p.y+p.z));}",
- "  orb=c;return 0.75*d;",
+ "  float t=(abs(q.x)+abs(q.z))*0.7071068;float zz=(abs(q.z)-abs(q.x))*0.7071068;", /* the four trees from the body, as one: outward and a little down */
+ "  e=cxT(vec3(0.342*t+0.94*q.y,0.94*t-0.342*q.y-0.2,zz)*1.6666667,1.6666667,an,bn,cw,0.08,d,5.0);",
+ "  if(e<d){d=e;c=cxC;}",
+ "  e=cxT(vec3(0.77*t-0.64*(p.y-0.85),0.64*t+0.77*(p.y-0.85),zz)*2.0,2.0,an,bn,cw,0.4,d,4.0);", /* the four of the tuft: outward and up */
+ "  if(e<d){d=e;c=cxC;}",
+ "  orb=c;return 0.8*d;",
  "}"],
  de:function(x,y,z,m){
-  function T(lx,ly,lz,s){
-    var d=1e5,ca=Math.cos(an),sa=Math.sin(an),cb=Math.cos(bn),sb=Math.sin(bn),i,h,t;
-    for(i=0;i<5;i++){
+  function T(lx,ly,lz,s,d,lv){
+    var ca=Math.cos(an),sa=Math.sin(an),cb=Math.cos(bn),sb=Math.sin(bn),rem=lv>4.5?2.72:2.49,i,h,t;
+    for(i=0;i<lv;i++){
+      if((Math.hypot(lx,ly,lz)-rem-.3)/s>d)break;
       h=Math.max(0,Math.min(1,ly));lx+=cw*Math.sin(3.1415927*h);
       d=Math.min(d,(Math.hypot(lx,ly-h,lz)-(.085-.02*h)*(1+.22*Math.sin(25*ly)))/s);
       ly-=1;lx=Math.abs(lx);
       t=ca*lx-sa*ly;ly=sa*lx+ca*ly;lx=t;
       t=cb*lx-sb*lz;lz=sb*lx+cb*lz;lx=t;
-      lx*=1.45;ly*=1.45;lz*=1.45;s*=1.45;
+      lx*=1.45;ly*=1.45;lz*=1.45;s*=1.45;rem=(rem-1)*1.45;
     }
     return d;
   }
   x=tile(x,3);y=tile(y,3);z=tile(z,3);
   var an=.55+.16*m+.1*mc[1],bn=1.5707963+.45*mc[2],cw=.1+.09*mc[3],qy=y+.45;
-  var bm=Math.sin(11*x)*Math.sin(11*qy)*Math.sin(11*z),d=(Math.hypot(x,.8*qy,z)-.27-.025*mc[1]-.02*bm)*.8;
-  var r=Math.hypot(x,z),af=md(Math.atan2(z,x)+2.0943951*y+.5235988,1.0471976)-.5235988;
-  d=Math.min(d,r-.05-.04*Math.exp(-3*qy*qy),(Math.hypot(r*Math.cos(af)-.24,r*Math.sin(af))-.016)*.8);
-  var t=(Math.abs(x)+Math.abs(z))*.7071068,zz=(Math.abs(z)-Math.abs(x))*.7071068,u=y-.85;
-  d=Math.min(d,T((.342*t+.94*qy)*1.6666667,(.94*t-.342*qy-.2)*1.6666667,zz*1.6666667,1.6666667),T((.77*t-.64*u)*2,(.64*t+.77*u)*2,zz*2,2));
+  var d=Math.hypot(x,.8*qy,z)-.27-.025*mc[1],r=Math.hypot(x,z),af,fb=(r-.26)*.8;
+  if(d<.1)d-=.02*Math.sin(11*x)*Math.sin(11*qy)*Math.sin(11*z);
+  d*=.8;
+  if(r<.45){af=md(Math.atan2(z,x)+2.0943951*y+.5235988,1.0471976)-.5235988;fb=(Math.hypot(r*Math.cos(af)-.24,r*Math.sin(af))-.016)*.8;}
+  d=Math.min(d,r-.05-.04*Math.exp(-3*qy*qy),fb);
   var kx=Math.abs(x)-1.5,ky=Math.abs(y)-1.5,kz=Math.abs(z)-1.5,W=4.1887902;
-  d=Math.min(d,Math.hypot(kx,ky,kz)-.17-.03*Math.sin(14*kx)*Math.sin(14*ky)*Math.sin(14*kz));
-  var e=Math.min(Math.hypot(kx+.085+.045*Math.sin(W*y+2*mc[2]),kz+.085+.045*Math.cos(W*y+2*mc[3])),
+  var e=Math.hypot(kx,ky,kz)-.17;if(e<.12)e-=.03*Math.sin(14*kx)*Math.sin(14*ky)*Math.sin(14*kz);
+  d=Math.min(d,e);
+  e=Math.min(Math.hypot(kx+.085+.045*Math.sin(W*y+2*mc[2]),kz+.085+.045*Math.cos(W*y+2*mc[3])),
     Math.hypot(kx+.085+.045*Math.sin(W*z+2*mc[3]),ky+.085+.045*Math.cos(W*z+2*mc[1])),
     Math.hypot(ky+.085+.045*Math.sin(W*x+2*mc[1]),kz+.085+.045*Math.cos(W*x+2*mc[2])));
-  return .75*Math.min(d,(e-.017)*.9);
+  d=Math.min(d,(e-.017)*.9);
+  var t=(Math.abs(x)+Math.abs(z))*.7071068,zz=(Math.abs(z)-Math.abs(x))*.7071068,u=y-.85;
+  d=T((.342*t+.94*qy)*1.6666667,(.94*t-.342*qy-.2)*1.6666667,zz*1.6666667,1.6666667,d,5);d=T((.77*t-.64*u)*2,(.64*t+.77*u)*2,zz*2,2,d,4);
+  return .8*d;
  }},
 {id:"mzoom",name:"Mandelbrot zoom",hue:.55,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,
  period:function(){return [4,4,4]},glsl:[],de:function(){return .2}},
