@@ -289,6 +289,9 @@ BUILTIN_T=[
  /* the Seer and Net worlds and others of rings, wires and halls, in their two palettes and bright ones, often through mirrors */
  {name:"Visions",world:{every:80,set:["seer","net","lattice","web","gates","temple","tangle"]},palette:{every:35,set:["Vision","Cobalt","Spectrum","Sunset","Orchid"]},
   mirrors:{mode:"random",every:60,none:"50",set:["6","8","12"]},motion:{mode:"off"},filter:{mode:"off"},overlay:{mode:"off"},surface:{mode:"off"}},
+ /* the worlds that are things and places, not fractals: gears, a library, stairs, columns, cages, spikes, crystals, galaxies */
+ {name:"Curiosities",world:{every:70,set:["clockwork","library","stairs","causeway","dyson","ferro","bismuth","galaxies"]},mirrors:{mode:"off"},
+  motion:{mode:"off"},filter:{mode:"off"},overlay:{mode:"off"}},
  {name:"Landscapes",world:{every:70},mirrors:{mode:"off"},land:{mode:"random",every:80}},
  {name:"Follow the music",world:{trigger:"sound",every:45},mirrors:{mode:"random",none:"75"},motion:{mode:"random"},overlay:{mode:"random",set:["Ring","Scope","Spectrum","Spokes"]},surface:{mode:"random"}}
 ].map(function(t){return normT(t,true)});

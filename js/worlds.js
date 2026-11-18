@@ -1080,6 +1080,342 @@ export const WORLDS=[
   if(n<-.5)d=Math.min(d,2.74-y);
   return .65*d;
  }},
+/* Gears in mesh, turning: flat layers of them one unit apart, sixteen teeth each, every gear turning against its four
+   neighbours, on axles that run through all the layers. Every other layer turns twice as fast the other way, is
+   thicker, and has four spokes where the first has six; between each four axles a shaft is left open through all the
+   layers. The morph is the angle they have turned through,
+   so they turn one way and back as it swings. Two gears mesh if one is half a tooth round from the other, which
+   holds everywhere because a gear's place in its layer is odd or even (par) and sixteen is an even number. Only the
+   gear whose square this is and the nearest of its neighbours are worked out; the next layer is held to how far its
+   plane is. The teeth make the distance too large, so 0.42 of theirs is used. */
+{id:"clockwork",name:"Clockwork",hue:.1,fog:.1,maxd:24,speed:.9,start:[1,1,.5],
+ period:function(){return [4,4,2]},
+ glsl:[
+ "vec4 cwC;",
+ "float cwG(vec2 q,float par,float th,float K,float zz,float hz){",
+ "  float r=length(q);float a=atan(q.y,q.x)-(1.0-2.0*par)*th;",
+ "  float tw=clamp(1.5*cos(16.0*a+3.1415927*par),-1.0,1.0);",
+ "  float af=mod(a+3.1415927/K,6.2831853/K)-3.1415927/K;",
+ "  float d2=min(max((r-0.97-0.09*tw)*0.42,0.74-r),max(abs(r*sin(af))-0.06,r-0.8));", /* the rim with its teeth, and the spokes */
+ "  vec2 w=vec2(d2,abs(zz)-hz);float d=min(max(w.x,w.y),0.0)+length(max(w,0.0));",
+ "  cwC=vec4(0.5+0.5*tw,0.0,0.0,r>0.74?0.2:0.45);",
+ "  w=vec2(r-0.24,abs(zz)-2.2*hz);float e=min(max(w.x,w.y),0.0)+length(max(w,0.0));", /* the hub */
+ "  if(e<d){d=e;cwC=vec4(0.0,0.3,0.0,0.7);}",
+ "  return d;",
+ "}",
+ "float map(vec3 p){",
+ "  float qz=mod(p.z+0.5,1.0)-0.5;float lay=mod(floor(p.z+0.5),2.0);",
+ "  vec2 c=floor(p.xy*0.5+0.5);vec2 q=p.xy-2.0*c;float par=mod(c.x+c.y,2.0);",
+ "  float th=(lay<0.5?1.6:-3.2)*uM;float K=lay<0.5?6.0:4.0;float hz=lay<0.5?0.05:0.08;",
+ "  float d=cwG(q,par,th,K,qz,hz);vec4 col=cwC;",
+ "  vec2 n=abs(q.x)>abs(q.y)?vec2(q.x<0.0?-2.0:2.0,0.0):vec2(0.0,q.y<0.0?-2.0:2.0);",
+ "  float e=cwG(q-n,1.0-par,th,K,qz,hz);if(e<d){d=e;col=cwC;}",
+ "  e=length(q)-0.08;if(e<d){d=e;col=vec4(0.0,0.0,0.0,0.9);}", /* the axle */
+ "  d=min(d,0.8-abs(qz));", /* the next layer is at least this far */
+ "  orb=col+vec4(0.0,0.0,0.0,0.08*lay);return d;",
+ "}"],
+ de:function(x,y,z,m){
+  function G(qx,qy,par,th,K,zz,hz){
+    var r=Math.hypot(qx,qy),a=Math.atan2(qy,qx)-(1-2*par)*th;
+    var tw=Math.max(-1,Math.min(1,1.5*Math.cos(16*a+3.1415927*par))),af=md(a+3.1415927/K,6.2831853/K)-3.1415927/K;
+    var d2=Math.min(Math.max((r-.97-.09*tw)*.42,.74-r),Math.max(Math.abs(r*Math.sin(af))-.06,r-.8));
+    var wy=Math.abs(zz)-hz,d=Math.min(Math.max(d2,wy),0)+Math.hypot(Math.max(d2,0),Math.max(wy,0)),wx=r-.24;
+    wy=Math.abs(zz)-2.2*hz;
+    return Math.min(d,Math.min(Math.max(wx,wy),0)+Math.hypot(Math.max(wx,0),Math.max(wy,0)));
+  }
+  var qz=md(z+.5,1)-.5,lay=md(Math.floor(z+.5),2),cx=Math.floor(x*.5+.5),cy=Math.floor(y*.5+.5);
+  var qx=x-2*cx,qy=y-2*cy,par=md(cx+cy,2),th=(lay<.5?1.6:-3.2)*m,K=lay<.5?6:4,hz=lay<.5?.05:.08,nx=0,ny=0;
+  if(Math.abs(qx)>Math.abs(qy))nx=qx<0?-2:2;else ny=qy<0?-2:2;
+  var d=Math.min(G(qx,qy,par,th,K,qz,hz),G(qx-nx,qy-ny,1-par,th,K,qz,hz));
+  d=Math.min(d,Math.hypot(qx,qy)-.08);
+  return Math.min(d,.8-Math.abs(qz));
+ }},
+/* Bismuth: hopper crystals. A crystal that grows faster along its edges than in the middle of its faces is left as a
+   frame, each face sunk in square steps down to a small cube at the heart. Here each face goes down eight steps
+   (biS: the distance to a flight of steps), and a smaller crystal stands on each of the eight corners, turned a
+   little, and smaller ones on theirs, four sizes in all. The morph turns them. */
+{id:"bismuth",name:"Bismuth",hue:.78,fog:.12,maxd:24,speed:.9,start:null,
+ period:function(){return [9.2,9.2,9.2]},
+ glsl:[
+ "#define P 4.6",
+ "float biK;",
+ "float biS(float t,float v){", /* steps of an eighth that rise with v: the distance to everything under them */
+ "  if(t-v>0.25)return (t-v)*0.7071068;",
+ "  float k=floor(v*8.0)*0.125;biK=k;vec2 g=vec2(t-k,k-v);float d=length(max(g,0.0))+min(max(g.x,g.y),0.0);",
+ "  g=vec2(t-k-0.125,k+0.125-v);return min(d,length(max(g,0.0))+min(max(g.x,g.y),0.0));",
+ "}",
+ "float map(vec3 p){",
+ "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  float a1=0.3+0.25*uM;float c1=cos(a1),s1=sin(a1);",
+ "  float s=1.0;float d=1e5;orb=vec4(1000.0);biK=0.0;",
+ "  for(int i=0;i<4;i++){",
+ "    vec3 a=abs(p);",
+ "    if(a.x<a.y)a.xy=a.yx;",
+ "    if(a.x<a.z)a.xz=a.zx;",
+ "    if(a.y<a.z)a.yz=a.zy;",
+ "    float e=max(biS(a.x-0.25,a.y),a.x-1.0)/s;",
+ "    if(e<d){d=e;orb=vec4(fract(a.y*8.0),0.3*biK,0.0,0.75*biK+0.13*float(i));}",
+ "    p=abs(p)-0.9;",
+ "    p.xy=vec2(c1*p.x-s1*p.y,s1*p.x+c1*p.y);",
+ "    p.yz=vec2(c1*p.y-s1*p.z,s1*p.y+c1*p.z);",
+ "    p*=2.1;s*=2.1;",
+ "  }",
+ "  return 0.9*d;",
+ "}"],
+ de:function(x,y,z,m){
+  function S(t,v){
+    if(t-v>.25)return (t-v)*.7071068;
+    var k=Math.floor(v*8)*.125,gx=t-k,gy=k-v,d=Math.hypot(Math.max(gx,0),Math.max(gy,0))+Math.min(Math.max(gx,gy),0);
+    gx=t-k-.125;gy=k+.125-v;
+    return Math.min(d,Math.hypot(Math.max(gx,0),Math.max(gy,0))+Math.min(Math.max(gx,gy),0));
+  }
+  var P=4.6;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  var a1=.3+.25*m,c1=Math.cos(a1),s1=Math.sin(a1),s=1,d=1e5,t,ax,ay,az;
+  for(var i=0;i<4;i++){
+    ax=Math.abs(x);ay=Math.abs(y);az=Math.abs(z);
+    if(ax<ay){t=ax;ax=ay;ay=t}
+    if(ax<az){t=ax;ax=az;az=t}
+    if(ay<az){t=ay;ay=az;az=t}
+    d=Math.min(d,Math.max(S(ax-.25,ay),ax-1)/s);
+    x=Math.abs(x)-.9;y=Math.abs(y)-.9;z=Math.abs(z)-.9;
+    t=c1*x-s1*y;y=s1*x+c1*y;x=t;
+    t=c1*y-s1*z;z=s1*y+c1*z;y=t;
+    x*=2.1;y*=2.1;z*=2.1;s*=2.1;
+  }
+  return .9*d;
+ }},
+/* A library without end, after Borges: square rooms of 4, one above another every 2, each with an open shaft through
+   the middle of its floor and a doorway in the middle of each wall. Both sides of every wall are shelves, six to a
+   floor, and on the shelves stand books, each of its own height, depth and colour. A book's are chosen from a number
+   worked out from its place on the shelf, its shelf, its wall, its room and its floor with whole numbers only, as in
+   Tangle, so the chip and JavaScript agree; the rooms repeat every four and the floors every four. The room is
+   folded onto half of one wall; a book is worked out with the one on each side of it. The morph is not used. */
+{id:"library",name:"Library",hue:.05,fog:.09,maxd:26,speed:.8,start:[0,0,0],
+ period:function(){return [16,8,16]},
+ glsl:[
+ "float mo(float x,float y){return floor(mod(x+0.5,y));}",
+ "vec4 lbC;float lbD;",
+ "void lbB(float k,float u,float yy,float xd,float id){", /* the book that is k along its shelf */
+ "  if(k<6.5||k>23.5)return;",
+ "  float a=mo(k*37.0+id,251.0);float b=mo(a*(a+3.0),61.0);",
+ "  float hb=0.19+0.014*mo(b,8.0);float db=0.15+0.015*mo(floor((b+0.5)*0.125),4.0);",
+ "  vec3 g=vec3(abs(u-(k+0.5)*0.0625)-0.029,abs(yy-0.012-0.5*hb)-0.5*hb,abs(xd-0.5*db)-0.5*db);",
+ "  float d=length(max(g,0.0))+min(max(g.x,max(g.y,g.z)),0.0);",
+ "  if(d<lbD){lbD=d;float band=abs(yy-0.012-0.5*hb);lbC=vec4(band>0.3*hb&&band<0.38*hb?1.0:0.0,0.0,0.0,b/61.0);}",
+ "}",
+ "float map(vec3 p){",
+ "  vec3 r=floor(p/vec3(4.0,2.0,4.0)+0.5);vec3 l=p-r*vec3(4.0,2.0,4.0);",
+ "  vec2 q=abs(l.xz);float wid=(l.x<0.0?1.0:0.0)+(l.z<0.0?2.0:0.0);",
+ "  if(q.x<q.y){q=q.yx;wid+=4.0;}", /* q.x is now toward the nearest wall, q.y along it from the doorway's middle */
+ "  float y=l.y;float js=floor((y+1.0)*3.0);float yy=y+1.0-js*0.3333333;",
+ "  float id=59.0*wid+17.0*mo(r.x,4.0)+71.0*mo(r.z,4.0)+29.0*mo(r.y,4.0)+101.0*js;",
+ "  float xd=1.88-q.x;float u=q.y;float rho=length(l.xz);",
+ "  float d=max(xd,min(0.4-u,0.5-y));vec4 c=vec4(0.0,0.0,0.0,0.12);", /* the wall, less its doorway */
+ "  d=min(d,1.5-u);", /* the pillar in the corner */
+ "  float e=max(0.988-abs(y),0.7-rho);", /* the floor, less the shaft */
+ "  if(e<d){d=e;c=vec4(mod(floor(l.x*2.0)+floor(l.z*2.0),2.0),0.0,0.0,0.5);}",
+ "  e=length(vec2(rho-0.74,y+0.68))-0.018;if(e<d){d=e;c=vec4(0.0,0.0,0.0,0.8);}", /* the rail round the shaft */
+ "  e=max(max(abs(mod(y+1.1666667,0.3333333)-0.1666667)-0.012,xd-0.22),0.42-u);", /* the shelves */
+ "  e=min(e,max(abs(u-0.43)-0.012,xd-0.22));", /* and the board that ends them at the doorway */
+ "  if(e<d){d=e;c=vec4(0.0,0.0,0.0,0.18);}",
+ "  float k=floor(u*16.0);lbD=1e5;lbB(k,u,yy,xd,id);lbB(k-1.0,u,yy,xd,id);lbB(k+1.0,u,yy,xd,id);",
+ "  if(lbD<d){d=lbD;c=lbC;}",
+ "  orb=c;return 0.9*d;",
+ "}"],
+ de:function(x,y,z){
+  function mo(v,k){return Math.floor(md(v+.5,k))}
+  var rx=Math.floor(x/4+.5),ry=Math.floor(y/2+.5),rz=Math.floor(z/4+.5),lx=x-4*rx,ly=y-2*ry,lz=z-4*rz;
+  var qx=Math.abs(lx),qy=Math.abs(lz),wid=(lx<0?1:0)+(lz<0?2:0),t,j;
+  if(qx<qy){t=qx;qx=qy;qy=t;wid+=4}
+  var js=Math.floor((ly+1)*3),yy=ly+1-js*.3333333,id=59*wid+17*mo(rx,4)+71*mo(rz,4)+29*mo(ry,4)+101*js;
+  var xd=1.88-qx,u=qy,rho=Math.hypot(lx,lz),d=Math.max(xd,Math.min(.4-u,.5-ly));
+  d=Math.min(d,1.5-u,Math.max(.988-Math.abs(ly),.7-rho),Math.hypot(rho-.74,ly+.68)-.018);
+  d=Math.min(d,Math.max(Math.abs(md(ly+1.1666667,.3333333)-.1666667)-.012,xd-.22,.42-u),Math.max(Math.abs(u-.43)-.012,xd-.22));
+  var k0=Math.floor(u*16);
+  for(j=-1;j<2;j++){
+    var k=k0+j;if(k<6.5||k>23.5)continue;
+    var a=mo(k*37+id,251),b=mo(a*(a+3),61),hb=.19+.014*mo(b,8),db=.15+.015*mo(Math.floor((b+.5)*.125),4);
+    var gx=Math.abs(u-(k+.5)*.0625)-.029,gy=Math.abs(yy-.012-.5*hb)-.5*hb,gz=Math.abs(xd-.5*db)-.5*db;
+    d=Math.min(d,Math.hypot(Math.max(gx,0),Math.max(gy,0),Math.max(gz,0))+Math.min(Math.max(gx,gy,gz),0));
+  }
+  return .9*d;
+ }},
+/* Stairs with three ways up, after Escher: flights of steps that climb in y as they go along x, others that climb in
+   z as they go along y, and others that climb in x as they go along z, so that one flight's wall is another's floor.
+   Each climbs across a cell of 4 and comes down again across the next, which is the first one's mirror image. stS is
+   the distance to a flight of steps. The morph widens the flights. */
+{id:"stairs",name:"Stairs",hue:.62,fog:.1,maxd:26,speed:1.0,start:null,
+ period:function(){return [8,8,8]},
+ glsl:[
+ "float stS(float t,float v){", /* steps of a fifth that rise with v: the distance to everything under them */
+ "  if(t-v>0.4)return (t-v)*0.7071068;",
+ "  float k=floor(v*5.0)*0.2;vec2 g=vec2(t-k,k-v);float d=length(max(g,0.0))+min(max(g.x,g.y),0.0);",
+ "  g=vec2(t-k-0.2,k+0.2-v);return min(d,length(max(g,0.0))+min(max(g.x,g.y),0.0));",
+ "}",
+ "float stF(vec3 q,float wd){", /* one flight: it climbs in y as it goes along x, and lies at z = 1 */
+ "  return max(max(stS(q.y,q.x),(q.x-q.y)*0.7071068-0.28),abs(q.z-1.0)-wd);",
+ "}",
+ "float map(vec3 p){",
+ "  vec3 q=abs(mod(p+2.0,8.0)-4.0)-2.0;float wd=0.42+0.08*uM;",
+ "  float d=stF(q,wd);orb=vec4(2.0*abs(fract(q.y*5.0+0.5)-0.5),0.0,0.0,0.15);",
+ "  float e=stF(q.yzx,wd);if(e<d){d=e;orb=vec4(2.0*abs(fract(q.z*5.0+0.5)-0.5),0.0,0.0,0.48);}",
+ "  e=stF(q.zxy,wd);if(e<d){d=e;orb=vec4(2.0*abs(fract(q.x*5.0+0.5)-0.5),0.0,0.0,0.81);}",
+ "  return 0.9*d;",
+ "}"],
+ de:function(x,y,z,m){
+  function S(t,v){
+    if(t-v>.4)return (t-v)*.7071068;
+    var k=Math.floor(v*5)*.2,gx=t-k,gy=k-v,d=Math.hypot(Math.max(gx,0),Math.max(gy,0))+Math.min(Math.max(gx,gy),0);
+    gx=t-k-.2;gy=k+.2-v;
+    return Math.min(d,Math.hypot(Math.max(gx,0),Math.max(gy,0))+Math.min(Math.max(gx,gy),0));
+  }
+  function F(a,b,c){return Math.max(S(b,a),(a-b)*.7071068-.28,Math.abs(c-1)-wd)}
+  var wd=.42+.08*m;x=tile(x,4);y=tile(y,4);z=tile(z,4);
+  return .9*Math.min(F(x,y,z),F(y,z,x),F(z,x,y));
+ }},
+/* Columns of basalt, six-sided, each of its own height, standing up from a floor and hanging from a roof, with a cave
+   between. A column's height comes from a number worked out from its place with whole numbers only, as in Tangle, so
+   the chip and JavaScript agree, and from two slow waves, which lift the floor where they raise the roof, so the
+   cave winds. The morph moves every column up or down by its own amount, like pistons. A column is worked out with
+   the six round it; the ones beyond those are held to half a unit past this column's side. The columns repeat every
+   8 one way and every four rows the other. */
+{id:"causeway",name:"Causeway",hue:.35,fog:.1,maxd:26,speed:1.0,start:[0,0,0],
+ period:function(){return [8,5.2,6.9282032]},
+ glsl:[
+ "float mo(float x,float y){return floor(mod(x+0.5,y));}",
+ "vec4 cyO;float cyD;",
+ "void cyC(vec2 l,vec2 c,float t,float sg){", /* the column whose middle is c: l is the place measured from it, t the height above the floor or below the roof */
+ "  float n=mo(floor(2.0*c.x+0.5),16.0)+16.0*mo(floor(c.y*1.1547005+0.5),8.0)+128.0*sg;float h=mo(n*(n+3.0),61.0);",
+ "  float hh=0.9+0.012*h+(0.45-0.9*sg)*sin(0.7853982*c.x)*sin(0.9068997*c.y)+0.22*sin(0.7*h+2.6*uM);",
+ "  vec2 al=abs(l);vec2 w=vec2(max(al.x,0.5*al.x+0.8660254*al.y)-0.485,t-hh);",
+ "  float e=min(max(w.x,w.y),0.0)+length(max(w,0.0));",
+ "  if(e<cyD){cyD=e;cyO=vec4(0.5+0.5*cos(12.0*(t-hh)),0.0,w.y>w.x?0.3:0.0,h/61.0);}",
+ "}",
+ "float map(vec3 p){",
+ "  float yq=mod(p.y+2.6,5.2)-2.6;float sg=yq<0.0?0.0:1.0;float t=2.6-abs(yq);",
+ "  vec2 s=vec2(1.0,1.7320508);vec2 a=mod(p.xz,s)-0.5*s;vec2 b=mod(p.xz-0.5*s,s)-0.5*s;",
+ "  vec2 l=dot(a,a)<dot(b,b)?a:b;vec2 c=p.xz-l;cyD=1e5;",
+ "  cyC(l,c,t,sg);",
+ "  cyC(l-vec2(1.0,0.0),c+vec2(1.0,0.0),t,sg);cyC(l+vec2(1.0,0.0),c-vec2(1.0,0.0),t,sg);",
+ "  cyC(l-vec2(0.5,0.8660254),c+vec2(0.5,0.8660254),t,sg);cyC(l+vec2(0.5,0.8660254),c-vec2(0.5,0.8660254),t,sg);",
+ "  cyC(l-vec2(0.5,-0.8660254),c+vec2(0.5,-0.8660254),t,sg);cyC(l+vec2(0.5,-0.8660254),c-vec2(0.5,-0.8660254),t,sg);",
+ "  vec2 al=abs(l);",
+ "  orb=cyO;return 0.9*min(cyD,1.0-max(al.x,0.5*al.x+0.8660254*al.y));",
+ "}"],
+ de:function(x,y,z,m){
+  function mo(v,k){return Math.floor(md(v+.5,k))}
+  var yq=md(y+2.6,5.2)-2.6,sg=yq<0?0:1,t=2.6-Math.abs(yq),s1=1.7320508,d=1e5;
+  var ax=md(x,1)-.5,az=md(z,s1)-.5*s1,bx=md(x-.5,1)-.5,bz=md(z-.5*s1,s1)-.5*s1,lx=ax,lz=az;
+  if(!(ax*ax+az*az<bx*bx+bz*bz)){lx=bx;lz=bz}
+  var cx=x-lx,cz=z-lz,O=[[0,0],[1,0],[-1,0],[.5,.8660254],[-.5,-.8660254],[.5,-.8660254],[-.5,.8660254]];
+  for(var i=0;i<7;i++){
+    var px=cx+O[i][0],pz=cz+O[i][1],n=mo(Math.floor(2*px+.5),16)+16*mo(Math.floor(pz*1.1547005+.5),8)+128*sg,h=mo(n*(n+3),61);
+    var hh=.9+.012*h+(.45-.9*sg)*Math.sin(.7853982*px)*Math.sin(.9068997*pz)+.22*Math.sin(.7*h+2.6*m);
+    var ux=Math.abs(lx-O[i][0]),uz=Math.abs(lz-O[i][1]),wx=Math.max(ux,.5*ux+.8660254*uz)-.485,wy=t-hh;
+    d=Math.min(d,Math.min(Math.max(wx,wy),0)+Math.hypot(Math.max(wx,0),Math.max(wy,0)));
+  }
+  ux=Math.abs(lx);uz=Math.abs(lz);
+  return .9*Math.min(d,1-Math.max(ux,.5*ux+.8660254*uz));
+ }},
+/* Cages inside cages: four round cages of bars, each inside the last, with a ball at the heart. A cage's bars lie
+   where flat cuts through its middle meet it, evenly spaced by angle across each of a cube's six faces, so the
+   openings are four-sided windows. The morph turns each cage a different way and at a different speed. */
+{id:"dyson",name:"Dyson",hue:.52,fog:.1,maxd:26,speed:1.0,start:[2.5,2.5,2.5],
+ period:function(){return [10,10,10]},
+ glsl:[
+ "#define P 5.0",
+ "float dyG;",
+ "float dyS(vec3 p,float R,float n,float ang){", /* one cage of radius R with n windows across a face, turned by ang */
+ "  float c=cos(ang),s=sin(ang);p.xz=vec2(c*p.x-s*p.z,s*p.x+c*p.z);p.xy=vec2(c*p.x-s*p.y,s*p.x+c*p.y);",
+ "  vec3 a=abs(p);if(a.x<a.y)a.xy=a.yx;if(a.x<a.z)a.xz=a.zx;",
+ "  vec2 g=abs(fract(vec2(atan(a.y,a.x),atan(a.z,a.x))*1.2732395*n+0.5)-0.5)*0.7853982/n;",
+ "  dyG=min(g.x*length(a.xy),g.y*length(a.xz));",
+ "  return max(abs(length(p)-R)-0.03*R,dyG-0.035*R);",
+ "}",
+ "float map(vec3 p){",
+ "  p=abs(mod(p+0.5*P,2.0*P)-P)-0.5*P;",
+ "  float d=dyS(p,2.2,4.0,0.5*uM);orb=vec4(dyG*8.0,0.0,0.0,0.1);",
+ "  float e=dyS(p,1.55,3.0,1.0-0.9*uM);if(e<d){d=e;orb=vec4(dyG*10.0,0.0,0.0,0.32);}",
+ "  e=dyS(p,1.0,2.0,2.0+1.5*uM);if(e<d){d=e;orb=vec4(dyG*14.0,0.0,0.0,0.54);}",
+ "  e=dyS(p,0.55,2.0,0.5-2.2*uM);if(e<d){d=e;orb=vec4(dyG*20.0,0.0,0.0,0.76);}",
+ "  e=length(p)-0.2;if(e<d){d=e;orb=vec4(0.0,0.0,0.6,0.98);}",
+ "  return 0.8*d;",
+ "}"],
+ de:function(x,y,z,m){
+  function S(px,py,pz,R,n,ang){
+    var c=Math.cos(ang),s=Math.sin(ang),t=c*px-s*pz;pz=s*px+c*pz;px=t;t=c*px-s*py;py=s*px+c*py;px=t;
+    var ax=Math.abs(px),ay=Math.abs(py),az=Math.abs(pz);
+    if(ax<ay){t=ax;ax=ay;ay=t}
+    if(ax<az){t=ax;ax=az;az=t}
+    var gx=Math.abs(fr(Math.atan2(ay,ax)*1.2732395*n+.5)-.5)*.7853982/n,gy=Math.abs(fr(Math.atan2(az,ax)*1.2732395*n+.5)-.5)*.7853982/n;
+    return Math.max(Math.abs(Math.hypot(px,py,pz)-R)-.03*R,Math.min(gx*Math.hypot(ax,ay),gy*Math.hypot(ax,az))-.035*R);
+  }
+  var P=5;x=tile(x,P);y=tile(y,P);z=tile(z,P);
+  return .8*Math.min(S(x,y,z,2.2,4,.5*m),S(x,y,z,1.55,3,1-.9*m),S(x,y,z,1,2,2+1.5*m),S(x,y,z,.55,2,.5-2.2*m),Math.hypot(x,y,z)-.2);
+ }},
+/* Balls of spikes, as a magnet draws from a pool of iron in oil: a ball of 0.8 in the middle of each cell with 96
+   spikes, and a ball of 0.45 at the cell's corners with 24. The spikes stand evenly spaced by angle across each of a
+   cube's six faces; a spike is a cone with a round tip (feC), joined to its ball smoothly. The morph draws the
+   spikes out and lets them sink back. */
+{id:"ferro",name:"Ferro",hue:.7,fog:.11,maxd:24,speed:1.0,start:[2,2,0],
+ period:function(){return [8,8,8]},
+ glsl:[
+ "float feC(vec3 p,float R,float n,float hs,float br){", /* a ball of radius R with n spikes across a face, hs long and br wide at the foot */
+ "  vec3 a=abs(p);if(a.x<a.y)a.xy=a.yx;if(a.x<a.z)a.xz=a.zx;",
+ "  vec2 an=(floor(vec2(atan(a.y,a.x),atan(a.z,a.x))*1.2732395*n)+0.5)*0.7853982/n;",
+ "  vec3 dir=normalize(vec3(1.0,tan(an.x),tan(an.y)));",
+ "  float h=dot(a,dir);vec2 q=vec2(length(a-h*dir),h-R+0.12);",
+ "  float b=(br-0.012)/hs;float ca=sqrt(1.0-b*b);float k=dot(q,vec2(-b,ca));",
+ "  float d=k<0.0?length(q)-br:(k>ca*hs?length(q-vec2(0.0,hs))-0.012:dot(q,vec2(ca,b))-br);",
+ "  float e=length(p)-R;float t=clamp(0.5+0.5*(e-d)/0.12,0.0,1.0);",
+ "  orb=min(orb,vec4(clamp(q.y/hs,0.0,1.0),0.0,0.0,0.15+0.7*clamp((length(p)-R)/hs,0.0,1.0)));",
+ "  return mix(e,d,t)-0.12*t*(1.0-t);",
+ "}",
+ "float map(vec3 p){",
+ "  p=abs(mod(p+2.0,8.0)-4.0)-2.0;orb=vec4(1000.0);",
+ "  float d=feC(p,0.8,2.0,0.95+0.4*uM,0.15);",
+ "  return 0.8*min(d,feC(abs(p)-2.0,0.45,1.0,0.75-0.3*uM,0.19));",
+ "}"],
+ de:function(x,y,z,m){
+  function C(px,py,pz,R,n,hs,br){
+    var ax=Math.abs(px),ay=Math.abs(py),az=Math.abs(pz),t;
+    if(ax<ay){t=ax;ax=ay;ay=t}
+    if(ax<az){t=ax;ax=az;az=t}
+    var a1=(Math.floor(Math.atan2(ay,ax)*1.2732395*n)+.5)*.7853982/n,a2=(Math.floor(Math.atan2(az,ax)*1.2732395*n)+.5)*.7853982/n;
+    var dy=Math.tan(a1),dz=Math.tan(a2),dl=Math.hypot(1,dy,dz),h=(ax+ay*dy+az*dz)/dl;
+    var qx=Math.hypot(ax-h/dl,ay-h*dy/dl,az-h*dz/dl),qy=h-R+.12,b=(br-.012)/hs,ca=Math.sqrt(1-b*b),k=-b*qx+ca*qy;
+    var d=k<0?Math.hypot(qx,qy)-br:(k>ca*hs?Math.hypot(qx,qy-hs)-.012:qx*ca+qy*b-br);
+    var e=Math.hypot(px,py,pz)-R;t=Math.max(0,Math.min(1,.5+.5*(e-d)/.12));
+    return e+(d-e)*t-.12*t*(1-t);
+  }
+  x=tile(x,4);y=tile(y,4);z=tile(z,4);
+  return .8*Math.min(C(x,y,z,.8,2,.95+.4*m,.15),C(Math.abs(x)-2,Math.abs(y)-2,Math.abs(z)-2,.45,1,.75-.3*m,.19));
+ }},
+/* Galaxies in the dark: one to a cell at two sizes, each a flat disc lying its own way with a bright middle and two
+   arms that wind outward, turning slowly, some one way and some the other. The morph winds the arms tighter. A cloud
+   world, so JavaScript has no copy of it. */
+{id:"galaxies",name:"Galaxies",hue:.66,fog:0,maxd:1,speed:.6,start:[.3,.2,.1],volume:true,
+ period:function(){return [8,8,8]},
+ glsl:[
+ "#define VMAP(a) ((a)*(0.07+(a))*2.6)",
+ "#define VSTEP 0.1",
+ "float gxy(vec3 p,float per){",
+ "  vec3 c=floor(p);vec3 f=p-c-0.5;c=floor(mod(c+0.5,per));",
+ "  float h=fract(sin(dot(c,vec3(12.9898,78.233,37.719)))*43758.5453);",
+ "  vec3 w3=smoothstep(0.5,0.34,abs(f));",
+ "  f-=0.2*(vec3(h,fract(h*57.31),fract(h*913.7))-0.5);",
+ "  float a1=6.2831853*fract(h*17.3);float a2=6.2831853*fract(h*91.7);",
+ "  f.xz=vec2(cos(a1)*f.x-sin(a1)*f.z,sin(a1)*f.x+cos(a1)*f.z);",
+ "  f.yz=vec2(cos(a2)*f.y-sin(a2)*f.z,sin(a2)*f.y+cos(a2)*f.z);",
+ "  float r=length(f.xy);float sp=h<0.5?-1.0:1.0;",
+ "  float arm=0.5+0.5*cos(2.0*atan(f.y,f.x)*sp-(7.0+2.0*uM)*log(r+0.02)+0.2*uTime);",
+ "  float disc=exp(-r*r*22.0)*exp(-f.z*f.z*300.0)*(0.18+arm*arm*arm);",
+ "  return (0.45+0.55*fract(h*311.1))*w3.x*w3.y*w3.z*(disc+0.8*exp(-dot(f,f)*330.0));",
+ "}",
+ "float dens(vec3 p){",
+ "  return gxy(p*0.5,4.0)+0.6*gxy(p+3.3,8.0);",
+ "}"],
+ de:function(){return .25}},
 {id:"mzoom",name:"Mandelbrot zoom",hue:.55,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,
  period:function(){return [4,4,4]},glsl:[],de:function(){return .2}},
 {id:"jzoom",name:"Julia zoom",hue:.1,fog:0,maxd:1,speed:.5,start:[.3,.2,.1],volume:true,flat:true,julia:true,
