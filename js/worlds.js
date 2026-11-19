@@ -1415,7 +1415,7 @@ export const WORLDS=[
    8 to one turn of the clock so that it looks the same after W_TURN, and whole waves to the period. The morph opens
    and closes the petals. Nothing of a flower comes nearer than 0.03 to its cell's wall, so the distance is held to
    the seven cells round a place; above the tallest flower it is the height above that. */
-{id:"meadow",name:"Meadow",hue:.3,fog:.085,maxd:26,speed:.9,start:[.5,-1.25,0],
+{id:"meadow",name:"Meadow",hue:.3,fog:.11,maxd:19,speed:.9,start:[.5,-1.25,0],
  period:function(){return [8,7.2,6.9282032]},
  glsl:[
  "float mo(float x,float y){return floor(mod(x+0.5,y));}",
@@ -1429,9 +1429,13 @@ export const WORLDS=[
  "void flC(vec2 l,vec2 c,float t){",
  "  float n=mo(floor(2.0*c.x+0.5),16.0)+16.0*mo(floor(c.y*1.1547005+0.5),8.0);float h=mo(n*(n+3.0),61.0);float k=mo(h,6.0);",
  "  float hh=0.75+0.011*h+(k<0.5?0.45:0.0);if(k>4.5)hh*=0.5;",
+ "  float b0=max(length(l)-0.49,t-hh-0.36);if(b0>=flD)return;if(b0>0.2){flS(b0,vec4(0.0,0.0,0.0,0.4));return;}", /* the whole flower is inside a post 0.49 across its cell: if that cannot be nearer than what is found already, or is more than 0.2 off, the flower is passed over before its lean is worked out */
  "  float ph=8.0*uMc.x+0.7853982*c.x+0.9068997*c.y;",
  "  vec2 sw=hh*vec2(0.075*sin(ph)+0.02*sin(2.0*ph+0.7*h),0.045*cos(ph+0.5*h));",
  "  float f=clamp(t/hh,0.0,1.0);vec2 sl=l-sw*f*f;float hv=h/61.0;",
+ "  vec3 q=vec3(l.x-sw.x,t-hh,l.y-sw.y);float ql=length(q);",
+ "  float bd=min(length(l)-(k>4.5?0.36:0.29),ql-0.36);", /* a flower is inside a post round its stem and leaves and a ball round its head: more than 0.2 from both, that is near enough to the truth, and the flower itself is not worked out. Most of the seven are passed over this way at every step */
+ "  if(bd>0.2){flS(bd,vec4(0.0,0.0,0.0,0.4));return;}",
  "  flS(max(length(sl)-0.022,t-hh),vec4(f,0.0,0.0,0.42+0.05*f));", /* the stem */
  "  if(k>4.5){", /* grass: three blades leaning out from the foot */
  "    for(int i=0;i<3;i++){",
@@ -1443,7 +1447,6 @@ export const WORLDS=[
  "  float la=1.7*h;vec2 ld=vec2(cos(la),sin(la));float lu=dot(sl,ld),lv=dot(sl,vec2(-ld.y,ld.x));", /* two leaves, one each side */
  "  flS(flE(vec3(lu-0.11,t-0.42*hh-0.5*(lu-0.11),lv),vec3(0.1,0.014,0.042)),vec4(0.5,0.0,0.0,0.4));",
  "  flS(flE(vec3(-lu-0.1,t-0.24*hh-0.5*(-lu-0.1),lv),vec3(0.09,0.014,0.04)),vec4(0.5,0.0,0.0,0.4));",
- "  vec3 q=vec3(l.x-sw.x,t-hh,l.y-sw.y);float ql=length(q);",
  "  if(ql>0.5){flS(ql-0.36,vec4(0.0,0.0,0.0,0.4));return;}", /* far from the head: its ball will do */
  "  vec2 a2=(k<1.5?0.75:0.22)*vec2(cos(1.3*h),sin(1.3*h))+2.5*sw/hh;vec3 u=normalize(vec3(a2.x,1.0,a2.y));",
  "  vec3 e1=normalize(vec3(u.y,-u.x,0.0));vec3 e2=cross(u,e1);",
@@ -1494,9 +1497,12 @@ export const WORLDS=[
     var cx=cx0+O[i][0],cz=cz0+O[i][1],lx=lx0-O[i][0],lz=lz0-O[i][1];
     var n=mo(Math.floor(2*cx+.5),16)+16*mo(Math.floor(cz*1.1547005+.5),8),h=mo(n*(n+3),61),k=mo(h,6);
     var hh=.75+.011*h+(k<.5?.45:0);if(k>4.5)hh*=.5;
+    var b0=Math.max(Math.hypot(lx,lz)-.49,t-hh-.36);if(b0>=d)continue;if(b0>.2){d=b0;continue;}
     var ph=8*mc[0]+.7853982*cx+.9068997*cz;
     var swx=hh*(.075*Math.sin(ph)+.02*Math.sin(2*ph+.7*h)),swz=hh*.045*Math.cos(ph+.5*h);
     var f=Math.min(Math.max(t/hh,0),1),slx=lx-swx*f*f,slz=lz-swz*f*f,hv=h/61;
+    var qx=lx-swx,qy=t-hh,qz=lz-swz,ql=Math.hypot(qx,qy,qz),bd=Math.min(Math.hypot(lx,lz)-(k>4.5?.36:.29),ql-.36);
+    if(bd>.2){d=Math.min(d,bd);continue;}
     d=Math.min(d,Math.max(Math.hypot(slx,slz)-.022,t-hh));
     if(k>4.5){
       for(j=0;j<3;j++){
@@ -1507,7 +1513,6 @@ export const WORLDS=[
     }
     var la=1.7*h,ldx=Math.cos(la),ldz=Math.sin(la),lu=slx*ldx+slz*ldz,lv=-slx*ldz+slz*ldx;
     d=Math.min(d,E(lu-.11,t-.42*hh-.5*(lu-.11),lv,.1,.014,.042),E(-lu-.1,t-.24*hh-.5*(-lu-.1),lv,.09,.014,.04));
-    var qx=lx-swx,qy=t-hh,qz=lz-swz,ql=Math.hypot(qx,qy,qz);
     if(ql>.5){d=Math.min(d,ql-.36);continue;}
     var tk=k<1.5?.75:.22,ux=tk*Math.cos(1.3*h)+2.5*swx/hh,uz=tk*Math.sin(1.3*h)+2.5*swz/hh,ul=Math.hypot(ux,1,uz),uy=1/ul;ux/=ul;uz/=ul;
     var el=Math.hypot(uy,ux),e1x=uy/el,e1y=-ux/el,e2x=-uz*e1y,e2y=uz*e1x,e2z=ux*e1y-uy*e1x; /* e1 has no z; e2 is u cross e1 */
