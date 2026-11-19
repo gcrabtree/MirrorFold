@@ -16,14 +16,32 @@ export const VMODES=[
  {name:"in the distance"},          /* flat on the screen, behind everything: the world fades into it with distance */
  {name:"in the overlay"},           /* the overlay's lines and shapes are windows onto it */
  {name:"as the colours",d3:true},   /* the world's colouring reads its colours from the video */
- {name:"filling the screen",alone:true} /* no world: the video is the scene, and the mirrors, motions, filters and overlays work on it. The land can stand in front */
+ {name:"filling the screen",alone:true}, /* no world: the video is the scene, and the mirrors, motions, filters and overlays work on it. The land can stand in front */
+ {name:"in front of the world",front:true} /* the whole video, flat in the middle of the screen, laid over the world; parts of it can be made clear so that the world shows through (VKEYS). The motions, filters and overlays work on the two together */
 ];
+/* in front of the world: which parts of the video are clear, and how much of the screen it is given */
+export const VKEYS=["nowhere","where it is dark","where it is bright","where it is green"];
+export const VSIZES=[["the whole screen",1],["large",0.8],["medium",0.6],["small",0.4]];
+export let vidKey=0,vidSize=0;   /* positions in VKEYS and VSIZES */
 export const VAMT=[.35,.6,.85,1];
 export let vidMode=0,vidAmt=2;   /* positions in VMODES and VAMT */
 export let vidOn=false;          /* a video is loaded and showing */
 let kind="";                     /* the chosen file's type, as the browser names it, for the message if it will not play */
 let sound=false,node=null,musicBefore="off"; /* musicBefore: the music source to go back to when the video's sound is turned off */       /* the video's sound is wanted as the music, and its connection into the audio graph */
-let pScene=null;
+let pScene=null,pFront=null;
+/* the video in front of the world: all of it, fitted inside the screen, with a soft edge. Its fourth number is how much of
+   it covers the world here: none where the chosen part is clear. Green is also taken out of what is left of a green
+   background's edge, so that no green rim shows. */
+const FS_FRONT=[
+"precision highp float;uniform vec2 uRes,uFit;uniform float uKey,uAmt;uniform sampler2D uVid;",
+"void main(){",
+"  vec2 q=(gl_FragCoord.xy/uRes-0.5)*uFit+0.5;vec2 e2=min(q,1.0-q);",
+"  vec3 c=texture2D(uVid,clamp(q,0.0,1.0)).rgb;float l=dot(c,vec3(0.299,0.587,0.114)),a=1.0;",
+"  if(uKey>0.5&&uKey<1.5)a=smoothstep(0.1,0.38,l);",
+"  else if(uKey>1.5&&uKey<2.5)a=1.0-smoothstep(0.5,0.82,l);",
+"  else if(uKey>2.5){float m=max(c.r,c.b);a=1.0-smoothstep(0.05,0.2,c.g-m);c.g=min(c.g,m+0.03);}",
+"  gl_FragColor=vec4(c,a*uAmt*smoothstep(0.0,0.006,min(e2.x,e2.y)));",
+"}"].join("\n");
 /* the video as the whole scene: fitted to the screen, folded by the mirrors as a world is, and swelling a little on the beat */
 const FS_SCENE=[
 "precision highp float;uniform vec2 uRes,uFit;uniform float uSeg,uSpin,uZoom;uniform sampler2D uVid;",
@@ -46,6 +64,8 @@ function label(){
   $("bVidMode").textContent="Video "+VMODES[vidMode].name;
   $("bVidAmt").textContent="Video strength "+Math.round(VAMT[vidAmt]*100)+"%";
   $("bVidSnd").hidden=!vidFile();$("bVidSnd").textContent=musicMode==="video"?"Video sound on":"Video sound off";
+  $("bVidKey").hidden=$("bVidSize").hidden=!VMODES[vidMode].front;
+  $("bVidKey").textContent="Video clear "+VKEYS[vidKey];$("bVidSize").textContent="Video size "+VSIZES[vidSize][0];
   $("bVidPlay").hidden=!vidOn||!!stream;$("bVidPlay").textContent=el&&el.paused?"Play video":"Pause video";
 }
 export function setVidMode(i){vidMode=i%VMODES.length;label();}
@@ -65,6 +85,19 @@ export function videoScene(o,seg,spin,bt){
   gl.uniform2f(pScene.U.uRes,o.w,o.h);gl.uniform2f(pScene.U.uFit,sa>asp?1:sa/asp,sa>asp?asp/sa:1);
   gl.uniform1f(pScene.U.uSeg,seg);gl.uniform1f(pScene.U.uSpin,spin);gl.uniform1f(pScene.U.uZoom,1-0.025*bt);
   gl.drawArrays(gl.TRIANGLES,0,3);
+}
+export function setVidKey(i){vidKey=i%VKEYS.length;label();}
+export function setVidSize(i){vidSize=i%VSIZES.length;label();}
+export function vidFront(){return vidOn&&!!tV[0]&&!!VMODES[vidMode].front;} /* the video is laid over the world */
+/* lay the video over the picture o, which already holds the world. The fourth number of o is left as it was. */
+export function videoFront(o,bt){
+  var sa=o.w/o.h,z=(1-0.025*bt)/VSIZES[vidSize][1];
+  passTo(o,pFront);bindTex(5,tV[cur].t);gl.uniform1i(pFront.U.uVid,5);
+  gl.uniform2f(pFront.U.uRes,o.w,o.h);gl.uniform2f(pFront.U.uFit,(sa>asp?sa/asp:1)*z,(sa>asp?1:asp/sa)*z);
+  gl.uniform1f(pFront.U.uKey,vidKey);gl.uniform1f(pFront.U.uAmt,VAMT[vidAmt]);
+  gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ZERO,gl.ONE);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.disable(gl.BLEND);
 }
 export function setVidAmt(i){vidAmt=i%VAMT.length;label();}
 function stopSource(){
@@ -136,7 +169,7 @@ export function videoFrame(fr){
 /* Hand the video to a shader: U holds its uniforms, and w and h are the size of the picture being drawn.
    flat is false where a video that lies flat on the screen must be left out (the VR viewer). per is the world's period, for the surfaces. */
 export function videoUniforms(U,w,h,flat,per){
-  var on=vidOn&&tV[0]&&(flat||VMODES[vidMode].d3),sa=w/h;
+  var on=vidOn&&tV[0]&&(flat||VMODES[vidMode].d3)&&!VMODES[vidMode].front,sa=w/h; /* in front of the world it is not in these shaders at all: videoFront lays it on afterwards */
   bindTex(5,on?tV[cur].t:blank);gl.uniform1i(U.uVid,5);
   /* the video fills the screen and keeps its shape: the part that does not fit is cut off */
   gl.uniform4f(U.uVidK,on?vidMode+1:0,VAMT[vidAmt],sa>asp?1:sa/asp,sa>asp?asp/sa:1);
@@ -150,7 +183,7 @@ export function videoUniforms(U,w,h,flat,per){
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
 export function init(){
-pVid=link(FS_VID,["uT","uP","uK"]);pScene=link(FS_SCENE,["uRes","uFit","uSeg","uSpin","uZoom","uVid"]);pMean=link(FS_MEAN,["uT"]);tM=target(4,4);
+pVid=link(FS_VID,["uT","uP","uK"]);pScene=link(FS_SCENE,["uRes","uFit","uSeg","uSpin","uZoom","uVid"]);pMean=link(FS_MEAN,["uT"]);pFront=link(FS_FRONT,["uRes","uFit","uKey","uAmt","uVid"]);tM=target(4,4);
 raw=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,raw);
 gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
 gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
@@ -175,13 +208,15 @@ $("bVidSnd").addEventListener("click",function(){
   wakeHud();
 });
 $("bVidMode").addEventListener("click",function(){setVidMode(vidMode+1);wakeHud()});
+$("bVidKey").addEventListener("click",function(){setVidKey(vidKey+1);wakeHud()});
+$("bVidSize").addEventListener("click",function(){setVidSize(vidSize+1);wakeHud()});
 $("bVidAmt").addEventListener("click",function(){setVidAmt(vidAmt+1);wakeHud()});
 $("bVidPlay").addEventListener("click",function(){if(el.paused){var p=el.play();if(p&&p.catch)p.catch(function(){});}else el.pause();wakeHud()});
 label();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={vidTime, VMODES, VAMT, FS_SCENE, tV, mNew, mOut, FS_MEAN, VW, FS_VID, label,
+export const __dbg={vidTime, VMODES, VAMT, VKEYS, VSIZES, FS_FRONT, setVidKey, setVidSize, vidFront, videoFront, get vidKey(){return vidKey}, get vidSize(){return vidSize}, FS_SCENE, tV, mNew, mOut, FS_MEAN, VW, FS_VID, label,
   setVidMode, vidFile, vidAlone, videoSound, videoScene, setVidAmt, stopSource, videoOff, element, videoFrom,
   useCamera, videoFrame, videoUniforms, get vidMode(){return vidMode},set vidMode(v){vidMode=v}, get vidAmt(){return vidAmt},set vidAmt(v){vidAmt=v}, get vidOn(){return vidOn},set vidOn(v){vidOn=v}, get kind(){return kind},set kind(v){kind=v}, get sound(){return sound},set sound(v){sound=v}, get node(){return node},set node(v){node=v}, get musicBefore(){return musicBefore},set musicBefore(v){musicBefore=v},
   get pScene(){return pScene},set pScene(v){pScene=v}, get el(){return el},set el(v){el=v}, get url(){return url},set url(v){url=v}, get stream(){return stream},set stream(v){stream=v}, get raw(){return raw},set raw(v){raw=v}, get blank(){return blank},set blank(v){blank=v}, get pVid(){return pVid},set pVid(v){pVid=v}, get cur(){return cur},set cur(v){cur=v}, get asp(){return asp},set asp(v){asp=v}, get lastT(){return lastT},set lastT(v){lastT=v},

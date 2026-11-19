@@ -25,7 +25,7 @@ import { peerU } from "./together.js";
 import { FX, LOOKS, MOTIONS, OVERLAYS, OVS, mirrors, sel } from "./state.js";
 import { inShell, wMc } from "./worlds.js";
 import { doorTarget, landQ, tA, tB, tF, tT, target } from "./targets.js";
-import { vidAlone, videoScene, videoUniforms } from "./video.js";
+import { vidAlone, vidFront, videoFront, videoScene, videoUniforms } from "./video.js";
 import { jit, lens, stillN } from "./still.js";
 import { stereo, vrEye, vrEyeStep, vrLens } from "./vr.js";
 import { tr } from "./warp.js";
@@ -116,6 +116,10 @@ export function drawScene(fr){
   vrEyeStep(dist,dt); /* VR viewer: eye spacing follows the distance to the nearest surface, so the world always feels a similar size */
   worldPass(w,tA,cam.pos,fr.per,fr,fovNow,L,bt,mp,hp,landOver,dT,null,null,1);
   }
+  /* the video in front of the world: laid over the world, or over the land alone, before the effects. With the land over a
+     world the land stands in front of it. Not in the VR viewer (it is flat on the screen), and not while a loop is flown
+     (it would not be back where it was a lap later). */
+  if(vidFront()&&!stereo&&!lapOn())videoFront(tA,bt);
   /* which picture the effects work on: the land laid over the world, the world alone, or the land alone */
   /* VR viewer: the effects are always on everything, since they need one picture that carries the depth of all that is seen */
   if(landOver&&(landFx===0||stereo)){passTo(landMixed(),pMix);bindTex(0,tA.t);bindTex(1,tL.t);gl.uniform1i(pMix.U.uT,0);gl.uniform1i(pMix.U.uL,1);gl.uniform1f(pMix.U.uVr,stereo?1:0);gl.drawArrays(gl.TRIANGLES,0,3);src=tC;}

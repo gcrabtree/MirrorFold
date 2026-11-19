@@ -669,7 +669,7 @@ Tested: the cleaner, the text, the file-name part and Reddit's address in `tools
 
 `js/video.js` shows a video file the user picks, or the camera, in the picture. Nothing is uploaded or kept, and a pack cannot name a video. The frame step `videoFrame` runs before the drawing steps; `videoUniforms` hands the result to the scene shader and the trails pass on texture unit 5 (`uVid`, `uVidK` = way, strength, fit to screen; `uVidS` = repeat scale on surfaces).
 
-Six ways (`VMODES`), chosen with the "Video …" button:
+Seven ways (`VMODES`), chosen with the "Video …" button:
 
 | Way | Where | What it does |
 |---|---|---|
@@ -679,12 +679,13 @@ Six ways (`VMODES`), chosen with the "Video …" button:
 | in the overlay | trails pass | The overlay's shapes are drawn seven times wider (`wd`) and replace what is under them with the video. Works with pack overlays too. |
 | as the colours | scene shader | The surface colour is read from the video at a point given by the orbit trap, so the fractal is striped with the video's colours. True 3D. |
 | filling the screen | its own program (`videoScene`) | No world is drawn: the video is the scene, fitted to the screen, folded by the mirrors exactly as a world is, and swelling 2.5% on the beat. Motions, filters, overlays and transitions then work on it as on any scene, and the land can stand in front (Land over). The camera still flies the unseen world, so the land moves. Orbs are off. In the VR viewer the world is drawn instead. |
+| in front of the world | its own program (`videoFront`), blended over `tA` | The world is drawn as usual and the whole video is then laid over it, fitted inside the screen (never cut off) at a size from `VSIZES`, before the effects, so the motions, filters and overlays work on the two together. `VKEYS` says which parts of it are clear: nowhere, where it is dark, where it is bright, or where it is green (with the green taken out of the rim that is left). The blend leaves the picture's fourth number alone. It is not in the scene shader at all (`videoUniforms` says no video in this way). With the land over a world the land stands in front of it; it is left out in the VR viewer and while a loop is flown. |
 
 **The flash limit.** The shaders never read the video itself. They read `tV`, a 640-wide copy that `videoFrame` moves towards the newest frame. Each frame a 4 by 4 picture of the new frame's average colours (`pMean`, read back into `mNew`) is compared with the same averages of the copy (`mOut`, tracked in JavaScript, since the blend is linear). The blend amount is cut so that no sixteenth's average changes by more than 0.6 of full brightness a second (0.3 with reduced motion). Measured: a clip strobing black to white at 5 Hz comes through as a ripple of about 6%; ordinary footage is followed within a level or two; a hard cut becomes a fade of up to a second. Do not hand the raw texture to any shader.
 
 **Sound.** Music has a source `video` ("My video's sound"). Choosing a video file selects it only if Music is off; the "Video sound" button (`bVidSnd`) switches between it and the source that was playing before (`musicBefore`), so a video can run silently under any other music. `videoSound(on)` joins the video element to the audio graph with `createMediaElementSource` the first time, and from then on mutes or unmutes the element; `liveAudio()` counts it, so the beat reading follows the video. Any other music source mutes the video. The camera has no sound. Checked in headless Chrome only (sound reaches the analyser; the video keeps playing while the audio context is suspended); iPhone untested.
 
-Not done: the land (it ignores the video; only the overlay way works over it), cloud worlds (same), a journey category, remembering the choice, any test on a real phone. The smoke test does not cover it, because headless Chrome's virtual clock does not run a video; it was tried with Playwright and three made-up clips.
+Not done: the land (it ignores the video; only the overlay way works over it), cloud worlds (same), a journey category, remembering the choice, any test on a real phone. The smoke test does not cover it, because headless Chrome's virtual clock does not run a video; it was tried with Playwright and three made-up clips. The way in front of the world was looked at only as stills of a made-up clip in the render tool.
 
 ## 9. Palettes
 
