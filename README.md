@@ -13,7 +13,7 @@
 >
 > Mirrorfold is designed to avoid strobing, but it has **not** been tested or certified against any photosensitivity standard, and no setting makes it safe for everyone. It is not a medical device and nothing here is medical advice. It is provided "as is", without warranty of any kind, and you use it entirely at your own risk; see the [licence](LICENSE).
 
-Fly through endless fractal worlds in your browser. Forty worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
+Fly through endless fractal worlds in your browser. Forty-one worlds, kaleidoscope mirrors, feedback trails, filters, overlays, and an autopilot that reacts to music.
 
 This project is inspired in part by the music visualizers from decades past… from Winamp plugins to the standalone visualizer MilkDrop. This has a familiar feel when in Journey mode (an autopilot that flies through the procedurally generated 3D worlds) while listening to music. 
 
@@ -31,7 +31,7 @@ Relax, unwind, and enjoy!
 
 **Try it: https://gcrabtree.github.io/MirrorFold/**
 
-![Contact sheet of all 40 worlds](docs/worlds.jpg)
+![Contact sheet of all 41 worlds](docs/worlds.jpg)
 
 The app is one page, one stylesheet and a folder of JavaScript modules. There is no build step and no JavaScript dependency. It uses WebGL 1, so it runs in any current browser on a phone or a desktop.
 
@@ -60,7 +60,7 @@ It is a small download: about 435 KB to start (the page, the stylesheet and the 
 
 ## What it does
 
-- **40 worlds.** Thirty-four are solid surfaces: twenty-two fractals, and twelve that are things and places (Cell, the inside of a living cell; Biomech, Seer, Net and Fabric; and Clockwork, Library, Stairs, Causeway, Dyson, Ferro and Cortex: see below); four (Nebula, Aurora, Lanterns and Galaxies) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
+- **41 worlds.** Thirty-five are solid surfaces: twenty-two fractals, and thirteen that are things and places (Cell, the inside of a living cell; Biomech, Seer, Net and Fabric; and Clockwork, Library, Stairs, Causeway, Dyson, Ferro, Meadow and Cortex: see below); four (Nebula, Aurora, Lanterns and Galaxies) are glowing volumes; two (Mandelbrot zoom and Julia zoom) are flat pictures seen from above that zoom in and out. Every world you fly through repeats forever in all directions.
 - **Nine worlds that are things and places**, with the **Curiosities** journey template, which flies through eight of them in turn:
   - **Clockwork**: layers of gears in mesh, each turning against its neighbours on axles that run through every layer. They turn steadily while Morph is on, faster when the middle of the music is loud, and never backward. Between every four axles a shaft is open through all the layers, to fly down.
   - **Library**: a library without end, after Borges. Square rooms one above another, an open shaft through the middle of every floor, a doorway in every wall, and every wall shelved on both sides with books, each of its own height, depth and colour. The morph opens the doorways and shafts wider and slides every book out from the wall and back, so with music the shelves move.
@@ -71,6 +71,7 @@ It is a small download: about 435 KB to start (the page, the stylesheet and the 
   - **Bismuth**: hopper crystals, whose faces are sunk in square steps to a small cube at the heart, with smaller crystals on their corners and smaller ones on theirs, three sizes in all.
   - **Cortex**: nerve cells in columns, joined into a net that is never still. Each has a body, trees of beaded dendrites that bend, lean and twist, each at its own slow pace, a trunk wound with fibres that runs up to the cell above, and a tuft at the top; small star cells sit between. Bands of colour run out along the dendrites like signals. It is heavy work for the graphics chip, so Journey never chooses it by itself: pick it by hand, or tick it in a template of your own.
   - **Galaxies**: a fourth glowing volume. Spiral galaxies at two sizes, each lying its own way and turning slowly; the morph winds their arms tighter.
+- **Meadow**, a field of flowers in a breeze: sunflowers, daisies, roses, tulips, round heads of small flowers and tufts of grass, each of its own height and facing its own way, with the same field again overhead, hanging down, as in a hall. A wave of leaning passes over the field; it moves while Morph is on, faster when the middle of the music is loud. The morph opens and closes the petals. The flowers take the palette's colours, like everything else, so a sunflower is yellow only in a palette that has yellow there.
 - **Biomech**, a world in homage to the biomechanical paintings of H. R. Giger: an endless hall of tunnels whose walls are rib cages, with spines where the tunnels meet, tendons between ribs and spines, and ribbed hoses running alongside. The cages breathe with the morph. Nothing of his is copied; it is built from the kinds of thing he painted. With it come three near-grey palettes that are open from the start (**Gunmetal**, **Tallow**, **Verdigris**), the **ribbed** surface, the **Airbrush** filter and the **Biomech** journey template, all of which work in every other world too.
 - **Zooms a trillion times deep.** The two zoom worlds magnify the Mandelbrot set and Julia sets up to about a trillion times, on points where there is always something to see. See [The zoom worlds](#the-zoom-worlds).
 - **Free flight** in any direction, with roll. Your speed drops as you approach a surface, so you can never hit a wall.
@@ -104,7 +105,7 @@ It is a small download: about 435 KB to start (the page, the stylesheet and the 
 - **A light to throw**, which bounces off the surfaces of the world.
 - **VR viewer** mode for a phone in a Cardboard-style holder: a picture for each eye, and you look around by turning your head.
 
-The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, Shards, Crystal, Julia, Web, Temple, Nebula, Fortress, Hive, Gates, Aurora, Mandelbrot, Tangle, Foam, Thicket, Kleinian, Pyrite, Lanterns, Cell, Biomech, Seer, Net, Fabric, Clockwork, Bismuth, Library, Stairs, Causeway, Dyson, Ferro, Galaxies, Cortex, Mandelbrot zoom, Julia zoom.
+The worlds, in menu order: Lattice, Sponge, Halls, Box, Citadel, Coral, Bulbs, Shards, Crystal, Julia, Web, Temple, Nebula, Fortress, Hive, Gates, Aurora, Mandelbrot, Tangle, Foam, Thicket, Kleinian, Pyrite, Lanterns, Cell, Biomech, Seer, Net, Fabric, Clockwork, Bismuth, Library, Stairs, Causeway, Dyson, Ferro, Meadow, Galaxies, Cortex, Mandelbrot zoom, Julia zoom.
 
 Six of the fractals: **Tangle** is pipes that never end, **Foam** is a frame pitted with round holes, **Thicket** is branching trees, **Kleinian** is a hall of lace columns between a floor and a ceiling, **Pyrite** is cubes with smaller cubes on their corners, and **Lanterns** is soft lights hanging in the dark.
 
@@ -579,7 +580,7 @@ Sound goes through one Web Audio analyser. Three bands each keep a level and a s
 | `js/` | The app, as about 80 modules; the architecture document lists what each holds |
 | `docs/ARCHITECTURE.md` | How it works, in detail |
 | `docs/TV.md` | How to show Mirrorfold on a TV by screen mirroring |
-| `docs/worlds.jpg` | Contact sheet of all 40 worlds |
+| `docs/worlds.jpg` | Contact sheet of all 41 worlds |
 | `thumbs/` | The choosers' small pictures, one for each built-in world, palette, motion, filter, overlay, mirror setting, FX setting and landscape |
 | `lang/` | The lessons' words, one flat file for each language (`en.json`) |
 | `voice/` | The lessons' voice: one sound file for each step, and `index.json`, which records the words each was made from |

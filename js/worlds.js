@@ -1406,6 +1406,132 @@ export const WORLDS=[
   x=tile(x,4);y=tile(y,4);z=tile(z,4);
   return .8*Math.min(C(x,y,z,.8,2,.95+.4*m,.15),C(Math.abs(x)-2,Math.abs(y)-2,Math.abs(z)-2,.45,1,.75-.3*m,.19));
  }},
+/* A meadow: flowers standing in a field, one to a six-sided cell as the Causeway's columns are, and the same field
+   again overhead, hanging down, so the world repeats upward as every world must. Each cell's whole number chooses
+   what grows there: a sunflower, a daisy, a rose, a tulip, a ball of small flowers, or a tuft of grass, with its own
+   height and its own way of facing. A flower is a stem that bends, two leaves, and a head set on the stem's top with
+   its own axis (u): petals are flattened balls set round that axis, found by folding the angle into one petal's
+   share. The breeze is the turning clock (uMc.x), which only runs forward: a wave of leaning passes over the field,
+   8 to one turn of the clock so that it looks the same after W_TURN, and whole waves to the period. The morph opens
+   and closes the petals. Nothing of a flower comes nearer than 0.03 to its cell's wall, so the distance is held to
+   the seven cells round a place; above the tallest flower it is the height above that. */
+{id:"meadow",name:"Meadow",hue:.3,fog:.085,maxd:26,speed:.9,start:[.5,-1.25,0],
+ period:function(){return [8,7.2,6.9282032]},
+ glsl:[
+ "float mo(float x,float y){return floor(mod(x+0.5,y));}",
+ "vec4 flO;float flD;",
+ "float flE(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.0)/(k1+1e-5);}", /* a flattened ball with half-widths r */
+ "float flP(float rr,float ang,float ax,float n,float cr,float tl,vec3 r){", /* n petals round the axis: their middles cr out, tipped up by tl */
+ "  float sg=6.2831853/n;float a=mod(ang+0.5*sg,sg)-0.5*sg;float x=rr*cos(a)-cr,cs=cos(tl),sn=sin(tl);",
+ "  return flE(vec3(cs*x+sn*ax,cs*ax-sn*x,rr*sin(a)),r);",
+ "}",
+ "void flS(float d,vec4 o){if(d<flD){flD=d;flO=o;}}",
+ "void flC(vec2 l,vec2 c,float t){",
+ "  float n=mo(floor(2.0*c.x+0.5),16.0)+16.0*mo(floor(c.y*1.1547005+0.5),8.0);float h=mo(n*(n+3.0),61.0);float k=mo(h,6.0);",
+ "  float hh=0.75+0.011*h+(k<0.5?0.45:0.0);if(k>4.5)hh*=0.5;",
+ "  float ph=8.0*uMc.x+0.7853982*c.x+0.9068997*c.y;",
+ "  vec2 sw=hh*vec2(0.075*sin(ph)+0.02*sin(2.0*ph+0.7*h),0.045*cos(ph+0.5*h));",
+ "  float f=clamp(t/hh,0.0,1.0);vec2 sl=l-sw*f*f;float hv=h/61.0;",
+ "  flS(max(length(sl)-0.022,t-hh),vec4(f,0.0,0.0,0.42+0.05*f));", /* the stem */
+ "  if(k>4.5){", /* grass: three blades leaning out from the foot */
+ "    for(int i=0;i<3;i++){",
+ "      float ga=2.1*h+2.0943951*float(i);float gh=hh*(0.75+0.2*float(i));vec2 gt=0.2*vec2(cos(ga),sin(ga))+sw;",
+ "      float gf=clamp(t/gh,0.0,1.0);flS(max(length(l-gt*gf*gf)-0.02*(1.15-gf),t-gh),vec4(gf,0.0,0.0,0.38+0.08*gf));",
+ "    }",
+ "    return;",
+ "  }",
+ "  float la=1.7*h;vec2 ld=vec2(cos(la),sin(la));float lu=dot(sl,ld),lv=dot(sl,vec2(-ld.y,ld.x));", /* two leaves, one each side */
+ "  flS(flE(vec3(lu-0.11,t-0.42*hh-0.5*(lu-0.11),lv),vec3(0.1,0.014,0.042)),vec4(0.5,0.0,0.0,0.4));",
+ "  flS(flE(vec3(-lu-0.1,t-0.24*hh-0.5*(-lu-0.1),lv),vec3(0.09,0.014,0.04)),vec4(0.5,0.0,0.0,0.4));",
+ "  vec3 q=vec3(l.x-sw.x,t-hh,l.y-sw.y);float ql=length(q);",
+ "  if(ql>0.5){flS(ql-0.36,vec4(0.0,0.0,0.0,0.4));return;}", /* far from the head: its ball will do */
+ "  vec2 a2=(k<1.5?0.75:0.22)*vec2(cos(1.3*h),sin(1.3*h))+2.5*sw/hh;vec3 u=normalize(vec3(a2.x,1.0,a2.y));",
+ "  vec3 e1=normalize(vec3(u.y,-u.x,0.0));vec3 e2=cross(u,e1);",
+ "  float ax=dot(q,u);vec2 rv=vec2(dot(q,e1),dot(q,e2));float rr=length(rv),ang=atan(rv.y,rv.x)+hv;float op=0.3*uM;",
+ "  if(k<0.5){", /* sunflower: a wide disc of seeds and thirteen petals */
+ "    vec2 w=vec2(rr-0.115,abs(ax)-0.03);flS(min(max(w.x,w.y),0.0)+length(max(w,0.0))-0.012,vec4(0.5+0.5*cos(90.0*rr),0.3,0.5,0.66));",
+ "    flS(flP(rr,ang,ax,13.0,0.2,0.15-op,vec3(0.085,0.013,0.036)),vec4(2.0*rr,0.0,0.0,0.1+0.1*hv));",
+ "  }else if(k<1.5){", /* daisy: a small middle and nine petals */
+ "    vec2 w=vec2(rr-0.05,abs(ax)-0.022);flS(min(max(w.x,w.y),0.0)+length(max(w,0.0))-0.01,vec4(0.5,0.0,0.0,0.14));",
+ "    flS(flP(rr,ang,ax,9.0,0.115,0.2-op,vec3(0.07,0.011,0.03)),vec4(3.0*rr,0.0,0.0,0.86+0.1*hv));",
+ "  }else if(k<2.5){", /* rose: a bud wound in a spiral, and two rings of five petals cupped round it */
+ "    flS(length(q-u*0.04)-0.08+0.01*sin(2.0*ang+34.0*ax)*min(rr*14.0,1.0),vec4(0.5+0.5*sin(2.0*ang+34.0*ax),0.0,0.0,0.98+0.06*hv));",
+ "    flS(flP(rr,ang,ax,5.0,0.085,0.95-op,vec3(0.075,0.014,0.05)),vec4(3.0*rr,0.0,0.0,1.02+0.06*hv));",
+ "    flS(flP(rr,ang+0.6283185,ax+0.02,5.0,0.11,0.5-op,vec3(0.08,0.013,0.055)),vec4(3.0*rr,0.0,0.0,1.06+0.06*hv));",
+ "  }else if(k<3.5){", /* tulip: an egg open at the top, in three lobes */
+ "    float eg=length(vec2(rr,(ax-0.1)*0.62))-0.085-0.008*cos(3.0*ang)*min(rr*14.0,1.0);",
+ "    flS(max(eg,0.065-0.04*uM-length(q-u*0.215)),vec4(4.0*ax,0.0,0.0,0.72+0.3*hv));",
+ "  }else{", /* a ball of small flowers */
+ "    vec3 b=q-u*0.07;flS(0.6*(length(b)-0.125-0.016*sin(26.0*b.x)*sin(26.0*b.y)*sin(26.0*b.z)),vec4(0.5+0.5*sin(26.0*b.x)*sin(26.0*b.y)*sin(26.0*b.z),0.0,0.0,0.56+0.1*hv));",
+ "  }",
+ "}",
+ "float map(vec3 p){",
+ "  float yq=mod(p.y+3.6,7.2)-3.6;float t=3.6-abs(yq);",
+ "  if(t>3.1){orb=vec4(0.0,0.0,0.0,0.4);return 0.8*(t-2.1);}", /* well above the tallest flower */
+ "  vec2 pz=yq<0.0?p.xz:p.xz+vec2(0.5,0.0);", /* the field overhead is set half a step along, so that it is not the lower one's mirror image */
+ "  vec2 s=vec2(1.0,1.7320508);vec2 a=mod(pz,s)-0.5*s;vec2 b=mod(pz-0.5*s,s)-0.5*s;",
+ "  vec2 l=dot(a,a)<dot(b,b)?a:b;vec2 c=pz-l;",
+ "  flD=t-0.05*sin(0.7853982*pz.x)*sin(0.9068997*pz.y)-0.012*sin(7.0685835*pz.x)*sin(7.2551975*pz.y);flO=vec4(0.3+0.12*sin(7.0685835*pz.x)*sin(7.2551975*pz.y),0.0,0.0,0.46);", /* the ground, with small bumps */
+ "  flC(l,c,t);",
+ "  flC(l-vec2(1.0,0.0),c+vec2(1.0,0.0),t);flC(l+vec2(1.0,0.0),c-vec2(1.0,0.0),t);",
+ "  flC(l-vec2(0.5,0.8660254),c+vec2(0.5,0.8660254),t);flC(l+vec2(0.5,0.8660254),c-vec2(0.5,0.8660254),t);",
+ "  flC(l-vec2(0.5,-0.8660254),c+vec2(0.5,-0.8660254),t);flC(l+vec2(0.5,-0.8660254),c-vec2(0.5,-0.8660254),t);",
+ "  vec2 al=abs(l);",
+ "  orb=flO;return 0.8*max(min(flD,1.0-max(al.x,0.5*al.x+0.8660254*al.y)),t-2.1);",
+ "}"],
+ de:function(x,y,z,m){
+  function mo(v,k){return Math.floor(md(v+.5,k))}
+  function E(px,py,pz,rx,ry,rz){var k0=Math.hypot(px/rx,py/ry,pz/rz),k1=Math.hypot(px/(rx*rx),py/(ry*ry),pz/(rz*rz));return k0*(k0-1)/(k1+1e-5)}
+  function P(rr,ang,ax,n,cr,tl,rx,ry,rz){var sg=6.2831853/n,a=md(ang+.5*sg,sg)-.5*sg,X=rr*Math.cos(a)-cr,cs=Math.cos(tl),sn=Math.sin(tl);return E(cs*X+sn*ax,cs*ax-sn*X,rr*Math.sin(a),rx,ry,rz)}
+  var yq=md(y+3.6,7.2)-3.6,t=3.6-Math.abs(yq),s1=1.7320508,d,i,j;
+  if(t>3.1)return .8*(t-2.1);
+  if(!(yq<0))x+=.5;
+  var ax0=md(x,1)-.5,az=md(z,s1)-.5*s1,bx=md(x-.5,1)-.5,bz=md(z-.5*s1,s1)-.5*s1,lx0=ax0,lz0=az;
+  if(!(ax0*ax0+az*az<bx*bx+bz*bz)){lx0=bx;lz0=bz}
+  var cx0=x-lx0,cz0=z-lz0,O=[[0,0],[1,0],[-1,0],[.5,.8660254],[-.5,-.8660254],[.5,-.8660254],[-.5,.8660254]];
+  d=t-.05*Math.sin(.7853982*x)*Math.sin(.9068997*z)-.012*Math.sin(7.0685835*x)*Math.sin(7.2551975*z);
+  for(i=0;i<7;i++){
+    var cx=cx0+O[i][0],cz=cz0+O[i][1],lx=lx0-O[i][0],lz=lz0-O[i][1];
+    var n=mo(Math.floor(2*cx+.5),16)+16*mo(Math.floor(cz*1.1547005+.5),8),h=mo(n*(n+3),61),k=mo(h,6);
+    var hh=.75+.011*h+(k<.5?.45:0);if(k>4.5)hh*=.5;
+    var ph=8*mc[0]+.7853982*cx+.9068997*cz;
+    var swx=hh*(.075*Math.sin(ph)+.02*Math.sin(2*ph+.7*h)),swz=hh*.045*Math.cos(ph+.5*h);
+    var f=Math.min(Math.max(t/hh,0),1),slx=lx-swx*f*f,slz=lz-swz*f*f,hv=h/61;
+    d=Math.min(d,Math.max(Math.hypot(slx,slz)-.022,t-hh));
+    if(k>4.5){
+      for(j=0;j<3;j++){
+        var ga=2.1*h+2.0943951*j,gh=hh*(.75+.2*j),gx=.2*Math.cos(ga)+swx,gz=.2*Math.sin(ga)+swz,gf=Math.min(Math.max(t/gh,0),1);
+        d=Math.min(d,Math.max(Math.hypot(lx-gx*gf*gf,lz-gz*gf*gf)-.02*(1.15-gf),t-gh));
+      }
+      continue;
+    }
+    var la=1.7*h,ldx=Math.cos(la),ldz=Math.sin(la),lu=slx*ldx+slz*ldz,lv=-slx*ldz+slz*ldx;
+    d=Math.min(d,E(lu-.11,t-.42*hh-.5*(lu-.11),lv,.1,.014,.042),E(-lu-.1,t-.24*hh-.5*(-lu-.1),lv,.09,.014,.04));
+    var qx=lx-swx,qy=t-hh,qz=lz-swz,ql=Math.hypot(qx,qy,qz);
+    if(ql>.5){d=Math.min(d,ql-.36);continue;}
+    var tk=k<1.5?.75:.22,ux=tk*Math.cos(1.3*h)+2.5*swx/hh,uz=tk*Math.sin(1.3*h)+2.5*swz/hh,ul=Math.hypot(ux,1,uz),uy=1/ul;ux/=ul;uz/=ul;
+    var el=Math.hypot(uy,ux),e1x=uy/el,e1y=-ux/el,e2x=-uz*e1y,e2y=uz*e1x,e2z=ux*e1y-uy*e1x; /* e1 has no z; e2 is u cross e1 */
+    var ax=qx*ux+qy*uy+qz*uz,rx=qx*e1x+qy*e1y,ry=qx*e2x+qy*e2y+qz*e2z,rr=Math.hypot(rx,ry),ang=Math.atan2(ry,rx)+hv,op=.3*m,wx,wy,v;
+    if(k<.5){
+      wx=rr-.115;wy=Math.abs(ax)-.03;
+      d=Math.min(d,Math.min(Math.max(wx,wy),0)+Math.hypot(Math.max(wx,0),Math.max(wy,0))-.012,P(rr,ang,ax,13,.2,.15-op,.085,.013,.036));
+    }else if(k<1.5){
+      wx=rr-.05;wy=Math.abs(ax)-.022;
+      d=Math.min(d,Math.min(Math.max(wx,wy),0)+Math.hypot(Math.max(wx,0),Math.max(wy,0))-.01,P(rr,ang,ax,9,.115,.2-op,.07,.011,.03));
+    }else if(k<2.5){
+      d=Math.min(d,Math.hypot(qx-ux*.04,qy-uy*.04,qz-uz*.04)-.08+.01*Math.sin(2*ang+34*ax)*Math.min(rr*14,1),
+        P(rr,ang,ax,5,.085,.95-op,.075,.014,.05),P(rr,ang+.6283185,ax+.02,5,.11,.5-op,.08,.013,.055));
+    }else if(k<3.5){
+      v=Math.hypot(rr,(ax-.1)*.62)-.085-.008*Math.cos(3*ang)*Math.min(rr*14,1);
+      d=Math.min(d,Math.max(v,.065-.04*m-Math.hypot(qx-ux*.215,qy-uy*.215,qz-uz*.215)));
+    }else{
+      var b0=qx-ux*.07,b1=qy-uy*.07,b2=qz-uz*.07;
+      d=Math.min(d,.6*(Math.hypot(b0,b1,b2)-.125-.016*Math.sin(26*b0)*Math.sin(26*b1)*Math.sin(26*b2)));
+    }
+  }
+  var ux2=Math.abs(lx0),uz2=Math.abs(lz0);
+  return .8*Math.max(Math.min(d,1-Math.max(ux2,.5*ux2+.8660254*uz2)),t-2.1);
+ }},
 /* Galaxies in the dark: one to a cell at two sizes, each a flat disc lying its own way with a bright middle and two
    arms that wind outward, turning slowly, some one way and some the other. The morph winds the arms tighter. The larger ones are drawn tighter about their middles, so that the camera is seldom inside one,
    where all there is to see is its glow. A cloud world, so JavaScript has no copy of it. */
