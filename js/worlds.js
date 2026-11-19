@@ -1471,7 +1471,7 @@ export const WORLDS=[
  "  vec2 pz=yq<0.0?p.xz:p.xz+vec2(0.5,0.0);", /* the field overhead is set half a step along, so that it is not the lower one's mirror image */
  "  vec2 s=vec2(1.0,1.7320508);vec2 a=mod(pz,s)-0.5*s;vec2 b=mod(pz-0.5*s,s)-0.5*s;",
  "  vec2 l=dot(a,a)<dot(b,b)?a:b;vec2 c=pz-l;",
- "  flD=t-0.05*sin(0.7853982*pz.x)*sin(0.9068997*pz.y)-0.012*sin(7.0685835*pz.x)*sin(7.2551975*pz.y);flO=vec4(0.3+0.12*sin(7.0685835*pz.x)*sin(7.2551975*pz.y),0.0,0.0,0.46);", /* the ground, with small bumps */
+ "  flD=t-0.08-0.05*sin(0.7853982*pz.x)*sin(0.9068997*pz.y)-0.012*sin(7.0685835*pz.x)*sin(7.2551975*pz.y);flO=vec4(0.3+0.12*sin(7.0685835*pz.x)*sin(7.2551975*pz.y),0.0,0.0,0.46);", /* the ground, with small bumps. It is kept above the middle of the slab the two fields share (t = 0), or its hollows would be holes through to the field on the other side */
  "  flC(l,c,t);",
  "  flC(l-vec2(1.0,0.0),c+vec2(1.0,0.0),t);flC(l+vec2(1.0,0.0),c-vec2(1.0,0.0),t);",
  "  flC(l-vec2(0.5,0.8660254),c+vec2(0.5,0.8660254),t);flC(l+vec2(0.5,0.8660254),c-vec2(0.5,0.8660254),t);",
@@ -1489,7 +1489,7 @@ export const WORLDS=[
   var ax0=md(x,1)-.5,az=md(z,s1)-.5*s1,bx=md(x-.5,1)-.5,bz=md(z-.5*s1,s1)-.5*s1,lx0=ax0,lz0=az;
   if(!(ax0*ax0+az*az<bx*bx+bz*bz)){lx0=bx;lz0=bz}
   var cx0=x-lx0,cz0=z-lz0,O=[[0,0],[1,0],[-1,0],[.5,.8660254],[-.5,-.8660254],[.5,-.8660254],[-.5,.8660254]];
-  d=t-.05*Math.sin(.7853982*x)*Math.sin(.9068997*z)-.012*Math.sin(7.0685835*x)*Math.sin(7.2551975*z);
+  d=t-.08-.05*Math.sin(.7853982*x)*Math.sin(.9068997*z)-.012*Math.sin(7.0685835*x)*Math.sin(7.2551975*z);
   for(i=0;i<7;i++){
     var cx=cx0+O[i][0],cz=cz0+O[i][1],lx=lx0-O[i][0],lz=lz0-O[i][1];
     var n=mo(Math.floor(2*cx+.5),16)+16*mo(Math.floor(cz*1.1547005+.5),8),h=mo(n*(n+3),61),k=mo(h,6);
