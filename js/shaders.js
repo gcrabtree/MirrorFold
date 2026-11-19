@@ -651,7 +651,7 @@ VR_GLSL,
 "void main(){",
 "  vec2 c=v-0.5;float r,w2=uWarp*uWarp;vec2 ev=vec2(0.0);",
 "  if(uVr>1.5){sdE=v.x<0.5?-1.0:1.0;sgE=-sdE;ev=eyeOf(v);etaS=texture2D(uT,v).a*"+VR_EMAX+";c=(ev+vec2(sdE*etaS,0.0))*"+VR_KAP+";}", /* VR viewer: work on the middle view, starting from the depth of what is here now */
-"  vec2 cw;float zb,tintAmt,mask,diss;",
+"  vec2 cw;float zb,tintAmt,mask,diss,fe=1.0;",
 "  for(int it=0;it<2;it++){", /* once everywhere else. In the VR viewer twice: bend, read the depth of what the bend brings here, and bend again from where the middle view sees that */
 "  r=length(c);cw=c;zb=0.07;tintAmt=w2*0.9;mask=1.0;diss=0.0;",
 "  if(uWarp>0.001){",
@@ -675,6 +675,17 @@ VR_GLSL,
 "    else{float ta=2.0*sin(uTime*0.25)*max(0.6-length(cw),0.0);float tcs=cos(ta),tsn=sin(ta);cw=vec2(tcs*cw.x-tsn*cw.y,tsn*cw.x+tcs*cw.y);}", /* twirl: winds and unwinds */
 "  }",
 "  if(uFx>14.5&&uFx<15.5){vec2 gt=fract(cw*vec2(uAsp,1.0)*9.0)-0.5;cw+=gt*0.035;}", /* glass: a grid of small lenses */
+/* Fly eye: the picture as an insect's eye of six-sided lenses might give it. The picture is cut into six-sided cells
+   (two square grids of middles, one set half a step off the other: a place belongs to the nearer middle), and every
+   cell shows the whole picture small. Each shows it moved a little by where the cell is, as each lens of such an eye
+   looks a slightly different way, so no two cells are quite alike. fe is how far a place is from its cell's edge,
+   which the colour below darkens into a rim. The cells are sized by the picture's height. */
+"  if(uFx>18.5&&uFx<19.5){",
+"    vec2 hp=cw*vec2(uAsp,1.0)/0.125,hs=vec2(1.0,1.7320508);",
+"    vec2 ha=mod(hp,hs)-0.5*hs,hb=mod(hp-0.5*hs,hs)-0.5*hs;vec2 hg=dot(ha,ha)<dot(hb,hb)?ha:hb;",
+"    vec2 hh=abs(hg);fe=0.5-max(hh.x,dot(hh,vec2(0.5,0.8660254)));",
+"    cw=(hg*(1.0+0.5*dot(hg,hg))*0.56*min(uAsp,1.0)+(hp-hg)*0.125*0.3)/vec2(uAsp,1.0);",
+"  }",
 "  if(uLiq>0.0)cw+=uLiq*vec2(sin(cw.y*14.0+uTime*1.3),cos(cw.x*12.0-uTime*1.1));",
 "  if(uMos>0.0){vec2 n=vec2(uMos*uAsp,uMos);cw=(floor(cw*n)+0.5)/n;}",
 "  if(uVr<1.5)break;",
@@ -782,6 +793,7 @@ VR_GLSL,
 "    }",
 "  }",
 "  col+=texture2D(uB,tw).rgb*uBloom;",
+"  if(uFx>18.5&&uFx<19.5)col*=mix(0.08,1.0,smoothstep(0.0,0.035,fe))*(0.72+0.28*smoothstep(0.0,0.3,fe));", /* fly eye: a dark rim to each lens, and a lens a little brighter in its middle */
 "  col=mix(col,uTint,max(tintAmt,diss))*mask;",
 "  if(uLandMix>0.5){vec4 L=texture2D(uLandT,v);col=uLandMix<1.5?mix(col,L.rgb,L.a):mix(texture2D(uSkyT,v).rgb,col,L.a);}", /* effects on the sky only: the land goes on top untouched. On the land only: the world shows untouched behind it. */
 "  if(uVr>1.5)col*=1.0-smoothstep(1.7,1.8,length(ev));", /* VR viewer: nothing outside what the lens shows */
