@@ -1537,6 +1537,131 @@ export const WORLDS=[
   var ux2=Math.abs(lx0),uz2=Math.abs(lz0);
   return .8*Math.max(Math.min(d,1-Math.max(ux2,.5*ux2+.8660254*uz2)),t-2.1);
  }},
+/* Sunflower heads and nothing else, in sheets across the way of flight at three sizes: heads 2 apart, then 1, then a
+   half, one to a six-sided cell, each tipped its own way and one cell in five left empty to see and fly through. Four
+   sheets to 6 along z, and the next four are chosen differently, so the world repeats every 12. A head is the same
+   on both faces: a disc of seeds with two rings of petals round it. The seeds are set as a sunflower's are, the n-th
+   at a distance of c times the square root of n and 0.381966 of a turn on from the one before, and they grow: new ones
+   start at the middle and every seed moves outward to the place of the next, thirteen to an eighth of the turning
+   clock's turn, while the head is turned back 5/13 of a turn for each so that a seed goes almost straight out. That
+   comes round with the clock's own turn and with W_TURN. The seed nearest a place is found without trying them all
+   (sfSeed): near any place the seeds make a grid whose two steps are two Fibonacci numbers of seeds on, which ones
+   depending on how far out the place is; the place is written in that grid and its four corners tried. The morph opens and
+   closes the petals. A head stays 0.04 of its cell's width inside its cell and inside its sheet, so the distance is
+   that to the head of the cell the place is in, held to the least that any other could be. */
+{id:"sunflowers",name:"Sunflowers",hue:.3,fog:.1,maxd:18,speed:.9,start:[1,.4,3.68],
+ period:function(){return [8,6.9282032,12]},
+ glsl:[
+ "float mo(float x,float y){return floor(mod(x+0.5,y));}",
+ "vec4 hdO;float hdD;",
+ "float hdE(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.0)/(k1+1e-5);}", /* a flattened ball with half-widths r */
+ "float hdP(float rr,float ang,float ax,float n,float cr,float tl,vec3 r){", /* n petals round the axis: their middles cr out, tipped up by tl */
+ "  float sg=6.2831853/n;float a=mod(ang+0.5*sg,sg)-0.5*sg;float x=rr*cos(a)-cr,cs=cos(tl),sn=sin(tl);",
+ "  return hdE(vec3(cs*x+sn*ax,cs*ax-sn*x,rr*sin(a)),r);",
+ "}",
+ "void hdS(float d,vec4 o){if(d<hdD){hdD=d;hdO=o;}}",
+ "vec2 hdB;", /* the nearest seed so far: how far, and its number with the part of a step it has grown */
+ "void hdT(float n,vec2 q,float c,float pf,float ro){", /* try seed n */
+ "  if(n<0.0)return;float s=n+pf;float an=6.2831853*(fract(0.381966*n)+0.381966*pf+ro);float d=length(q-c*sqrt(s)*vec2(cos(an),sin(an)));if(d<hdB.x)hdB=vec2(d,s);",
+ "}",
+ "void hdN(vec2 q,float c,float pf,float ro){", /* the seed nearest q */
+ "  float m=dot(q,q)/(c*c),t=atan(q.y,q.x)/6.2831853-0.381966*pf-ro;",
+ "  float k=max(2.0,floor(log(28.0*max(m,1.0))/0.9624236));",
+ "  float f1=floor(pow(1.618034,k)/2.236068+0.5),f2=floor(pow(1.618034,k+1.0)/2.236068+0.5);",
+ "  float a1=f1*0.381966-floor(f1*0.381966+0.5),a2=f2*0.381966-floor(f2*0.381966+0.5),det=f1*a2-f2*a1;",
+ "  float mm=m-pf,i0=floor((a2*mm-f2*t)/det),j0=floor((f1*t-a1*mm)/det);",
+ "  hdB=vec2(9.0,0.0);",
+ "  hdT(i0*f1+j0*f2,q,c,pf,ro);hdT((i0+1.0)*f1+j0*f2,q,c,pf,ro);hdT(i0*f1+(j0+1.0)*f2,q,c,pf,ro);hdT((i0+1.0)*f1+(j0+1.0)*f2,q,c,pf,ro);",
+ "  if(m<2.0){hdT(0.0,q,c,pf,ro);hdT(1.0,q,c,pf,ro);hdT(2.0,q,c,pf,ro);}", /* at the very middle the grid is no help: the first three are tried */
+ "}",
+ "void hdL(vec3 p,float a,float lv,float id){", /* one sheet: p.z is measured from its middle, a is its cells' width, lv its size's number, id which sheet of the eight */
+ "  p.xy+=vec2(0.31,0.17)*id;",
+ "  vec2 s=a*vec2(1.0,1.7320508);vec2 ca=mod(p.xy,s)-0.5*s;vec2 cb=mod(p.xy-0.5*s,s)-0.5*s;",
+ "  vec2 l=dot(ca,ca)<dot(cb,cb)?ca:cb;vec2 c=p.xy-l;vec2 al=abs(l);",
+ "  float w=0.5*a-max(al.x,0.5*al.x+0.8660254*al.y)+0.04*a;", /* every other head of this sheet is at least this far off sideways, and inside the sheet */
+ "  hdS(length(vec2(w,max(abs(p.z)-0.34*a,0.0))),vec4(0.0,0.0,0.0,0.4));",
+ "  float n=mo(floor(2.0*c.x/a+0.5),16.0/a)+(16.0/a)*mo(floor(c.y*1.1547005/a+0.5),8.0/a);float h=mo(n*(n+3.0)+17.0*id,61.0);",
+ "  if(h<12.0)return;", /* an empty cell */
+ "  float hv=h/61.0;float sc=0.43*a*(0.8+0.2*fract(hv*7.0));",
+ "  vec3 q=vec3(l,p.z-0.08*a*sin(2.3*h))/sc;float ql=length(q);",
+ "  if(ql>1.3){hdS((ql-1.02)*sc,vec4(0.0,0.0,0.0,0.4));return;}", /* far from the head: its ball will do */
+ "  float ta=1.9*h;vec3 u=normalize(vec3(0.3*cos(ta),0.3*sin(ta),1.0));vec3 e1=normalize(vec3(u.z,0.0,-u.x));vec3 e2=cross(u,e1);",
+ "  float ax=abs(dot(q,u));vec2 rv=vec2(dot(q,e1),dot(q,e2));float rr=length(rv);",
+ "  float cb2=max(rr-1.02,ax-0.25);if(cb2>0.15){hdS(cb2*sc,vec4(0.0,0.0,0.0,0.4));return;}", /* and nearer, a can round it */
+ "  float ang=atan(rv.y,rv.x)+6.2831853*hv;",
+ "  vec2 wd=vec2(rr-0.5,ax-0.05);float bd=min(max(wd.x,wd.y),0.0)+length(max(wd,0.0))-0.02;", /* the disc */
+ "  vec4 bo=vec4(rr,0.3,0.5,0.66);",
+ "  if(bd<0.06&&rr<0.56){", /* close to the disc: the seeds stand up from it as low domes, small at the middle */
+ "    float hand=mod(h,2.0)<0.5?-1.0:1.0;float cc=0.04+0.012*lv;",
+ "    hdN(vec2(rv.x,hand*rv.y),cc,fract(16.5521141*uMc.x),hv-6.3661977*uMc.x);",
+ "    float sz=clamp(hdB.y/9.0,0.0,1.0);float bv=max(1.0-hdB.x*hdB.x/(0.81*cc*cc*sz*sz+1e-6),0.0);",
+ "    bd-=0.3*cc*sz*bv;bo=vec4(rr+0.9*bv,0.3,0.5,0.6+0.06*min(hdB.y/30.0,1.0));",
+ "  }else bd-=0.3*(0.04+0.012*lv);",
+ "  hdS(bd*sc,bo);",
+ "  hdS(hdP(rr,ang,ax,21.0,0.72,0.12-0.2*uM,vec3(0.3,0.02,0.072))*sc,vec4(2.0*(rr-0.5),0.0,0.0,0.1+0.1*hv));",
+ "  hdS(hdP(rr,ang+0.1495997,ax,21.0,0.64,0.45-0.25*uM,vec3(0.23,0.018,0.068))*sc,vec4(2.0*(rr-0.5),0.0,0.0,0.14+0.1*hv));",
+ "}",
+ "float map(vec3 p){",
+ "  float zz=mod(p.z,6.0);float k6=mod(floor(p.z/6.0),2.0);",
+ "  vec4 A=zz<1.4?vec4(0.0,2.0,1.4,0.5):zz<2.8?vec4(1.4,0.5,2.8,1.0):zz<4.4?vec4(2.8,1.0,4.4,0.5):vec4(4.4,0.5,6.0,2.0);", /* the sheet behind and the sheet ahead: where each is, and its cells' width */
+ "  float ia=zz<1.4?0.0:zz<2.8?1.0:zz<4.4?2.0:3.0;",
+ "  hdD=min(zz-A.x+0.34*A.y,A.z-zz+0.34*A.w)+0.5;hdO=vec4(0.0,0.0,0.0,0.4);", /* the sheets beyond those two are at least this far */
+ "  hdL(vec3(p.xy,zz-A.x),A.y,A.y>1.5?0.0:A.y>0.75?1.0:2.0,ia+4.0*k6);",
+ "  hdL(vec3(p.xy,zz-A.z),A.w,A.w>1.5?0.0:A.w>0.75?1.0:2.0,mod(ia+1.0+4.0*k6,8.0));",
+ "  orb=hdO;return 0.8*hdD;",
+ "}"],
+ de:function(x,y,z,m){
+  function mo(v,k){return Math.floor(md(v+.5,k))}
+  function E(px,py,pz,rx,ry,rz){var k0=Math.hypot(px/rx,py/ry,pz/rz),k1=Math.hypot(px/(rx*rx),py/(ry*ry),pz/(rz*rz));return k0*(k0-1)/(k1+1e-5)}
+  function P(rr,ang,ax,n,cr,tl,rx,ry,rz){var sg=6.2831853/n,a=md(ang+.5*sg,sg)-.5*sg,X=rr*Math.cos(a)-cr,cs=Math.cos(tl),sn=Math.sin(tl);return E(cs*X+sn*ax,cs*ax-sn*X,rr*Math.sin(a),rx,ry,rz)}
+  var G=.381966,bx,bs;
+  function T(n,qx,qy,c,pf,ro){
+    if(n<0)return;var s=n+pf,g=G*n,an=6.2831853*(g-Math.floor(g)+G*pf+ro),r=c*Math.sqrt(s),d=Math.hypot(qx-r*Math.cos(an),qy-r*Math.sin(an));if(d<bx){bx=d;bs=s}
+  }
+  function N(qx,qy,c,pf,ro){
+    var mm0=(qx*qx+qy*qy)/(c*c),t=Math.atan2(qy,qx)/6.2831853-G*pf-ro;
+    var k=Math.max(2,Math.floor(Math.log(28*Math.max(mm0,1))/.9624236));
+    var f1=Math.floor(Math.pow(1.618034,k)/2.236068+.5),f2=Math.floor(Math.pow(1.618034,k+1)/2.236068+.5);
+    var a1=f1*G-Math.floor(f1*G+.5),a2=f2*G-Math.floor(f2*G+.5),det=f1*a2-f2*a1;
+    var mm=mm0-pf,i0=Math.floor((a2*mm-f2*t)/det),j0=Math.floor((f1*t-a1*mm)/det);
+    bx=9;bs=0;
+    T(i0*f1+j0*f2,qx,qy,c,pf,ro);T((i0+1)*f1+j0*f2,qx,qy,c,pf,ro);T(i0*f1+(j0+1)*f2,qx,qy,c,pf,ro);T((i0+1)*f1+(j0+1)*f2,qx,qy,c,pf,ro);
+    if(mm0<2){T(0,qx,qy,c,pf,ro);T(1,qx,qy,c,pf,ro);T(2,qx,qy,c,pf,ro);}
+  }
+  var D,s1=1.7320508;
+  function L(px,py,pz,a,lv,id){
+    px+=.31*id;py+=.17*id;
+    var sx=a,sy=a*s1,cax=md(px,sx)-.5*sx,cay=md(py,sy)-.5*sy,cbx=md(px-.5*sx,sx)-.5*sx,cby=md(py-.5*sy,sy)-.5*sy,lx=cax,ly=cay;
+    if(!(cax*cax+cay*cay<cbx*cbx+cby*cby)){lx=cbx;ly=cby}
+    var cx=px-lx,cy=py-ly,alx=Math.abs(lx),aly=Math.abs(ly);
+    var w=.5*a-Math.max(alx,.5*alx+.8660254*aly)+.04*a;
+    D=Math.min(D,Math.hypot(w,Math.max(Math.abs(pz)-.34*a,0)));
+    var n=mo(Math.floor(2*cx/a+.5),16/a)+(16/a)*mo(Math.floor(cy*1.1547005/a+.5),8/a),h=mo(n*(n+3)+17*id,61);
+    if(h<12)return;
+    var hv=h/61,f7=hv*7,sc=.43*a*(.8+.2*(f7-Math.floor(f7)));
+    var qx=lx/sc,qy=ly/sc,qz=(pz-.08*a*Math.sin(2.3*h))/sc,ql=Math.hypot(qx,qy,qz);
+    if(ql>1.3){D=Math.min(D,(ql-1.02)*sc);return;}
+    var ta=1.9*h,ux=.3*Math.cos(ta),uy=.3*Math.sin(ta),ul=Math.hypot(ux,uy,1),uz=1/ul;ux/=ul;uy/=ul;
+    var el=Math.hypot(uz,ux),e1x=uz/el,e1z=-ux/el,e2x=uy*e1z,e2y=uz*e1x-ux*e1z,e2z=-uy*e1x; /* e1 has no y; e2 is u cross e1 */
+    var ax=Math.abs(qx*ux+qy*uy+qz*uz),rx=qx*e1x+qz*e1z,ry=qx*e2x+qy*e2y+qz*e2z,rr=Math.hypot(rx,ry);
+    var cb2=Math.max(rr-1.02,ax-.25);if(cb2>.15){D=Math.min(D,cb2*sc);return;}
+    var ang=Math.atan2(ry,rx)+6.2831853*hv;
+    var wx=rr-.5,wy=ax-.05,bd=Math.min(Math.max(wx,wy),0)+Math.hypot(Math.max(wx,0),Math.max(wy,0))-.02;
+    if(bd<.06&&rr<.56){
+      var hand=md(h,2)<.5?-1:1,cc=.04+.012*lv,pp=16.5521141*mc[0];
+      N(rx,hand*ry,cc,pp-Math.floor(pp),hv-6.3661977*mc[0]);
+      var sz=Math.min(Math.max(bs/9,0),1),bv=Math.max(1-bx*bx/(.81*cc*cc*sz*sz+1e-6),0);
+      bd-=.3*cc*sz*bv;
+    }else bd-=.3*(.04+.012*lv);
+    D=Math.min(D,bd*sc,P(rr,ang,ax,21,.72,.12-.2*m,.3,.02,.072)*sc,P(rr,ang+.1495997,ax,21,.64,.45-.25*m,.23,.018,.068)*sc);
+  }
+  var zz=md(z,6),k6=md(Math.floor(z/6),2),A=zz<1.4?[0,2,1.4,.5]:zz<2.8?[1.4,.5,2.8,1]:zz<4.4?[2.8,1,4.4,.5]:[4.4,.5,6,2];
+  var ia=zz<1.4?0:zz<2.8?1:zz<4.4?2:3;
+  D=Math.min(zz-A[0]+.34*A[1],A[2]-zz+.34*A[3])+.5;
+  L(x,y,zz-A[0],A[1],A[1]>1.5?0:A[1]>.75?1:2,ia+4*k6);
+  L(x,y,zz-A[2],A[3],A[3]>1.5?0:A[3]>.75?1:2,md(ia+1+4*k6,8));
+  return .8*D;
+ }},
 /* Galaxies in the dark: one to a cell at two sizes, each a flat disc lying its own way with a bright middle and two
    arms that wind outward, turning slowly, some one way and some the other. The morph winds the arms tighter. The larger ones are drawn tighter about their middles, so that the camera is seldom inside one,
    where all there is to see is its glow. A cloud world, so JavaScript has no copy of it. */
