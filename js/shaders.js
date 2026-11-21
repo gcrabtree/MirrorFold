@@ -422,7 +422,7 @@ const VR_GLSL=[
 
 export const FS_TRAIL=[
 "precision highp float;varying vec2 v;uniform sampler2D uA,uB,uWv;",
-"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;uniform vec4 uD0[12],uD1[12],uD2[12],uD3[12],uD4[12],uD5[12],uD6[12],uD7[12],uD8[12],uD9[12];uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
+"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;const int DN=20;uniform vec4 uD0[DN],uD1[DN],uD2[DN],uD3[DN],uD4[DN],uD5[DN],uD6[DN],uD7[DN],uD8[DN],uD9[DN],uDb;uniform float uDl;uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
 VR_GLSL,
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* the motion: where in the last picture this place takes its trail from. c is measured from the middle, -0.5 to 0.5 */
@@ -501,9 +501,51 @@ VR_GLSL,
 "        if(uVr>0.5){el=min(uOvEta*(1.0+0.6*sin(uTime*(0.4+0.13*fi)+fi*2.1)),"+VR_EMAX+");dl=(ev-vec2(sg*el,0.0))*"+VR_KAP+";}", /* VR viewer: each light also swings nearer and farther */
 "        float q2=length(dl/m-pp),gl2=exp(-q2*q2/((0.0006+0.0025*uOvHi)*wd*wd*0.5));if(gl2>ln)oe=el;ln+=gl2;",
 "      }",
-"    }else{", /* the dancers: up to twelve stick figures (DN_MAX in js/dance.js), whose joints JavaScript works out (js/dance.js), as a body in space seen from in front. Each is a filled head with a face and hair or a hat of its own, fourteen lines (back, neck, shoulders, hips, two to an arm, two to a leg, the feet) and a small filled hand at the end of each arm, with a dark edge (dk). A figure is looked at only near where it stands. They come furthest first, and each is drawn over the ones before it: its line and its dark edge hide theirs. The last number of hd is the figure's own number and half its brightness. rr, which the colour is taken from below, is set to a number of the figure's own, so each has its own colour of the palette */
+"    }else{", /* the dancers: up to twenty stick figures (DN in this shader, which trailFor sets to what the chip has room for; DN_MAX in js/dance.js is the most), whose joints JavaScript works out (js/dance.js), as a body in space seen from in front. Each is a filled head with a face and hair or a hat of its own, fourteen lines (back, neck, shoulders, hips, two to an arm, two to a leg, the feet) and a small filled hand at the end of each arm, with a dark edge (dk). A figure is looked at only near where it stands. They come furthest first, and each is drawn over the ones before it: its line and its dark edge hide theirs. The last number of hd is the figure's own number and half its brightness. rr, which the colour is taken from below, is set to a number of the figure's own, so each has its own colour of the palette */
 "      vec2 q=d/m;",
-"      for(int i=0;i<12;i++){",
+/* The disco ball and its lights, for the overlay Disco only (uDb.z is the ball's height in the picture, 99 for none).
+   uDb.xy are the floor's front as js/dance.js has it (the size of a figure there and how far up the picture it is), so
+   that a place in the picture can be turned back into a place on the floor: fp is across and away in figure heights.
+   The ball hangs 2 above the floor, 2 from its front edge. Each mirror on it throws one spot: a spot's place on the
+   floor is the way its mirror faces, round the ball (fa, which goes round with the ball, uDb.w) and down from level
+   (fe), so the spots go round the ball's foot together and are long where they land far off, as real ones are. The
+   mirrors are in rows, fewer to a row the nearer it is to straight down. A mirror is lit or not, and has its own
+   colour of the palette, by a chance number of its own. They move slowly and have soft edges: nothing flashes. They
+   are drawn before the figures, which hide them. */
+"      if(uDb.z<9.0){",
+"        float top=0.5/m;",
+"        float fk=1.0-(q.y-uDb.y)/(1.5*uDb.x);",
+"        if(uDl>0.0&&fk>0.15){",
+"          vec2 fp=vec2(q.x/(uDb.x*fk),(1.0/fk-1.0)/0.3-2.0);",
+"          float fr=length(fp),fe=atan(2.0,fr),fa=atan(fp.x,fp.y)+uDb.w;",
+"          float row=floor(fe/0.2244),ec=(row+0.5)*0.2244,nc=max(1.0,floor(16.0*cos(ec)+0.5));",
+"          float fu=fa/6.2831853*nc+0.37*row,cell=mod(floor(fu),nc);",
+"          float h1=fract(sin(cell*12.9898+row*78.233)*43758.5453),h2=fract(sin(cell*39.346+row*11.135)*24634.6345);",
+"          vec2 lc=vec2((fract(fu)-0.5)*6.2831853/nc*cos(ec),fe-ec);",
+"          float spt=(1.0-smoothstep(0.045,0.085,length(lc)))*step(0.42,h1)*smoothstep(0.15,0.3,fk)*smoothstep(0.12,0.3,fe);",
+"          ln=spt*uDl*(0.3+0.3*h2);if(spt>0.0)rr=0.15+h2*1.08;",
+"        }",
+/* the ball itself, on a cord from the top of the picture: rows of small mirrors that go round with it, each brightening
+   for a part of each turn (when it faces a light of its own), with a dark edge like the figures */
+"        vec2 bc=q-vec2(0.0,uDb.z);float bR=0.055,rb=length(bc);",
+"        float cord=(1.0-smoothstep(0.0015,0.004,abs(q.x)))*step(uDb.z,q.y);",
+"        ln=max(ln,0.35*cord);",
+"        if(rb<1.6*bR){",
+"          float be=1.0-smoothstep(bR,1.25*bR,rb);dk=max(dk,be);",
+"          if(rb<bR){",
+"            vec2 bn=bc/bR;float bz=sqrt(max(0.0,1.0-dot(bn,bn)));",
+"            float lat=asin(clamp(bn.y,-1.0,1.0)),lv=atan(bn.x,bz);",
+"            float br=floor((lat/3.14159265+0.5)*9.0),lc2=((br+0.5)/9.0-0.5)*3.14159265,bnc=max(1.0,floor(18.0*cos(lc2)+0.5));",
+"            float bu=(lv+uDb.w)/6.2831853*bnc,bcl=mod(floor(bu),bnc);",
+"            float bh=fract(sin(bcl*12.9898+br*78.233)*43758.5453);",
+"            float til=1.0-smoothstep(0.34,0.47,max(abs(fract(bu)-0.5),abs(fract((lat/3.14159265+0.5)*9.0)-0.5)));",
+"            float lon=(floor(bu)+0.5)/bnc*6.2831853-uDb.w;", /* which way that mirror faces now, from the viewer's side */
+"            float gli=pow(0.5+0.5*cos(lon-6.2831853*bh),10.0);",
+"            ln=til*(0.22+0.78*gli)*(0.45+0.55*bz)*(0.5+0.5*min(1.0,uDl+0.4));rr=0.15+bh*1.08;",
+"          }",
+"        }",
+"      }",
+"      for(int i=0;i<DN;i++){",
 "        vec4 hd=uD8[i],b0=uD0[i];",
 "        if(hd.w>0.0&&abs(q.x-b0.z)<hd.z*11.0&&abs(q.y-b0.w)<hd.z*13.0){",
 "          vec4 b1=uD1[i],b2=uD2[i],b3=uD3[i],b4=uD4[i],b5=uD5[i],b6=uD6[i],b7=uD7[i];",
@@ -808,13 +850,15 @@ export function finalSource(code){
    .replace("void main(){","float aspect;vec2 pixel;\nvec3 scene(vec2 uv){return texture2D(uT,uv).rgb;}\nfloat luma(vec3 c){return dot(c,LW);}\nvoid look(vec2 uv,inout vec3 col){\n"+code+"\n}\nvoid main(){")
    .replace("  col+=texture2D(uB,tw).rgb*uBloom;","  aspect=uAsp;pixel=uPx;look(tw,col);col=clamp(col,0.0,1.0);\n  col+=texture2D(uB,tw).rgb*uBloom;");
 }
+/* the feedback pass written for n dancers and not twenty: each takes ten of the chip's uniform vectors, and some chips have room for fewer (js/programs.js asks) */
+export function trailFor(n){return FS_TRAIL.replace("const int DN=20;","const int DN="+Math.max(1,Math.min(20,Math.floor(n)||20))+";");}
 /* the feedback pass with a pack overlay's code in it. The code sets how bright the overlay is at a point, and where in the palette its colour comes from. */
-export function trailSource(code){
-  return FS_TRAIL
+export function trailSource(code,n){
+  return trailFor(n||20)
    .replace("void main(){","float time,beat,mid,hi,aspect;\nfloat sound(float x){return texture2D(uWv,vec2(clamp(x,0.0,1.0)*0.98+0.01,0.5)).r;}\nvoid mark(vec2 p,inout float ln,inout float hue){\n"+code+"\n}\nvoid main(){")
    .replace("    vec3 oc=pal(uHue+0.3+rr*0.45);","    float hq=0.3+rr*0.45;\n    if(uOv>98.5){ln=0.0;time=uTime;beat=uOvBeat;mid=uOvMid;hi=uOvHi;aspect=uAsp;mark(d/m,ln,hq);ln=clamp(ln,0.0,1.0);}\n    vec3 oc=pal(uHue+hq);");
 }
-export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uLn","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5","uD6","uD7","uD8","uD9"];
+export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uLn","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5","uD6","uD7","uD8","uD9","uDb","uDl"];
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={VS, fragSource, FS_TRAIL, FS_DOWN, FS_BLUR, FS_FINAL, finalSource, trailSource, TRAIL_U};
+export const __dbg={VS, fragSource, FS_TRAIL, FS_DOWN, FS_BLUR, FS_FINAL, finalSource, trailSource, trailFor, TRAIL_U};

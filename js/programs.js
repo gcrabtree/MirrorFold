@@ -1,12 +1,13 @@
 /* Compiling and linking shader programs. */
 import { canvas, errBox, gl } from "./dom.js";
-import { FS_BLUR, FS_DOWN, FS_FINAL, FS_TRAIL, TRAIL_U, VS, finalSource, fragSource, trailSource } from "./shaders.js";
+import { FS_BLUR, FS_DOWN, FS_FINAL, TRAIL_U, VS, finalSource, fragSource, trailFor, trailSource } from "./shaders.js";
+import { dnRoom, setDanceRoom } from "./dance.js";
 let vsObj=null;
 export let par=null; /* the browser's way of saying a program is ready without making the page wait for it; null if it has none */
 
 import { zoomOk } from "./zoom.js";
 export function overlayProg(ov){ /* null if this overlay's code does not compile on this device */
-  if(ov.prog===undefined){try{ov.prog=link(trailSource(ov.code),TRAIL_U)}catch(e){ov.prog=null;}}
+  if(ov.prog===undefined){try{ov.prog=link(trailSource(ov.code,dnRoom),TRAIL_U)}catch(e){ov.prog=null;}}
   return ov.prog;
 }
 export const FS_COPY="precision mediump float;varying vec2 v;uniform sampler2D uT;void main(){gl_FragColor=texture2D(uT,v);}";
@@ -104,7 +105,9 @@ export function init(){
 par=gl.getExtension("KHR_parallel_shader_compile");
 /* the five programs every picture needs are handed to the chip together and not waited for here: the chip makes them
    side by side, and the first world's with them, where one after another each would have had the page wait in turn */
-try{postJobs=[linkStart(FS_TRAIL),linkStart(FS_DOWN),linkStart(FS_BLUR),linkStart(FS_FINAL),linkStart(FS_COPY)];}
+/* each dancer takes ten of the chip's uniform vectors and the rest of the trails shader under fifty: the shader is written for as many dancers as there is room for, twenty at most */
+setDanceRoom(Math.floor(((gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)||0)-48)/10));
+try{postJobs=[linkStart(trailFor(dnRoom)),linkStart(FS_DOWN),linkStart(FS_BLUR),linkStart(FS_FINAL),linkStart(FS_COPY)];}
 catch(e){errBox.textContent="The effects shaders did not compile on this device.\n"+e.message;throw new Error("stop");}
 }
 let postJobs=null;

@@ -1009,11 +1009,11 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   const run = (secs, f) => { for (let n = 0; n < secs * 60; n++) { f(n / 60); for (i = 0; i < dn.crowd.length; i++) { J.splice(0, 51, ...dn.crowd[i].b); if (prev && prev[i]) for (k = 0; k < 51; k++) fast = Math.max(fast, Math.abs(J[k] - prev[i][k]) * 60); (prev = prev || [])[i] = J.slice(); } } };
   sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); Math.random = rnd;
   dn.stepDance({ dt, bt: 0, mp: 0 }); // sets the five up
-  expect("a crowd has all three manners and several kinds of head, and a figure's number tells its head", dn.DN_MANNERS.every(mn => dn.crowd.some(d => d.ch === mn)) && new Set(dn.crowd.map(d => d.id % dn.DN_LOOKS)).size >= 6 && new Set(dn.crowd.map(d => d.id)).size === dn.crowd.length && (await import("../js/shaders.js")).FS_TRAIL.includes("uD9[" + dn.DN_MAX + "]") && (await import("../js/shaders.js")).FS_TRAIL.includes("mod(id," + dn.DN_LOOKS + ".0)"));
+  expect("a crowd has all three manners and several kinds of head, and a figure's number tells its head", dn.DN_MANNERS.every(mn => dn.crowd.some(d => d.ch === mn)) && new Set(dn.crowd.map(d => d.id % dn.DN_LOOKS)).size >= 6 && new Set(dn.crowd.map(d => d.id)).size === dn.crowd.length && (await import("../js/shaders.js")).FS_TRAIL.includes("const int DN=" + dn.DN_MAX + ";uniform vec4 uD0[DN]") && (await import("../js/shaders.js")).FS_TRAIL.includes("mod(id," + dn.DN_LOOKS + ".0)"));
   { const seen = [new Set(), new Set(), new Set()]; for (let n = 0; n < 600; n++) dn.DN_MANNERS.forEach((mn, q) => seen[q].add(dn.pickFace(mn, (n + 0.5) / 600)));
     const face = [dn.dnU[9][1], dn.dnU[9][2]];
     expect("every manner can make every face, a face has a mouth of some width, and the shader is handed whole steps and a part", seen.every(s2 => s2.size === dn.DN_FACES.length) && dn.DN_FACES.every(f => f.w >= 0.05 && f.w <= 0.5 && f.c >= 0 && f.c < 1 && f.p.length === 3) && face.every(v => v >= 0 && v < 256), JSON.stringify(face)); }
-  expect("the dance floor has a crowd of eight to twelve figures, the chorus line four and the dancer one, all inside the picture, and the shader has room for twelve", dn.crowd.length >= 8 && dn.crowd.length <= 12 && dn.DN_MAX === 12 && (await import("../js/shaders.js")).FS_TRAIL.includes("uD8[" + dn.DN_MAX + "]") && [1, 2, 3].every(kd => [0.46, 1, 1.78, 2.4].every(asp => { const sp = dn.danceSpots(kd, asp); return sp.length === [0, 1, 4, 12][kd] && sp.every(q => Math.abs(q[0]) + 0.3 * q[2] <= 0.5 * Math.max(1, asp) + 1e-9 && q[1] + q[2] < 0.5); })));
+  expect("the dance floor has a crowd of eight to twelve figures, the chorus line four and the dancer one, all inside the picture, the party has twenty places, and the shader has room for twenty, or for as few as twelve on a chip with less room", dn.crowd.length >= 8 && dn.crowd.length <= 12 && dn.DN_MAX === 20 && (await import("../js/shaders.js")).FS_TRAIL.includes("uD8[DN]") && (await import("../js/shaders.js")).trailFor(12).includes("const int DN=12;") && (await import("../js/shaders.js")).trailSource("ln=1.0;", 17).includes("const int DN=17;") && (dn.setDanceRoom(3), dn.dnRoom === 12) && (dn.setDanceRoom(17.9), dn.dnRoom === 17) && (dn.setDanceRoom(400), dn.dnRoom === 20) && [1, 2, 3, 4].every(kd => [0.46, 1, 1.78, 2.4].every(asp => { const sp = dn.danceSpots(kd, asp); return sp.length === [0, 1, 4, 12, 20][kd] && sp.every(q => Math.abs(q[0]) + 0.3 * q[2] <= 0.5 * Math.max(1, asp) + 1e-9 && q[1] + q[2] < 0.5); })));
   const hand = () => { dn.danceBody(dn.crowd[0].p, J); return [J[15], J[16], J[17]]; };
   run(4, tt => dn.danceStep(dt, 0, 0, 0, false, false, false, tt)); const quiet = hand(); still0 = Math.abs(quiet[1] - (dn.DN_HIP + dn.DN_SPINE - 0.31)) + Math.abs(J[4] - dn.DN_HIP);
   run(60, tt => { dn.danceStep(dt, hit(tt, 0.47), 0, 0.8, false, tt > 6 && tt < 6 + dt, false, 4 + tt); const h = hand(); moved = Math.max(moved, Math.hypot(h[0] - quiet[0], h[1] - quiet[1], h[2] - quiet[2])); });
@@ -1113,6 +1113,31 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
   sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); dn.stepDance({ dt, bt: 0, mp: 0 });
   { const nn = dn.danceFill(3, 1.78), U = dn.dnU, deep = [...dn.crowd].sort((a, b) => b.hz + b.tz - a.hz - a.tz), ys = []; for (let n = 0; n < nn; n++) ys.push(Math.min(U[5][4 * n + 3], U[6][4 * n + 3]));
     expect("the shader is handed the crowd furthest first, each with its own number, the further ones smaller and higher up, and none for an overlay that is not theirs", nn === dn.crowd.length && deep.every((d, n) => Math.floor(U[8][4 * n + 3]) === d.id && U[8][4 * n + 3] % 1 > 0.2) && (nn === 12 || U[8][4 * nn + 3] === 0) && ys[0] > ys[nn - 1] + 0.05 && U[8][2] < 0.75 * U[8][4 * (nn - 1) + 2] && dn.danceSpots(1, 1.78)[0][2] < 0.45 && (dn.danceFill(1, 1.78), U[8][3] === 0)); }
+  { // the party: figures walk on and off at the sides, four to twenty of them while there is music, and all leave when it stops
+    sel.ovi = OVERLAYS.findIndex(v => v.dance === 4); dn.danceTick = dn.makeBeatClock(); dn.stepDance({ dt, bt: 0, mp: 0 });
+    const empty = dn.crowd.length, was = new Map(), sides = new Set(), F0 = 0.54 * dn.DN_SIZE, hw = 0.89; let tt = 0, lo = 99, hi = 0, most = 0, speed = 0, ballUp = 0, ballDown = 0, shown = true, first = true, onAt = 0;
+    const step = (bt, level) => { dn.danceStep(dt, bt, 0, level, false, false, false, tt); tt += dt;
+      for (const d of dn.crowd) { const b = was.get(d); if (b) for (k = 0; k < 51; k++) speed = Math.max(speed, Math.abs(d.b[k] - b[k]) * 60); was.set(d, d.b.slice()); if (d.ent === 1) sides.add(d.side); }
+      most = Math.max(most, dn.crowd.length); };
+    dn.danceFill(4, 1.78); ballUp = dn.dnB[2];
+    for (let n = 0; n < 60 * 200; n++) { step(hit(tt, 0.47), 0.2 + 0.8 * (0.5 + 0.5 * Math.sin(tt / 9)));
+      if (first && dn.crowd.length) { first = false; dn.danceFill(4, 1.78); shown = Math.abs(dn.dnU[8][0]) > hw + dn.dnU[8][2]; } // the first to come begins out of sight
+      if (n === 600) { dn.danceFill(4, 1.78); ballDown = dn.dnB[2]; }
+      if (n > 60 * 40) { const on = dn.crowd.filter(d => d.ent !== 2).length; lo = Math.min(lo, on); hi = Math.max(hi, on); } }
+    expect("the party begins with nobody, its figures walk on from both sides beginning out of sight, and while there is music there are four to twenty of them, more at some times than others", empty === 0 && sides.size === 2 && shown && lo >= dn.DN_LEAST && hi <= dn.DN_MAX && hi >= lo + 4 && most <= dn.dnRoom, [lo, hi, most].join(" "));
+    expect("the party's ball begins above the picture and comes down to hang under its top, and its lights are on with the music", ballUp > 0.5 && ballDown < 0.42 && ballDown > 0.2 && dn.dnB[4] > 0.5 && dn.dnB[0] > 0, ballUp + " " + ballDown + " " + dn.dnB[4]);
+    onAt = dn.crowd.length; const groups = new Map(), byes = new Set(); let gone = -1, turned = 0;
+    for (let n = 0; n < 60 * 150 && gone < 0; n++) { step(0, 0.1);
+      for (const d of dn.crowd) if (d.ent === 2 && d.grp) { groups.set(d.grp, (groups.get(d.grp) || new Set()).add(d)); byes.add(d.bye); if (d.bye === 0) turned = Math.max(turned, Math.abs(d.hy)); }
+      if (!dn.crowd.length) gone = n / 60; }
+    dn.danceFill(4, 1.78);
+    expect("when the music has stopped they wait a while and then leave in groups of one to four, each group by one side, waving, nodding or talking, until the floor is empty; the ball stays with its lights low", onAt >= 4 && gone > dn.DN_LINGER && groups.size >= 2 && [...groups.values()].every(g => g.size >= 1 && g.size <= 4 && new Set([...g].map(d => d.side)).size === 1) && [...byes].every(b => b >= 0 && b < dn.DN_BYES.length) && byes.size >= 2 && turned > 0.2 && dn.dnB[2] < 0.42 && dn.dnB[4] < 0.4 && dn.dnB[4] > 0.1, gone + " " + groups.size + " " + [...byes].join(","));
+    for (let n = 0; n < 60 * 30; n++) step(hit(tt, 0.47), 0.6);
+    expect("they come back when the music does, and no joint of a figure coming, going, waving or dancing moves faster than seven figure heights a second", dn.crowd.filter(d => d.ent !== 2).length >= dn.DN_LEAST && speed < 7, dn.crowd.length + " " + speed);
+    dn.setDanceRoom(12); for (let n = 0; n < 60 * 120; n++) step(hit(tt, 0.47), 1); const few = Math.max(...[dn.crowd.length]); dn.setDanceRoom(20);
+    expect("on a chip with room for twelve the party is never more than twelve", few <= 12 && dn.danceFill(4, 1.78) <= 12, few);
+    sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); dn.stepDance({ dt, bt: 0, mp: 0 }); dn.danceFill(3, 1.78);
+    expect("another overlay of figures has no ball", dn.dnB[2] === 99 && dn.dnB[4] === 0); }
   { // a frame's time below zero, or a pulse far out of range, must not throw the figures about
     for (let n = 0; n < 240; n++) dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.8, false, false, false, n * dt);
     dn.danceStep(-0.4, 30, 30, 0.8, false, false, false, 4); dn.danceStep(NaN, NaN, -5, 0.8, false, false, false, 4); dn.danceStep(dt, 1, 0, 0.8, false, false, false, 4);
@@ -1123,7 +1148,7 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
       if (n % 60 === 0) { dn.danceFill(1, 1.78); big = Math.max(big, dn.dnU[8][2] / (front * dn.DN_HEAD)); off = Math.max(off, Math.abs(dn.dnU[0][2])); } }
     expect("the dancer alone goes all over a deep floor, never nearer than its front edge nor out of the picture, and is seen from every side", x1 - x0 > 2 && z1 - z0 > 2 && z0 > -0.02 && z1 < dn.DN_FLOOR + 0.02 && big < 1.25 && off < 0.89 && back > 0.95, [x0, x1, z0, z1, big, off, back].map(v => v.toFixed(2)).join(" "));
     const jsrc = (await import("node:fs")).readFileSync(new URL("../js/journey.js", import.meta.url), "utf8"), party = jsrc.slice(jsrc.indexOf('{name:"Dance party"'), jsrc.indexOf('{name:"Kaleidoscope"'));
-    expect("the Dance party journey leaves out the Echo filter, which lays a second, larger, upside-down picture of the figures over them", party.includes('overlay:{mode:"random",every:40,set:["Dancer","Chorus line","Dance floor"]}') && !party.includes("Echo")); }
+    expect("the Dance party journey leaves out the Echo filter, which lays a second, larger, upside-down picture of the figures over them", party.includes('overlay:{mode:"random",every:40,set:["Dancer","Chorus line","Dance floor","Disco"]}') && !party.includes("Echo")); }
   sel.ovi = was; Math.random = rand;
 }
 // ---- the eye's blink: it shuts and opens along a gentle curve, once, and then waits

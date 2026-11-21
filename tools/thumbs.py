@@ -29,7 +29,7 @@ WORLDS.forEach(w=>add("world",w.id,w.id,""));
 PALETTES.forEach((p,i)=>add("palette",p.name,"REF","unlocked=99;setPalette("+i+")"));
 MOTIONS.forEach((m,i)=>add("motion",m.name,"REF","setMotion("+i+")",true));
 LOOKS.forEach((f,i)=>add("filter",f.name,"REF","setLook("+i+")"));
-OVERLAYS.forEach((v,i)=>add("overlay",v.name,"DARK","setOverlay("+i+");setOvS(4)"+(v.dance?";musicMode='tap';tapInt=0.5;tapAt=0;stepDance({dt:0.016,bt:0,mp:0});for(var q=0;q<340;q++)danceStep(1/60,Math.exp(-5*(q/60%0.5)),0,0.8,false,false,false,q/60)":""))); /* the dancers are shown dancing: some seconds of a beat are danced through first, and a tapped beat keeps them going */
+OVERLAYS.forEach((v,i)=>add("overlay",v.name,"DARK","setOverlay("+i+");setOvS(4)"+(v.dance?";musicMode='tap';tapInt=0.5;tapAt=0;stepDance({dt:0.016,bt:0,mp:0});for(var q=0;q<"+(v.dance===4?1700:340)+";q++)danceStep(1/60,Math.exp(-5*(q/60%0.5)),0,0.8,false,false,false,q/60)":""))); /* the dancers are shown dancing: some seconds of a beat are danced through first, and a tapped beat keeps them going; the party is given longer, since its figures have to walk on first */
 mirrors.forEach((m,i)=>add("mirrors",m,"REF","setMirrors("+i+")"));
 FX.forEach((f,i)=>add("fx",f.name,"REF","fi="+i,true));
 SURFACES.forEach((f,i)=>add("surface",f.name,"REF","setSurface("+i+")"));

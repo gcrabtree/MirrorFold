@@ -51,7 +51,7 @@ export const LOOKS=[
 export const SURFACES=[{name:"plain"},{name:"grain"},{name:"dots"},{name:"tiles"},{name:"marble"},{name:"wire"},{name:"cells"},{name:"pearl"},{name:"chrome"},{name:"ribbed"}];
 export const OVS=[.15,.3,.5,.75,1];
 export const OVERLAYS=[{name:"none"},{name:"Ring"},{name:"Scope"},{name:"Spectrum",spec:1},{name:"Spokes",spec:1},{name:"Rings"},{name:"Spiral"},{name:"Orbit"},
- {name:"Dancer",dance:1},{name:"Chorus line",dance:2},{name:"Dance floor",dance:3}]; /* dance: stick figures that dance to the music (js/dance.js): one; four doing the same dance; five, each with its own */
+ {name:"Dancer",dance:1},{name:"Chorus line",dance:2},{name:"Dance floor",dance:3},{name:"Disco",dance:4}]; /* dance: stick figures that dance to the music (js/dance.js): one; four doing the same dance; a crowd, each with its own; and a party of four to twenty who come and go from the sides, under a mirror ball */
 export const TRANSITIONS=8;
 
 /* What this file does when the app starts. main.js calls each file's init in turn. */
