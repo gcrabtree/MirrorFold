@@ -1138,6 +1138,38 @@ expect("a palette with unequal waves is reported as not exact", palToSimple({ a:
     expect("on a chip with room for twelve the party is never more than twelve", few <= 12 && dn.danceFill(4, 1.78) <= 12, few);
     sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); dn.stepDance({ dt, bt: 0, mp: 0 }); dn.danceFill(3, 1.78);
     expect("another overlay of figures has no ball", dn.dnB[2] === 99 && dn.dnB[4] === 0); }
+  { // what the party does together: a conga line, a circle, a crowd surf, and the nearer view
+    const st = dn.danceSt, was = new Map(); let tt = 0, speed = 0;
+    const fresh = () => { sel.ovi = OVERLAYS.findIndex(v => v.dance === 1); dn.stepDance({ dt, bt: 0, mp: 0 }); sel.ovi = OVERLAYS.findIndex(v => v.dance === 4); dn.stepDance({ dt, bt: 0, mp: 0 }); dn.danceFill(4, 1.78); st.actC = 1e9; st.zc = 1e9; go(60 * 40, () => { st.want = 16; st.wc = 99; }); };
+    const go = (n, f) => { for (let q = 0; q < n; q++) { if (f) f(q); dn.danceStep(dt, hit(tt, 0.47), 0, 1, false, false, false, tt); tt += dt; for (const d of dn.crowd) { const b = was.get(d); if (b) for (k = 0; k < 51; k++) speed = Math.max(speed, Math.abs(d.b[k] - b[k]) * 60); was.set(d, d.b.slice()); } } };
+    const free = () => dn.crowd.filter(d => !d.ent), X = d => d.ax, Z = d => d.az;
+    fresh(); let a = dn.startAct(1, free()); a.until = st.u + 400; const lead = a.mem[0], x0 = a.x; go(60 * 25);
+    const line = a.mem.filter(d => d.act === 1 && !d.ap), gaps = line.slice(1).map((d, n) => Math.hypot(X(d) - X(line[n]), Z(d) - Z(line[n])));
+    const handsFwd = line.slice(1).every(d => d.aw > 0.9 && d.p[14] > 0.2 && d.p[18] > 0.2), leadUp = lead.p[13] > 0.1 && lead.p[17] > 0.1;
+    a.until = 0; go(60 * 12);
+    expect("the conga line: three to ten set off one behind another about 0.4 apart, hands forward on the one in front and the first with its hands up, across the floor; when it is over each goes back to its own dancing", a.mem.length >= 3 && a.mem.length <= 10 && line.length === a.mem.length && gaps.every(g => g > 0.25 && g < 0.5) && handsFwd && leadUp && Math.abs(a.x - x0) + a.trail.length > 20 && !dn.danceAct && a.mem.every(d => !d.act && !d.rs && d.aw < 0.05 && d.a > 0.8), gaps.map(g => g.toFixed(2)).join(" ") + " " + a.mem.map(d => d.a.toFixed(1)).join(" "));
+    fresh(); a = dn.startAct(2, free()); a.until = st.u + 400; a.swap = 1e9; const mid0 = a.mid; go(60 * 12); // the change of middle is held off until they have been looked at
+    const ring = a.mem.filter(d => d.act === 2), rr = ring.map(d => Math.hypot((X(d) - a.x) / dn.DN_RING, (Z(d) - a.z) / (0.7 * dn.DN_RING)));
+    const inside = dn.crowd.filter(d => !d.act && !d.ent && !d.out).length - dn.crowd.filter(d => !d.act && !d.ent).length + dn.crowd.filter(d => d.out).length; // everyone marked as sent outside is counted once
+    const ringOk = ring.every(d => !d.ap && d.aw > 0.9);
+    const midSty = a.mid.rt.style, midTier = a.mid.rt.tier, facing = ring.every(d => Math.cos(d.p[4] - Math.atan2(a.x - X(d), Z(d) - a.z)) > 0.8), frontOpen = ring.every(d => Z(d) - a.z > -0.6 * 0.7 * dn.DN_RING - 1e-9);
+    a.swap = st.u + 2; go(60 * 20); const swapped = a.mid !== mid0 && mid0.act === 2 && mid0.sty === "";
+    expect("the circle: four to eight stand round all but the front of a ring, facing in, with one in the middle dancing the breaking moves at their fullest; the middle changes hands", ring.length >= 4 && ring.length <= 8 && ringOk && rr.every(r => Math.abs(r - 1) < 1e-6) && facing && frontOpen && midSty === "breaking" && midTier === "hi" && swapped && inside === 0, rr.length + " " + midSty + " " + midTier + " " + swapped + " " + facing + frontOpen + " " + ringOk + " " + rr.map(r => r.toFixed(3)).join());
+    dn.endAct(); go(60);
+    fresh(); a = dn.startAct(3, free()); const sf = a.surfer; let lo = 9, hi2 = -9; go(60 * 10, () => { if (a.ready) a.until = 1e9; }); const carr = a.mem.filter(d => d.act === 4), up = sf.b[4], heads = Math.max(...carr.map(d => d.b[49])), hands = Math.min(...carr.map(d => Math.min(d.b[16], d.b[22])));
+    go(60 * 6, () => { lo = Math.min(lo, sf.ax); hi2 = Math.max(hi2, sf.ax); }); const level = Math.abs(sf.b[1] - sf.b[4]) < 0.08 && Math.abs(sf.b[34] - sf.b[4]) < 0.25;
+    expect("the crowd surf: four to six stand close in a row with their hands up, and one is lifted to lie level on their hands, above their heads, and passed along the row", a.ready && carr.length >= 4 && carr.length <= 6 && up > heads && hands > 0.95 && level && hi2 - lo > 0.3 && carr.every((d, n) => !n || Math.abs(Math.abs(X(d) - X(carr[n - 1])) - 0.34) < 1e-6), [up, heads, hands, hi2 - lo].map(v => v.toFixed(2)).join(" "));
+    dn.endAct(); go(60 * 6);
+    expect("nothing they do together, and no getting into it or out of it, moves a joint faster than seven figure heights a second", speed < 7 && sf.b[4] < 0.7, speed);
+    const who = dn.crowd.filter(d => !d.ent).sort((p, q) => q.hz + q.tz - p.hz - p.tz)[0]; dn.danceZoom = who; st.zt = 99; go(60 * 5); const nn = dn.danceFill(4, 1.78), slot = [...dn.crowd].slice(0, nn).sort((p, q) => q.hz + q.tz - p.hz - p.tz).indexOf(who);
+    const hx = dn.dnU[0][4 * slot + 2], hy = dn.dnU[0][4 * slot + 3], zs = dn.dnB[5]; dn.danceZoom = null; go(60 * 6); dn.danceFill(4, 1.78);
+    expect("the nearer view draws the floor larger about one figure, which it brings to the middle of the picture, more for a figure at the back but never over 2.1 times; and it goes back", zs > 1.25 && zs <= 2.1 + 1e-9 && Math.abs(hx) < 0.06 && Math.abs(hy + 0.04) < 0.12 && Math.abs(dn.dnB[5] - 1) < 0.01 && Math.abs(dn.dnB[6]) < 0.01, [zs, hx, hy, dn.dnB[5]].map(v => v.toFixed(2)).join(" "));
+    sel.ovi = OVERLAYS.findIndex(v => v.dance === 3); dn.stepDance({ dt, bt: 0, mp: 0 }); dn.danceFill(3, 1.78);
+    expect("the other overlays of figures are never drawn nearer", dn.dnB[5] === 1 && dn.dnB[6] === 0 && dn.dnB[7] === 0);
+    const jsrc2 = (await import("node:fs")).readFileSync(new URL("../js/journey.js", import.meta.url), "utf8");
+    expect("the Disco journey keeps to the Disco overlay: a set of one never changes", jsrc2.includes('{name:"Disco",') && jsrc2.includes('overlay:{mode:"random",set:["Disco"]}') && [0, 1, 2].every(() => jPick("overlay", {}, "Disco", ["Disco"]) === "Disco"));
+    const P2 = [], J2 = []; const lying = ["worm", "backspin", "windmill"].map(nm => { const m = mv.MOVES.find(q => q.name === nm); mv.movePose(m, 0.5, P2); dn.danceBody(P2, J2); return m && m.down && mv.moveStyle(m) === "breaking" && J2[4] < 0.2 && J2[49] < 0.45; });
+    expect("the worm, the backspin and the windmill are breaking moves done lying on the floor, and pop and lock is a hip hop move that hits and holds", lying.every(Boolean) && mv.moveStyle(mv.MOVES.find(q => q.name === "pop and lock")) === "hiphop" && mv.MOVES.find(q => q.name === "pop and lock").hit === 1, lying.join()); }
   { // a frame's time below zero, or a pulse far out of range, must not throw the figures about
     for (let n = 0; n < 240; n++) dn.danceStep(dt, hit(n * dt, 0.47), 0, 0.8, false, false, false, n * dt);
     dn.danceStep(-0.4, 30, 30, 0.8, false, false, false, 4); dn.danceStep(NaN, NaN, -5, 0.8, false, false, false, 4); dn.danceStep(dt, 1, 0, 0.8, false, false, false, 4);

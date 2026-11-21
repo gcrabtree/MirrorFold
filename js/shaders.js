@@ -422,7 +422,7 @@ const VR_GLSL=[
 
 export const FS_TRAIL=[
 "precision highp float;varying vec2 v;uniform sampler2D uA,uB,uWv;",
-"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;const int DN=20;uniform vec4 uD0[DN],uD1[DN],uD2[DN],uD3[DN],uD4[DN],uD5[DN],uD6[DN],uD7[DN],uD8[DN],uD9[DN],uDb;uniform float uDl;uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
+"uniform float uDecay,uZoom,uRot,uSwirl,uWob,uRip,uTime,uAsp,uOv,uOvBeat,uOvMid,uOvHi,uShift,uOvAmt,uHue,uVr,uOvEta;const int DN=20;uniform vec4 uD0[DN],uD1[DN],uD2[DN],uD3[DN],uD4[DN],uD5[DN],uD6[DN],uD7[DN],uD8[DN],uD9[DN],uDb;uniform float uDl;uniform vec3 uDz;uniform vec2 uDrift;uniform vec3 uPa,uPb,uPc,uPd;uniform sampler2D uVid;uniform vec4 uVidK;uniform mat3 uTurn;",
 VR_GLSL,
 "vec3 pal(float x){return clamp(uPa+uPb*cos(6.28318*(uPc*x+uPd)),0.0,1.0);}",
 /* the motion: where in the last picture this place takes its trail from. c is measured from the middle, -0.5 to 0.5 */
@@ -513,10 +513,10 @@ VR_GLSL,
    colour of the palette, by a chance number of its own. They move slowly and have soft edges: nothing flashes. They
    are drawn before the figures, which hide them. */
 "      if(uDb.z<9.0){",
-"        float top=0.5/m;",
-"        float fk=1.0-(q.y-uDb.y)/(1.5*uDb.x);",
+"        vec2 qz=(q-uDz.yz)/uDz.x;", /* the nearer view (uDz: how many times larger the floor is drawn, and how far it is moved): the place this would be in the plain view */
+"        float fk=1.0-(qz.y-uDb.y)/(1.5*uDb.x);",
 "        if(uDl>0.0&&fk>0.15){",
-"          vec2 fp=vec2(q.x/(uDb.x*fk),(1.0/fk-1.0)/0.3-2.0);",
+"          vec2 fp=vec2(qz.x/(uDb.x*fk),(1.0/fk-1.0)/0.3-2.0);",
 "          float fr=length(fp),fe=atan(2.0,fr),fa=atan(fp.x,fp.y)+uDb.w;",
 "          float row=floor(fe/0.2244),ec=(row+0.5)*0.2244,nc=max(1.0,floor(16.0*cos(ec)+0.5));",
 "          float fu=fa/6.2831853*nc+0.37*row,cell=mod(floor(fu),nc);",
@@ -527,8 +527,8 @@ VR_GLSL,
 "        }",
 /* the ball itself, on a cord from the top of the picture: rows of small mirrors that go round with it, each brightening
    for a part of each turn (when it faces a light of its own), with a dark edge like the figures */
-"        vec2 bc=q-vec2(0.0,uDb.z);float bR=0.055,rb=length(bc);",
-"        float cord=(1.0-smoothstep(0.0015,0.004,abs(q.x)))*step(uDb.z,q.y);",
+"        vec2 bc=qz-vec2(0.0,uDb.z);float bR=0.055,rb=length(bc);",
+"        float cord=(1.0-smoothstep(0.0015,0.004,abs(qz.x)))*step(uDb.z,qz.y);",
 "        ln=max(ln,0.35*cord);",
 "        if(rb<1.6*bR){",
 "          float be=1.0-smoothstep(bR,1.25*bR,rb);dk=max(dk,be);",
@@ -858,7 +858,7 @@ export function trailSource(code,n){
    .replace("void main(){","float time,beat,mid,hi,aspect;\nfloat sound(float x){return texture2D(uWv,vec2(clamp(x,0.0,1.0)*0.98+0.01,0.5)).r;}\nvoid mark(vec2 p,inout float ln,inout float hue){\n"+code+"\n}\nvoid main(){")
    .replace("    vec3 oc=pal(uHue+0.3+rr*0.45);","    float hq=0.3+rr*0.45;\n    if(uOv>98.5){ln=0.0;time=uTime;beat=uOvBeat;mid=uOvMid;hi=uOvHi;aspect=uAsp;mark(d/m,ln,hq);ln=clamp(ln,0.0,1.0);}\n    vec3 oc=pal(uHue+hq);");
 }
-export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uLn","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5","uD6","uD7","uD8","uD9","uDb","uDl"];
+export const TRAIL_U=["uA","uB","uWv","uDecay","uZoom","uRot","uSwirl","uWob","uRip","uTime","uAsp","uOv","uOvBeat","uOvMid","uOvHi","uDrift","uShift","uOvAmt","uHue","uVr","uVrG","uLn","uRes","uTurn","uOvEta","uPa","uPb","uPc","uPd","uVid","uVidK","uD0","uD1","uD2","uD3","uD4","uD5","uD6","uD7","uD8","uD9","uDb","uDl","uDz"];
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
 export const __dbg={VS, fragSource, FS_TRAIL, FS_DOWN, FS_BLUR, FS_FINAL, finalSource, trailSource, trailFor, TRAIL_U};

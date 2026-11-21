@@ -19,7 +19,7 @@
    spin ends a whole turn on from where it began); otherwise the move goes back to its first key. post changes the pose
    by a rule of its own (hands that go round). bob is how far the knees give on each beat. go carries the figure along
    the floor to its own left, in figure heights a beat (the moonwalk glides backward), and sway turns that back every
-   so many beats. lo, mid, hi: how full the
+   so many beats. down marks a move done lying on the floor, which a figure is given two beats to get into and out of. lo, mid, hi: how full the
    music is when the move may be chosen. Nothing here touches the page. */
 export const MV_N=28;
 export const MV_REST=[0,0,0.01,0,0,0,0,0,0,0,0,0, 0.13,-0.31,0.03,0, 0.13,-0.31,0.03,0, 0,0,0,0, 0,0,0,0];
@@ -255,8 +255,20 @@ export const MOVES=[
  {name:"zulu spin",len:4,hi:1,hold:0,bob:0,keys:[{t:0,d:0.26,fl:[0.06,0,0,0.6],gr:[0.06,0,0,0.6],B:[0.2,-0.28,0.12],lf:0.15},{t:1,d:0.27,fl:[0.2,0.02,0.08],gr:[0,0,0,0.7],B:[0.2,-0.28,0.12],lf:0.15,turn:1.2},{t:3,d:0.27,fl:[0.2,0.02,0.08],gr:[0,0,0,0.7],B:[0.2,-0.28,0.12],lf:0.15,turn:TAU-0.8},{t:4,turn:TAU,d:0.26,fl:[0.06,0,0,0.6],gr:[0.06,0,0,0.6],B:[0.2,-0.28,0.12],lf:0.15}]},
  {name:"scissor kicks",len:2,sym:1,hi:1,hold:0,bob:0,keys:[{t:0,hop:0.06,fl:[0.14,0.12,0.2],gr:[0.1,0.02,-0.12],L:[0.3,-0.1,-0.08],R:[0.26,0.04,0.16]},{t:0.5,hop:0.01,B:BENT,d:0.03}]},
  {name:"kip up",len:4,hi:1,hold:0.1,bob:0,keys:[{t:0,d:0.28,lf:-0.3,fl:[0.04,0,0.06,0.4],gr:[0.04,0,0.06,0.4],B:[0.16,-0.26,-0.12]},{t:1,d:0.26,lf:-0.35,fl:[0.02,0.2,0.2],gr:[0.04,0,0.06,0.4],B:[0.1,0.1,-0.06,0.8]},{t:2,hop:0.12,lf:0.1,B:[0.24,0.2,0.1]},{t:3,d:0.1,B:[0.3,0.1,0]}]},
+ /* on the floor: the worm goes along on its front, seen from the side, a wave running from the chest to the hips and feet (the feet rise with the hips: a foot left lower than the hips would have its knee through the floor); the
+    backspin is on the back with the knees drawn up, turning twice in four beats; the windmill is on the back too,
+    the legs wide and whirling, the body rolling from shoulder to shoulder */
+ {name:"worm",down:1,len:2,hi:1,bob:0,go:0.07,keys:[{t:0,turn:1.4,d:0.4,lf:1.25,hn:-0.5,fl:[0,0,-0.42],gr:[0,0,-0.42],B:[0.13,-0.08,0.13,0.5]}],
+  post:function(u,o){o[9]=1.22-0.24*S(u/2);o[2]=0.39-0.07*S(u/2-0.25);o[21]=o[25]=0.08+0.07*S(u/2-0.25);o[14]=o[18]=0.13-0.04*S(u/2);o[11]=-0.5+0.2*S(u/2);}},
+ {name:"backspin",down:1,len:4,hi:1,bob:0,keys:[{t:0,d:0.42,lf:-1.3,hn:0.5,fl:[0.05,0.3,0.14,0.3],gr:[0.05,0.3,0.14,0.3],B:[0.14,-0.12,0.14,0.2]}],
+  post:function(u,o){o[4]=TAU*u/2;o[21]=0.3+0.04*S(u);o[25]=0.3-0.04*S(u);}},
+ {name:"windmill",down:1,len:4,hi:1,bob:0,keys:[{t:0,d:0.42,lf:-1.25,hn:0.4,fl:[0.26,0.34,0.1],gr:[0.26,0.2,0.1],B:[0.26,-0.06,0.1]}],
+  post:function(u,o){o[4]=TAU*u/2;o[8]=0.35*S(u/2);o[21]=0.28+0.1*S(u/2);o[25]=0.28-0.1*S(u/2);o[20]=0.24+0.06*C(u/2);o[24]=0.24-0.06*C(u/2);}},
  /* ---- popping, locking and more hip hop ---- */
  {name:"lock",len:4,mid:1,hit:1,hold:0.5,keys:[{t:0,B:[0.16,-0.12,0.14,0.3],d:0.08,lf:0.1},{t:1,R:[0.34,0.22,0.06],L:[0.16,-0.12,0.14,0.3],tw:0.2},{t:2,B:[0.16,-0.12,0.14,0.3],d:0.08,lf:0.1},{t:3,L:[0.34,0.22,0.06],R:[0.16,-0.12,0.14,0.3],tw:-0.2}]},
+ /* pop and lock: a pose is hit and held, then the next: locked, pointing, the chest popped, turned, low, pointing the other way, the robot's arms, turned back */
+ {name:"pop and lock",len:8,mid:1,hi:1,hit:1,hold:0.4,bob:0.006,keys:[{t:0,B:[0.16,-0.12,0.14,0.3],d:0.08,lf:0.1},{t:1,R:[0.34,0.22,0.06],L:HIP,tw:0.2,ht:0.1},{t:2,lf:-0.14,z:0.03,B:[0.27,-0.14,-0.04,0.3]},{t:3,tw:0.5,L:[0.3,0,0.1,0.6],R:[0.05,-0.1,0.2],d:0.04},
+   {t:4,d:0.14,lf:0.15,B:[0.2,-0.2,0.16,0.5]},{t:5,L:[0.34,0.22,0.06],R:HIP,tw:-0.2,ht:-0.1},{t:6,L:[0.26,0.17,0],R:[0.26,-0.17,0],ht:0.12,ls:0.06},{t:7,tw:-0.5,R:[0.3,0,0.1,0.6],L:[0.05,-0.1,0.2],d:0.04}]},
  {name:"scooby doo",len:4,sym:1,mid:1,keys:[{t:0,fl:[0,0.14,0.16],B:[0.1,-0.14,0.2],lf:0.08,hop:0.02},{t:1,fl:[0.04,0,0.06],B:[0.26,-0.2,-0.04],d:0.05}]},
  {name:"wrist roll",len:2,mid:1,keys:[{t:0,d:0.03,ls:0.05}],post:function(u,o){o[12]=0.14+0.05*C(2*u);o[13]=0.2+0.05*S(2*u);o[14]=0.1;o[16]=0.14+0.05*C(2*u+0.5);o[17]=0.2+0.05*S(2*u+0.5);o[18]=0.1;o[15]=o[19]=0.5;}},
  {name:"chest pop",len:1,lo:1,mid:1,hold:0,bob:0,keys:[{t:0,lf:-0.14,z:0.03,B:[0.27,-0.14,-0.04,0.3]},{t:0.5,lf:0.08,z:-0.02,B:[0.14,-0.24,0.08],d:0.05}]},
@@ -344,11 +356,11 @@ export const MV_STYLES={
  groove:["sway","step touch","step clap","groove","snap","hip sway","shoulder lean","body roll","b-boy rock","shimmy","heel toe","box step","rock step","slow clap","lean back","lean and rock","hip bump","hands up","raise the roof","fist pump","pogo","overhead clap","get low","stadium wave","finger wag","jazz hands"],
  disco:["disco point","hand roll","spin","y m c a","electric slide","skate","temptation walk","lightbulb","arm wave","hustle","bus stop","roller coaster"],
  sixties:["twist","swim","mashed potato","monkey","pony","hitchhiker","the jerk","watusi","freddie","locomotion","hand jive","batusi","funky chicken","backstroke","hula","limbo","conga","charleston","suzie q","elvis","jagger","bunny hop","hokey pokey","time warp","chicken"],
- hiphop:["running man","cabbage patch","robot","dougie","stanky leg","bernie","whip","dab","floss","gangnam","the woah","milly rock","butterfly","tootsie roll","harlem shake","king tut","smurf","wop","steve martin","humpty","roger rabbit","top rock","walk it out","bankhead bounce","shoot","orange justice","jump on it","superman","hammer time","krump","moonwalk","moonwalker kick","kick step","take the l","best mates","lock","scooby doo","wrist roll","chest pop","glide","tutting","boogaloo","slow mo","nae nae","hit the quan","griddy","swag surf"],
+ hiphop:["running man","cabbage patch","robot","dougie","stanky leg","bernie","whip","dab","floss","gangnam","the woah","milly rock","butterfly","tootsie roll","harlem shake","king tut","smurf","wop","steve martin","humpty","roger rabbit","top rock","walk it out","bankhead bounce","shoot","orange justice","jump on it","superman","hammer time","krump","moonwalk","moonwalker kick","kick step","take the l","best mates","lock","pop and lock","scooby doo","wrist roll","chest pop","glide","tutting","boogaloo","slow mo","nae nae","hit the quan","griddy","swag surf"],
  party:["shopping cart","lawnmower","macarena","sprinkler","big fish little fish","driving","snoopy","reel them in","stir the pot","air guitar","elaine","tequila","carlton","egyptian","thriller","vogue","single ladies","bye bye bye","cha cha slide","cupid shuffle","wobble","boxing","jump rope","cheerleader","windmill arms","headbang","duck walk","lasso","pizza toss","bowling","churn the butter","wax on wax off","kung fu","flex","titanic","catwalk","fosse","soft shoe","peace","rope pull","skipping","squat","zumba","shrug"],
  world:["grapevine","salsa","samba","flamenco","zorba","belly dance","riverdance","cossack","can-can","jazz square","kick ball change","heel click","merengue","bachata","cumbia","mambo","tango","polka","hora","highland fling","haka","hula hands","dabke","ginga","gumboot","azonto","gwara gwara","bogle","time step","jitterbug","pirouette","arabesque","plie"],
  rave:["lasers","shuffle","jumpstyle","tecktonik","skank","high knees","skier","star jump","t-step","cutting shapes","big box little box","stacking shelves","double pump","glowsticks","liquid","hakken","rave stomp","melbourne bounce","hands in the air","heart hands","trance arms","the drop","spongebob","kick side step","poi","phone light","techno march","hardstyle kick","wobble bass","airhorn","dj","push the walls","bounce clap","chop"],
- breaking:["indian step","salsa rock","bronx step","hook","power step","uprock","brooklyn rock","apple jack","six step","three step","cc","kick out","coffee grinder","sweep","floor rock","knee drop","baby freeze","chair freeze","freeze","zulu spin","scissor kicks","kip up"],
+ breaking:["indian step","salsa rock","bronx step","hook","power step","uprock","brooklyn rock","apple jack","six step","three step","cc","kick out","coffee grinder","sweep","floor rock","knee drop","baby freeze","chair freeze","freeze","zulu spin","scissor kicks","kip up","worm","backspin","windmill"],
  indian:["bhangra","balle balle","bhangra shoulders","dhol","jhummar","giddha","garba","dandiya","thumka","pat the dog","kathak spin","aramandi","tatta adavu","natta adavu","namaste","nagin","sundari","lotus hands","kite","ghoomar","lavani","bolly shrug","raas","lezim","mudra arms"]
 };
 /* the kind a move belongs to ("" if it is in no list); found once and kept in the move */

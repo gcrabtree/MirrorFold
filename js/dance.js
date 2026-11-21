@@ -25,10 +25,12 @@ import { still } from "./still.js";
 export const DN_MAX=20;      /* the most figures; the shader is written for this many, or for dnRoom where the chip has less room */
 export const DN_LEAST=4;     /* the fewest at the party while there is music, */
 export const DN_LINGER=12;   /* how many seconds they stay with nothing to dance to before they begin to leave, */
+export const DN_RING=1.5;     /* how far to either side of its middle the circle reaches, in figure heights (it is 0.7 as deep), */
+export const DN_NEARER=0.4; /* how tall the figure that the nearer view is on is drawn, as a part of the picture's shorter side, */
 export const DN_OFF=0.6;     /* and how far past the picture's side, in figure heights, a figure is when it is wholly out of sight */
 export let dnRoom=DN_MAX;    /* how many figures the shader has room for on this chip (js/programs.js asks it and says) */
 export function setDanceRoom(n){dnRoom=Math.max(12,Math.min(DN_MAX,Math.floor(n)||0));}
-export const dnB=new Float32Array(5); /* for the shader, the party's ball and lights: the floor's front (the size of a figure there, how far up the picture it is), how far up the picture the ball is (99 for none), how far it has turned, and how bright its lights are */
+export const dnB=new Float32Array(8); /* for the shader, the party's ball and lights: the floor's front (the size of a figure there, how far up the picture it is), how far up the picture the ball is (99 for none), how far it has turned, and how bright its lights are; then the nearer view (see danceFill): how many times larger the floor is drawn, and how far across and up it is moved */
 export const DN_HIP=0.52;    /* a figure is 1 tall: how high the hips are when it stands, */
 export const DN_SPINE=0.3;   /* the length of the back, */
 export const DN_HEAD=0.075;  /* the head's radius, */
@@ -52,14 +54,15 @@ export const DN_UP=1.5;      /* and the floor is looked down on from this many f
 export const DN_FLOOR=4;     /* how deep the floor is that the dancer alone has, in figure heights */
 export const DN_QUICK=4;     /* the fastest a hand or a foot is moved within the body, in figure heights a second */
 export const DN_TOP=5;       /* the fastest an elbow or a hand is shown going from its shoulder, in figure heights a second */
+export const DN_CAP=6.5;      /* the fastest any part of a figure is shown going, in figure heights a second */
 export const DN_FAINT=0.06;  /* a pulse under this is taken as that much weaker than one that counts: there is nearly no sound */
 export const DN_DRIFT=0.3;   /* how fast a dancing figure moves over the floor toward the place it has chosen, in figure heights a second */
 export const dnU=[new Float32Array(80),new Float32Array(80),new Float32Array(80),new Float32Array(80),new Float32Array(80),new Float32Array(80),new Float32Array(80),new Float32Array(80),new Float32Array(80),new Float32Array(80)]; /* for the shader, four numbers a figure in each (the tenth is its head: the angle it is turned by, and its face, which danceFill packs into the other three): neck and hips; the shoulders; left elbow and hand; right elbow and hand; the hip joints; left knee and ankle; right knee and ankle; the toes; the head's middle, its radius and how brightly the figure shows (0 for none) */
-const A=new Array(MV_N),B=new Array(MV_N),J=new Array(MV_N),flat=new Array(35),SP=[0,0],SP3=[0,0,0],RM=[0,0,0,0],order=[];
+const A=new Array(MV_N),B=new Array(MV_N),J=new Array(MV_N),S=new Array(MV_N),flat=new Array(35),SP=[0,0],SP3=[0,0,0],RM=[0,0,0,0],order=[];
 const crowd=[];              /* the figures: {rt, ri, mv, mir, u0, pmv, pmir, pu0, bl, next, tx, tz, p, b, mem, fa, sp, pfa, a, im, ic, idir, iface, itf, iph, iw}: the routine and how far through it; the move, whether it is faced the other way and the beat it began on; the same for the move before, and how far the figure has gone over from it; the beat to change on; how far the figure has travelled from its place; the pose; the body; where the elbows were; which way it is turned for this move and was for the last; how much it is dancing; and for when it is not, whether it walks, the seconds until it chooses again, which way it walks, the way it faces now and wants to, how far through its steps it is and how much it is walking */
 const slots=[],taken=[];
-const st={want:0,wc:0,gate:0,side:1,q:0,sn:0,c0:0,l0:0,bd:0,spin:0,lit:0,grp:0,byeC:0,pairC:8,lvl:0.6,lead:-1,per:0.5,pk:0.06,pm:0.06,amp:0,asp:1.78,u:0,du:0,pa:0,sure:0,kick:0,snap:0,en:0,hype:0,jump:-1,kind:0,phrase:0}; /* the strongest pulse of the bass and of the mids in the last few seconds; how much the figures are dancing, 0 to 1 (figures newly set up begin with it, so that changing from one overlay of figures to another does not stop the dance); how wide the picture is for 1 tall (danceFill says); the count of beats and this frame's step of it; how much pulse there has been lately; how sure the beat is; the kick as the figures feel it; how much they dance; how long since a drop; how far through a jump (in beats, -1 for none); which overlay they were set up for; how many times the chorus line has changed its dance; and for the party (the first fourteen): how many are wanted on the floor, the seconds until that is chosen again and until the next one comes or goes, which side the last came from, how long there has been nothing to dance to, how many have ever come (a figure's own number), what the manners and heads are counted from, how far down the ball is (0 to 1), how far it has turned, how bright its lights are, how many groups have left and the seconds until the next does */
-let tick=null,bank=null;
+const st={actC:20,zm:0,zc:15,zt:0,zx:0,zy:0,zk:0.3,want:0,wc:0,gate:0,side:1,q:0,sn:0,c0:0,l0:0,bd:0,spin:0,lit:0,grp:0,byeC:0,pairC:8,lvl:0.6,lead:-1,per:0.5,pk:0.06,pm:0.06,amp:0,asp:1.78,u:0,du:0,pa:0,sure:0,kick:0,snap:0,en:0,hype:0,jump:-1,kind:0,phrase:0}; /* the strongest pulse of the bass and of the mids in the last few seconds; how much the figures are dancing, 0 to 1 (figures newly set up begin with it, so that changing from one overlay of figures to another does not stop the dance); how wide the picture is for 1 tall (danceFill says); the count of beats and this frame's step of it; how much pulse there has been lately; how sure the beat is; the kick as the figures feel it; how much they dance; how long since a drop; how far through a jump (in beats, -1 for none); which overlay they were set up for; how many times the chorus line has changed its dance; and for the party (the first fourteen): how many are wanted on the floor, the seconds until that is chosen again and until the next one comes or goes, which side the last came from, how long there has been nothing to dance to, how many have ever come (a figure's own number), what the manners and heads are counted from, how far down the ball is (0 to 1), how far it has turned, how bright its lights are, how many groups have left and the seconds until the next does */
+let tick=null,bank=null,act=null,zf=null; /* the clocks; what the party is doing together (a conga line, a circle, a crowd surf) and which figure the nearer view is on */
 
 function ease(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);}
 function rest(o){for(var i=0;i<MV_N;i++)o[i]=MV_REST[i];}
@@ -96,7 +99,7 @@ function bend(o,ia,ie,ij,l1,l2,px,py,pz){
    was from its shoulder), and mk, the share of the way an elbow may swing this frame. */
 export function danceBody(p,o,mem,mk){
   var hop=Math.max(0,p[3]),R=2*DN_LEG-0.002,ca=Math.cos(p[5]),sa=Math.sin(p[5]),cr=Math.cos(p[6]),sr=Math.sin(p[6]),s,h,i,dx,dz,dh,k,t,lift,
-    px=p[0],py=DN_HIP-Math.max(0,Math.min(0.3,p[2]))+hop,pz=p[1],lx=ca,lz=-sa,fx=sa,fz=ca,at=p[5]+p[7],ct=Math.cos(at),stn=Math.sin(at),
+    px=p[0],py=DN_HIP-Math.max(0,Math.min(0.47,p[2]))+hop,pz=p[1],lx=ca,lz=-sa,fx=sa,fz=ca,at=p[5]+p[7],ct=Math.cos(at),stn=Math.sin(at),
     cs=Math.cos(p[8]),ss=Math.sin(p[8]),cf=Math.cos(p[9]),sf=Math.sin(p[9]),ux,uy,uz,sx,sy,sz,tx,ty,tz,gx,gy,gz,hx,hy,hz,n,e,c,sn,x,z,low=0;
   /* the hips and the feet */
   for(s=0;s<2;s++){
@@ -113,8 +116,22 @@ export function danceBody(p,o,mem,mk){
     h=s?-1:1;i=24+3*s;k=33+6*s;o[i+1]-=low;
     dx=o[k]-o[i];dz=o[k+2]-o[i+2];
     o[k+1]=Math.min(o[k+1],o[i+1]+Math.sqrt(Math.max(0,R*R-dx*dx-dz*dz)));
-    bend(o,i,k,k-3,DN_LEG,DN_LEG,fx+h*p[23+4*s]*lx,0.25,fz+h*p[23+4*s]*lz);
-    if(o[k-2]<hop)bend(o,i,k,k-3,DN_LEG,DN_LEG,0.2*fx,1,0.2*fz); /* a knee that would go through the floor is bent upward instead */
+    /* the knee bends to the front of the leg, whichever way the leg points: forward for a leg under the body, upward
+       for one held out in front, downward for one stretched out behind (gx,gy,gz is the leg's own front: the way it
+       runs, turned a quarter round the line through the hips). Measured from the way the hips face alone, the knee of
+       a leg lifted until it pointed that way would change sides in a frame. */
+    n=Math.max(1e-5,Math.sqrt(dx*dx+dz*dz+(o[k+1]-o[i+1])*(o[k+1]-o[i+1])));e=(o[k+1]-o[i+1])/n;
+    gx=e*lz;gy=(dz*lx-dx*lz)/n+0.15;gz=-e*lx;
+    bend(o,i,k,k-3,DN_LEG,DN_LEG,gx+h*p[23+4*s]*lx,gy,gz+h*p[23+4*s]*lz);
+    /* a knee that would go through the floor is bent upward instead; and one that would be only just above it is
+       bent a part of the way upward, the more the lower it would be, so that a body going down onto the floor or
+       getting up from it does not have its knee change sides in one frame */
+    t=Math.max(0,Math.min(1,(0.07-(o[k-2]-hop))/0.14));
+    if(t>0){
+      t=t*t*(3-2*t);e=2.4*t*(1-t)*h; /* by way of the leg's outer side, since the two ways can be opposite and half of each would be no way at all */
+      bend(o,i,k,k-3,DN_LEG,DN_LEG,(1-t)*(gx+h*p[23+4*s]*lx)+t*0.2*fx+e*lx,(1-t)*gy+t,(1-t)*(gz+h*p[23+4*s]*lz)+t*0.2*fz+e*lz);
+      if(o[k-2]<hop)bend(o,i,k,k-3,DN_LEG,DN_LEG,0.2*fx,1,0.2*fz);
+    }
     /* the foot points the way the hips face, turned outward, and its toes point down when it is off the floor */
     lift=Math.min(0.045,o[k+1]-hop);t=Math.sqrt(DN_FOOT*DN_FOOT-lift*lift);
     gx=fx+0.8*h*lx;gz=fz+0.8*h*lz;n=Math.sqrt(gx*gx+gz*gz);
@@ -483,7 +500,7 @@ function idle(d,i,dt,time,far,o,F){
   }
   dx=d.ix-d.tx;dz=d.iz-d.tz;n=Math.sqrt(dx*dx+dz*dz);
   if(d.im&&n<0.06){d.im=0;d.ic=3+6*Math.random();d.itf=d.iface+(Math.random()-0.5)*2;}
-  want=d.im?Math.atan2(dx,-dz):d.itf;e=turnTo(d.iface,want);
+  want=d.out&&n<0.12?d.of:d.im?Math.atan2(dx,-dz):d.itf;e=turnTo(d.iface,want); /* one sent to stand outside the circle turns to watch it */
   d.iface+=Math.max(-DN_TURN*dt,Math.min(DN_TURN*dt,e));
   d.iw+=((d.im?1:0)-d.iw)*Math.min(1,dt*3);
   v=DN_WALK*(far||1)*d.iw*Math.max(0,Math.cos(e))*Math.min(1,n/0.15)*(1-d.a);
@@ -507,14 +524,14 @@ function homes(kind,n){
 /* A new figure: its manner, its routine, its own place h as homes gives it, its number, the beat it is made on and how
    many beats later than the others it first changes its move. */
 function figure(kind,ch,r,h,id,now,lag){
-  return {ent:0,side:0,bye:-1,bw:0,grp:0,gx:0,gz:0,slot:-1,sn:0,ch:ch,hg:pickHead(ch,Math.random()),hgn:now+4+4*Math.floor(3*Math.random()),hv:[0,0,0],pw:-1,pu:0,hy:0,hk:0,hyR:0,hyc:2*Math.random(),pch:0,wv:0,sd:Math.random()<0.5?-1:1,mo:0,bk:0,ex:pickFace(ch,Math.random()),et:3+7*Math.random(),fw:0.34,fc:0.5,fl:0,fh:0,fo:0,rel:[0,0,0,0,0,0,0,0,0,0,0,0],dw:0,go:false,a:st.amp,g:1,ph:0,gp:0,as:1,wx:0,wz:0,vx:0,vz:0,fa:kind===2?0:(Math.random()-0.5)*1.6,sp:0,pfa:0,im:0,ic:3*Math.random(),ix:0,iz:0,iface:0,itf:(Math.random()-0.5)*3,iph:0,iw:0,
+  return {pb:null,cw:null,out:0,ux:0,uz:0,of:0,act:0,ak:0,ai:0,ap:0,aw:0,sh:0,rs:0,ax:0,az:0,af:0,sty:"",ent:0,side:0,bye:-1,bw:0,grp:0,gx:0,gz:0,slot:-1,sn:0,ch:ch,hg:pickHead(ch,Math.random()),hgn:now+4+4*Math.floor(3*Math.random()),hv:[0,0,0],pw:-1,pu:0,hy:0,hk:0,hyR:0,hyc:2*Math.random(),pch:0,wv:0,sd:Math.random()<0.5?-1:1,mo:0,bk:0,ex:pickFace(ch,Math.random()),et:3+7*Math.random(),fw:0.34,fc:0.5,fl:0,fh:0,fo:0,rel:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],dw:0,go:false,a:st.amp,g:1,ph:0,gp:0,as:1,wx:0,wz:0,vx:0,vz:0,fa:kind===2?0:(Math.random()-0.5)*1.6,sp:0,pfa:0,im:0,ic:3*Math.random(),ix:0,iz:0,iface:0,itf:(Math.random()-0.5)*3,iph:0,iw:0,
       hf:h[0],hz:h[1],hc:h[2],id:id,
       rt:r,ri:0,mv:r.mv[0],mir:kind!==2&&r.mir[0],u0:now,pmv:0,pmir:false,pu0:now,bl:1,next:now+4+lag,tx:0,tz:0,p:MV_REST.slice(),b:danceBody(MV_REST,[]),mem:[0,0,0,0,0,0]};
 }
 function setUp(kind){
   var i,n=count(kind),now=Math.floor(st.u),r,h=homes(kind,n),d,c0=Math.floor(3*Math.random()),l0=Math.floor(DN_LOOKS*Math.random()),ch;
   crowd.length=0;st.kind=kind;st.phrase=0;st.pairC=6+8*Math.random();
-  st.c0=c0;st.l0=l0;st.sn=0;st.want=0;st.wc=0;st.gate=0.4;st.q=0;st.bd=0;st.lit=0;st.byeC=0;
+  act=null;zf=null;st.zm=0;st.zc=12+10*Math.random();st.actC=10+12*Math.random();st.c0=c0;st.l0=l0;st.sn=0;st.want=0;st.wc=0;st.gate=0.4;st.q=0;st.bd=0;st.lit=0;st.byeC=0;
   if(kind===4){slots.length=0;h=homes(4);for(i=0;i<h.length;i++){slots.push(h[i]);taken[i]=false;}return;}
   for(i=0;i<n;i++){
     ch=DN_MANNERS[kind===2?0:(i+c0)%3]; /* a third of a crowd each way, and the dancer alone any of the three */
@@ -565,8 +582,17 @@ function party(dt,amp,level,drop,slow){
   st.bd=Math.min(1,st.bd+dt/2.6);
   st.spin+=dt*(0.16+0.26*amp)*(slow?0.5:1);if(st.spin>6283.1853)st.spin-=6283.1853;
   st.lit+=(st.bd*st.bd*(0.3+0.7*amp)-st.lit)*Math.min(1,dt*1.5);
-  for(i=0;i<crowd.length;i++){if(crowd[i].ent!==2)on++;if(!crowd[i].ent)here.push(crowd[i]);}
+  for(i=0;i<crowd.length;i++){if(crowd[i].ent!==2)on++;if(!crowd[i].ent&&!crowd[i].act&&!crowd[i].rs)here.push(crowd[i]);}
   st.q=amp<0.3?st.q+dt:0;
+  /* what they do together: nothing for a while, then a conga line, a circle or a crowd surf, as many as there are for it */
+  if(act){if(st.u>=act.until||amp<0.3)endAct();}
+  else if(amp>0.6){st.actC-=dt;if(st.actC<=0){st.actC=14+20*Math.random();if(here.length>=5)startAct(1+Math.floor(3*Math.random()),here);}}
+  /* the nearer view: every so often the floor is drawn larger for some seconds, about one figure (the one in the
+     middle of a circle, the one being carried, the head of the line, or anyone dancing), and follows it */
+  if(zf){st.zt-=dt;if(st.zt<=0||zf.ent===2||crowd.indexOf(zf)<0||amp<0.3)zf=null;}
+  else if(amp>0.6){st.zc-=dt;if(st.zc<=0){st.zt=6+5*Math.random();st.zc=st.zt+16+24*Math.random();zf=act?(act.mid||act.surfer||act.mem[0]):here.length?here[Math.floor(Math.random()*here.length)]:null;}}
+  st.zm+=((zf?1:0)-st.zm)*Math.min(1,dt*(slow?0.5:1.1));
+  if(zf){place(F,homeX(zf,F)+zf.tx,zf.hz+zf.tz,RM);x=Math.min(1,dt*(st.zm<0.05?99:2.5));st.zx+=(RM[0]-st.zx)*x;st.zy+=(RM[1]+0.55*RM[2]-st.zy)*x;st.zk+=(RM[2]-st.zk)*x;}
   if(st.q>DN_LINGER){
     st.want=0;st.byeC-=dt;
     if(st.byeC<=0&&here.length){
@@ -602,6 +628,112 @@ function party(dt,amp,level,drop,slow){
     st.gate=1+2.5*Math.random();
   }else st.gate=0.5;
 }
+/* What the party does together (act). Each takes some of the figures who are free and gives each a part (d.act: 1 in
+   the conga line, 2 round the circle, 3 in its middle, 4 carrying, 5 carried), a place on the floor to be at (d.ax
+   across and d.az deep, as the floor is measured) and a way to face (d.af). A figure first walks to its place (d.ap),
+   as one that is leaving walks; once there it is kept at its place, wherever its place goes, and its pose is the
+   part's own (actPose) by the share d.aw, which is eased both ways. When the time is up every one is let go, and
+   walks back to where it dances as a figure does that the beat finds out of its room.
+   - The conga line: three to ten of them, for twenty-four to sixty-four beats. The first sets off at once, a step a
+     beat, toward one place on the floor after another, turning gradually; where it has been is kept (trail), and
+     each of the others walks to the line's end as soon as the line is long enough for it, and then follows that
+     path, hands on the shoulders in front, all kicking a foot out on every fourth beat.
+   - The circle: four to eight stand round all but the front of a ring (so that the one in the middle is seen),
+     facing in, clapping on the beat or with a fist in the air; one is in the middle, dancing the breaking moves
+     at their fullest, and every twelve or sixteen beats goes back to the ring as another comes in.
+   - The crowd surf: four to six stand close in a row with their hands up, and one who has walked up behind them is
+     lifted to lie on their hands and is passed along the row and back. */
+function part(d,r,i){d.act=d.ak=r;d.ai=i;d.ap=1;d.sh=0;d.rs=1;d.pw=-1;}
+function free(d){if(d.act===3){d.sty="";d.fresh=true;}d.act=0;d.rs=0;d.ap=0;d.sh=0;d.iface=d.itf=d.p[4];}
+function endAct(){var i;if(act)for(i=0;i<act.mem.length;i++)free(act.mem[i]);for(i=0;i<crowd.length;i++)crowd[i].out=0;act=null;}
+function middle(d){part(d,3,0);d.sty="breaking";d.fresh=true;d.next=0;}
+function startAct(kind,here){
+  var F=front(4,st.asp),d=here[Math.floor(Math.random()*here.length)],x0=homeX(d,F)+d.tx,z0=d.hz+d.tz,near,n,i,m;
+  near=here.slice().sort(function(a,b){return Math.hypot(homeX(a,F)+a.tx-x0,a.hz+a.tz-z0)-Math.hypot(homeX(b,F)+b.tx-x0,b.hz+b.tz-z0);}); /* the one chosen, and the others nearest first */
+  if(kind===1){
+    n=Math.min(near.length,3+Math.floor(8*Math.random()));m=near.slice(0,n);
+    act={kind:1,mem:m,until:st.u+24+8*Math.floor(6*Math.random()),trail:[],x:x0,z:z0,hd:Math.atan2(-x0,z0-1.8),gx:0,gz:1.8,side:x0>0?1:-1};
+    for(i=0;i<n;i++)m[i].rs=1;
+    part(d,1,0);d.ap=0;d.ax=x0;d.az=z0;d.af=act.hd;
+  }else if(kind===2){
+    n=Math.min(near.length-1,4+Math.floor(5*Math.random()));m=near.slice(0,n+1);
+    act={kind:2,mem:m,mid:d,n:n,until:st.u+32+8*Math.floor(5*Math.random()),swap:st.u+14+4*Math.floor(2*Math.random()),x:Math.max(-0.7,Math.min(0.7,x0)),z:Math.max(1.1,Math.min(1.9,z0))};
+    middle(d);for(i=1;i<=n;i++)part(m[i],2,i-1);
+  }else{
+    n=Math.min(near.length-1,4+Math.floor(3*Math.random()));m=near.slice(0,n+1);
+    act={kind:3,mem:m,surfer:d,n:n,ready:false,u0:0,until:st.u+40,dir:Math.random()<0.5?-1:1,x:Math.max(-0.8,Math.min(0.8,x0)),z:Math.max(0.8,Math.min(2.6,z0))};
+    part(d,5,0);for(i=1;i<=n;i++)part(m[i],4,i-1);
+  }
+  return act;
+}
+/* a step of it: where each one's place is now. du is this frame's step of the count of beats. */
+function actStep(du,F){
+  var a=act,i,d,k,p,q,dx,dz,n,ok;
+  if(a.kind===1){
+    dx=a.gx-a.x;dz=a.gz-a.z;
+    if(Math.hypot(dx,dz)<0.45){a.gz=0.7+2.2*Math.random();a.side=-a.side;a.gx=a.side*(0.5+0.35*Math.random())*span(F,a.gz);dx=a.gx-a.x;dz=a.gz-a.z;} /* to one side of the floor and then the other, so that the line is seen from its side */
+    k=turnTo(a.hd,Math.atan2(dx,-dz));a.hd+=Math.max(-1.1*du,Math.min(1.1*du,k));
+    n=DN_STEP*du;a.x+=n*Math.sin(a.hd);a.z-=n*Math.cos(a.hd);
+    p=a.trail[0];if(!p||Math.hypot(a.x-p[0],a.z-p[1])>=0.06){a.trail.unshift([a.x,a.z]);if(a.trail.length>160)a.trail.pop();}
+    d=a.mem[0];d.ax=a.x;d.az=a.z;d.af=a.hd;d.sh=1;
+    for(i=1;i<a.mem.length;i++){
+      d=a.mem[i];k=Math.round(i*0.4/0.06);
+      if(k+1>=a.trail.length)break; /* the line is not yet long enough for this one */
+      if(!d.act)part(d,1,i);
+      p=a.trail[k];q=a.trail[Math.max(0,k-4)];
+      d.ax=p[0];d.az=p[1];d.af=Math.atan2(q[0]-p[0],p[1]-q[1]);d.sh=d.ap?0:1;
+    }
+  }else if(a.kind===2){
+    if(st.u>=a.swap&&!a.mid.ap&&a.until-st.u>8){ /* another takes the middle, and the one who had it takes that one's place in the ring */
+      d=a.mem[Math.floor(Math.random()*a.mem.length)];
+      if(d.act===2&&!d.ap){k=a.mid;k.sty="";k.fresh=true;part(k,2,d.ai);middle(d);a.mid=d;a.swap=st.u+12+4*Math.floor(2*Math.random());}
+    }
+    /* anyone else who stands inside the ring, or comes there, is sent to stand outside it until it is over */
+    for(i=0;i<crowd.length;i++){
+      d=crowd[i];if(d.act||d.ent)continue;
+      dx=homeX(d,F)+d.tx-a.x;dz=d.hz+d.tz-a.z;n=Math.hypot(dx/(DN_RING+0.35),dz/(0.7*DN_RING+0.3));
+      if(!d.out&&n<1){k=dx||dz?Math.atan2(dx,dz):3.1;if(Math.abs(k)>2.3)k=k>0?2.3:-2.3;d.out=1;d.ux=a.x+(DN_RING+0.55)*Math.sin(k)-homeX(d,F);d.uz=Math.max(-d.hz,a.z+(0.7*DN_RING+0.45)*Math.cos(k)-d.hz);}
+      if(d.out){d.wx=d.ux;d.wz=d.uz;d.of=Math.atan2(-dx,dz);}
+    }
+    for(i=0;i<a.mem.length;i++){
+      d=a.mem[i];
+      if(d.act===3){d.ax=a.x;d.az=a.z;d.af=d.p[4];d.sh=0;continue;}
+      k=a.n>1?-2.1+4.2*d.ai/(a.n-1):0;d.ax=a.x+DN_RING*Math.sin(k);d.az=a.z+0.7*DN_RING*Math.cos(k);
+      d.af=Math.atan2(a.x-d.ax,d.az-a.z);d.sh=d.ap?0:1;
+    }
+  }else{
+    ok=!a.surfer.ap;
+    for(i=0;i<a.mem.length;i++){
+      d=a.mem[i];if(d.act!==4)continue;
+      d.ax=a.x+(d.ai-(a.n-1)/2)*0.34;d.az=a.z;d.af=0;d.sh=d.ap?0:1;if(d.ap)ok=false;
+    }
+    if(ok&&!a.ready){a.ready=true;a.u0=st.u;a.until=st.u+16+8*Math.floor(3*Math.random());}
+    d=a.surfer;d.ax=a.x+(a.ready?0.17*(a.n-1)*Math.sin(0.3926991*(st.u-a.u0)):0);d.az=a.z+0.14;d.af=a.dir*1.5707963;d.sh=a.ready?1:0;
+  }
+}
+/* the pose of a figure's part at beat u, into o */
+function actPose(d,u,o){
+  var k=d.ak,c=Math.cos(6.2831853*u),e,s;
+  rest(o);
+  if(k===1){
+    walkPose(u/2,1,o);
+    e=Math.floor(u)%4===3?Math.sin(Math.PI*(u-Math.floor(u))):0;s=Math.floor(u/4)%2; /* the kick on the fourth beat, to one side and then the other */
+    o[20+4*s]+=0.13*e;o[21+4*s]+=0.09*e;o[6]+=(s?-0.1:0.1)*e;
+    o[0]+=0.03*Math.sin(Math.PI*u);o[2]+=0.02+0.025*(0.5+0.5*c);o[7]=0;
+    if(d.ai===0){o[12]=0.28+0.05*Math.sin(Math.PI*u);o[16]=0.28-0.05*Math.sin(Math.PI*u);o[13]=o[17]=0.24+0.04*c;o[14]=o[18]=0.02;} /* the first has its hands in the air */
+    else{o[12]=o[16]=0.09;o[13]=o[17]=-0.04;o[14]=o[18]=0.3;o[15]=o[19]=0.2;}
+  }else if(k===2){
+    o[2]+=0.02+0.035*(0.5+0.5*c);o[0]=0.04*Math.sin(Math.PI*u+d.ai);o[9]=0.06;o[11]=0.1*c;
+    if(d.ai%3===2){o[12]=0.16;o[13]=0.24+0.07*c;o[14]=0.06;o[15]=0.4;} /* a fist in the air */
+    else{e=0.5-0.5*c;o[12]=o[16]=0.015+0.13*e;o[13]=o[17]=-0.1;o[14]=o[18]=0.2;} /* a clap on the beat */
+  }else if(k===4){
+    o[12]=o[16]=0.12;o[13]=o[17]=0.3+0.015*c;o[14]=o[18]=0.05;o[2]+=0.02+0.03*(0.5+0.5*c);o[11]=-0.25;
+  }else if(k===5){ /* lying back, level, as high as the hands under it, one arm waving */
+    o[9]=-1.45;o[3]=0.62+0.025*c;o[21]=0.5+0.03*Math.sin(Math.PI*u);o[25]=0.5-0.03*Math.sin(Math.PI*u);o[22]=o[26]=0.4;
+    o[12]=0.3;o[13]=0.05;o[14]=0.2+0.06*Math.sin(Math.PI*u);o[16]=0.34;o[17]=0.02;o[18]=0;o[11]=-0.2;
+  }
+  o[4]=d.af;
+}
 /* Saying goodbye, laid over the walking pose o of a figure that is leaving, by the share d.bw: a wave is the arm on the
    viewer's side held up and swung, the chest turned toward the viewer; a nod is the head going down and up a few times
    and then resting; talking is a hand that moves as the words do. (The head's turn toward the viewer or the others,
@@ -625,7 +757,7 @@ function byePose(d,time,o){
    back toward where it stands, and the chorus line all go the same way. */
 function nextMove(d,i,now,e,fresh){
   var n,k,m;
-  d.pmv=d.mv;d.pmir=d.mir;d.pu0=d.u0;d.u0=now;d.bl=0;d.pfa=d.fa;
+  d.pmv=d.mv;d.pmir=d.mir;d.pu0=d.u0;d.u0=now;d.bl=0;d.pfa=d.fa;d.cw=null;
   if(d.pw>=0&&d.pw<i&&crowd[d.pw]&&crowd[d.pw].pw===i){ /* dancing with a partner: the second of the two takes the first's move, turned the other way, as in a mirror */
     k=crowd[d.pw];d.rt=k.rt;d.ri=k.ri;d.mv=k.mv;d.mir=!k.mir;d.next=k.next;d.g=k.g;d.ph=k.ph;d.gp=k.gp;d.as=k.as;d.go=k.go;d.sp=0;
     spot(d,front(st.kind,st.asp),false,SP);d.wx=d.tx;d.wz=d.tz;
@@ -634,7 +766,7 @@ function nextMove(d,i,now,e,fresh){
   if(st.kind===2&&i>0){d.rt=crowd[0].rt;d.ri=crowd[0].ri;}
   else{
     d.ri++;n=d.rt.mv.length;
-    if(fresh||d.ri>=2*n||(d.ri%n===0&&moveTier(e*d.ch.en)!==d.rt.tier)){d.rt=makeRoutine(e*d.ch.en,Math.random,routineStyle());d.ri=0;}
+    if(fresh||d.ri>=2*n||(d.ri%n===0&&moveTier(e*d.ch.en)!==d.rt.tier)){d.rt=makeRoutine(e*d.ch.en,Math.random,d.sty||routineStyle());d.ri=0;}
     if(st.kind===2&&d.ri%d.rt.mv.length===0)st.phrase++;
   }
   k=d.ri%d.rt.mv.length;d.mv=d.rt.mv[k];m=MOVES[d.mv];
@@ -682,12 +814,12 @@ export function danceStep(dt,bt,mp,level,drop,changed,slow,time,real,on){
   st.lvl=level;
   /* In a crowd, every so often two who stand near each other dance together for eight to sixteen beats: they turn to
      face each other, and from the next move the second does what the first does, as in a mirror. */
-  if(st.kind===4)party(dt,amp,level,drop,slow);
+  if(st.kind===4){party(dt,amp,level,drop,slow);if(act)actStep(du,F);}
   if(st.kind>=3&&amp>0.6){
     st.pairC-=dt;
     if(st.pairC<=0){
       st.pairC=3;i=Math.floor(Math.random()*crowd.length);d=crowd[i];k=-1;w=1.7;
-      if(d&&d.pw<0&&d.a>0.9&&!d.ent)for(j=0;j<crowd.length;j++)if(j!==i&&crowd[j].pw<0&&crowd[j].a>0.9&&!crowd[j].ent){v=Math.hypot(homeX(crowd[j],F)+crowd[j].tx-homeX(d,F)-d.tx,crowd[j].hz+crowd[j].tz-d.hz-d.tz);if(v<w){w=v;k=j;}}
+      if(d&&d.pw<0&&d.a>0.9&&!d.ent&&!d.rs)for(j=0;j<crowd.length;j++)if(j!==i&&crowd[j].pw<0&&crowd[j].a>0.9&&!crowd[j].ent&&!crowd[j].rs){v=Math.hypot(homeX(crowd[j],F)+crowd[j].tx-homeX(d,F)-d.tx,crowd[j].hz+crowd[j].tz-d.hz-d.tz);if(v<w){w=v;k=j;}}
       if(k>=0){
         j=Math.min(i,k);k=Math.max(i,k);v=now+8+4*Math.floor(3*Math.random());
         crowd[j].pw=k;crowd[k].pw=j;crowd[j].pu=crowd[k].pu=v;crowd[k].next=crowd[j].next;
@@ -700,7 +832,7 @@ export function danceStep(dt,bt,mp,level,drop,changed,slow,time,real,on){
     /* the next move of the routine when the one in hand has had its beats (four at least), a new routine at once after
        a great change in the sound and after a drop's jump; never while the figure is still going from the last move
        to this one, or the pose would jump. A move is begun from its own first beat. */
-    if(d.bl>=1&&(now>=d.next||changed||(st.jump<0&&d.late))){nextMove(d,i,now,e,changed||d.late||d.fresh||(st.kind===2&&crowd[0].rt!==d.rt&&i>0));d.late=false;d.fresh=false;}
+    if(d.bl>=1&&(now>=d.next||changed||(st.jump<0&&d.late))){nextMove(d,i,now,d.act===3?Math.max(e,1.2):e,changed||d.late||d.fresh||(st.kind===2&&crowd[0].rt!==d.rt&&i>0));d.late=false;d.fresh=false;}
     if(st.jump>=0)d.late=true;
     m=MOVES[d.mv];
     movePose(m,st.u-d.u0,A);A[2]+=moveBob(m)*beat*d.ch.bob;A[9]+=1.5*moveBob(m)*st.kick*d.ch.bob;A[11]+=6*moveBob(m)*st.kick*d.ch.bob;
@@ -719,19 +851,24 @@ export function danceStep(dt,bt,mp,level,drop,changed,slow,time,real,on){
     A[11]+=Math.tan(d.hv[1]);A[10]+=Math.tan(d.hv[2]);
     if(d.bl<1){
       movePose(MOVES[d.pmv],st.u-d.pu0,B);B[2]+=moveBob(MOVES[d.pmv])*beat*d.ch.bob;if(d.pmir)flipPose(B);B[4]+=d.pfa;
-      k=ease(d.bl);w=turnTo(B[4],A[4]);for(j=0;j<MV_N;j++)A[j]=B[j]+(A[j]-B[j])*k;A[4]=B[4]+w*k;
-      d.bl=Math.min(1,d.bl+du); /* a beat to go from one move to the next */
+      /* the turn between the two is kept going the way it was going (d.cw): one of them may be spinning, and the short way round would then change sides part way over */
+      k=ease(d.bl);w=d.cw=d.cw===null?turnTo(B[4],A[4]):d.cw+turnTo(d.cw,A[4]-B[4]);for(j=0;j<MV_N;j++)A[j]=B[j]+(A[j]-B[j])*k;A[4]=B[4]+w*k;
+      d.bl=Math.min(1,d.bl+du/(m.down||MOVES[d.pmv].down?2:1)); /* a beat to go from one move to the next, and two to get down onto the floor or up from it */
     }
     /* how much this figure dances (d.a) follows how much they all do, but one that has walked out of the room it
        dances in comes back first. A move that travels carries the figure along, more slowly the nearer it is to the
        end of its room; otherwise it moves over the floor at DN_DRIFT at most toward the place it chose for this
        move, and turns slowly as it chose. With no beat it waits or walks about (idle), and the pose is between the
        two by d.a. */
-    bounds(d,F,false,RM);
+    bounds(d,F,false,RM);dx=d.tx;dz=d.tz;
     far=d.tx<RM[0]-0.05||d.tx>RM[1]+0.05||d.tz<RM[2]-0.05||d.tz>RM[3]+0.05;
     if(d.ent===1&&!far)d.ent=0; /* it has come to its place */
     far=d.ent===2?(d.bye>=0?1.25:1.8):far&&(amp>0.5||d.ent)?1.8:0; /* how fast it walks to where it must go: one saying goodbye takes its time */
     if(d.ent===2){d.wx=d.gx;d.wz=d.gz;d.bw+=(1-d.bw)*Math.min(1,dt*2);} /* off to the side, whatever place its move chose */
+    if(d.act){ /* a part in what they do together: it walks to its place, and is then kept there */
+      if(d.ap){d.wx=d.ax-homeX(d,F);d.wz=d.az-d.hz;far=2.4;if(Math.hypot(d.wx-d.tx,d.wz-d.tz)<0.22)d.ap=0;}
+      if(!d.ap){far=0;n=Math.hypot(d.ax-homeX(d,F)-dx,d.az-d.hz-dz);w=Math.min(1,1.4*dt/Math.max(1e-6,n));d.ox=dx+(d.ax-homeX(d,F)-dx)*w;d.oz=dz+(d.az-d.hz-dz)*w;} /* at 1.4 figure heights a second at most */
+    }
     d.a+=((far?0:amp)-d.a)*Math.min(1,dt*2.5);
     v=moveGo(m,st.u-d.u0)*(d.mir?-1:1)*d.a;k=Math.min(1,dt*2);
     if(v){w=v>0?RM[1]-d.tx:d.tx-RM[0];v*=Math.max(0,Math.min(1,w/Math.max(0.3,0.5*(RM[1]-RM[0]))));d.tx+=v*du;d.vx-=d.vx*k;d.vz-=d.vz*k;}
@@ -743,6 +880,7 @@ export function danceStep(dt,bt,mp,level,drop,changed,slow,time,real,on){
     d.tx+=d.vx*dt*d.a;d.tz+=d.vz*dt*d.a;
     idle(d,st.kind===4?d.sn:i,dt,time,far,B,F);
     if(d.ent===2&&d.bye>=0)byePose(d,time,B);
+    if(d.act&&!d.ap){d.tx=d.ox;d.tz=d.oz;} /* nothing else moves it */
     /* the way it faces goes over with the rest. A figure about to dance begins facing as it stood, and one that has
        been dancing stands facing as it danced; between, the turn from one to the other is kept going the way it
        was going (d.dw), since the short way round can change sides from one frame to the next */
@@ -750,7 +888,9 @@ export function danceStep(dt,bt,mp,level,drop,changed,slow,time,real,on){
     else if(d.a>0.98){d.iface=d.itf=B[4]=A[4];d.dw=0;}
     else d.dw+=turnTo(d.dw,A[4]-B[4]);
     w=d.dw;for(j=0;j<MV_N;j++)A[j]=B[j]+(A[j]-B[j])*d.a;A[4]=B[4]+w*d.a;
-    if(st.jump>=0){
+    d.aw=Math.max(0,Math.min(1,d.aw+(d.act&&d.sh?0.9:-0.9)*dt)); /* over a little more than a second, evenly: the dance it leaves may be a spin or on the floor, and its arms have far to go */
+    if(d.aw>0){actPose(d,st.u,S);n=ease(d.aw);k=A[4];w=turnTo(k,S[4]);for(j=0;j<MV_N;j++)A[j]+=(S[j]-A[j])*n;A[4]=k+w*n;}
+    if(st.jump>=0&&d.aw<0.5){
       jumpPose(st.jump,J);w=ease(st.jump/0.3)*(1-ease((st.jump-DN_JUMP+0.5)/0.5))*(slow?0.5:1);
       k=A[4];for(j=0;j<MV_N;j++)A[j]+=(J[j]-A[j])*w;A[4]=k; /* the jump is made facing whichever way the figure was */
     }
@@ -764,12 +904,17 @@ export function danceStep(dt,bt,mp,level,drop,changed,slow,time,real,on){
     /* Last, an elbow or a hand is shown going no faster from its shoulder than DN_TOP. Where a hand passes close by
        its shoulder the elbow has to swing a long way round in a frame or two to keep both bones their length; shown
        so it is a flick. For those few frames the arm is drawn a little short or long instead, which is not seen. */
-    for(j=0;j<4;j++){
-      k=12+3*j;w=6+3*(j>>1);dx=d.b[k]-d.b[w]-d.rel[3*j];dz=d.b[k+1]-d.b[w+1]-d.rel[3*j+1];v=d.b[k+2]-d.b[w+2]-d.rel[3*j+2];n=Math.sqrt(dx*dx+dz*dz+v*v);
+    for(j=0;j<6;j++){ /* and a knee from its hip the same: going down onto the floor or getting up, it can have a long way round to go */
+      k=j<4?12+3*j:30+6*(j-4);w=j<4?6+3*(j>>1):24+3*(j-4);dx=d.b[k]-d.b[w]-d.rel[3*j];dz=d.b[k+1]-d.b[w+1]-d.rel[3*j+1];v=d.b[k+2]-d.b[w+2]-d.rel[3*j+2];n=Math.sqrt(dx*dx+dz*dz+v*v);
       if(d.rel.on&&n>DN_TOP*dt){n=DN_TOP*dt/n;d.b[k]=d.b[w]+d.rel[3*j]+dx*n;d.b[k+1]=d.b[w+1]+d.rel[3*j+1]+dz*n;d.b[k+2]=d.b[w+2]+d.rel[3*j+2]+v*n;}
       d.rel[3*j]=d.b[k]-d.b[w];d.rel[3*j+1]=d.b[k+1]-d.b[w+1];d.rel[3*j+2]=d.b[k+2]-d.b[w+2];
     }
     d.rel.on=true;
+    /* and nothing at all is shown going faster than DN_CAP: a figure taking up a part with the others (arms up from a
+       spin, say) can ask for more in the few frames where two changes fall together, and is shown a little behind */
+    if(d.pb){for(j=0;j<51;j+=3){dx=d.b[j]-d.pb[j];dz=d.b[j+1]-d.pb[j+1];v=d.b[j+2]-d.pb[j+2];n=Math.sqrt(dx*dx+dz*dz+v*v);if(n>DN_CAP*dt&&dt>0){n=DN_CAP*dt/n;d.b[j]=d.pb[j]+dx*n;d.b[j+1]=d.pb[j+1]+dz*n;d.b[j+2]=d.pb[j+2]+v*n;}}}
+    else d.pb=new Array(51);
+    for(j=0;j<51;j++)d.pb[j]=d.b[j];
     /* the face: the mouth opens with the kick, the more the livelier the figure, and the eyes shut for a moment every few seconds */
     w=Math.min(1,st.kick*1.6)*d.a*Math.min(1,0.25+0.6*d.ch.bob);
     if(d.ent===2&&d.bye===2)w=Math.max(w,d.bw*(Math.sin(time*0.8+2.1*d.sn)>-0.3?0.3+0.3*Math.sin(time*8.5+3*d.sn):0)); /* talking: the mouth goes for a few seconds, and rests while another talks */
@@ -838,16 +983,19 @@ export function danceSpots(kind,asp,n){
    over furthest first, since the shader draws each over the ones before it; the last number of a figure's last four
    is which figure it is (a whole number, for its colour) and half its brightness, or 0 for no figure. */
 export function danceFill(kind,asp){
-  var n=lapOn()||kind!==st.kind?0:Math.min(dnRoom,crowd.length),F=front(kind,asp),i,j,q=flat.q||(flat.q=[0,0,0,0]),k,d;
+  var n=lapOn()||kind!==st.kind?0:Math.min(dnRoom,crowd.length),F=front(kind,asp),i,j,q=flat.q||(flat.q=[0,0,0,0]),k,d,zs,zx,zy;
   st.asp=asp;order.length=0;
   /* the party's ball comes down from above the picture's top to hang a little under it (no higher than 0.42, so that on a tall picture it is still over the floor) */
   j=0.5/Math.min(1,asp);k=1-Math.pow(1-st.bd,3);
   dnB[0]=F[0];dnB[1]=F[1];dnB[2]=kind===4&&kind===st.kind&&!lapOn()?j+0.12+(Math.min(j-0.17,0.42)-j-0.12)*k:99;dnB[3]=st.spin%6.2831853;dnB[4]=dnB[2]<9?st.lit:0;
+  /* the nearer view: everything on the floor is drawn zs times larger about the figure it is on, which is brought toward the middle of the picture (a place x becomes zs*x+zx); by so much that the figure is DN_NEARER of the picture's shorter side tall, a figure at the back more and one at the front less, and by less for those who have asked for less motion */
+  k=dnB[2]<9?ease(st.zm):0;zs=1+(Math.max(1.25,Math.min(2.1,DN_NEARER/Math.max(0.05,st.zk)))-1)*(calm?0.4:1)*k;zx=st.zx+(0-st.zx)*k-st.zx*zs;zy=st.zy+(-0.04-st.zy)*k-st.zy*zs;dnB[5]=zs;dnB[6]=zx;dnB[7]=zy;
   for(i=0;i<n;i++)order.push(crowd[i]);
   order.sort(function(a,b){return b.hz+b.tz-a.hz-a.tz;});
   for(i=0;i<DN_MAX;i++){
     if(i>=n){dnU[8][4*i+3]=0;continue;}
     d=order[i];place(F,homeX(d,F)+d.tx,d.hz+d.tz,q);danceFlat(d.b,flat);
+    q[0]=zs*q[0]+zx;q[1]=zs*q[1]+zy;q[2]*=zs;
     k=q[0];
     for(j=0;j<16;j++){dnU[j>>1][4*i+2*(j&1)]=k+q[2]*flat[2*j];dnU[j>>1][4*i+2*(j&1)+1]=q[1]+q[2]*flat[2*j+1];}
     /* the head: the angle the chest faces by and the head's own turn on it, which the head is drawn turned by; then the face, two numbers to one
@@ -868,6 +1016,7 @@ tick=makeBeatClock();bank=makeBeatBank();
 }
 
 /* for the test tools and the browser console: every name in this file; the ones that can change have a getter and a setter */
-export const __dbg={DN_LEAST, DN_LINGER, DN_OFF, DN_BYES, dnB, setDanceRoom, get dnRoom(){return dnRoom},
+export const __dbg={DN_CAP, DN_NEARER, DN_RING, startAct, endAct, get danceAct(){return act}, get danceZoom(){return zf},set danceZoom(v){zf=v},
+  DN_LEAST, DN_LINGER, DN_OFF, DN_BYES, dnB, setDanceRoom, get dnRoom(){return dnRoom},
   DN_HEADS, pickHead, DN_FIT, styleFit, danceFit, DN_MAX, DN_MANNERS, DN_LOOKS, DN_FACES, pickFace, DN_HIP, DN_SPINE, DN_HEAD, DN_NECK, DN_SHO, DN_HIPW, DN_ARM, DN_FORE, DN_CLEAR, DN_BACK, DN_LEG, DN_FOOT, DN_STANCE, DN_NEAR, DN_EYE, DN_FAST, DN_SLOW, DN_SIZE, DN_DEEP, DN_UP, DN_FLOOR, DN_DRIFT, DN_FAINT, DN_RATE, DN_SURE0, DN_SURE1, DN_FAINT2, makeBeatBank, get danceBank(){return bank},set danceBank(v){bank=v}, danceSays, DN_QUICK, DN_TOP, DN_JUMP, DN_STEP, DN_WALK, DN_TURN, dnU, danceBody, danceFlat, makeBeatClock, pickMove, moveTier, makeRoutine, setDanceStyle, get danceStyle(){return danceStyle},
   danceKind, danceStep, stepDance, danceSpots, danceFill, crowd, danceSt:st, get danceTick(){return tick},set danceTick(v){tick=v}};
